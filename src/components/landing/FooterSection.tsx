@@ -20,8 +20,7 @@ export default function FooterSection() {
               Conmomet
             </Typography>
             <Typography color="grey.400">
-              La plataforma de gestión empresarial que necesitas para hacer
-              crecer tu negocio de manera inteligente.
+              Conmomet S.A. es una empresa líder en soluciones industriales, ofreciendo servicios de montajes, tornería y plegados para clientes en toda la zona costera de la provincia de Buenos Aires.
             </Typography>
           </Box>
 

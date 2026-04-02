@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { Box, Card, Container, Typography } from '@mui/material';
-import { Analytics, AutoFixNormal, Business, Handyman, RadioButtonChecked, Security } from '@mui/icons-material';
+import { Analytics, AutoFixNormal, Business, FrontLoader, Handyman, RadioButtonChecked, Security } from '@mui/icons-material';
 
 export default function FeaturesSection() {
   return (
@@ -41,6 +41,16 @@ export default function FeaturesSection() {
           <RadioButtonChecked sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
           <Typography variant="h5" sx={{ mb: 2 }}>
             Torneria Industrial
+          </Typography>
+          <Typography color="text.secondary">
+            Torneria de precisión, piezas únicas y series cortas para la industria.
+          </Typography>
+        </Card>
+
+        <Card sx={{ maxWidth: 350, textAlign: "center", p: 3, flex: "1 1 300px" }}>
+          <FrontLoader sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
+          <Typography variant="h5" sx={{ mb: 2 }}>
+            Servicio de Gruas
           </Typography>
           <Typography color="text.secondary">
             Torneria de precisión, piezas únicas y series cortas para la industria.
