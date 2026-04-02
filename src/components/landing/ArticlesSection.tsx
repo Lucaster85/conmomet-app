@@ -41,7 +41,7 @@ export default function ArticlesSection() {
     <Box sx={{ bgcolor: "background.default", py: 8 }}>
       <Container maxWidth="lg">
         <Typography variant="h2" textAlign="center" sx={{ mb: 6 }}>
-          Últimas Novedades
+          Nuestro Trabajo
         </Typography>
         <CardSlider cards={newsCards} visibleCards={3} />
       </Container>

@@ -1,13 +1,13 @@
 'use client';
 import React from 'react';
 import { Box, Card, Container, Typography } from '@mui/material';
-import { Analytics, Business, Security } from '@mui/icons-material';
+import { Analytics, AutoFixNormal, Business, Handyman, RadioButtonChecked, Security } from '@mui/icons-material';
 
 export default function FeaturesSection() {
   return (
     <Container maxWidth="lg" sx={{ py: 8 }}>
       <Typography variant="h2" textAlign="center" sx={{ mb: 2 }}>
-        Características Principales
+        Nuestros Servicios
       </Typography>
       <Typography
         variant="h6"
@@ -28,7 +28,7 @@ export default function FeaturesSection() {
         }}
       >
         <Card sx={{ maxWidth: 350, textAlign: "center", p: 3, flex: "1 1 300px" }}>
-          <Business sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
+          <Handyman sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
           <Typography variant="h5" sx={{ mb: 2 }}>
             Montajes
           </Typography>
@@ -38,7 +38,7 @@ export default function FeaturesSection() {
         </Card>
 
         <Card sx={{ maxWidth: 350, textAlign: "center", p: 3, flex: "1 1 300px" }}>
-          <Analytics sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
+          <RadioButtonChecked sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
           <Typography variant="h5" sx={{ mb: 2 }}>
             Torneria Industrial
           </Typography>
@@ -54,6 +54,16 @@ export default function FeaturesSection() {
           </Typography>
           <Typography color="text.secondary">
             Plegados de precisión, piezas únicas y series cortas para la industria.
+          </Typography>
+        </Card>
+
+        <Card sx={{ maxWidth: 350, textAlign: "center", p: 3, flex: "1 1 300px" }}>
+          <AutoFixNormal sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
+          <Typography variant="h5" sx={{ mb: 2 }}>
+            Soldadura
+          </Typography>
+          <Typography color="text.secondary">
+            Soldadura de precisión, piezas únicas y series cortas para la industria.
           </Typography>
         </Card>
 

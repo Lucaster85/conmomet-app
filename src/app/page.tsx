@@ -10,12 +10,14 @@ import { useRouter } from 'next/navigation';
 import HeroSection from '../components/landing/HeroSection';
 import FeaturesSection from '../components/landing/FeaturesSection';
 import ArticlesSection from '../components/landing/ArticlesSection';
+import ClientsSection from '../components/landing/ClientsSection';
 import FooterSection from '../components/landing/FooterSection';
 
 const navItems = [
   { label: 'Inicio', href: '#inicio' },
   { label: 'Servicios', href: '#servicios' },
-  { label: 'Novedades', href: '#novedades' },
+  { label: 'Nuestro trabajo', href: '#nuestro-trabajo' },
+  { label: 'Clientes', href: '#clientes' },
 ];
 
 export default function LandingPage() {
@@ -118,7 +120,8 @@ export default function LandingPage() {
 
       <Box id="inicio"><HeroSection onContactClick={handleLoginClick} /></Box>
       <Box id="servicios"><FeaturesSection /></Box>
-      <Box id="novedades"><ArticlesSection /></Box>
+      <Box id="nuestro-trabajo"><ArticlesSection /></Box>
+      <Box id="clientes"><ClientsSection /></Box>
       <FooterSection />
     </Box>
   );
