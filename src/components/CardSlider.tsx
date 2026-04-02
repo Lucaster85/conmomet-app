@@ -1,6 +1,6 @@
 'use client';
-import React, { useState } from 'react';
-import { Box, IconButton, Card, CardContent, CardMedia, Typography } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, IconButton, Card, CardContent, CardMedia, Typography, useTheme, useMediaQuery } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 
 interface NewsCard {
@@ -15,9 +15,17 @@ interface CardSliderProps {
 }
 
 export default function CardSlider({ cards, visibleCards = 3 }: CardSliderProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const activeVisibleCards = isMobile ? 1 : visibleCards;
+
   const [currentIndex, setCurrentIndex] = useState(0);
   
-  const maxIndex = Math.max(0, cards.length - visibleCards);
+  const maxIndex = Math.max(0, cards.length - activeVisibleCards);
+
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [isMobile]);
 
   const goToPrevious = () => {
     setCurrentIndex(currentIndex === 0 ? maxIndex : currentIndex - 1);
@@ -29,7 +37,7 @@ export default function CardSlider({ cards, visibleCards = 3 }: CardSliderProps)
 
   const getVisibleCards = () => {
     const visible = [];
-    for (let i = 0; i < visibleCards && i < cards.length; i++) {
+    for (let i = 0; i < activeVisibleCards && i < cards.length; i++) {
       const cardIndex = (currentIndex + i) % cards.length;
       visible.push({ ...cards[cardIndex], index: cardIndex });
     }
@@ -53,8 +61,8 @@ export default function CardSlider({ cards, visibleCards = 3 }: CardSliderProps)
           <Card
             key={`${card.index}-${displayIndex}`}
             sx={{
-              flex: `0 0 ${100 / visibleCards}%`,
-              maxWidth: 350,
+              flex: `0 0 ${100 / activeVisibleCards}%`,
+              maxWidth: isMobile ? '100%' : 350,
               transition: 'transform 0.3s ease, box-shadow 0.3s ease',
               '&:hover': {
                 transform: 'translateY(-4px)',
@@ -94,7 +102,7 @@ export default function CardSlider({ cards, visibleCards = 3 }: CardSliderProps)
       </Box>
 
       {/* Botones de navegación */}
-      {cards.length > visibleCards && (
+      {cards.length > activeVisibleCards && (
         <>
           <IconButton
             onClick={goToPrevious}
@@ -135,7 +143,7 @@ export default function CardSlider({ cards, visibleCards = 3 }: CardSliderProps)
       )}
 
       {/* Indicadores */}
-      {cards.length > visibleCards && (
+      {cards.length > activeVisibleCards && (
         <Box
           sx={{
             display: 'flex',
