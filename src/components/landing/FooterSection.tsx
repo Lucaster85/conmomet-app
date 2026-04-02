@@ -52,16 +52,16 @@ export default function FooterSection() {
             </Typography>
             <Stack spacing={1}>
               <Typography color="grey.400" sx={{ cursor: "pointer", "&:hover": { color: "white" } }}>
-                Sobre Nosotros
+                Instagran
               </Typography>
               <Typography color="grey.400" sx={{ cursor: "pointer", "&:hover": { color: "white" } }}>
-                Servicios
+                otra cosa
               </Typography>
               <Typography color="grey.400" sx={{ cursor: "pointer", "&:hover": { color: "white" } }}>
-                Soporte
+                algo mas
               </Typography>
               <Typography color="grey.400" sx={{ cursor: "pointer", "&:hover": { color: "white" } }}>
-                Términos y Condiciones
+                politicas de privacidad
               </Typography>
             </Stack>
           </Box>
