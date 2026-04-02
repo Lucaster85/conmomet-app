@@ -92,10 +92,10 @@ export default function CreateUserForm({ onSuccessAction }: CreateUserFormProps)
   };
 
   // Manejar cambios en el select de rol
-  const handleRoleChange = (event: any) => {
+  const handleRoleChange = (event: { target: { value: number | string } }) => {
     setFormData(prev => ({
       ...prev,
-      role_id: event.target.value,
+      role_id: Number(event.target.value),
     }));
   };
 

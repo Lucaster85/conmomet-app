@@ -57,6 +57,8 @@ export interface Client {
   razonSocial: string;
   email: string;
   phone?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CreateClientData {
@@ -121,7 +123,7 @@ export class UserService {
     return response.json();
   }
 
-  static async create(userData: CreateUserData): Promise<any> {
+  static async create(userData: CreateUserData): Promise<User> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       body: JSON.stringify(userData),
@@ -252,7 +254,7 @@ export class PermissionService {
   }
 }
   export class ClientService {
-  static async getAll(): Promise<ClientService[]> {
+  static async getAll(): Promise<Client[]> {
     console.log('🔍 Fetching users from:', `${API_BASE_URL}/clients`);
     console.log('🔑 Headers being sent:', TokenManager.getAuthHeaders());
     
@@ -294,7 +296,7 @@ export class PermissionService {
     return response.json();
   }
 
-  static async create(clientData: CreateClientData): Promise<any> {
+  static async create(clientData: CreateClientData): Promise<Client> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients`, {
       method: 'POST',
       body: JSON.stringify(clientData),
@@ -330,7 +332,7 @@ export class PermissionService {
 }
 
   export class ProviderService {
-  static async getAll(): Promise<ProviderService[]> {
+  static async getAll(): Promise<Provider[]> {
     console.log('🔍 Fetching users from:', `${API_BASE_URL}/providers`);
     console.log('🔑 Headers being sent:', TokenManager.getAuthHeaders());
     
@@ -372,7 +374,7 @@ export class PermissionService {
     return response.json();
   }
 
-  static async create(providerData: CreateProviderData): Promise<any> {
+  static async create(providerData: CreateProviderData): Promise<Provider> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/providers`, {
       method: 'POST',
       body: JSON.stringify(providerData),

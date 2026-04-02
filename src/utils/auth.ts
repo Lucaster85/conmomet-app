@@ -1,4 +1,17 @@
 // Utility functions para manejar JWT tokens
+
+export interface UserData {
+  id?: number;
+  name?: string;
+  lastname?: string;
+  fullName?: string;
+  email?: string;
+  role_id?: number;
+  roleName?: string;
+  role?: string;
+  [key: string]: unknown;
+}
+
 export class TokenManager {
   private static readonly TOKEN_KEY = 'conmomet_token';
   private static readonly USER_KEY = 'conmomet_user';
@@ -27,14 +40,14 @@ export class TokenManager {
   }
 
   // Guardar información del usuario
-  static saveUser(user: any): void {
+  static saveUser(user: UserData): void {
     if (typeof window !== 'undefined') {
       localStorage.setItem(this.USER_KEY, JSON.stringify(user));
     }
   }
 
   // Obtener información del usuario
-  static getUser(): any | null {
+  static getUser(): UserData | null {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem(this.USER_KEY);
       return userData ? JSON.parse(userData) : null;
@@ -138,7 +151,7 @@ export function useAuth() {
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
-        } catch (e) {
+        } catch (_e) {
           // Si no se puede parsear el JSON, usar mensaje por defecto
         }
 
