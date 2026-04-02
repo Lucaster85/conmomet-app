@@ -25,7 +25,6 @@ import {
   Menu as MenuIcon
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-import ImageSlider from '../components/ImageSlider';
 import CardSlider from '../components/CardSlider';
 
 export default function LandingPage() {
@@ -34,13 +33,6 @@ export default function LandingPage() {
   const handleLoginClick = () => {
     router.push('/login');
   };
-
-  // Imágenes para el slider del dashboard
-  const dashboardImages = [
-    'img/dashboardSlider/grain-steel-silo.jpg',
-    'img/dashboardSlider/images.jpeg',
-    'img/dashboardSlider/imagenEjemploObra.jpg',
-  ];
 
   // Datos para el slider de noticias
   const newsCards = [
@@ -104,73 +96,62 @@ export default function LandingPage() {
       {/* Hero Section */}
       <Box
         sx={{
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)",
+          position: "relative",
+          minHeight: "75vh",
           display: "flex",
           alignItems: "center",
           pt: 8,
+          backgroundImage: "url('img/dashboardSlider/grain-steel-silo.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            inset: 0,
+            bgcolor: "rgba(0,0,0,0.45)",
+          },
         }}
       >
-        <Container maxWidth="lg">
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 4,
-            }}
-          >
-            <Box sx={{ flex: 1, minWidth: "300px" }}>
-              <Typography
-                variant="h1"
+
+        {/* Contenido encima del slider */}
+        <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
+          <Box sx={{ maxWidth: { xs: "100%", md: "55%" } }}>
+            <Typography
+              variant="h1"
+              sx={{
+                color: "white",
+                mb: 3,
+                fontSize: { xs: "2.5rem", md: "3.5rem" },
+                textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+              }}
+            >
+              Conmomet S.A.
+            </Typography>
+            <Typography
+              variant="h5"
+              sx={{
+                color: "rgba(255,255,255,0.95)",
+                mb: 4,
+                textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+              }}
+            >
+              Experiencia y compromiso.
+            </Typography>
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+              <Button
+                variant="contained"
+                size="large"
+                endIcon={<ArrowForward />}
+                onClick={handleLoginClick}
                 sx={{
-                  color: "white",
-                  mb: 3,
-                  fontSize: { xs: "2.5rem", md: "3.5rem" },
+                  bgcolor: "white",
+                  color: "primary.main",
+                  "&:hover": { bgcolor: "grey.100" },
                 }}
               >
-                Conmomet S.A.
-              </Typography>
-              <Typography
-                variant="h5"
-                sx={{ color: "rgba(255,255,255,0.9)", mb: 4 }}
-              >
-                Experiencia y compromiso.
-              </Typography>
-              <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                <Button
-                  variant="contained"
-                  size="large"
-                  endIcon={<ArrowForward />}
-                  onClick={handleLoginClick}
-                  sx={{
-                    bgcolor: "white",
-                    color: "primary.main",
-                    "&:hover": { bgcolor: "grey.100" },
-                  }}
-                >
-                  Quiero que me contacten
-                </Button>
-                {/* <Button 
-                  variant="outlined" 
-                  size="large"
-                  sx={{ 
-                    color: 'white', 
-                    borderColor: 'white',
-                    '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' }
-                  }}
-                >
-                  Ver Demo
-                </Button> */}
-              </Box>
-            </Box>
-            <Box sx={{ flex: 1, minWidth: "300px" }}>
-              <ImageSlider
-                images={dashboardImages}
-                height={400}
-                autoPlay={true}
-                interval={4000}
-              />
+                Quiero que me contacten
+              </Button>
             </Box>
           </Box>
         </Container>

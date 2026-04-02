@@ -8,13 +8,15 @@ interface ImageSliderProps {
   height?: number;
   autoPlay?: boolean;
   interval?: number;
+  fullBackground?: boolean;
 }
 
 export default function ImageSlider({ 
   images, 
   height = 400, 
   autoPlay = true, 
-  interval = 3000 
+  interval = 3000,
+  fullBackground = false,
 }: ImageSliderProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const theme = useTheme();
@@ -48,15 +50,18 @@ export default function ImageSlider({
   return (
     <Box
       sx={{
-        position: 'relative',
+        position: fullBackground ? 'absolute' : 'relative',
+        top: fullBackground ? 0 : undefined,
+        left: fullBackground ? 0 : undefined,
         width: '100%',
-        height,
-        borderRadius: 2,
+        height: fullBackground ? '100%' : height,
+        borderRadius: fullBackground ? 0 : 2,
         overflow: 'hidden',
-        bgcolor: 'rgba(255,255,255,0.1)',
+        bgcolor: 'rgba(0,0,0,0.4)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        zIndex: fullBackground ? 0 : undefined,
       }}
     >
       {/* Imagen actual */}
@@ -76,7 +81,7 @@ export default function ImageSlider({
         }}
       />
 
-      {/* Overlay con placeholder si no hay imagen */}
+      {/* Overlay oscuro para mejorar legibilidad del texto */}
       <Box
         sx={{
           position: 'absolute',
@@ -84,17 +89,9 @@ export default function ImageSlider({
           left: 0,
           right: 0,
           bottom: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: 'rgba(0,0,0,0.1)',
-          color: 'white',
-          fontSize: '1.2rem',
-          fontWeight: 'bold',
+          bgcolor: fullBackground ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.1)',
         }}
-      >
-        Dashboard Preview {currentIndex + 1}
-      </Box>
+      />
 
       {/* Botones de navegación */}
       <IconButton
