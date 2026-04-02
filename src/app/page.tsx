@@ -1,6 +1,10 @@
 'use client';
-import React from 'react';
-import { AppBar, Box, Button, IconButton, Toolbar, Typography, useMediaQuery, useTheme } from '@mui/material';
+import React, { useState } from 'react';
+import {
+  AppBar, Box, Button, Divider, Drawer, IconButton,
+  List, ListItem, ListItemButton, ListItemText,
+  Toolbar, Typography,
+} from '@mui/material';
 import { Menu as MenuIcon } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import HeroSection from '../components/landing/HeroSection';
@@ -16,8 +20,7 @@ const navItems = [
 
 export default function LandingPage() {
   const router = useRouter();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleLoginClick = () => {
     router.push('/login');
@@ -29,7 +32,32 @@ export default function LandingPage() {
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
     }
+    setDrawerOpen(false);
   };
+
+  const mobileDrawer = (
+    <Box sx={{ width: 240 }} role="presentation">
+      <List>
+        {navItems.map((item) => (
+          <ListItem key={item.href} disablePadding>
+            <ListItemButton onClick={() => handleNavClick(item.href)}>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <Button
+          variant="outlined"
+          fullWidth
+          onClick={() => { setDrawerOpen(false); handleLoginClick(); }}
+        >
+          Iniciar Sesión
+        </Button>
+      </Box>
+    </Box>
+  );
 
   return (
     <Box>
@@ -46,32 +74,47 @@ export default function LandingPage() {
           </Typography>
 
           {/* Nav links — solo en desktop */}
-          {!isMobile && (
-            <Box sx={{ display: 'flex', gap: 1, mr: 2 }}>
-              {navItems.map((item) => (
-                <Button
-                  key={item.href}
-                  onClick={() => handleNavClick(item.href)}
-                  sx={{ color: 'text.primary' }}
-                >
-                  {item.label}
-                </Button>
-              ))}
-            </Box>
-          )}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, mr: 2 }}>
+            {navItems.map((item) => (
+              <Button
+                key={item.href}
+                onClick={() => handleNavClick(item.href)}
+                sx={{ color: 'text.primary' }}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </Box>
 
-          <Button variant="outlined" onClick={handleLoginClick} sx={{ mr: isMobile ? 1 : 0 }}>
+          {/* Botón login — solo en desktop */}
+          <Button
+            variant="outlined"
+            onClick={handleLoginClick}
+            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+          >
             Iniciar Sesión
           </Button>
 
           {/* Menú hamburguesa — solo en mobile */}
-          {isMobile && (
-            <IconButton edge="end" color="primary">
-              <MenuIcon />
-            </IconButton>
-          )}
+          <IconButton
+            edge="end"
+            color="primary"
+            onClick={() => setDrawerOpen(true)}
+            sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+          >
+            <MenuIcon />
+          </IconButton>
         </Toolbar>
       </AppBar>
+
+      {/* Drawer mobile */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      >
+        {mobileDrawer}
+      </Drawer>
 
       <Box id="inicio"><HeroSection onContactClick={handleLoginClick} /></Box>
       <Box id="servicios"><FeaturesSection /></Box>

@@ -57,31 +57,7 @@ export default function LoginPage() {
     if (result.success) {
       router.push('/dashboard');
     } else {
-      // Si falla la autenticación real, probar con credenciales de demo
-      if (formData.email === 'admin@conmomet.com' && formData.password === 'admin123') {
-        // Simular token de demo
-        const demoToken = btoa(JSON.stringify({
-          exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24), // 24 horas
-          user: {
-            id: 1,
-            email: 'admin@conmomet.com',
-            name: 'Admin Usuario',
-            role: 'admin'
-          }
-        }));
-        
-        TokenManager.saveToken(`demo.${demoToken}.demo`);
-        TokenManager.saveUser({
-          id: 1,
-          email: 'admin@conmomet.com',
-          name: 'Admin Usuario',
-          role: 'admin'
-        });
-        
-        router.push('/dashboard');
-      } else {
-        setError(result.error || 'Error de conexión. Intenta con: admin@conmomet.com / admin123');
-      }
+      setError(result.error || 'Credenciales incorrectas. Verifica tu correo y contraseña.');
     }
     
     setLoading(false);
@@ -210,28 +186,6 @@ export default function LoginPage() {
                 <Button variant="text" size="small" sx={{ textTransform: 'none', p: 0, minWidth: 'auto' }}>
                   Recuperar contraseña
                 </Button>
-              </Typography>
-            </Box>
-
-            {/* Credenciales de prueba */}
-            <Box
-              sx={{
-                mt: 4,
-                p: 2,
-                bgcolor: 'grey.50',
-                borderRadius: 1,
-                border: '1px solid',
-                borderColor: 'grey.200',
-              }}
-            >
-              <Typography variant="caption" color="text.secondary" display="block">
-                <strong>Credenciales de prueba:</strong>
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                Email: admin@conmomet.com
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                Contraseña: admin123
               </Typography>
             </Box>
           </Box>
