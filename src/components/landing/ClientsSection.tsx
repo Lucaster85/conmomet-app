@@ -55,9 +55,10 @@ export default function ClientsSection() {
           <IconButton
             onClick={prev}
             disabled={index === 0}
-            sx={{ color: 'primary.main', flexShrink: 0 }}
+            size="small"
+            sx={{ color: 'primary.main', flexShrink: 0, p: { xs: 0.5, md: 1 } }}
           >
-            <ArrowBackIos />
+            <ArrowBackIos fontSize="small" />
           </IconButton>
 
           {/* Cards visibles */}
@@ -66,7 +67,7 @@ export default function ClientsSection() {
               flex: 1,
               display: 'grid',
               gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
-              gap: 3,
+              gap: { xs: 1.5, md: 3 },
               overflow: 'hidden',
             }}
           >
@@ -78,13 +79,13 @@ export default function ClientsSection() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 1.5,
-                  p: 3,
+                  gap: { xs: 1, md: 1.5 },
+                  p: { xs: 1.5, md: 3 },
                   bgcolor: 'background.paper',
                   borderRadius: 2,
                   border: '1px solid',
                   borderColor: 'divider',
-                  minHeight: 120,
+                  minHeight: { xs: 90, md: 120 },
                   transition: 'box-shadow 0.2s',
                   '&:hover': { boxShadow: 3 },
                 }}
@@ -92,8 +93,8 @@ export default function ClientsSection() {
                 {/* Placeholder logo: círculo con sigla */}
                 <Box
                   sx={{
-                    width: 56,
-                    height: 56,
+                    width: { xs: 40, md: 56 },
+                    height: { xs: 40, md: 56 },
                     borderRadius: '50%',
                     bgcolor: 'primary.main',
                     display: 'flex',
@@ -103,7 +104,7 @@ export default function ClientsSection() {
                 >
                   <Typography
                     variant="caption"
-                    sx={{ color: 'white', fontWeight: 'bold', fontSize: '0.75rem', letterSpacing: 1 }}
+                    sx={{ color: 'white', fontWeight: 'bold', fontSize: { xs: '0.6rem', md: '0.75rem' }, letterSpacing: 1 }}
                   >
                     {client.shortName}
                   </Typography>
@@ -111,7 +112,7 @@ export default function ClientsSection() {
                 <Typography
                   variant="body2"
                   textAlign="center"
-                  sx={{ fontWeight: 500, color: 'text.primary', lineHeight: 1.3 }}
+                  sx={{ fontWeight: 500, color: 'text.primary', lineHeight: 1.3, fontSize: { xs: '0.7rem', md: '0.875rem' } }}
                 >
                   {client.name}
                 </Typography>
@@ -123,9 +124,10 @@ export default function ClientsSection() {
           <IconButton
             onClick={next}
             disabled={index >= maxIndex}
-            sx={{ color: 'primary.main', flexShrink: 0 }}
+            size="small"
+            sx={{ color: 'primary.main', flexShrink: 0, p: { xs: 0.5, md: 1 } }}
           >
-            <ArrowForwardIos />
+            <ArrowForwardIos fontSize="small" />
           </IconButton>
         </Box>
 
