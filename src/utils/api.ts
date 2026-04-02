@@ -52,7 +52,32 @@ export interface CreateUserData {
   permissions?: number[];
 }
 
-// Servicio para usuarios
+export interface Client {
+  id: number;
+  razonSocial: string;
+  email: string;
+  phone?: string;
+}
+
+export interface CreateClientData {
+  razonSocial: string;
+  email: string;
+  phone?: string;
+}
+
+export interface Provider {
+  id: number;
+  razonSocial: string;
+  email: string;
+  phone?: string;
+}
+
+export interface CreateProviderData {
+  razonSocial: string;
+  email: string;
+  phone?: string;
+}
+
 export class UserService {
   static async getAll(): Promise<User[]> {
     console.log('🔍 Fetching users from:', `${API_BASE_URL}/users`);
@@ -223,6 +248,161 @@ export class PermissionService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Error al asignar permisos');
+    }
+  }
+}
+  export class ClientService {
+  static async getAll(): Promise<ClientService[]> {
+    console.log('🔍 Fetching users from:', `${API_BASE_URL}/clients`);
+    console.log('🔑 Headers being sent:', TokenManager.getAuthHeaders());
+    
+    try {
+      const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients`);
+      
+      console.log('📡 Clients response:', { 
+        status: response.status, 
+        ok: response.ok,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Clients error response:', errorText);
+        throw new Error(`Error al obtener clientes: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('📊 Raw clients data:', data);
+      
+      // El backend devuelve los datos en formato: {count: X, data: [...]}
+      const clients = Array.isArray(data) ? data : (data.data || data.clients || []);
+      console.log('✅ Processed clients:', clients);
+      
+      return clients;
+    } catch (error) {
+      console.error('💥 Error in getAll clients:', error);
+      throw error;
+    }
+  }
+
+  static async getById(id: number): Promise<Client> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients/${id}`);
+    if (!response.ok) {
+      throw new Error('Error al obtener cliente');
+    }
+    return response.json();
+  }
+
+  static async create(clientData: CreateClientData): Promise<any> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients`, {
+      method: 'POST',
+      body: JSON.stringify(clientData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear cliente');
+    }
+    return response.json();
+  }
+
+  static async update(id: number, clientData: Partial<CreateClientData>): Promise<Client> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(clientData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar cliente');
+    }
+    return response.json();
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar cliente');
+    }
+  }
+}
+
+  export class ProviderService {
+  static async getAll(): Promise<ProviderService[]> {
+    console.log('🔍 Fetching users from:', `${API_BASE_URL}/providers`);
+    console.log('🔑 Headers being sent:', TokenManager.getAuthHeaders());
+    
+    try {
+      const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/providers`);
+      
+      console.log('📡 Providers response:', { 
+        status: response.status, 
+        ok: response.ok,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Providers error response:', errorText);
+        throw new Error(`Error al obtener proveedores: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('📊 Raw providers data:', data);
+      
+      // El backend devuelve los datos en formato: {count: X, data: [...]}
+      const providers = Array.isArray(data) ? data : (data.data || data.providers || []);
+      console.log('✅ Processed providers:', providers);
+      
+      return providers;
+    } catch (error) {
+      console.error('💥 Error in getAll providers:', error);
+      throw error;
+    }
+  }
+
+  static async getById(id: number): Promise<Provider> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/providers/${id}`);
+    if (!response.ok) {
+      throw new Error('Error al obtener proveedor');
+    }
+    return response.json();
+  }
+
+  static async create(providerData: CreateProviderData): Promise<any> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/providers`, {
+      method: 'POST',
+      body: JSON.stringify(providerData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear proveedor');
+    }
+    return response.json();
+  }
+
+  static async update(id: number, providerData: Partial<CreateProviderData>): Promise<Provider> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/providers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(providerData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar proveedor');
+    }
+    return response.json();
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/providers/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar proveedor');
     }
   }
 }

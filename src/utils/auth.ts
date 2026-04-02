@@ -110,7 +110,6 @@ export class TokenManager {
   }
 }
 
-// Hook personalizado para manejar autenticación
 export function useAuth() {
   const isAuthenticated = TokenManager.isAuthenticated();
   const user = TokenManager.getUser();

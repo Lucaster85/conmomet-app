@@ -31,6 +31,9 @@ import {
   Notifications,
   Business,
   Inventory,
+  Payments,
+  PanTool,
+  HomeRepairService,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth, TokenManager } from '../../utils/auth';
@@ -41,10 +44,11 @@ const drawerWidth = 280;
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Usuarios', icon: <PeopleIcon />, path: '/dashboard/users' },
-  { text: 'Productos', icon: <Inventory />, path: '/dashboard/products' },
-  { text: 'Empresas', icon: <Business />, path: '/dashboard/companies' },
-  { text: 'Reportes', icon: <AssessmentIcon />, path: '/dashboard/reports' },
-  { text: 'Configuración', icon: <SettingsIcon />, path: '/dashboard/settings' },
+  { text: 'Clientes', icon: <Business />, path: '/dashboard/clients' },
+  { text: 'Proveedores', icon: <HomeRepairService />, path: '/dashboard/providers' },
+  //{ text: 'Pagos', icon: <Payments />, path: '/dashboard/payments' },
+  //{ text: 'Reportes', icon: <AssessmentIcon />, path: '/dashboard/reports' },
+  //{ text: 'Configuración', icon: <SettingsIcon />, path: '/dashboard/settings' },
 ];
 
 interface DashboardLayoutProps {
