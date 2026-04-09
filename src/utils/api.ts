@@ -408,3 +408,110 @@ export class PermissionService {
     }
   }
 }
+
+export type MediaType = 'slider' | 'card' | 'logo' | 'gallery' | 'banner' | 'background';
+
+export interface Media {
+  id: number;
+  type: MediaType;
+  title?: string;
+  description?: string;
+  url: string;
+  order?: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateMediaData {
+  file: File;
+  type: MediaType;
+  title?: string;
+  description?: string;
+  order?: number;
+}
+
+export interface UpdateMediaData {
+  file?: File;
+  title?: string;
+  description?: string;
+  order?: number;
+  is_active?: boolean;
+}
+
+export class MediaService {
+  static async getAll(): Promise<Media[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/media`);
+    if (!response.ok) throw new Error('Error al obtener archivos multimedia');
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data.data || []);
+  }
+
+  static async getByType(type: MediaType): Promise<Media[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/media/type/${type}`);
+    if (!response.ok) throw new Error('Error al obtener archivos multimedia');
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data.data || []);
+  }
+
+  static async getById(id: number): Promise<Media> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/media/${id}`);
+    if (!response.ok) throw new Error('Error al obtener el archivo');
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async upload(mediaData: CreateMediaData): Promise<Media> {
+    const formData = new FormData();
+    formData.append('file', mediaData.file);
+    formData.append('type', mediaData.type);
+    if (mediaData.title) formData.append('title', mediaData.title);
+    if (mediaData.description) formData.append('description', mediaData.description);
+    if (mediaData.order !== undefined) formData.append('order', String(mediaData.order));
+
+    const headers = TokenManager.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/media/upload`, {
+      method: 'POST',
+      headers: { Authorization: headers.Authorization },
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al subir el archivo');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async update(id: number, mediaData: UpdateMediaData): Promise<Media> {
+    const formData = new FormData();
+    if (mediaData.file) formData.append('file', mediaData.file);
+    if (mediaData.title !== undefined) formData.append('title', mediaData.title);
+    if (mediaData.description !== undefined) formData.append('description', mediaData.description);
+    if (mediaData.order !== undefined) formData.append('order', String(mediaData.order));
+    if (mediaData.is_active !== undefined) formData.append('is_active', String(mediaData.is_active));
+
+    const headers = TokenManager.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/media/${id}`, {
+      method: 'PUT',
+      headers: { Authorization: headers.Authorization },
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar el archivo');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/media/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar el archivo');
+    }
+  }
+}
