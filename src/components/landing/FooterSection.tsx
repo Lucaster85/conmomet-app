@@ -31,16 +31,48 @@ export default function FooterSection() {
             <Stack spacing={1}>
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Phone sx={{ mr: 1, fontSize: 20 }} />
-                <Typography color="grey.400">+54 11 1234-5678</Typography>
+                <Typography
+                  component="a"
+                  href="tel:+542262679570"
+                  color="grey.400"
+                  sx={{ textDecoration: "none", "&:hover": { color: "white" } }}
+                >
+                  Cotizaciones (2262) 679570
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Phone sx={{ mr: 1, fontSize: 20 }} />
+                <Typography
+                  component="a"
+                  href="tel:+542262610787"
+                  color="grey.400"
+                  sx={{ textDecoration: "none", "&:hover": { color: "white" } }}
+                >
+                  Administración (2262) 610787
+                </Typography>
               </Box>
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Email sx={{ mr: 1, fontSize: 20 }} />
-                <Typography color="grey.400">contacto@conmomet.com</Typography>
+                <Typography
+                  component="a"
+                  href="mailto:montajes@conmomet.com.ar"
+                  color="grey.400"
+                  sx={{ textDecoration: "none", "&:hover": { color: "white" } }}
+                >
+                  montajes@conmomet.com.ar
+                </Typography>
               </Box>
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <LocationOn sx={{ mr: 1, fontSize: 20 }} />
-                <Typography color="grey.400">
-                  Quequen, Buenos Aires, Argentina
+                <Typography
+                  component="a"
+                  href="https://www.google.com/maps/search/?api=1&query=578+N%C2%B01682%2C+Quequén%2C+Buenos+Aires%2C+Argentina+7631"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  color="grey.400"
+                  sx={{ textDecoration: "none", "&:hover": { color: "white" } }}
+                >
+                  578 N°1682, Quequén, Buenos Aires, Argentina
                 </Typography>
               </Box>
             </Stack>
