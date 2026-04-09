@@ -1,49 +1,57 @@
 'use client';
-import React from 'react';
-import { Box, Container, Typography } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Container, Typography, CircularProgress } from '@mui/material';
 import CardSlider from '../CardSlider';
 
-const newsCards = [
-  {
-    title: 'Nueva obra de Cargill en Quequen',
-    description: 'Conmomet S.A. se enorgullece de anunciar la finalización de una nueva obra para Cargill en el puerto de Quequen, mejorando la infraestructura y capacidad operativa.',
-    image: 'img/cardSlider/imagenEjemploObra.jpg',
-  },
-  {
-    title: 'Armamos un nuevo silo para Cargill',
-    description: 'Armamos un nuevo silo para Cargill en el puerto de Quequen, aumentando la capacidad de almacenamiento y eficiencia logística para nuestros clientes.',
-    image: 'img/cardSlider/imagenEjemploObra.jpg',
-  },
-  {
-    title: 'Tenemos una nueva Grua',
-    description: 'La nueva grúa de Conmomet S.A. ya está operativa, ofreciendo mayor capacidad de carga y descarga para nuestros clientes en el puerto de Quequen.',
-    image: 'img/cardSlider/imagenEjemploObra.jpg',
-  },
-  {
-    title: 'Trabajamos en la nueva obra del puerto Quequen',
-    description: 'Trabajamos en la nueva obra del puerto de Quequen, mejorando la infraestructura portuaria para facilitar el comercio y la logística en la región.',
-    image: 'img/cardSlider/imagenEjemploObra.jpg',
-  },
-  {
-    title: 'Nueva plegadora Saraza',
-    description: 'La nueva plegadora Saraza de Conmomet S.A. ya está operativa, mejorando la eficiencia y precisión en nuestros procesos de producción.',
-    image: 'img/cardSlider/imagenEjemploObra.jpg',
-  },
-  {
-    title: 'Sumamos al equipo',
-    description: 'Conmomet S.A. da la bienvenida a nuevos miembros en nuestro equipo, fortaleciendo nuestra capacidad para ofrecer soluciones innovadoras y de alta calidad.',
-    image: 'img/cardSlider/imagenEjemploObra.jpg',
-  },
-];
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+
+interface SliderMedia {
+  id: number;
+  title?: string;
+  description?: string;
+  url: string;
+  order?: number;
+}
 
 export default function ArticlesSection() {
+  const [cards, setCards] = useState<{ title: string; description: string; image: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/public/media/type/slider`)
+      .then((res) => res.json())
+      .then((data) => {
+        const items: SliderMedia[] = Array.isArray(data) ? data : (data.data || []);
+        const sorted = [...items].sort((a, b) => {
+          const orderA = a.order ?? Infinity;
+          const orderB = b.order ?? Infinity;
+          return orderA - orderB;
+        });
+        setCards(
+          sorted.map((item) => ({
+            title: item.title || '',
+            description: item.description || '',
+            image: item.url,
+          }))
+        );
+      })
+      .catch(() => setCards([]))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
-    <Box sx={{ bgcolor: "background.default", py: 8 }}>
+    <Box sx={{ bgcolor: 'background.default', py: 8 }}>
       <Container maxWidth="lg">
         <Typography variant="h2" textAlign="center" sx={{ mb: 6 }}>
           Nuestro Trabajo
         </Typography>
-        <CardSlider cards={newsCards} visibleCards={3} />
+        {loading ? (
+          <Box display="flex" justifyContent="center" py={6}>
+            <CircularProgress />
+          </Box>
+        ) : cards.length > 0 ? (
+          <CardSlider cards={cards} visibleCards={3} />
+        ) : null}
       </Container>
     </Box>
   );
