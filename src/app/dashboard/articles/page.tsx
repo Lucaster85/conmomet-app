@@ -187,7 +187,7 @@ export default function ArticlesPage() {
       ) : (
         <Grid container spacing={3}>
           {articles.map((article) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={article.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={article.id}>
               <Card
                 sx={{
                   borderRadius: '16px',

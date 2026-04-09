@@ -469,10 +469,10 @@ export class MediaService {
     if (mediaData.description) formData.append('description', mediaData.description);
     if (mediaData.order !== undefined) formData.append('order', String(mediaData.order));
 
-    const headers = TokenManager.getAuthHeaders();
+    const token = TokenManager.getToken();
     const response = await fetch(`${API_BASE_URL}/media/upload`, {
       method: 'POST',
-      headers: { Authorization: headers.Authorization },
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
     });
     if (!response.ok) {
@@ -491,10 +491,10 @@ export class MediaService {
     if (mediaData.order !== undefined) formData.append('order', String(mediaData.order));
     if (mediaData.is_active !== undefined) formData.append('is_active', String(mediaData.is_active));
 
-    const headers = TokenManager.getAuthHeaders();
+    const token = TokenManager.getToken();
     const response = await fetch(`${API_BASE_URL}/media/${id}`, {
       method: 'PUT',
-      headers: { Authorization: headers.Authorization },
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
     });
     if (!response.ok) {
