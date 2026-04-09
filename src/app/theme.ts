@@ -21,26 +21,41 @@ const theme = createTheme({
   },
   typography: {
     fontFamily: [
-      'var(--font-geist-sans)',
+      'var(--font-plus-jakarta)',
       '-apple-system',
       'BlinkMacSystemFont',
       '"Segoe UI"',
-      'Roboto',
-      '"Helvetica Neue"',
-      'Arial',
       'sans-serif',
     ].join(','),
     h1: {
       fontSize: '2.5rem',
-      fontWeight: 600,
+      fontWeight: 800,
+      letterSpacing: '-0.02em',
     },
     h2: {
       fontSize: '2rem',
-      fontWeight: 600,
+      fontWeight: 700,
+      letterSpacing: '-0.01em',
     },
     h3: {
       fontSize: '1.75rem',
+      fontWeight: 700,
+      letterSpacing: '-0.01em',
+    },
+    h4: {
+      fontWeight: 700,
+    },
+    h5: {
+      fontWeight: 600,
+    },
+    h6: {
       fontWeight: 500,
+    },
+    body1: {
+      lineHeight: 1.75,
+    },
+    body2: {
+      lineHeight: 1.65,
     },
   },
   components: {
@@ -55,8 +70,13 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          borderRadius: 16,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+          transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+          '&:hover': {
+            transform: 'translateY(-6px)',
+            boxShadow: '0 16px 40px rgba(0,0,0,0.14)',
+          },
         },
       },
     },
