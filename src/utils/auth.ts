@@ -55,37 +55,35 @@ export class TokenManager {
     return null;
   }
 
+  // Decodifica Base64URL (formato usado por JWT) de forma segura
+  private static decodeJWTPayload(base64url: string): Record<string, unknown> {
+    // Convierte Base64URL → Base64 estándar y agrega el padding faltante
+    const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
+    return JSON.parse(atob(padded));
+  }
+
   // Verificar si el token existe y no ha expirado
   static isAuthenticated(): boolean {
     const token = this.getToken();
     if (!token) return false;
 
     try {
-      // Verificar si es un token de demo
-      if (token.startsWith('demo.')) {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const currentTime = Date.now() / 1000;
-        return payload.exp > currentTime;
-      }
-
-      // Verificar JWT real
       const parts = token.split('.');
       if (parts.length !== 3) return false;
-      
-      // Decodificar el payload del JWT (sin verificar la firma)
-      const payload = JSON.parse(atob(parts[1]));
+
+      const payload = this.decodeJWTPayload(parts[1]);
       const currentTime = Date.now() / 1000;
-      
-      // Verificar si el token no ha expirado
-      if (payload.exp && payload.exp < currentTime) {
+
+      if (payload.exp && (payload.exp as number) < currentTime) {
         this.removeToken();
         return false;
       }
-      
+
       return true;
     } catch (error) {
       console.error('Error parsing token:', error);
-      this.removeToken();
+      // No eliminar el token ante un error de parsing; puede ser un falso negativo
       return false;
     }
   }
@@ -111,12 +109,13 @@ export class TokenManager {
       headers,
     });
 
-    // Si el token ha expirado, redirigir al login
+    // Si el servidor rechaza el token, lanzar error especial sin redirigir de inmediato.
+    // Cada llamador decide si redirige (evita logouts abruptos por errores de permisos).
     if (response.status === 401) {
       this.removeToken();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+      const err = new Error('UNAUTHORIZED');
+      err.name = 'UnauthorizedError';
+      throw err;
     }
 
     return response;

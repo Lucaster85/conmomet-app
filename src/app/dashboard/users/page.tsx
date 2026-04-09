@@ -47,12 +47,16 @@ export default function UsersPage() {
       setLoading(true);
       setError('');
       const usersData = await UserService.getAll();
-      // Asegurar que usersData es un array
       setUsers(Array.isArray(usersData) ? usersData : []);
     } catch (err) {
       console.error('Error loading users:', err);
+      if (err instanceof Error && err.name === 'UnauthorizedError') {
+        // Token inválido o expirado: redirigir al login
+        window.location.href = '/login';
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Error al cargar usuarios');
-      setUsers([]); // Resetear a array vacío en caso de error
+      setUsers([]);
     } finally {
       setLoading(false);
     }

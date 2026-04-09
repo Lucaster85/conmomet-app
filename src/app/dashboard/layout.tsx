@@ -33,7 +33,7 @@ import {
   HomeRepairService,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-import { useAuth, TokenManager } from '../../utils/auth';
+import { useAuth } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
 const drawerWidth = 280;
