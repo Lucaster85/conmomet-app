@@ -5,7 +5,7 @@ import {
   List, ListItem, ListItemButton, ListItemText,
   Toolbar, Typography,
 } from '@mui/material';
-import { Menu as MenuIcon } from '@mui/icons-material';
+import { Menu as MenuIcon, AccountCircle as AccountCircleIcon } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import HeroSection from '../components/landing/HeroSection';
 import NosotrosSection from '../components/landing/NosotrosSection';
@@ -93,7 +93,7 @@ export default function LandingPage() {
               <Button
                 key={item.href}
                 onClick={() => handleNavClick(item.href)}
-                sx={{ color: 'text.primary', fontSize: { md: '1.3rem' } }}
+                sx={{ color: 'text.primary', fontSize: { md: '0.975rem' } }}
               >
                 {item.label}
               </Button>
@@ -101,13 +101,14 @@ export default function LandingPage() {
           </Box>
 
           {/* Botón login — solo en desktop */}
-          <Button
-            variant="outlined"
+          <IconButton
             onClick={handleLoginClick}
-            sx={{ display: { xs: 'none', md: 'inline-flex' }, fontSize: '1.3rem' }}
+            color="primary"
+            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+            aria-label="Iniciar Sesión"
           >
-            Iniciar Sesión
-          </Button>
+            <AccountCircleIcon sx={{ fontSize: 32 }} />
+          </IconButton>
 
           {/* Menú hamburguesa — solo en mobile */}
           <IconButton
