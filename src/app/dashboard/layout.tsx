@@ -30,9 +30,6 @@ import {
   AccountCircle,
   Notifications,
   Business,
-  Inventory,
-  Payments,
-  PanTool,
   HomeRepairService,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';

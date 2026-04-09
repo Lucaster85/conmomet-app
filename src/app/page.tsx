@@ -8,6 +8,7 @@ import {
 import { Menu as MenuIcon } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import HeroSection from '../components/landing/HeroSection';
+import NosotrosSection from '../components/landing/NosotrosSection';
 import FeaturesSection from '../components/landing/FeaturesSection';
 import ArticlesSection from '../components/landing/ArticlesSection';
 import ClientsSection from '../components/landing/ClientsSection';
@@ -119,6 +120,7 @@ export default function LandingPage() {
       </Drawer>
 
       <Box id="inicio"><HeroSection onContactClick={handleLoginClick} /></Box>
+      <Box id="nosotros"><NosotrosSection /></Box>
       <Box id="servicios"><FeaturesSection /></Box>
       <Box id="nuestro-trabajo"><ArticlesSection /></Box>
       <Box id="clientes"><ClientsSection /></Box>

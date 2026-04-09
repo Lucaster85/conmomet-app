@@ -53,7 +53,7 @@ export default function HeroSection({ onContactClick }: HeroSectionProps) {
               textShadow: "0 1px 4px rgba(0,0,0,0.5)",
             }}
           >
-            Experiencia y compromiso.
+            SOLUCIONES INTEGRALES EN MONTAJES METALURGICOS.
           </Typography>
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
             <Button
