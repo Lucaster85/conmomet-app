@@ -13,6 +13,7 @@ import FeaturesSection from '../components/landing/FeaturesSection';
 import ArticlesSection from '../components/landing/ArticlesSection';
 import ClientsSection from '../components/landing/ClientsSection';
 import FooterSection from '../components/landing/FooterSection';
+import ContactModal from '../components/landing/ContactModal';
 
 const navItems = [
   { label: 'Inicio', href: '#inicio' },
@@ -25,6 +26,7 @@ const navItems = [
 export default function LandingPage() {
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
 
   const handleLoginClick = () => {
     router.push('/login');
@@ -131,7 +133,8 @@ export default function LandingPage() {
         {mobileDrawer}
       </Drawer>
 
-      <Box id="inicio"><HeroSection onContactClick={handleLoginClick} /></Box>
+        <ContactModal open={contactModalOpen} onClose={() => setContactModalOpen(false)} />
+        <Box id="inicio"><HeroSection onContactClick={() => setContactModalOpen(true)} /></Box>
       <Box id="nosotros"><NosotrosSection /></Box>
       <Box id="servicios"><FeaturesSection /></Box>
       <Box id="nuestro-trabajo"><ArticlesSection /></Box>
