@@ -16,6 +16,7 @@ import FooterSection from '../components/landing/FooterSection';
 
 const navItems = [
   { label: 'Inicio', href: '#inicio' },
+  { label: 'Nosotros', href: '#nosotros' },
   { label: 'Servicios', href: '#servicios' },
   { label: 'Nuestro trabajo', href: '#nuestro-trabajo' },
   { label: 'Clientes', href: '#clientes' },
