@@ -26,9 +26,11 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Image as ImageIcon,
+  SwapVert as SortIcon,
 } from '@mui/icons-material';
 import { MediaService, Media } from '@/utils/api';
 import ArticleForm from './ArticleForm';
+import ArticleSortModal from './ArticleSortModal';
 
 export default function ArticlesPage() {
   const [articles, setArticles] = useState<Media[]>([]);
@@ -37,6 +39,8 @@ export default function ArticlesPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editItem, setEditItem] = useState<Media | null>(null);
+
+  const [sortOpen, setSortOpen] = useState(false);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Media | null>(null);
@@ -115,20 +119,31 @@ export default function ArticlesPage() {
             Gestión de imágenes para la sección de artículos
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenCreate}
-          sx={{
-            borderRadius: '10px',
-            textTransform: 'none',
-            fontWeight: 600,
-            px: 3,
-            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-          }}
-        >
-          Nuevo artículo
-        </Button>
+        <Stack direction="row" gap={1}>
+          <Button
+            variant="outlined"
+            startIcon={<SortIcon />}
+            onClick={() => setSortOpen(true)}
+            disabled={articles.length < 2}
+            sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 600 }}
+          >
+            Ordenar
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenCreate}
+            sx={{
+              borderRadius: '10px',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3,
+              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+            }}
+          >
+            Nuevo artículo
+          </Button>
+        </Stack>
       </Stack>
 
       {/* Error */}
@@ -271,6 +286,14 @@ export default function ArticlesPage() {
         onClose={() => setFormOpen(false)}
         onSuccess={fetchArticles}
         editItem={editItem}
+      />
+
+      {/* Sort modal */}
+      <ArticleSortModal
+        open={sortOpen}
+        onClose={() => setSortOpen(false)}
+        items={articles}
+        onSuccess={fetchArticles}
       />
 
       {/* Delete confirmation */}

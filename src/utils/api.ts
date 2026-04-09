@@ -514,4 +514,15 @@ export class MediaService {
       throw new Error(error.error || 'Error al eliminar el archivo');
     }
   }
+
+  static async reorder(orderedIds: number[]): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/media/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify({ orderedIds }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al reordenar');
+    }
+  }
 }

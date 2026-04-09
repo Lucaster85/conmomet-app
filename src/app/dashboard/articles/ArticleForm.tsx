@@ -27,7 +27,6 @@ interface ArticleFormProps {
 export default function ArticleForm({ open, onClose, onSuccess, editItem }: ArticleFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [order, setOrder] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,12 +40,10 @@ export default function ArticleForm({ open, onClose, onSuccess, editItem }: Arti
       if (editItem) {
         setTitle(editItem.title || '');
         setDescription(editItem.description || '');
-        setOrder(editItem.order !== undefined && editItem.order !== null ? String(editItem.order) : '');
         setPreview(editItem.url);
       } else {
         setTitle('');
         setDescription('');
-        setOrder('');
         setPreview(null);
       }
       setFile(null);
@@ -83,7 +80,6 @@ export default function ArticleForm({ open, onClose, onSuccess, editItem }: Arti
         const payload: UpdateMediaData = {
           title: title || undefined,
           description: description || undefined,
-          order: order !== '' ? parseInt(order) : undefined,
         };
         if (file) payload.file = file;
         await MediaService.update(editItem.id, payload);
@@ -93,7 +89,6 @@ export default function ArticleForm({ open, onClose, onSuccess, editItem }: Arti
           type: 'slider',
           title: title || undefined,
           description: description || undefined,
-          order: order !== '' ? parseInt(order) : undefined,
         };
         await MediaService.upload(payload);
       }
@@ -216,17 +211,6 @@ export default function ArticleForm({ open, onClose, onSuccess, editItem }: Arti
             sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
           />
 
-          <TextField
-            label="Orden"
-            value={order}
-            onChange={(e) => setOrder(e.target.value.replace(/\D/g, ''))}
-            fullWidth
-            size="small"
-            type="number"
-            inputProps={{ min: 0 }}
-            helperText="Menor número aparece primero"
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-          />
         </Stack>
       </DialogContent>
 
