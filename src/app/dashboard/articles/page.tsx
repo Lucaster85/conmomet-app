@@ -173,7 +173,7 @@ export default function ArticlesPage() {
             No hay artículos todavía
           </Typography>
           <Typography variant="body2" color="#94A3B8" mt={1} mb={3}>
-            Creá el primero haciendo clic en "Nuevo artículo"
+            Creá el primero haciendo clic en &quot;Nuevo artículo&quot;
           </Typography>
           <Button
             variant="outlined"
