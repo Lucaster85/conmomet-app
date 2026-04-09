@@ -68,14 +68,24 @@ export default function LandingPage() {
       {/* Navigation Bar */}
       <AppBar position="fixed" elevation={1} sx={{ bgcolor: "background.paper" }}>
         <Toolbar>
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{ flexGrow: 1, color: "primary.main", fontWeight: "bold", cursor: 'pointer' }}
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, cursor: 'pointer' }}
             onClick={() => handleNavClick('#inicio')}
           >
-            Conmomet S.A.
-          </Typography>
+            <Box
+              component="img"
+              src="/img/logos/conmomet-logo-blue.svg"
+              alt="Conmomet"
+              sx={{ height: { xs: 40, md: 60 }, width: 'auto' }}
+            />
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{ color: "primary.main", fontWeight: "bold", fontSize: { xs: '1.25rem', md: '1.875rem' } }}
+            >
+              Conmomet S.A.
+            </Typography>
+          </Box>
 
           {/* Nav links — solo en desktop */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, mr: 2 }}>
@@ -83,7 +93,7 @@ export default function LandingPage() {
               <Button
                 key={item.href}
                 onClick={() => handleNavClick(item.href)}
-                sx={{ color: 'text.primary' }}
+                sx={{ color: 'text.primary', fontSize: { md: '1.3rem' } }}
               >
                 {item.label}
               </Button>
@@ -94,7 +104,7 @@ export default function LandingPage() {
           <Button
             variant="outlined"
             onClick={handleLoginClick}
-            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+            sx={{ display: { xs: 'none', md: 'inline-flex' }, fontSize: '1.3rem' }}
           >
             Iniciar Sesión
           </Button>

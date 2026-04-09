@@ -14,6 +14,9 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "Conmomet App",
   description: "Sistema de gestión Conmomet",
+  icons: {
+    icon: "/img/logos/conmomet-logo-blue.svg",
+  },
 };
 
 export default function RootLayout({
