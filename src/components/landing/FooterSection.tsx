@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { Box, Container, Paper, Stack, Typography } from '@mui/material';
-import { Email, LocationOn, Phone } from '@mui/icons-material';
+import { Checkroom, Email, Facebook, Instagram, LocationOn, Phone, WhatsApp } from '@mui/icons-material';
 
 export default function FooterSection() {
   return (
@@ -52,6 +52,19 @@ export default function FooterSection() {
                 Contacto
               </Typography>
               <Stack spacing={1}>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <WhatsApp sx={{ mr: 1, fontSize: 20 }} />
+                  <Typography
+                    component="a"
+                    href="https://wa.me/5492262679570"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    color="grey.400"
+                    sx={{ textDecoration: "none", "&:hover": { color: "white" } }}
+                  >
+                    WhatsApp +54 9 2262 679570
+                  </Typography>
+                </Box>
                 <Box sx={{ display: "flex", alignItems: "center" }}>
                   <Phone sx={{ mr: 1, fontSize: 20 }} />
                   <Typography
@@ -106,18 +119,58 @@ export default function FooterSection() {
                 Enlaces Rápidos
               </Typography>
               <Stack spacing={1}>
-                <Typography color="grey.400" sx={{ cursor: "pointer", "&:hover": { color: "white" } }}>
-                  Instagran
-                </Typography>
-                <Typography color="grey.400" sx={{ cursor: "pointer", "&:hover": { color: "white" } }}>
-                  otra cosa
-                </Typography>
-                <Typography color="grey.400" sx={{ cursor: "pointer", "&:hover": { color: "white" } }}>
-                  algo mas
-                </Typography>
-                <Typography color="grey.400" sx={{ cursor: "pointer", "&:hover": { color: "white" } }}>
-                  politicas de privacidad
-                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <Instagram sx={{ mr: 1, fontSize: 20 }} />
+                  <Typography
+                    component="a"
+                    href="https://www.instagram.com/conmomet_s.a"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    color="grey.400"
+                    sx={{ textDecoration: "none", "&:hover": { color: "white" } }}
+                  >
+                    @conmomet_s.a
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <Facebook sx={{ mr: 1, fontSize: 20 }} />
+                  <Typography
+                    component="a"
+                    href="https://www.facebook.com/p/conmomet_sa-100083225145876/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    color="grey.400"
+                    sx={{ textDecoration: "none", "&:hover": { color: "white" } }}
+                  >
+                    conmomet_s.a
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <LocationOn sx={{ mr: 1, fontSize: 20 }} />
+                  <Typography
+                    component="a"
+                    href="https://www.google.com/maps/search/?api=1&query=578+N%C2%B01682%2C+Quequén%2C+Buenos+Aires%2C+Argentina+7631"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    color="grey.400"
+                    sx={{ textDecoration: "none", "&:hover": { color: "white" } }}
+                  >
+                    Veni a conocernos
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <Checkroom sx={{ mr: 1, fontSize: 20 }} />
+                  <Typography
+                    component="a"
+                    href="https://www.instagram.com/indumet_"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    color="grey.400"
+                    sx={{ textDecoration: "none", "&:hover": { color: "white" } }}
+                  >
+                    Indumet
+                  </Typography>
+                </Box>
               </Stack>
             </Box>
           </Box>
