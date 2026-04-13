@@ -32,6 +32,7 @@ import {
   Business,
   HomeRepairService,
   Article as ArticleIcon,
+  AdminPanelSettings as RolesIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -45,6 +46,7 @@ const menuItems = [
   { text: 'Clientes', icon: <Business />, path: '/dashboard/clients' },
   { text: 'Proveedores', icon: <HomeRepairService />, path: '/dashboard/providers' },
   { text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles' },
+  { text: 'Roles y Permisos', icon: <RolesIcon />, path: '/dashboard/roles' },
   //{ text: 'Pagos', icon: <Payments />, path: '/dashboard/payments' },
   //{ text: 'Reportes', icon: <AssessmentIcon />, path: '/dashboard/reports' },
   //{ text: 'Configuración', icon: <SettingsIcon />, path: '/dashboard/settings' },

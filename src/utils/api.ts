@@ -201,6 +201,55 @@ export class RoleService {
     }
     return response.json();
   }
+
+  static async create(name: string): Promise<Role> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/roles`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear rol');
+    }
+    const data = await response.json();
+    return data.role || data.data || data;
+  }
+
+  static async update(id: number, name: string): Promise<Role> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/roles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar rol');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/roles/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar rol');
+    }
+  }
+
+  static async setPermissions(id: number, permissionIds: number[]): Promise<Role> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/roles/${id}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissions: permissionIds }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al asignar permisos al rol');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
 }
 
 // Servicio para permisos
@@ -242,14 +291,34 @@ export class PermissionService {
   static async assignToUser(userId: number, permissionIds: number[]): Promise<void> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/permissions_assign`, {
       method: 'POST',
-      body: JSON.stringify({
-        user_id: userId,
-        permission_ids: permissionIds,
-      }),
+      body: JSON.stringify({ type: 'user', id: userId, permissions: permissionIds }),
     });
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Error al asignar permisos');
+    }
+  }
+
+  static async create(names: string[]): Promise<Permission[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/permissions`, {
+      method: 'POST',
+      body: JSON.stringify({ permissions: names.map(name => ({ name })) }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear permisos');
+    }
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data.data || []);
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/permissions/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar permiso');
     }
   }
 }

@@ -109,11 +109,29 @@ export class TokenManager {
       headers,
     });
 
-    // Si el servidor rechaza el token, lanzar error especial sin redirigir de inmediato.
-    // Cada llamador decide si redirige (evita logouts abruptos por errores de permisos).
+    // Solo hacer logout si el token es inválido/expirado (verifyToken falla).
+    // Un 401 de "sin permisos" (authPermission) NO debe desloguear al usuario.
     if (response.status === 401) {
-      this.removeToken();
-      const err = new Error('UNAUTHORIZED');
+      let body: { error?: string } = {};
+      try {
+        const clone = response.clone();
+        body = await clone.json();
+      } catch (_) {
+        // ignore parse errors
+      }
+
+      const isTokenError =
+        body.error === 'No token provided' ||
+        body.error === 'invalid token' ||
+        body.error === 'jwt expired' ||
+        body.error === 'jwt malformed';
+
+      if (isTokenError) {
+        this.removeToken();
+      }
+
+      const message = body.error || 'Sin autorización';
+      const err = new Error(message);
       err.name = 'UnauthorizedError';
       throw err;
     }

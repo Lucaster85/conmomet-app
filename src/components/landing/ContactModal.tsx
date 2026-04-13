@@ -1,8 +1,10 @@
 'use client';
 import React, { useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -13,6 +15,8 @@ import {
   useTheme,
 } from '@mui/material';
 import { Close as CloseIcon, Send as SendIcon } from '@mui/icons-material';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
 
 interface ContactModalProps {
   open: boolean;
@@ -39,21 +43,49 @@ export default function ContactModal({ open, onClose }: ContactModalProps) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [form, setForm] = useState<FormData>(initialForm);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: implementar envío del formulario
-    onClose();
-    setForm(initialForm);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/public/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      setSuccess(true);
+      setForm(initialForm);
+      setTimeout(() => {
+        setSuccess(false);
+        onClose();
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ocurrió un error al enviar el mensaje.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClose = () => {
+    if (loading) return;
     onClose();
     setForm(initialForm);
+    setError(null);
+    setSuccess(false);
   };
 
   return (
@@ -101,6 +133,8 @@ export default function ContactModal({ open, onClose }: ContactModalProps) {
       <DialogContent sx={{ px: 3, pt: 2, pb: 3 }}>
         <Box component="form" onSubmit={handleSubmit} noValidate>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {error && <Alert severity="error">{error}</Alert>}
+            {success && <Alert severity="success">¡Mensaje enviado! Te contactaremos a la brevedad.</Alert>}
             <TextField
               label="Nombre"
               name="nombre"
@@ -162,7 +196,8 @@ export default function ContactModal({ open, onClose }: ContactModalProps) {
                 type="submit"
                 variant="contained"
                 size="large"
-                endIcon={<SendIcon />}
+                endIcon={loading ? <CircularProgress size={18} color="inherit" /> : <SendIcon />}
+                disabled={loading || success}
                 sx={{
                   borderRadius: '10px',
                   px: 4,
@@ -170,7 +205,7 @@ export default function ContactModal({ open, onClose }: ContactModalProps) {
                   flexShrink: 0,
                 }}
               >
-                Enviar mensaje
+                {loading ? 'Enviando...' : 'Enviar mensaje'}
               </Button>
             </Box>
           </Box>
