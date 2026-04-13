@@ -279,7 +279,7 @@ export default function RolesPage() {
           severity="warning"
           sx={{ mb: 3, borderRadius: '10px' }}
           action={
-            <Button color="inherit" size="small" fontWeight={600} onClick={handleCreateSuggestedBulk}
+            <Button color="inherit" size="small" onClick={handleCreateSuggestedBulk}
               sx={{ textTransform: 'none', fontWeight: 600 }}>
               Crear todos
             </Button>
