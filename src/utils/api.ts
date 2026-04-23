@@ -960,6 +960,12 @@ export class PayrollService {
     if (!response.ok) throw new Error('Error al confirmar liquidación');
     return (await response.json()).data;
   }
+
+  static async pay(id: number): Promise<PayrollEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${id}/pay`, { method: 'PUT' });
+    if (!response.ok) throw new Error('Error al marcar liquidación como pagada');
+    return (await response.json()).data;
+  }
 }
 
 // Salary Advance Service

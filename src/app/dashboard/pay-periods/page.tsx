@@ -1,16 +1,15 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, Alert, CircularProgress, Tooltip, TextField, Stack,
+  Box, Typography, Button, Paper, Dialog, DialogTitle, DialogContent,
+  DialogActions, Alert, CircularProgress, TextField, Stack,
   Chip, Grid
 } from '@mui/material';
 import {
   Add as AddIcon, Refresh as RefreshIcon, Payment as PaymentIcon,
   CheckCircle as ConfirmIcon, AttachMoney as MoneyIcon
 } from '@mui/icons-material';
-import { PayPeriod, PayPeriodService, PayrollEntry, PayrollService } from '../../../utils/api';
+import { PayPeriod, PayPeriodService } from '../../../utils/api';
 import { useRouter } from 'next/navigation';
 
 const STATUS_CONFIG: Record<string, { label: string; color: 'success' | 'warning' | 'info' }> = {
@@ -109,7 +108,7 @@ export default function PayPeriodsPage() {
 
       <Grid container spacing={3}>
         {periods.map((p) => (
-          <Grid xs={12} md={6} lg={4} key={p.id}>
+          <Grid size={{ xs: 12, md: 6, lg: 4 }} key={p.id}>
             <Paper sx={{ p: 3, position: 'relative', overflow: 'hidden' }}>
               <Box sx={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', bgcolor: `${STATUS_CONFIG[p.status].color}.main` }} />
               
@@ -149,7 +148,7 @@ export default function PayPeriodsPage() {
           </Grid>
         ))}
         {periods.length === 0 && (
-          <Grid xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Paper sx={{ p: 4, textAlign: 'center' }}>
               <Typography color="text.secondary">No hay quincenas registradas</Typography>
             </Paper>

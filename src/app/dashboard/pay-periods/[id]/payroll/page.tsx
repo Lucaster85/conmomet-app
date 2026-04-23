@@ -5,8 +5,9 @@ import {
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, Alert, CircularProgress, TextField, Stack, Chip, Tooltip,
 } from '@mui/material';
-import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon } from '@mui/icons-material';
+import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon, Payment as PaymentIcon } from '@mui/icons-material';
 import { PayrollEntry, PayrollService, PayPeriod } from '../../../../../utils/api';
+import { TokenManager } from '../../../../../utils/auth';
 import { useParams, useRouter } from 'next/navigation';
 
 export default function PayrollPage() {
@@ -27,15 +28,7 @@ export default function PayrollPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await PayrollService.getByPeriod(payPeriodId);
-      // The backend returns { count, data, period }
-      // We need to fetch it using raw fetch since the service currently only returns data array, but wait, the service method returns PayrollEntry[]. Let's adapt if needed.
-      // Ah, the controller returns res.json({ count: entries.length, data: entries, period });
-      // But my PayrollService.getByPeriod just returns data.data (the array).
-      // I'll fetch the period details separately or just use the entries.
-      const res = await fetch(process.env.NEXT_PUBLIC_API_BASE_URL + `/payroll/${payPeriodId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      const res = await TokenManager.authenticatedFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/payroll/${payPeriodId}`);
       if (!res.ok) throw new Error('Error al cargar');
       const json = await res.json();
       setEntries(json.data || []);
@@ -47,6 +40,7 @@ export default function PayrollPage() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadData(); }, [payPeriodId]);
 
   const handleGenerate = async () => {
@@ -68,6 +62,16 @@ export default function PayrollPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al confirmar');
+    }
+  };
+
+  const handlePayItem = async (id: number) => {
+    try {
+      await PayrollService.pay(id);
+      setSuccess('Liquidación pagada');
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al pagar');
     }
   };
 
@@ -159,16 +163,21 @@ export default function PayrollPage() {
                     <Chip label={e.status} size="small" color={e.status === 'paid' ? 'info' : e.status === 'confirmed' ? 'success' : 'warning'} />
                   </TableCell>
                   <TableCell align="center">
-                    {e.status === 'draft' && (
-                      <Box display="flex" justifyContent="center">
-                        <Tooltip title="Ajustes (Extras/Retenciones)"><IconButton size="small" color="primary" onClick={() => {
-                          setEditingEntry(e);
-                          setForm({ extra_payments: e.extra_payments, extra_payments_notes: e.extra_payments_notes || '', deductions: e.deductions, deductions_notes: e.deductions_notes || '' });
-                          setOpenEdit(true);
-                        }}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                        <Tooltip title="Confirmar liquidación"><IconButton size="small" color="success" onClick={() => handleConfirm(e.id)}><ConfirmIcon fontSize="small" /></IconButton></Tooltip>
-                      </Box>
-                    )}
+                    <Box display="flex" justifyContent="center">
+                      {e.status === 'draft' && (
+                        <>
+                          <Tooltip title="Ajustes (Extras/Retenciones)"><IconButton size="small" color="primary" onClick={() => {
+                            setEditingEntry(e);
+                            setForm({ extra_payments: e.extra_payments, extra_payments_notes: e.extra_payments_notes || '', deductions: e.deductions, deductions_notes: e.deductions_notes || '' });
+                            setOpenEdit(true);
+                          }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                          <Tooltip title="Confirmar liquidación"><IconButton size="small" color="success" onClick={() => handleConfirm(e.id)}><ConfirmIcon fontSize="small" /></IconButton></Tooltip>
+                        </>
+                      )}
+                      {e.status === 'confirmed' && (
+                        <Tooltip title="Marcar como pagado"><IconButton size="small" color="info" onClick={() => handlePayItem(e.id)}><PaymentIcon fontSize="small" /></IconButton></Tooltip>
+                      )}
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}

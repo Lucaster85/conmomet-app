@@ -85,7 +85,9 @@ export default function TimeEntriesPage() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadData(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (!loading) loadEntries(); }, [filterEmployee, filterDateFrom, filterDateTo]);
 
   const calculateHours = () => {

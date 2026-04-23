@@ -4,7 +4,7 @@ import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, Alert, CircularProgress, Tooltip, TextField, Stack,
-  Chip, InputAdornment, Link
+  Chip, Link
 } from '@mui/material';
 import {
   Add as AddIcon, Edit as EditIcon,
@@ -66,7 +66,9 @@ export default function AttendancePage() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadData(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (!loading) loadAttendances(); }, [filterEmployee, filterDateFrom, filterDateTo]);
 
   const handleOpenCreate = () => {
