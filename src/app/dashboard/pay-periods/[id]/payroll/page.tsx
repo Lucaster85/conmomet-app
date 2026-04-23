@@ -122,6 +122,7 @@ export default function PayrollPage() {
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.50' }}>
                 <TableCell><strong>Empleado</strong></TableCell>
+                <TableCell align="center"><strong>Presentismo</strong></TableCell>
                 <TableCell align="right"><strong>Hs Normales</strong></TableCell>
                 <TableCell align="right"><strong>Hs Extras</strong></TableCell>
                 <TableCell align="right"><strong>Sueldo Bruto</strong></TableCell>
@@ -133,49 +134,81 @@ export default function PayrollPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {entries.map(e => (
-                <TableRow key={e.id} hover>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {entries.map((e: any) => (
+                <TableRow key={e.id as number} hover>
                   <TableCell>
-                    <Typography variant="body2" fontWeight="bold">{e.employee?.lastname}, {e.employee?.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">DNI: {e.employee?.dni}</Typography>
+                    <Typography variant="body2" fontWeight="bold">{(e.employee as Record<string, string>)?.lastname}, {(e.employee as Record<string, string>)?.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">DNI: {(e.employee as Record<string, string>)?.dni}</Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    {e.perfect_attendance ? (
+                      <Chip label="✓ Perfecto" size="small" color="success" variant="outlined" />
+                    ) : (
+                      <Box>
+                        {Number(e.absent_unjustified) > 0 && (
+                          <Tooltip title={`${e.absent_unjustified} falta(s) injustificada(s)`}>
+                            <Chip label={`${e.absent_unjustified} injust.`} size="small" color="error" sx={{ mr: 0.5, mb: 0.5 }} />
+                          </Tooltip>
+                        )}
+                        {Number(e.absent_justified) > 0 && (
+                          <Tooltip title={`${e.absent_justified} falta(s) justificada(s)`}>
+                            <Chip label={`${e.absent_justified} just.`} size="small" color="warning" sx={{ mr: 0.5, mb: 0.5 }} />
+                          </Tooltip>
+                        )}
+                        {Number(e.medical_leave_count) > 0 && (
+                          <Tooltip title={`${e.medical_leave_count} día(s) licencia médica`}>
+                            <Chip label={`${e.medical_leave_count} lic. méd.`} size="small" color="info" sx={{ mr: 0.5, mb: 0.5 }} />
+                          </Tooltip>
+                        )}
+                        {Number(e.vacation_count) > 0 && (
+                          <Tooltip title={`${e.vacation_count} día(s) de vacaciones`}>
+                            <Chip label={`${e.vacation_count} vac.`} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
+                          </Tooltip>
+                        )}
+                      </Box>
+                    )}
+                    {Number(e.late_count) > 0 && (
+                      <Typography variant="caption" color="warning.main" display="block">{e.late_count as number} llegada(s) tarde</Typography>
+                    )}
                   </TableCell>
                   <TableCell align="right">
-                    <Typography variant="body2">{e.total_regular_hours}h</Typography>
-                    <Typography variant="caption" color="text.secondary">{formatCurrency(e.regular_amount)}</Typography>
+                    <Typography variant="body2">{e.total_regular_hours as number}h</Typography>
+                    <Typography variant="caption" color="text.secondary">{formatCurrency(e.regular_amount as number)}</Typography>
                   </TableCell>
                   <TableCell align="right">
                     <Typography variant="body2">{Number(e.total_overtime_50_hours) + Number(e.total_overtime_100_hours)}h</Typography>
                     <Typography variant="caption" color="text.secondary">{formatCurrency(Number(e.overtime_50_amount) + Number(e.overtime_100_amount))}</Typography>
                   </TableCell>
-                  <TableCell align="right" sx={{ bgcolor: 'grey.50' }}><strong>{formatCurrency(e.gross_amount)}</strong></TableCell>
+                  <TableCell align="right" sx={{ bgcolor: 'grey.50' }}><strong>{formatCurrency(e.gross_amount as number)}</strong></TableCell>
                   <TableCell align="right">
-                    <Typography variant="body2" color="error">-{formatCurrency(e.advances_deducted)}</Typography>
+                    <Typography variant="body2" color="error">-{formatCurrency(e.advances_deducted as number)}</Typography>
                   </TableCell>
                   <TableCell align="right">
-                    {Number(e.extra_payments) > 0 && <Typography variant="caption" color="success.main" display="block">+{formatCurrency(e.extra_payments)}</Typography>}
-                    {Number(e.deductions) > 0 && <Typography variant="caption" color="error.main" display="block">-{formatCurrency(e.deductions)}</Typography>}
+                    {Number(e.extra_payments) > 0 && <Typography variant="caption" color="success.main" display="block">+{formatCurrency(e.extra_payments as number)}</Typography>}
+                    {Number(e.deductions) > 0 && <Typography variant="caption" color="error.main" display="block">-{formatCurrency(e.deductions as number)}</Typography>}
                     {Number(e.extra_payments) === 0 && Number(e.deductions) === 0 && '—'}
                   </TableCell>
                   <TableCell align="right" sx={{ bgcolor: 'success.50' }}>
-                    <Typography fontWeight="bold" color="success.dark">{formatCurrency(e.net_amount)}</Typography>
+                    <Typography fontWeight="bold" color="success.dark">{formatCurrency(e.net_amount as number)}</Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <Chip label={e.status} size="small" color={e.status === 'paid' ? 'info' : e.status === 'confirmed' ? 'success' : 'warning'} />
+                    <Chip label={e.status as string} size="small" color={e.status === 'paid' ? 'info' : e.status === 'confirmed' ? 'success' : 'warning'} />
                   </TableCell>
                   <TableCell align="center">
                     <Box display="flex" justifyContent="center">
                       {e.status === 'draft' && (
                         <>
                           <Tooltip title="Ajustes (Extras/Retenciones)"><IconButton size="small" color="primary" onClick={() => {
-                            setEditingEntry(e);
-                            setForm({ extra_payments: e.extra_payments, extra_payments_notes: e.extra_payments_notes || '', deductions: e.deductions, deductions_notes: e.deductions_notes || '' });
+                            setEditingEntry(e as unknown as PayrollEntry);
+                            setForm({ extra_payments: e.extra_payments as number, extra_payments_notes: (e.extra_payments_notes as string) || '', deductions: e.deductions as number, deductions_notes: (e.deductions_notes as string) || '' });
                             setOpenEdit(true);
                           }}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                          <Tooltip title="Confirmar liquidación"><IconButton size="small" color="success" onClick={() => handleConfirm(e.id)}><ConfirmIcon fontSize="small" /></IconButton></Tooltip>
+                          <Tooltip title="Confirmar liquidación"><IconButton size="small" color="success" onClick={() => handleConfirm(e.id as number)}><ConfirmIcon fontSize="small" /></IconButton></Tooltip>
                         </>
                       )}
                       {e.status === 'confirmed' && (
-                        <Tooltip title="Marcar como pagado"><IconButton size="small" color="info" onClick={() => handlePayItem(e.id)}><PaymentIcon fontSize="small" /></IconButton></Tooltip>
+                        <Tooltip title="Marcar como pagado"><IconButton size="small" color="info" onClick={() => handlePayItem(e.id as number)}><PaymentIcon fontSize="small" /></IconButton></Tooltip>
                       )}
                     </Box>
                   </TableCell>
