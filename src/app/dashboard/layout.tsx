@@ -33,6 +33,13 @@ import {
   HomeRepairService,
   Article as ArticleIcon,
   AdminPanelSettings as RolesIcon,
+  Factory as FactoryIcon,
+  Badge as BadgeIcon,
+  AccessTime as TimeIcon,
+  EventAvailable as EventAvailableIcon,
+  Payments as PaymentsIcon,
+  Money as MoneyIcon,
+  Security as SecurityIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -47,9 +54,13 @@ const menuItems = [
   { text: 'Proveedores', icon: <HomeRepairService />, path: '/dashboard/providers' },
   { text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles' },
   { text: 'Roles y Permisos', icon: <RolesIcon />, path: '/dashboard/roles' },
-  //{ text: 'Pagos', icon: <Payments />, path: '/dashboard/payments' },
-  //{ text: 'Reportes', icon: <AssessmentIcon />, path: '/dashboard/reports' },
-  //{ text: 'Configuración', icon: <SettingsIcon />, path: '/dashboard/settings' },
+  { text: 'Plantas', icon: <FactoryIcon />, path: '/dashboard/plants' },
+  { text: 'Empleados', icon: <BadgeIcon />, path: '/dashboard/employees' },
+  { text: 'Carga de Horas', icon: <TimeIcon />, path: '/dashboard/time-entries' },
+  { text: 'Presentismo', icon: <EventAvailableIcon />, path: '/dashboard/attendance' },
+  { text: 'Quincenas y Pagos', icon: <PaymentsIcon />, path: '/dashboard/pay-periods' },
+  { text: 'Adelantos', icon: <MoneyIcon />, path: '/dashboard/salary-advances' },
+  { text: 'EPP', icon: <SecurityIcon />, path: '/dashboard/safety-equipment' },
 ];
 
 interface DashboardLayoutProps {

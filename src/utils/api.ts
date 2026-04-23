@@ -548,3 +548,515 @@ export class MediaService {
     }
   }
 }
+
+// ==================== RRHH MODULE ====================
+
+export interface Plant {
+  id: number;
+  name: string;
+  address?: string;
+  client_id?: number;
+  is_active: boolean;
+  notes?: string;
+  client?: { id: number; razonSocial: string };
+  createdAt: string;
+}
+
+export interface Employee {
+  id: number;
+  name: string;
+  lastname: string;
+  dni: string;
+  cuil: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  position?: string;
+  hire_date: string;
+  termination_date?: string;
+  status: 'active' | 'inactive' | 'vacation' | 'medical_leave';
+  hourly_rate: number;
+  user_id?: number;
+  notes?: string;
+  user?: { id: number; email: string; name: string; lastname: string };
+  createdAt: string;
+}
+
+export interface CreateEmployeeData {
+  name: string;
+  lastname: string;
+  dni: string;
+  cuil: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  position?: string;
+  hire_date: string;
+  hourly_rate: number;
+  user_id?: number;
+  notes?: string;
+}
+
+export interface TimeEntry {
+  id: number;
+  employee_id: number;
+  project_id?: number;
+  plant_id?: number;
+  date: string;
+  check_in: string;
+  check_out: string;
+  regular_hours: number;
+  overtime_50_hours: number;
+  overtime_100_hours: number;
+  is_late: boolean;
+  notes?: string;
+  registered_by: number;
+  approved_by?: number;
+  approved_at?: string;
+  status: 'pending' | 'approved' | 'voided';
+  voided_by?: number;
+  voided_at?: string;
+  void_reason?: string;
+  employee?: { id: number; name: string; lastname: string; hourly_rate: number };
+  plant?: { id: number; name: string };
+  registeredBy?: { id: number; name: string; lastname: string };
+  approvedBy?: { id: number; name: string; lastname: string };
+  createdAt: string;
+}
+
+export interface CreateTimeEntryData {
+  employee_ids: number[];
+  project_id?: number;
+  plant_id?: number;
+  date: string;
+  check_in: string;
+  check_out: string;
+  overtime_50_hours?: number;
+  overtime_100_hours?: number;
+  is_late?: boolean;
+  notes?: string;
+}
+
+// Plant Service
+export class PlantService {
+  static async getAll(): Promise<Plant[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/plants`);
+    if (!response.ok) throw new Error('Error al obtener plantas');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async create(plantData: Partial<Plant>): Promise<Plant> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/plants`, {
+      method: 'POST',
+      body: JSON.stringify(plantData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear planta');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async update(id: number, plantData: Partial<Plant>): Promise<Plant> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/plants/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(plantData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar planta');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/plants/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar planta');
+    }
+  }
+}
+
+// Employee Service
+export class EmployeeService {
+  static async getAll(status?: string): Promise<Employee[]> {
+    const url = status ? `${API_BASE_URL}/employees?status=${status}` : `${API_BASE_URL}/employees`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener empleados');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getById(id: number): Promise<Employee> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${id}`);
+    if (!response.ok) throw new Error('Error al obtener empleado');
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async create(employeeData: CreateEmployeeData): Promise<Employee> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees`, {
+      method: 'POST',
+      body: JSON.stringify(employeeData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear empleado');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async update(id: number, employeeData: Partial<CreateEmployeeData>): Promise<Employee> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(employeeData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar empleado');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar empleado');
+    }
+  }
+}
+
+// TimeEntry Service
+export class TimeEntryService {
+  static async getAll(filters?: { employee_id?: number; plant_id?: number; date_from?: string; date_to?: string; status?: string }): Promise<TimeEntry[]> {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') params.append(key, String(value));
+      });
+    }
+    const url = `${API_BASE_URL}/time-entries${params.toString() ? `?${params}` : ''}`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener registros de horas');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async create(entryData: CreateTimeEntryData): Promise<{ data: TimeEntry[]; errors: Array<{ employee_id: number; error: string }> }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/time-entries`, {
+      method: 'POST',
+      body: JSON.stringify(entryData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear registro de horas');
+    }
+    return response.json();
+  }
+
+  static async update(id: number, entryData: Partial<CreateTimeEntryData>): Promise<TimeEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/time-entries/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(entryData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar registro');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async void(id: number, reason: string): Promise<TimeEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/time-entries/${id}/void`, {
+      method: 'PUT',
+      body: JSON.stringify({ reason }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al anular registro');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async approve(id: number): Promise<TimeEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/time-entries/${id}/approve`, {
+      method: 'PUT',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al aprobar registro');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+}
+
+// Attendance Service
+export interface Attendance {
+  id: number;
+  employee_id: number;
+  date: string;
+  status: 'absent' | 'justified' | 'vacation' | 'medical_leave';
+  notes?: string;
+  document_url?: string;
+  document_name?: string;
+  employee?: { id: number; name: string; lastname: string };
+}
+
+export class AttendanceService {
+  static async getAll(filters?: { employee_id?: number; date_from?: string; date_to?: string; status?: string }): Promise<Attendance[]> {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => { if (v) params.append(k, String(v)); });
+    }
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/attendance?${params.toString()}`);
+    if (!response.ok) throw new Error('Error al obtener presentismo');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async create(payload: { employee_id: number; date: string; status: string; notes?: string; file?: File }): Promise<Attendance> {
+    const formData = new FormData();
+    formData.append('employee_id', String(payload.employee_id));
+    formData.append('date', payload.date);
+    formData.append('status', payload.status);
+    if (payload.notes) formData.append('notes', payload.notes);
+    if (payload.file) formData.append('file', payload.file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/attendance`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Error al registrar presentismo');
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async update(id: number, payload: { status: string; notes?: string; file?: File }): Promise<Attendance> {
+    const formData = new FormData();
+    formData.append('status', payload.status);
+    if (payload.notes) formData.append('notes', payload.notes);
+    if (payload.file) formData.append('file', payload.file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/attendance/${id}`, {
+      method: 'PUT',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Error al actualizar presentismo');
+    const data = await response.json();
+    return data.data;
+  }
+}
+
+// PayPeriod Service
+export interface PayPeriod {
+  id: number;
+  start_date: string;
+  end_date: string;
+  type: 'first_half' | 'second_half';
+  month: number;
+  year: number;
+  status: 'open' | 'closed' | 'paid';
+}
+
+export class PayPeriodService {
+  static async getAll(): Promise<PayPeriod[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/pay-periods`);
+    if (!response.ok) throw new Error('Error al obtener quincenas');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async create(payload: { month: number; year: number; type: string }): Promise<PayPeriod> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/pay-periods`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Error al crear quincena');
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async close(id: number): Promise<PayPeriod> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/pay-periods/${id}/close`, { method: 'PUT' });
+    if (!response.ok) throw new Error('Error al cerrar quincena');
+    return (await response.json()).data;
+  }
+
+  static async pay(id: number): Promise<PayPeriod> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/pay-periods/${id}/pay`, { method: 'PUT' });
+    if (!response.ok) throw new Error('Error al marcar quincena como pagada');
+    return (await response.json()).data;
+  }
+}
+
+// Payroll Service
+export interface PayrollEntry {
+  id: number;
+  pay_period_id: number;
+  employee_id: number;
+  employee?: Employee;
+  total_regular_hours: number;
+  total_overtime_50_hours: number;
+  total_overtime_100_hours: number;
+  regular_amount: number;
+  overtime_50_amount: number;
+  overtime_100_amount: number;
+  extra_payments: number;
+  extra_payments_notes?: string;
+  gross_amount: number;
+  deductions: number;
+  deductions_notes?: string;
+  advances_deducted: number;
+  net_amount: number;
+  late_count: number;
+  absent_count: number;
+  status: 'draft' | 'confirmed' | 'paid';
+}
+
+export class PayrollService {
+  static async getByPeriod(periodId: number): Promise<PayrollEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${periodId}`);
+    if (!response.ok) throw new Error('Error al obtener liquidaciones');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async generate(periodId: number): Promise<PayrollEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${periodId}/generate`, { method: 'POST' });
+    if (!response.ok) throw new Error('Error al generar liquidación');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async update(id: number, payload: { extra_payments?: number; extra_payments_notes?: string; deductions?: number; deductions_notes?: string }): Promise<PayrollEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Error al actualizar liquidación');
+    return (await response.json()).data;
+  }
+
+  static async confirm(id: number): Promise<PayrollEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${id}/confirm`, { method: 'PUT' });
+    if (!response.ok) throw new Error('Error al confirmar liquidación');
+    return (await response.json()).data;
+  }
+}
+
+// Salary Advance Service
+export interface SalaryAdvance {
+  id: number;
+  employee_id: number;
+  amount: number;
+  date: string;
+  pay_period_id?: number;
+  notes?: string;
+  employee?: Employee;
+  payPeriod?: PayPeriod;
+}
+
+export class SalaryAdvanceService {
+  static async getAll(employee_id?: number): Promise<SalaryAdvance[]> {
+    const url = employee_id ? `${API_BASE_URL}/salary-advances?employee_id=${employee_id}` : `${API_BASE_URL}/salary-advances`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener adelantos');
+    return (await response.json()).data || [];
+  }
+
+  static async create(payload: { employee_id: number; amount: number; date: string; notes?: string }): Promise<SalaryAdvance> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Error al crear adelanto');
+    return (await response.json()).data;
+  }
+}
+
+// Safety Equipment Service
+export interface SafetyEquipment {
+  id: number;
+  employee_id: number;
+  item_name: string;
+  delivered_date: string;
+  return_date?: string;
+  condition?: 'new' | 'good' | 'worn' | 'damaged';
+  notes?: string;
+  employee?: Employee;
+}
+
+export class SafetyEquipmentService {
+  static async getAll(employee_id?: number): Promise<SafetyEquipment[]> {
+    const url = employee_id ? `${API_BASE_URL}/safety-equipment?employee_id=${employee_id}` : `${API_BASE_URL}/safety-equipment`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener EPP');
+    return (await response.json()).data || [];
+  }
+
+  static async create(payload: { employee_id: number; item_name: string; delivered_date: string; condition?: string; notes?: string }): Promise<SafetyEquipment> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/safety-equipment`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Error al registrar EPP');
+    return (await response.json()).data;
+  }
+}
+
+// Employee Document Service
+export interface EmployeeDocument {
+  id: number;
+  employee_id: number;
+  title: string;
+  file_url: string;
+  file_name: string;
+  created_at: string;
+}
+
+export class EmployeeDocumentService {
+  static async getAll(employeeId: number): Promise<EmployeeDocument[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${employeeId}/documents`);
+    if (!response.ok) throw new Error('Error al obtener documentos');
+    return (await response.json()).data || [];
+  }
+
+  static async upload(employeeId: number, title: string, file: File): Promise<EmployeeDocument> {
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('file', file);
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/employees/${employeeId}/documents`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Error al subir documento');
+    return (await response.json()).data;
+  }
+
+  static async delete(employeeId: number, docId: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${employeeId}/documents/${docId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Error al eliminar documento');
+  }
+}
