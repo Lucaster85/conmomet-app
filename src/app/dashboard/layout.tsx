@@ -16,7 +16,7 @@ import {
   Avatar,
   Menu,
   MenuItem,
-  Chip,
+
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -24,7 +24,7 @@ import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   People as PeopleIcon,
-  Assessment as AssessmentIcon,
+
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   AccountCircle,

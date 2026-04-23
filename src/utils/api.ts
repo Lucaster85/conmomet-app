@@ -2,8 +2,6 @@ import { TokenManager } from './auth';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
 
-console.log('🌐 API_BASE_URL configurada:', API_BASE_URL);
-console.log('🔑 Token disponible:', !!TokenManager.getToken());
 
 if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
   console.warn('⚠️ NEXT_PUBLIC_API_BASE_URL no está definida, usando fallback:', API_BASE_URL);
@@ -82,18 +80,11 @@ export interface CreateProviderData {
 
 export class UserService {
   static async getAll(): Promise<User[]> {
-    console.log('🔍 Fetching users from:', `${API_BASE_URL}/users`);
-    console.log('🔑 Headers being sent:', TokenManager.getAuthHeaders());
     
     try {
       const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/users`);
       
-      console.log('📡 Users response:', { 
-        status: response.status, 
-        ok: response.ok,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
+
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -102,11 +93,9 @@ export class UserService {
       }
       
       const data = await response.json();
-      console.log('📊 Raw users data:', data);
       
       // El backend devuelve los datos en formato: {count: X, data: [...]}
       const users = Array.isArray(data) ? data : (data.data || data.users || []);
-      console.log('✅ Processed users:', users);
       
       return users;
     } catch (error) {
@@ -161,18 +150,11 @@ export class UserService {
 // Servicio para roles
 export class RoleService {
   static async getAll(): Promise<Role[]> {
-    console.log('🔍 Fetching roles from:', `${API_BASE_URL}/roles`);
-    console.log('🔑 Headers being sent:', TokenManager.getAuthHeaders());
     
     try {
       const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/roles`);
       
-      console.log('📡 Roles response:', { 
-        status: response.status, 
-        ok: response.ok,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
+
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -181,11 +163,9 @@ export class RoleService {
       }
       
       const data = await response.json();
-      console.log('📊 Raw roles data:', data);
       
       // El backend devuelve los datos en formato: {count: X, data: [...]}
       const roles = Array.isArray(data) ? data : (data.data || data.roles || []);
-      console.log('✅ Processed roles:', roles);
       
       return roles;
     } catch (error) {
@@ -255,18 +235,11 @@ export class RoleService {
 // Servicio para permisos
 export class PermissionService {
   static async getAll(): Promise<Permission[]> {
-    console.log('🔍 Fetching permissions from:', `${API_BASE_URL}/permissions`);
-    console.log('🔑 Headers being sent:', TokenManager.getAuthHeaders());
     
     try {
       const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/permissions`);
       
-      console.log('📡 Permissions response:', { 
-        status: response.status, 
-        ok: response.ok,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
+
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -275,11 +248,9 @@ export class PermissionService {
       }
       
       const data = await response.json();
-      console.log('📊 Raw permissions data:', data);
       
       // El backend devuelve los datos en formato: {count: X, data: [...]}
       const permissions = Array.isArray(data) ? data : (data.data || data.permissions || []);
-      console.log('✅ Processed permissions:', permissions);
       
       return permissions;
     } catch (error) {
@@ -324,18 +295,11 @@ export class PermissionService {
 }
   export class ClientService {
   static async getAll(): Promise<Client[]> {
-    console.log('🔍 Fetching users from:', `${API_BASE_URL}/clients`);
-    console.log('🔑 Headers being sent:', TokenManager.getAuthHeaders());
     
     try {
       const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients`);
       
-      console.log('📡 Clients response:', { 
-        status: response.status, 
-        ok: response.ok,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
+
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -344,11 +308,9 @@ export class PermissionService {
       }
       
       const data = await response.json();
-      console.log('📊 Raw clients data:', data);
       
       // El backend devuelve los datos en formato: {count: X, data: [...]}
       const clients = Array.isArray(data) ? data : (data.data || data.clients || []);
-      console.log('✅ Processed clients:', clients);
       
       return clients;
     } catch (error) {
@@ -402,18 +364,11 @@ export class PermissionService {
 
   export class ProviderService {
   static async getAll(): Promise<Provider[]> {
-    console.log('🔍 Fetching users from:', `${API_BASE_URL}/providers`);
-    console.log('🔑 Headers being sent:', TokenManager.getAuthHeaders());
     
     try {
       const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/providers`);
       
-      console.log('📡 Providers response:', { 
-        status: response.status, 
-        ok: response.ok,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
+
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -422,11 +377,9 @@ export class PermissionService {
       }
       
       const data = await response.json();
-      console.log('📊 Raw providers data:', data);
       
       // El backend devuelve los datos en formato: {count: X, data: [...]}
       const providers = Array.isArray(data) ? data : (data.data || data.providers || []);
-      console.log('✅ Processed providers:', providers);
       
       return providers;
     } catch (error) {

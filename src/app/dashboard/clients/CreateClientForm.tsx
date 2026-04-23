@@ -27,7 +27,7 @@ export default function CreateClientForm({ onSuccessAction }: CreateClientFormPr
   });
 
   const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
+
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -96,13 +96,7 @@ export default function CreateClientForm({ onSuccessAction }: CreateClientFormPr
     }
   };
 
-  if (loadingData) {
-    return (
-      <Box display="flex" justifyContent="center" p={4}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>

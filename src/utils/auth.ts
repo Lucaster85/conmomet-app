@@ -116,7 +116,7 @@ export class TokenManager {
       try {
         const clone = response.clone();
         body = await clone.json();
-      } catch (_) {
+      } catch {
         // ignore parse errors
       }
 
@@ -146,7 +146,7 @@ export function useAuth() {
 
   const login = async (email: string, password: string) => {
     try {
-      console.log('🔐 Intentando login con:', { email, backend: process.env.NEXT_PUBLIC_API_BASE_URL });
+
       
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/login`, {
         method: 'POST',
@@ -156,11 +156,7 @@ export function useAuth() {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('📡 Respuesta del servidor:', { 
-        status: response.status, 
-        statusText: response.statusText,
-        ok: response.ok 
-      });
+
 
       if (!response.ok) {
         let errorMessage = 'Error al iniciar sesión';
@@ -168,7 +164,7 @@ export function useAuth() {
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
-        } catch (_e) {
+        } catch {
           // Si no se puede parsear el JSON, usar mensaje por defecto
         }
 
@@ -185,7 +181,7 @@ export function useAuth() {
       }
 
       const data = await response.json();
-      console.log('✅ Datos recibidos:', { hasToken: !!data.token, user: data.user });
+
       
       // Verificar que la respuesta tenga la estructura esperada
       if (!data.token) {

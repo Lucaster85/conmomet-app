@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Box, IconButton, useTheme } from '@mui/material';
+import { Box, IconButton } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 
 interface ImageSliderProps {
@@ -19,7 +19,7 @@ export default function ImageSlider({
   fullBackground = false,
 }: ImageSliderProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const theme = useTheme();
+
 
   useEffect(() => {
     if (!autoPlay) return;
