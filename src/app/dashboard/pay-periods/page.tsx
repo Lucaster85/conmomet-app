@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Dialog, DialogTitle, DialogContent,
-  DialogActions, Alert, CircularProgress, TextField, Stack,
+  DialogActions, CircularProgress, TextField, Stack,
   Chip, Grid
 } from '@mui/material';
+import FeedbackModal from '../../../components/FeedbackModal';
 import {
   Add as AddIcon, Refresh as RefreshIcon, Payment as PaymentIcon,
   CheckCircle as ConfirmIcon, AttachMoney as MoneyIcon
@@ -103,8 +104,8 @@ export default function PayPeriodsPage() {
         </Box>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+      <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+      <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
       <Grid container spacing={3}>
         {periods.map((p) => (

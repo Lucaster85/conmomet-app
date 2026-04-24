@@ -3,9 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, Alert, CircularProgress, Tooltip, TextField, Stack,
+  DialogActions, CircularProgress, Tooltip, TextField, Stack,
   Chip, Link
 } from '@mui/material';
+import FeedbackModal from '../../../components/FeedbackModal';
 import {
   Add as AddIcon, Edit as EditIcon,
   Refresh as RefreshIcon, FilterList as FilterIcon,
@@ -136,8 +137,8 @@ export default function AttendancePage() {
         </Box>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+      <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+      <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">

@@ -576,6 +576,8 @@ export interface Employee {
   termination_date?: string;
   status: 'active' | 'inactive' | 'vacation' | 'medical_leave';
   hourly_rate: number;
+  pay_type: 'hourly' | 'monthly';
+  monthly_salary?: number;
   user_id?: number;
   notes?: string;
   user?: { id: number; email: string; name: string; lastname: string };
@@ -593,6 +595,8 @@ export interface CreateEmployeeData {
   position?: string;
   hire_date: string;
   hourly_rate: number;
+  pay_type?: string;
+  monthly_salary?: number;
   user_id?: number;
   notes?: string;
 }

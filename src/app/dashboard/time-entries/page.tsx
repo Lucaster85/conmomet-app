@@ -1,10 +1,11 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Alert, CircularProgress, TextField, Stack,
+  Box, Typography, Button, Paper, CircularProgress, TextField, Stack,
   Chip, Checkbox, FormControlLabel, Autocomplete, Dialog, DialogTitle,
   DialogContent, DialogActions, Divider, IconButton, Tooltip,
 } from '@mui/material';
+import FeedbackModal from '../../../components/FeedbackModal';
 import {
   Add as AddIcon, Refresh as RefreshIcon, Block as VoidIcon,
   CheckCircle as ApproveIcon, FilterList as FilterIcon,
@@ -177,8 +178,8 @@ export default function TimeEntriesPage() {
         </Box>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+      <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+      <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 2 }}>

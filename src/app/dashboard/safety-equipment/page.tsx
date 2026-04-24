@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Dialog, DialogTitle, DialogContent,
-  DialogActions, Alert, CircularProgress, TextField, Stack, Chip
+  DialogActions, CircularProgress, TextField, Stack, Chip
 } from '@mui/material';
+import FeedbackModal from '../../../components/FeedbackModal';
 import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { SafetyEquipment, SafetyEquipmentService, Employee, EmployeeService } from '../../../utils/api';
 
@@ -82,8 +83,8 @@ export default function SafetyEquipmentPage() {
         </Box>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+      <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+      <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
         <Stack spacing={2}>

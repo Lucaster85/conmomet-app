@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, Alert, CircularProgress, Tooltip, TextField, Stack,
+  DialogActions, CircularProgress, Tooltip, TextField, Stack,
   Chip, InputAdornment,
 } from '@mui/material';
+import FeedbackModal from '../../../components/FeedbackModal';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
   Refresh as RefreshIcon, Search as SearchIcon,
@@ -29,9 +30,9 @@ export default function EmployeesPage() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
 
-  const emptyForm: CreateEmployeeData & { status?: string } = {
+  const emptyForm: CreateEmployeeData & { status?: string; pay_type?: string; monthly_salary?: number } = {
     name: '', lastname: '', dni: '', cuil: '', address: '', phone: '', email: '',
-    position: '', hire_date: '', hourly_rate: 0, notes: '',
+    position: '', hire_date: '', hourly_rate: 0, pay_type: 'hourly', monthly_salary: 0, notes: '',
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -67,6 +68,8 @@ export default function EmployeesPage() {
       name: emp.name, lastname: emp.lastname, dni: emp.dni, cuil: emp.cuil,
       address: emp.address || '', phone: emp.phone || '', email: emp.email || '',
       position: emp.position || '', hire_date: emp.hire_date, hourly_rate: emp.hourly_rate,
+      pay_type: emp.pay_type || 'hourly',
+      monthly_salary: emp.monthly_salary || 0,
       notes: emp.notes || '', status: emp.status,
     });
     setOpenDialog(true);
@@ -129,8 +132,8 @@ export default function EmployeesPage() {
         InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
       />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+      <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+      <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
       {/* Mobile Cards */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
@@ -145,7 +148,9 @@ export default function EmployeesPage() {
                     <Typography variant="subtitle1" fontWeight="bold">{emp.lastname}, {emp.name}</Typography>
                     <Typography variant="body2" color="text.secondary">DNI: {emp.dni}</Typography>
                     {emp.position && <Typography variant="body2">{emp.position}</Typography>}
-                    <Typography variant="body2" fontWeight="medium">{formatCurrency(emp.hourly_rate)}/h</Typography>
+                    <Typography variant="body2" fontWeight="medium">
+                      {emp.pay_type === 'monthly' ? `${formatCurrency(emp.monthly_salary || 0)} /mes (Fijo)` : `${formatCurrency(emp.hourly_rate)} /hora`}
+                    </Typography>
                     <Chip label={STATUS_LABELS[emp.status]?.label || emp.status} color={STATUS_LABELS[emp.status]?.color || 'default'} size="small" sx={{ mt: 0.5 }} />
                   </Box>
                   <Box>
@@ -168,7 +173,7 @@ export default function EmployeesPage() {
                 <TableCell><strong>Empleado</strong></TableCell>
                 <TableCell><strong>DNI</strong></TableCell>
                 <TableCell><strong>Puesto</strong></TableCell>
-                <TableCell><strong>Valor Hora</strong></TableCell>
+                <TableCell><strong>Remuneración</strong></TableCell>
                 <TableCell><strong>Estado</strong></TableCell>
                 <TableCell align="center"><strong>Acciones</strong></TableCell>
               </TableRow>
@@ -185,7 +190,10 @@ export default function EmployeesPage() {
                     </TableCell>
                     <TableCell>{emp.dni}</TableCell>
                     <TableCell>{emp.position || '—'}</TableCell>
-                    <TableCell>{formatCurrency(emp.hourly_rate)}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{emp.pay_type === 'monthly' ? formatCurrency(emp.monthly_salary || 0) : formatCurrency(emp.hourly_rate)}</Typography>
+                      <Typography variant="caption" color="text.secondary">{emp.pay_type === 'monthly' ? 'por mes' : 'por hora'}</Typography>
+                    </TableCell>
                     <TableCell>
                       <Chip label={STATUS_LABELS[emp.status]?.label || emp.status} color={STATUS_LABELS[emp.status]?.color || 'default'} size="small" />
                     </TableCell>
@@ -217,8 +225,19 @@ export default function EmployeesPage() {
             <TextField label="Puesto" fullWidth value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} placeholder="Ej: Soldador, Tornero" />
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
               <TextField label="Fecha Ingreso *" type="date" fullWidth value={form.hire_date} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} InputLabelProps={{ shrink: true }} />
+              <TextField label="Tipo de Pago" select fullWidth value={form.pay_type || 'hourly'} onChange={(e) => setForm({ ...form, pay_type: e.target.value })}
+                SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
+                <option value="hourly">Jornalizado (por hora)</option>
+                <option value="monthly">Mensualizado (sueldo fijo)</option>
+              </TextField>
+            </Box>
+            <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
               <TextField label="Valor Hora *" type="number" fullWidth value={form.hourly_rate} onChange={(e) => setForm({ ...form, hourly_rate: Number(e.target.value) })}
                 InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
+              {form.pay_type === 'monthly' && (
+                <TextField label="Sueldo Mensual *" type="number" fullWidth value={form.monthly_salary || 0} onChange={(e) => setForm({ ...form, monthly_salary: Number(e.target.value) })}
+                  InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
+              )}
             </Box>
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
               <TextField label="Teléfono" fullWidth value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />

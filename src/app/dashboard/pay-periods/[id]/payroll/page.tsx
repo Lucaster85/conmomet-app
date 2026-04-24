@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, Alert, CircularProgress, TextField, Stack, Chip, Tooltip,
+  DialogActions, CircularProgress, TextField, Stack, Chip, Tooltip,
 } from '@mui/material';
+import FeedbackModal from '../../../../../components/FeedbackModal';
 import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon, Payment as PaymentIcon } from '@mui/icons-material';
 import { PayrollEntry, PayrollService, PayPeriod } from '../../../../../utils/api';
 import { TokenManager } from '../../../../../utils/auth';
@@ -106,8 +107,8 @@ export default function PayrollPage() {
         </Box>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+      <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+      <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
       {entries.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
