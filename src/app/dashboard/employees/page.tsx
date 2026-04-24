@@ -9,8 +9,9 @@ import {
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Refresh as RefreshIcon, Search as SearchIcon,
+  Refresh as RefreshIcon, Search as SearchIcon, Visibility as VisibilityIcon,
 } from '@mui/icons-material';
+import { useRouter } from 'next/navigation';
 import { Employee, EmployeeService, CreateEmployeeData } from '../../../utils/api';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'success' | 'error' | 'warning' | 'info' }> = {
@@ -21,6 +22,7 @@ const STATUS_LABELS: Record<string, { label: string; color: 'success' | 'error' 
 };
 
 export default function EmployeesPage() {
+  const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -76,8 +78,17 @@ export default function EmployeesPage() {
   };
 
   const handleSubmit = async () => {
-    if (!form.name || !form.lastname || !form.dni || !form.cuil || !form.hire_date || !form.hourly_rate) {
-      setError('Nombre, Apellido, DNI, CUIL, Fecha ingreso y Valor hora son obligatorios');
+    const isMonthly = form.pay_type === 'monthly';
+    if (!form.name || !form.lastname || !form.dni || !form.cuil || !form.hire_date) {
+      setError('Nombre, Apellido, DNI, CUIL y Fecha de ingreso son obligatorios');
+      return;
+    }
+    if (!isMonthly && !form.hourly_rate) {
+      setError('El valor hora es obligatorio para empleados por hora');
+      return;
+    }
+    if (isMonthly && !form.monthly_salary) {
+      setError('El sueldo mensual es obligatorio para empleados mensualizados');
       return;
     }
     try {
@@ -154,6 +165,7 @@ export default function EmployeesPage() {
                     <Chip label={STATUS_LABELS[emp.status]?.label || emp.status} color={STATUS_LABELS[emp.status]?.color || 'default'} size="small" sx={{ mt: 0.5 }} />
                   </Box>
                   <Box>
+                    <IconButton size="small" color="info" onClick={() => router.push(`/dashboard/employees/${emp.id}`)}><VisibilityIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="primary" onClick={() => handleOpenEdit(emp)}><EditIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, employee: emp })}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
@@ -198,6 +210,7 @@ export default function EmployeesPage() {
                       <Chip label={STATUS_LABELS[emp.status]?.label || emp.status} color={STATUS_LABELS[emp.status]?.color || 'default'} size="small" />
                     </TableCell>
                     <TableCell align="center">
+                      <Tooltip title="Ver Legajo"><IconButton size="small" color="info" onClick={() => router.push(`/dashboard/employees/${emp.id}`)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
                       <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(emp)}><EditIcon fontSize="small" /></IconButton></Tooltip>
                       <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, employee: emp })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
@@ -231,14 +244,13 @@ export default function EmployeesPage() {
                 <option value="monthly">Mensualizado (sueldo fijo)</option>
               </TextField>
             </Box>
-            <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
+            {form.pay_type === 'monthly' ? (
+              <TextField label="Sueldo Mensual *" type="number" fullWidth value={form.monthly_salary || 0} onChange={(e) => setForm({ ...form, monthly_salary: Number(e.target.value) })}
+                InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
+            ) : (
               <TextField label="Valor Hora *" type="number" fullWidth value={form.hourly_rate} onChange={(e) => setForm({ ...form, hourly_rate: Number(e.target.value) })}
                 InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
-              {form.pay_type === 'monthly' && (
-                <TextField label="Sueldo Mensual *" type="number" fullWidth value={form.monthly_salary || 0} onChange={(e) => setForm({ ...form, monthly_salary: Number(e.target.value) })}
-                  InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
-              )}
-            </Box>
+            )}
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
               <TextField label="Teléfono" fullWidth value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               <TextField label="Email" fullWidth value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />

@@ -1032,39 +1032,75 @@ export class SafetyEquipmentService {
   }
 }
 
-// Employee Document Service
-export interface EmployeeDocument {
+// Entity Document Service (Unified Expirations and Documents)
+export interface EntityDocument {
   id: number;
-  employee_id: number;
   title: string;
-  file_url: string;
-  file_name: string;
+  notes?: string;
+  entity_type: 'employee' | 'vehicle' | 'project' | 'company';
+  entity_id?: number;
+  file_url?: string;
+  file_name?: string;
+  expiration_date?: string;
+  notify_days_before: number;
+  alert_status: 'pending' | 'warned' | 'expired_warned' | 'resolved';
+  computed_status: 'permanent' | 'valid' | 'expiring_soon' | 'expired';
   created_at: string;
 }
 
-export class EmployeeDocumentService {
-  static async getAll(employeeId: number): Promise<EmployeeDocument[]> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${employeeId}/documents`);
+export class EntityDocumentService {
+  static async getAll(entityType?: string, entityId?: number): Promise<EntityDocument[]> {
+    let url = `${API_BASE_URL}/documents`;
+    const params = new URLSearchParams();
+    if (entityType) params.append('entity_type', entityType);
+    if (entityId) params.append('entity_id', entityId.toString());
+    if (params.toString()) url += `?${params.toString()}`;
+
+    const response = await TokenManager.authenticatedFetch(url);
     if (!response.ok) throw new Error('Error al obtener documentos');
     return (await response.json()).data || [];
   }
 
-  static async upload(employeeId: number, title: string, file: File): Promise<EmployeeDocument> {
+  static async create(data: { title: string; entity_type: string; entity_id?: number; notes?: string; expiration_date?: string; notify_days_before?: number }, file?: File | null): Promise<EntityDocument> {
     const formData = new FormData();
-    formData.append('title', title);
-    formData.append('file', file);
+    formData.append('title', data.title);
+    formData.append('entity_type', data.entity_type);
+    if (data.entity_id) formData.append('entity_id', data.entity_id.toString());
+    if (data.notes) formData.append('notes', data.notes);
+    if (data.expiration_date) formData.append('expiration_date', data.expiration_date);
+    if (data.notify_days_before) formData.append('notify_days_before', data.notify_days_before.toString());
+    if (file) formData.append('file', file);
+
     const token = TokenManager.getToken();
-    const response = await fetch(`${API_BASE_URL}/employees/${employeeId}/documents`, {
+    const response = await fetch(`${API_BASE_URL}/documents`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
     });
-    if (!response.ok) throw new Error('Error al subir documento');
+    if (!response.ok) throw new Error('Error al guardar documento');
     return (await response.json()).data;
   }
 
-  static async delete(employeeId: number, docId: number): Promise<void> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${employeeId}/documents/${docId}`, {
+  static async update(id: number, data: { title?: string; notes?: string; expiration_date?: string; notify_days_before?: number }, file?: File | null): Promise<EntityDocument> {
+    const formData = new FormData();
+    if (data.title) formData.append('title', data.title);
+    if (data.notes !== undefined) formData.append('notes', data.notes);
+    if (data.expiration_date !== undefined) formData.append('expiration_date', data.expiration_date);
+    if (data.notify_days_before !== undefined) formData.append('notify_days_before', data.notify_days_before.toString());
+    if (file) formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/documents/${id}`, {
+      method: 'PUT',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Error al actualizar documento');
+    return (await response.json()).data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/documents/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Error al eliminar documento');
