@@ -1047,6 +1047,7 @@ export interface EntityDocument {
   computed_status: 'permanent' | 'valid' | 'expiring_soon' | 'expired' | 'resolved';
   is_renewable: boolean;
   previous_record_id?: number | null;
+  resolved_at?: string;
   created_at: string;
 }
 

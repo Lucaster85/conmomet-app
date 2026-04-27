@@ -158,7 +158,7 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
       if (isEditing && user) {
         // Enviar solo los campos que se pueden actualizar. 
         // Si el password está vacío, no lo enviamos.
-        const updateData: any = { ...formData };
+        const updateData: Partial<CreateUserData> = { ...formData };
         if (!updateData.password) delete updateData.password;
         
         await UserService.update(user.id, updateData);

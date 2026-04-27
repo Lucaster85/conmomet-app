@@ -30,7 +30,6 @@ import {
   AccountCircle,
   Notifications,
   Business,
-  HomeRepairService,
   Article as ArticleIcon,
   AdminPanelSettings as RolesIcon,
   Factory as FactoryIcon,
