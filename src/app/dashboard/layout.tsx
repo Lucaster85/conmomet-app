@@ -49,18 +49,18 @@ const drawerWidth = 280;
 
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Usuarios', icon: <PeopleIcon />, path: '/dashboard/users' },
+  { text: 'Carga de Horas', icon: <TimeIcon />, path: '/dashboard/time-entries' },
+  { text: 'Empleados', icon: <BadgeIcon />, path: '/dashboard/employees' },
+  { text: 'Presentismo', icon: <EventAvailableIcon />, path: '/dashboard/attendance' },
+  { text: 'Adelantos', icon: <MoneyIcon />, path: '/dashboard/salary-advances' },
+  { text: 'Quincenas y Pagos', icon: <PaymentsIcon />, path: '/dashboard/pay-periods' },
+  { text: 'EPP', icon: <SecurityIcon />, path: '/dashboard/safety-equipment' },
   { text: 'Clientes', icon: <Business />, path: '/dashboard/clients' },
-  { text: 'Proveedores', icon: <HomeRepairService />, path: '/dashboard/providers' },
+  //{ text: 'Proveedores', icon: <HomeRepairService />, path: '/dashboard/providers' },
   { text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles' },
+  { text: 'Usuarios', icon: <PeopleIcon />, path: '/dashboard/users' },
   { text: 'Roles y Permisos', icon: <RolesIcon />, path: '/dashboard/roles' },
   { text: 'Plantas', icon: <FactoryIcon />, path: '/dashboard/plants' },
-  { text: 'Empleados', icon: <BadgeIcon />, path: '/dashboard/employees' },
-  { text: 'Carga de Horas', icon: <TimeIcon />, path: '/dashboard/time-entries' },
-  { text: 'Presentismo', icon: <EventAvailableIcon />, path: '/dashboard/attendance' },
-  { text: 'Quincenas y Pagos', icon: <PaymentsIcon />, path: '/dashboard/pay-periods' },
-  { text: 'Adelantos', icon: <MoneyIcon />, path: '/dashboard/salary-advances' },
-  { text: 'EPP', icon: <SecurityIcon />, path: '/dashboard/safety-equipment' },
 ];
 
 interface DashboardLayoutProps {
