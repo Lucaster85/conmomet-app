@@ -1044,16 +1044,19 @@ export interface EntityDocument {
   expiration_date?: string;
   notify_days_before: number;
   alert_status: 'pending' | 'warned' | 'expired_warned' | 'resolved';
-  computed_status: 'permanent' | 'valid' | 'expiring_soon' | 'expired';
+  computed_status: 'permanent' | 'valid' | 'expiring_soon' | 'expired' | 'resolved';
+  is_renewable: boolean;
+  previous_record_id?: number | null;
   created_at: string;
 }
 
 export class EntityDocumentService {
-  static async getAll(entityType?: string, entityId?: number): Promise<EntityDocument[]> {
+  static async getAll(entityType?: string, entityId?: number, alertStatus?: string): Promise<EntityDocument[]> {
     let url = `${API_BASE_URL}/documents`;
     const params = new URLSearchParams();
     if (entityType) params.append('entity_type', entityType);
     if (entityId) params.append('entity_id', entityId.toString());
+    if (alertStatus) params.append('alert_status', alertStatus);
     if (params.toString()) url += `?${params.toString()}`;
 
     const response = await TokenManager.authenticatedFetch(url);
@@ -1061,7 +1064,7 @@ export class EntityDocumentService {
     return (await response.json()).data || [];
   }
 
-  static async create(data: { title: string; entity_type: string; entity_id?: number; notes?: string; expiration_date?: string; notify_days_before?: number }, file?: File | null): Promise<EntityDocument> {
+  static async create(data: { title: string; entity_type: string; entity_id?: number; notes?: string; expiration_date?: string; notify_days_before?: number; is_renewable?: boolean }, file?: File | null): Promise<EntityDocument> {
     const formData = new FormData();
     formData.append('title', data.title);
     formData.append('entity_type', data.entity_type);
@@ -1069,6 +1072,7 @@ export class EntityDocumentService {
     if (data.notes) formData.append('notes', data.notes);
     if (data.expiration_date) formData.append('expiration_date', data.expiration_date);
     if (data.notify_days_before) formData.append('notify_days_before', data.notify_days_before.toString());
+    if (data.is_renewable !== undefined) formData.append('is_renewable', data.is_renewable.toString());
     if (file) formData.append('file', file);
 
     const token = TokenManager.getToken();
@@ -1104,5 +1108,42 @@ export class EntityDocumentService {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Error al eliminar documento');
+  }
+
+  static async renew(id: number, data: { expiration_date: string; notify_days_before?: number; file_name?: string }, file: File): Promise<EntityDocument> {
+    const formData = new FormData();
+    formData.append('expiration_date', data.expiration_date);
+    if (data.notify_days_before !== undefined) formData.append('notify_days_before', data.notify_days_before.toString());
+    if (data.file_name) formData.append('file_name', data.file_name);
+    formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/documents/${id}/renew`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Error al renovar documento');
+    return (await response.json()).data;
+  }
+
+  static async resolve(id: number, file: File): Promise<EntityDocument> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/documents/${id}/resolve`, {
+      method: 'PUT',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Error al resolver documento');
+    return (await response.json()).data;
+  }
+
+  static async getHistory(id: number): Promise<EntityDocument[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/documents/${id}/history`);
+    if (!response.ok) throw new Error('Error al obtener historial del documento');
+    return (await response.json()).data || [];
   }
 }
