@@ -9,6 +9,8 @@ export interface UserData {
   role_id?: number;
   roleName?: string;
   role?: string;
+  employee_id?: number | null;
+  has_dashboard_access?: boolean;
   [key: string]: unknown;
 }
 
@@ -198,6 +200,8 @@ export function useAuth() {
         roleName: data.user.role?.name || 'Usuario',
         permissions: data.user.role?.permissions || [],
         fullName: `${data.user.name} ${data.user.lastname}`.trim(),
+        employee_id: data.user.employee_id || null,
+        has_dashboard_access: data.user.has_dashboard_access !== undefined ? data.user.has_dashboard_access : true,
       };
       
       // Guardar token y datos del usuario limpios

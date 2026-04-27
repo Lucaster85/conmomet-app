@@ -29,7 +29,12 @@ export default function LoginPage() {
   // Verificar si ya está autenticado
   useEffect(() => {
     if (TokenManager.isAuthenticated()) {
-      router.push('/dashboard');
+      const currentUser = TokenManager.getUser();
+      if (currentUser && currentUser.has_dashboard_access === false) {
+        router.push('/portal');
+      } else {
+        router.push('/dashboard');
+      }
     }
   }, [router]);
 
@@ -55,7 +60,12 @@ export default function LoginPage() {
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
-      router.push('/dashboard');
+      const currentUser = TokenManager.getUser();
+      if (currentUser && currentUser.has_dashboard_access === false) {
+        router.push('/portal');
+      } else {
+        router.push('/dashboard');
+      }
     } else {
       setError(result.error || 'Credenciales incorrectas. Verifica tu correo y contraseña.');
     }

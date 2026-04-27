@@ -26,6 +26,7 @@ export interface User {
 export interface Role {
   id: number;
   name: string;
+  has_dashboard_access?: boolean;
   createdAt: string;
   updatedAt: string;
   permissions?: Permission[];
@@ -182,10 +183,10 @@ export class RoleService {
     return response.json();
   }
 
-  static async create(name: string): Promise<Role> {
+  static async create(name: string, has_dashboard_access: boolean = true): Promise<Role> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/roles`, {
       method: 'POST',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, has_dashboard_access }),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -195,10 +196,10 @@ export class RoleService {
     return data.role || data.data || data;
   }
 
-  static async update(id: number, name: string): Promise<Role> {
+  static async update(id: number, name: string, has_dashboard_access: boolean = true): Promise<Role> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/roles/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, has_dashboard_access }),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -569,6 +570,7 @@ export interface Employee {
   dni: string;
   cuil: string;
   address?: string;
+  birthdate?: string;
   phone?: string;
   email?: string;
   position?: string;
@@ -939,6 +941,13 @@ export interface PayrollEntry {
   late_count: number;
   absent_count: number;
   status: 'draft' | 'confirmed' | 'paid';
+  payPeriod?: {
+    id: number;
+    name: string;
+    start_date: string;
+    end_date: string;
+    status: string;
+  };
 }
 
 export class PayrollService {
@@ -1110,7 +1119,9 @@ export interface EntityDocument {
   notify_days_before: number;
   alert_status: 'pending' | 'warned' | 'expired_warned' | 'resolved';
   computed_status: 'permanent' | 'valid' | 'expiring_soon' | 'expired' | 'resolved';
+  status?: string;
   is_renewable: boolean;
+  is_transactional?: boolean;
   previous_record_id?: number | null;
   resolved_at?: string;
   created_at: string;
@@ -1210,6 +1221,56 @@ export class EntityDocumentService {
   static async getHistory(id: number): Promise<EntityDocument[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/documents/${id}/history`);
     if (!response.ok) throw new Error('Error al obtener historial del documento');
+    return (await response.json()).data || [];
+  }
+}
+
+// --- SELF-SERVICE (Portal del Empleado) ---
+export class SelfService {
+  static async getMyProfile(): Promise<Employee> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/profile`);
+    if (!response.ok) throw new Error('Error al obtener mi perfil');
+    return (await response.json()).data;
+  }
+
+  static async getMyDocuments(): Promise<EntityDocument[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/documents`);
+    if (!response.ok) throw new Error('Error al obtener mis documentos');
+    return (await response.json()).data || [];
+  }
+
+  static async getMyTimeEntries(from?: string, to?: string): Promise<TimeEntry[]> {
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    
+    const url = `${API_BASE_URL}/me/time-entries${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener mis horas');
+    return (await response.json()).data || [];
+  }
+
+  static async getMyAttendance(): Promise<Attendance[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/attendance`);
+    if (!response.ok) throw new Error('Error al obtener mis ausencias');
+    return (await response.json()).data || [];
+  }
+
+  static async getMySafetyEquipment(): Promise<SafetyEquipment[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/safety-equipment`);
+    if (!response.ok) throw new Error('Error al obtener mi EPP');
+    return (await response.json()).data || [];
+  }
+
+  static async getMyAdvances(): Promise<SalaryAdvance[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/salary-advances`);
+    if (!response.ok) throw new Error('Error al obtener mis adelantos');
+    return (await response.json()).data || [];
+  }
+
+  static async getMyPayroll(): Promise<PayrollEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/payroll`);
+    if (!response.ok) throw new Error('Error al obtener mis liquidaciones');
     return (await response.json()).data || [];
   }
 }

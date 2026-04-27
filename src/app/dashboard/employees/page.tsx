@@ -4,15 +4,17 @@ import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Stack,
-  Chip, InputAdornment, Divider
+  Chip, InputAdornment, Divider, MenuItem, Select, FormControl, InputLabel,
+  FormHelperText
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
   Refresh as RefreshIcon, Search as SearchIcon, Visibility as VisibilityIcon,
+  Link as LinkIcon, LinkOff as LinkOffIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-import { Employee, EmployeeService, CreateEmployeeData } from '../../../utils/api';
+import { Employee, EmployeeService, CreateEmployeeData, User, UserService } from '../../../utils/api';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'success' | 'error' | 'warning' | 'info' }> = {
   active: { label: 'Activo', color: 'success' },
@@ -24,6 +26,7 @@ const STATUS_LABELS: Record<string, { label: string; color: 'success' | 'error' 
 export default function EmployeesPage() {
   const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -35,7 +38,7 @@ export default function EmployeesPage() {
   const emptyForm: CreateEmployeeData & { status?: string; pay_type?: string; monthly_salary?: number } = {
     name: '', lastname: '', dni: '', cuil: '', address: '', phone: '', email: '',
     position: '', hire_date: '', hourly_rate: 0, pay_type: 'hourly', monthly_salary: 0, notes: '',
-    shoe_size: '', shirt_size: '', pant_size: '',
+    shoe_size: '', shirt_size: '', pant_size: '', user_id: undefined,
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -52,7 +55,22 @@ export default function EmployeesPage() {
     }
   };
 
-  useEffect(() => { loadEmployees(); }, []);
+  const loadUsers = async () => {
+    try {
+      const data = await UserService.getAll();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error loading users:', err);
+    }
+  };
+
+  useEffect(() => { loadEmployees(); loadUsers(); }, []);
+
+  // Usuarios que NO están vinculados a otro empleado (excepto el que estamos editando)
+  const availableUsers = users.filter(u => {
+    const linkedToAnother = employees.some(emp => emp.user_id === u.id && emp.id !== editingEmployee?.id);
+    return !linkedToAnother;
+  });
 
   const filtered = employees.filter((e) => {
     const q = search.toLowerCase();
@@ -75,6 +93,7 @@ export default function EmployeesPage() {
       monthly_salary: emp.monthly_salary || 0,
       notes: emp.notes || '', status: emp.status,
       shoe_size: emp.shoe_size || '', shirt_size: emp.shirt_size || '', pant_size: emp.pant_size || '',
+      user_id: emp.user_id || undefined,
     });
     setOpenDialog(true);
   };
@@ -201,6 +220,12 @@ export default function EmployeesPage() {
                     <TableCell>
                       <Typography fontWeight="medium">{emp.lastname}, {emp.name}</Typography>
                       {emp.phone && <Typography variant="caption" color="text.secondary">📞 {emp.phone}</Typography>}
+                      {emp.user && (
+                        <Box display="flex" alignItems="center" gap={0.5} mt={0.5}>
+                          <LinkIcon sx={{ fontSize: 14 }} color="primary" />
+                          <Typography variant="caption" color="primary.main">{emp.user.email}</Typography>
+                        </Box>
+                      )}
                     </TableCell>
                     <TableCell>{emp.dni}</TableCell>
                     <TableCell>{emp.position || '—'}</TableCell>
@@ -266,6 +291,37 @@ export default function EmployeesPage() {
               <TextField label="Talle Remera" fullWidth value={form.shirt_size} onChange={(e) => setForm({ ...form, shirt_size: e.target.value })} placeholder="Ej: L, XL" />
               <TextField label="Talle Pantalón" fullWidth value={form.pant_size} onChange={(e) => setForm({ ...form, pant_size: e.target.value })} placeholder="Ej: 44, M" />
             </Box>
+            <Divider sx={{ my: 1 }}>
+              <Typography variant="caption" color="text.secondary">Cuenta de Usuario</Typography>
+            </Divider>
+            <FormControl fullWidth>
+              <InputLabel id="user-link-label" shrink>Usuario Vinculado</InputLabel>
+              <Select
+                labelId="user-link-label"
+                value={form.user_id || ''}
+                onChange={(e) => setForm({ ...form, user_id: e.target.value ? Number(e.target.value) : undefined })}
+                displayEmpty
+                label="Usuario Vinculado"
+              >
+                <MenuItem value="">
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <LinkOffIcon fontSize="small" color="disabled" />
+                    <em>Sin usuario vinculado</em>
+                  </Box>
+                </MenuItem>
+                {availableUsers.map((u) => (
+                  <MenuItem key={u.id} value={u.id}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <LinkIcon fontSize="small" color="primary" />
+                      {u.name} {u.lastname} ({u.email})
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                Vincular un usuario permite al empleado acceder al Portal de Autogestión.
+              </FormHelperText>
+            </FormControl>
             {editingEmployee && (
               <TextField label="Estado" select fullWidth value={form.status || 'active'} onChange={(e) => setForm({ ...form, status: e.target.value })}
                 SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>

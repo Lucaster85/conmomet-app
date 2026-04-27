@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Drawer,
@@ -74,6 +74,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  // Redirección si no tiene acceso al dashboard
+  useEffect(() => {
+    if (user && user.has_dashboard_access === false) {
+      router.replace('/portal');
+    }
+  }, [user, router]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -234,6 +241,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </ListItemIcon>
             <ListItemText>Mi Perfil</ListItemText>
           </MenuItem>
+          {user?.employee_id && (
+            <MenuItem onClick={() => { handleProfileMenuClose(); router.push('/portal'); }}>
+              <ListItemIcon>
+                <BadgeIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Mi Portal</ListItemText>
+            </MenuItem>
+          )}
           <MenuItem onClick={handleProfileMenuClose}>
             <ListItemIcon>
               <SettingsIcon fontSize="small" />

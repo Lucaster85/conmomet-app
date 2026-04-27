@@ -24,6 +24,7 @@ import {
   Divider,
   InputAdornment,
   Grid,
+  Switch,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -62,6 +63,7 @@ export default function RolesPage() {
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [roleName, setRoleName] = useState('');
+  const [roleHasDashboardAccess, setRoleHasDashboardAccess] = useState(true);
   const [savingRole, setSavingRole] = useState(false);
 
   // Delete role dialog
@@ -117,12 +119,14 @@ export default function RolesPage() {
   const handleOpenCreate = () => {
     setEditingRole(null);
     setRoleName('');
+    setRoleHasDashboardAccess(true);
     setRoleDialogOpen(true);
   };
 
   const handleOpenEdit = (role: Role) => {
     setEditingRole(role);
     setRoleName(role.name);
+    setRoleHasDashboardAccess(role.has_dashboard_access ?? true);
     setRoleDialogOpen(true);
   };
 
@@ -131,9 +135,9 @@ export default function RolesPage() {
     setSavingRole(true);
     try {
       if (editingRole) {
-        await RoleService.update(editingRole.id, roleName.trim());
+        await RoleService.update(editingRole.id, roleName.trim(), roleHasDashboardAccess);
       } else {
-        await RoleService.create(roleName.trim());
+        await RoleService.create(roleName.trim(), roleHasDashboardAccess);
       }
       setRoleDialogOpen(false);
       fetchData();
@@ -310,6 +314,9 @@ export default function RolesPage() {
                     <Typography variant="h6" fontWeight={600} color="#1E293B" fontSize="1rem">
                       {role.name}
                     </Typography>
+                    {role.has_dashboard_access === false && (
+                       <Chip label="Solo Portal" size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem' }} />
+                    )}
                   </Stack>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, minHeight: 32 }}>
                     {(role.permissions || []).length === 0 ? (
@@ -425,9 +432,16 @@ export default function RolesPage() {
             value={roleName}
             onChange={e => setRoleName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleSaveRole(); }}
-            sx={{ mt: 1 }}
+            sx={{ mt: 1, mb: 3 }}
             inputProps={{ maxLength: 50 }}
           />
+          <FormControlLabel
+            control={<Switch checked={roleHasDashboardAccess} onChange={e => setRoleHasDashboardAccess(e.target.checked)} color="primary" />}
+            label={<Typography fontWeight={600}>Acceso al Dashboard</Typography>}
+          />
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, ml: 4 }}>
+            Si se desactiva, los usuarios con este rol solo podrán acceder a su Portal del Empleado (útil para operarios).
+          </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setRoleDialogOpen(false)} sx={{ textTransform: 'none' }}>
