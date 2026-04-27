@@ -24,24 +24,29 @@ import {
   PermissionService, 
   Role, 
   Permission, 
-  CreateUserData 
+  CreateUserData,
+  User
 } from '../../../utils/api';
 
-interface CreateUserFormProps {
+interface UserFormProps {
+  user?: User;
   onSuccessAction: () => void;
+  onCancel?: () => void;
 }
 
-export default function CreateUserForm({ onSuccessAction }: CreateUserFormProps) {
+export default function UserForm({ user, onSuccessAction, onCancel }: UserFormProps) {
+  const isEditing = !!user;
+  
   const [formData, setFormData] = useState<CreateUserData>({
-    name: '',
-    lastname: '',
-    email: '',
-    password: '',
-    role_id: 0,
-    cuit: '',
-    phone: '',
-    celphone: '',
-    permissions: [],
+    name: user?.name || '',
+    lastname: user?.lastname || '',
+    email: user?.email || '',
+    password: '', // Password empty by default
+    role_id: user?.role_id || 0,
+    cuit: user?.cuit || '',
+    phone: user?.phone || '',
+    celphone: user?.celphone || '',
+    permissions: user?.permissions?.map(p => p.id) || [],
   });
 
   const [roles, setRoles] = useState<Role[]>([]);
@@ -53,25 +58,19 @@ export default function CreateUserForm({ onSuccessAction }: CreateUserFormProps)
 
   // Cargar roles y permisos al montar el componente
   useEffect(() => {
-    console.log('🚀 CreateUserForm useEffect ejecutándose...');
     const loadData = async () => {
       try {
         setLoadingData(true);
-        console.log('📥 Iniciando carga de roles y permisos...');
         const [rolesData, permissionsData] = await Promise.all([
           RoleService.getAll(),
           PermissionService.getAll(),
         ]);
         
-        console.log('📋 Datos recibidos:', { rolesData, permissionsData });
-        
-        // Asegurar que los datos sean arrays
         setRoles(Array.isArray(rolesData) ? rolesData : []);
         setPermissions(Array.isArray(permissionsData) ? permissionsData : []);
       } catch (err) {
         console.error('Error loading roles and permissions:', err);
         setError('Error al cargar datos de roles y permisos');
-        // Resetear a arrays vacíos en caso de error
         setRoles([]);
         setPermissions([]);
       } finally {
@@ -118,7 +117,7 @@ export default function CreateUserForm({ onSuccessAction }: CreateUserFormProps)
     if (!formData.name.trim()) return 'El nombre es obligatorio';
     if (!formData.lastname.trim()) return 'El apellido es obligatorio';
     if (!formData.email.trim()) return 'El email es obligatorio';
-    if (!formData.password.trim()) return 'La contraseña es obligatoria';
+    if (!isEditing && !formData.password.trim()) return 'La contraseña es obligatoria';
     if (!formData.role_id) return 'Debe seleccionar un rol';
     if (!formData.cuit.trim()) return 'El CUIT es obligatorio';
     
@@ -133,8 +132,8 @@ export default function CreateUserForm({ onSuccessAction }: CreateUserFormProps)
       return 'El CUIT debe contener solo números';
     }
     
-    // Validar contraseña
-    if (formData.password.length < 6) {
+    // Validar contraseña si se ingresó
+    if (formData.password && formData.password.length < 6) {
       return 'La contraseña debe tener al menos 6 caracteres';
     }
 
@@ -156,29 +155,26 @@ export default function CreateUserForm({ onSuccessAction }: CreateUserFormProps)
       setError('');
       setSuccess('');
 
-      await UserService.create(formData);
-      setSuccess('Usuario creado exitosamente');
+      if (isEditing && user) {
+        // Enviar solo los campos que se pueden actualizar. 
+        // Si el password está vacío, no lo enviamos.
+        const updateData: any = { ...formData };
+        if (!updateData.password) delete updateData.password;
+        
+        await UserService.update(user.id, updateData);
+        setSuccess('Usuario actualizado exitosamente');
+      } else {
+        await UserService.create(formData);
+        setSuccess('Usuario creado exitosamente');
+      }
       
-      // Resetear formulario
-      setFormData({
-        name: '',
-        lastname: '',
-        email: '',
-        password: '',
-        role_id: 0,
-        cuit: '',
-        phone: '',
-        celphone: '',
-        permissions: [],
-      });
-
       // Llamar callback de éxito después de un breve delay
       setTimeout(() => {
         onSuccessAction();
-      }, 1500);
+      }, 1000);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear usuario');
+      setError(err instanceof Error ? err.message : 'Error al guardar usuario');
     } finally {
       setLoading(false);
     }
@@ -257,13 +253,13 @@ export default function CreateUserForm({ onSuccessAction }: CreateUserFormProps)
 
           <TextField
             fullWidth
-            label="Contraseña *"
+            label={isEditing ? "Contraseña (dejar en blanco para no cambiar)" : "Contraseña *"}
             name="password"
             type="password"
             value={formData.password}
             onChange={handleInputChange}
-            placeholder="Mínimo 6 caracteres"
-            required
+            placeholder={isEditing ? "Opcional" : "Mínimo 6 caracteres"}
+            required={!isEditing}
           />
         </Box>
 
@@ -365,6 +361,11 @@ export default function CreateUserForm({ onSuccessAction }: CreateUserFormProps)
 
         {/* Botones */}
         <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
+          {onCancel && (
+            <Button onClick={onCancel} disabled={loading}>
+              Cancelar
+            </Button>
+          )}
           <Button
             type="submit"
             variant="contained"
@@ -372,7 +373,7 @@ export default function CreateUserForm({ onSuccessAction }: CreateUserFormProps)
             disabled={loading}
             size="large"
           >
-            {loading ? 'Creando...' : 'Crear Usuario'}
+            {loading ? (isEditing ? 'Guardando...' : 'Creando...') : (isEditing ? 'Guardar Cambios' : 'Crear Usuario')}
           </Button>
         </Box>
       </Box>

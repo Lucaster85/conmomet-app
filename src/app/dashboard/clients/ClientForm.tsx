@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   TextField,
@@ -12,29 +12,28 @@ import {
 import { Save as SaveIcon } from '@mui/icons-material';
 import { 
   ClientService, 
-  CreateClientData 
+  CreateClientData,
+  Client
 } from '../../../utils/api';
 
-interface CreateClientFormProps {
+interface ClientFormProps {
+  client?: Client;
   onSuccessAction: () => void;
+  onCancel?: () => void;
 }
 
-export default function CreateClientForm({ onSuccessAction }: CreateClientFormProps) {
+export default function ClientForm({ client, onSuccessAction, onCancel }: ClientFormProps) {
+  const isEditing = !!client;
+
   const [formData, setFormData] = useState<CreateClientData>({
-    razonSocial: '',
-    email: '',
-    phone: '',
+    razonSocial: client?.razonSocial || '',
+    email: client?.email || '',
+    phone: client?.phone || '',
   });
 
   const [loading, setLoading] = useState(false);
-
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  // Cargar roles y permisos al montar el componente
-  useEffect(() => {
-    console.log('🚀 CreateClientForm useEffect ejecutándose...');
-  }, []);
 
   // Manejar cambios en los campos del formulario
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,7 +46,7 @@ export default function CreateClientForm({ onSuccessAction }: CreateClientFormPr
 
   // Validar formulario
   const validateForm = (): string | null => {
-    if (!formData.razonSocial.trim()) return 'El nombre es obligatorio';
+    if (!formData.razonSocial.trim()) return 'El nombre o razón social es obligatorio';
     if (!formData.email.trim()) return 'El email es obligatorio';
     
     // Validar email
@@ -74,29 +73,25 @@ export default function CreateClientForm({ onSuccessAction }: CreateClientFormPr
       setError('');
       setSuccess('');
 
-      await ClientService.create(formData);
-      setSuccess('Cliente creado exitosamente');
+      if (isEditing && client) {
+        await ClientService.update(client.id, formData);
+        setSuccess('Cliente actualizado exitosamente');
+      } else {
+        await ClientService.create(formData);
+        setSuccess('Cliente creado exitosamente');
+      }
       
-      // Resetear formulario
-      setFormData({
-        razonSocial: '',
-        email: '',
-        phone: '',
-      });
-
       // Llamar callback de éxito después de un breve delay
       setTimeout(() => {
         onSuccessAction();
-      }, 1500);
+      }, 1000);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear cliente');
+      setError(err instanceof Error ? err.message : 'Error al guardar cliente');
     } finally {
       setLoading(false);
     }
   };
-
-
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>
@@ -116,7 +111,7 @@ export default function CreateClientForm({ onSuccessAction }: CreateClientFormPr
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {/* Información Personal */}
         <Typography variant="h6" gutterBottom>
-          Información Personal
+          Información del Cliente
         </Typography>
 
         <Box sx={{ 
@@ -130,10 +125,9 @@ export default function CreateClientForm({ onSuccessAction }: CreateClientFormPr
             name="razonSocial"
             value={formData.razonSocial}
             onChange={handleInputChange}
-            placeholder="Ingrese la razón social"
+            placeholder="Ingrese la razón social o nombre"
             required
           />
-
         </Box>
 
         <Box sx={{ 
@@ -148,10 +142,9 @@ export default function CreateClientForm({ onSuccessAction }: CreateClientFormPr
             type="email"
             value={formData.email}
             onChange={handleInputChange}
-            placeholder="usuario@ejemplo.com"
+            placeholder="cliente@ejemplo.com"
             required
           />
-
         </Box>
 
         {/* Información de Contacto */}
@@ -167,7 +160,7 @@ export default function CreateClientForm({ onSuccessAction }: CreateClientFormPr
         }}>
           <TextField
             fullWidth
-            label="Teléfono Fijo"
+            label="Teléfono"
             name="phone"
             value={formData.phone}
             onChange={handleInputChange}
@@ -177,6 +170,11 @@ export default function CreateClientForm({ onSuccessAction }: CreateClientFormPr
 
         {/* Botones */}
         <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
+          {onCancel && (
+            <Button onClick={onCancel} disabled={loading}>
+              Cancelar
+            </Button>
+          )}
           <Button
             type="submit"
             variant="contained"
@@ -184,7 +182,7 @@ export default function CreateClientForm({ onSuccessAction }: CreateClientFormPr
             disabled={loading}
             size="large"
           >
-            {loading ? 'Creando...' : 'Crear Cliente'}
+            {loading ? (isEditing ? 'Guardando...' : 'Creando...') : (isEditing ? 'Guardar Cambios' : 'Crear Cliente')}
           </Button>
         </Box>
       </Box>

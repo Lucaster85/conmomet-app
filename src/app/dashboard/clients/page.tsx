@@ -19,6 +19,9 @@ import {
   Alert,
   CircularProgress,
   Tooltip,
+  TextField,
+  InputAdornment,
+  Stack,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -26,15 +29,18 @@ import {
   Delete as DeleteIcon,
   Visibility as ViewIcon,
   Refresh as RefreshIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import { Client, ClientService } from '../../../utils/api';
-import CreateClientForm from './CreateClientForm';
+import ClientForm from './ClientForm';
 
-export default function UsersPage() {
+export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [search, setSearch] = useState('');
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{open: boolean, client: Client | null}>({
     open: false,
     client: null
@@ -46,26 +52,44 @@ export default function UsersPage() {
       setLoading(true);
       setError('');
       const clientsData = await ClientService.getAll();
-      // Asegurar que clientsData es un array
       setClients(Array.isArray(clientsData) ? clientsData : []);
     } catch (err) {
       console.error('Error loading clients:', err);
       setError(err instanceof Error ? err.message : 'Error al cargar clientes');
-      setClients([]); // Resetear a array vacío en caso de error
+      setClients([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    console.log('🚀 ClientsPage useEffect ejecutándose...');
     loadClients();
   }, []);
 
-  // Manejar creación exitosa
-  const handleClientCreated = () => {
-    setOpenCreateDialog(false);
+  const filteredClients = clients.filter((client) => {
+    const q = search.toLowerCase();
+    return (
+      client.razonSocial.toLowerCase().includes(q) ||
+      client.email.toLowerCase().includes(q) ||
+      (client.phone && client.phone.includes(q))
+    );
+  });
+
+  // Manejar creación/edición exitosa
+  const handleClientSaved = () => {
+    setOpenDialog(false);
+    setEditingClient(null);
     loadClients();
+  };
+
+  const handleOpenCreate = () => {
+    setEditingClient(null);
+    setOpenDialog(true);
+  };
+
+  const handleOpenEdit = (client: Client) => {
+    setEditingClient(client);
+    setOpenDialog(true);
   };
 
   // Manejar eliminación
@@ -101,7 +125,7 @@ export default function UsersPage() {
   return (
     <Box>
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" fontWeight="bold">
           Gestión de Clientes
         </Typography>
@@ -110,18 +134,37 @@ export default function UsersPage() {
             variant="outlined"
             startIcon={<RefreshIcon />}
             onClick={loadClients}
+            size="small"
           >
             Actualizar
           </Button>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => setOpenCreateDialog(true)}
+            onClick={handleOpenCreate}
+            size="small"
           >
             Nuevo Cliente
           </Button>
         </Box>
       </Box>
+
+      {/* Search Bar */}
+      <TextField
+        placeholder="Buscar por razón social o email..."
+        fullWidth
+        size="small"
+        sx={{ mb: 3 }}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon />
+            </InputAdornment>
+          ),
+        }}
+      />
 
       {/* Error Alert */}
       {error && (
@@ -130,90 +173,123 @@ export default function UsersPage() {
         </Alert>
       )}
 
-      {/* Tabla de usuarios */}
-      <TableContainer component={Paper} elevation={2}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ bgcolor: 'grey.50' }}>
-              <TableCell><strong>ID</strong></TableCell>
-              <TableCell><strong>Nombre Completo</strong></TableCell>
-              <TableCell><strong>Email</strong></TableCell>
-              <TableCell><strong>Teléfono</strong></TableCell>
-              <TableCell><strong>Fecha Creación</strong></TableCell>
-              <TableCell align="center"><strong>Acciones</strong></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {!Array.isArray(clients) || clients.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    No hay clientes registrados
-                  </Typography>
-                </TableCell>
+      {/* Mobile/Tablet Card View */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {filteredClients.length === 0 ? (
+          <Typography color="text.secondary" textAlign="center" py={4}>
+            No hay clientes que coincidan con la búsqueda
+          </Typography>
+        ) : (
+          <Stack spacing={2}>
+            {filteredClients.map((client) => (
+              <Paper key={client.id} sx={{ p: 2, borderRadius: 2 }}>
+                <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                  <Box flex={1}>
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      {client.razonSocial}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {client.email}
+                    </Typography>
+                    {client.phone && (
+                      <Typography variant="body2" sx={{ mt: 0.5, display: 'flex', alignItems: 'center' }}>
+                        📞 {client.phone}
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      Desde: {formatDate(client.createdAt)}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" flexDirection="column" gap={0.5}>
+                    <IconButton size="small" color="primary" onClick={() => handleOpenEdit(client)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, client })}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              </Paper>
+            ))}
+          </Stack>
+        )}
+      </Box>
+
+      {/* Desktop Table View */}
+      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2 }}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: 'grey.50' }}>
+                <TableCell><strong>ID</strong></TableCell>
+                <TableCell><strong>Nombre / Razón Social</strong></TableCell>
+                <TableCell><strong>Email</strong></TableCell>
+                <TableCell><strong>Teléfono</strong></TableCell>
+                <TableCell><strong>Fecha Creación</strong></TableCell>
+                <TableCell align="center"><strong>Acciones</strong></TableCell>
               </TableRow>
-            ) : (
-              clients.map((client) => (
-                <TableRow key={client.id} hover>
-                  <TableCell>{client.id}</TableCell>
-                  <TableCell>
-                    <Box>
+            </TableHead>
+            <TableBody>
+              {filteredClients.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No hay clientes registrados
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredClients.map((client) => (
+                  <TableRow key={client.id} hover>
+                    <TableCell>{client.id}</TableCell>
+                    <TableCell>
                       <Typography variant="body2" fontWeight="medium">
                         {client.razonSocial}
                       </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>{client.email}</TableCell>
-                  <TableCell>
-                    <Box>
-                      {client.phone && (
-                        <Typography variant="body2">
-                          📞 {client.phone}
-                        </Typography>
-                      )}
-                    </Box>
-                  </TableCell>
-                  <TableCell>{formatDate(client.createdAt)}</TableCell>
-                  <TableCell align="center">
-                    <Box display="flex" gap={0.5}>
-                      <Tooltip title="Ver detalles">
-                        <IconButton size="small" color="info">
-                          <ViewIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Editar">
-                        <IconButton size="small" color="primary">
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Eliminar">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => setDeleteDialog({ open: true, client })}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                    </TableCell>
+                    <TableCell>{client.email}</TableCell>
+                    <TableCell>{client.phone || '—'}</TableCell>
+                    <TableCell>{formatDate(client.createdAt)}</TableCell>
+                    <TableCell align="center">
+                      <Box display="flex" justifyContent="center" gap={0.5}>
+                        <Tooltip title="Editar">
+                          <IconButton size="small" color="primary" onClick={() => handleOpenEdit(client)}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Eliminar">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => setDeleteDialog({ open: true, client })}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
 
-      {/* Dialog para crear usuario */}
+      {/* Dialog para crear/editar cliente */}
       <Dialog 
-        open={openCreateDialog} 
-        onClose={() => setOpenCreateDialog(false)}
-        maxWidth="md"
+        open={openDialog} 
+        onClose={() => setOpenDialog(false)}
+        maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Crear Nuevo Usuario</DialogTitle>
-        <DialogContent>
-                  <CreateClientForm onSuccessAction={handleClientCreated} />
+        <DialogTitle>{editingClient ? 'Editar Cliente' : 'Crear Nuevo Cliente'}</DialogTitle>
+        <DialogContent dividers>
+          <ClientForm 
+            client={editingClient || undefined} 
+            onSuccessAction={handleClientSaved} 
+            onCancel={() => setOpenDialog(false)}
+          />
         </DialogContent>
       </Dialog>
 
@@ -225,7 +301,7 @@ export default function UsersPage() {
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Estás seguro de que deseas eliminar al usuario{' '}
+            ¿Estás seguro de que deseas eliminar al cliente{' '}
             <strong>{deleteDialog.client?.razonSocial}</strong>?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
