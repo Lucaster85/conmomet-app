@@ -580,6 +580,9 @@ export interface Employee {
   monthly_salary?: number;
   user_id?: number;
   notes?: string;
+  shoe_size?: string;
+  shirt_size?: string;
+  pant_size?: string;
   user?: { id: number; email: string; name: string; lastname: string };
   createdAt: string;
 }
@@ -599,6 +602,9 @@ export interface CreateEmployeeData {
   monthly_salary?: number;
   user_id?: number;
   notes?: string;
+  shoe_size?: string;
+  shirt_size?: string;
+  pant_size?: string;
 }
 
 export interface TimeEntry {
@@ -1002,16 +1008,72 @@ export class SalaryAdvanceService {
   }
 }
 
+// EPP Catalog Service
+export type EppCategory = 'footwear' | 'clothing' | 'head_protection' | 'hand_protection' | 'eye_protection' | 'other';
+export type EppSizeType = 'none' | 'numeric' | 'alpha';
+
+export interface EppItem {
+  id: number;
+  name: string;
+  category: EppCategory;
+  size_type: EppSizeType;
+  is_active: boolean;
+}
+
+export class EppItemService {
+  static async getAll(includeInactive = false): Promise<EppItem[]> {
+    const url = includeInactive ? `${API_BASE_URL}/epp-items?include_inactive=true` : `${API_BASE_URL}/epp-items`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener catálogo EPP');
+    return (await response.json()).data || [];
+  }
+
+  static async create(payload: { name: string; category: EppCategory; size_type: EppSizeType }): Promise<EppItem> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/epp-items`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear artículo');
+    }
+    return (await response.json()).data;
+  }
+
+  static async update(id: number, payload: { name?: string; category?: EppCategory; size_type?: EppSizeType }): Promise<EppItem> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/epp-items/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar artículo');
+    }
+    return (await response.json()).data;
+  }
+
+  static async toggleActive(id: number): Promise<EppItem> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/epp-items/${id}/toggle`, {
+      method: 'PUT',
+    });
+    if (!response.ok) throw new Error('Error al cambiar estado del artículo');
+    return (await response.json()).data;
+  }
+}
+
 // Safety Equipment Service
 export interface SafetyEquipment {
   id: number;
   employee_id: number;
-  item_name: string;
+  epp_item_id: number;
+  size_delivered?: string;
+  quantity: number;
   delivered_date: string;
   return_date?: string;
   condition?: 'new' | 'good' | 'worn' | 'damaged';
   notes?: string;
   employee?: Employee;
+  eppItem?: EppItem;
 }
 
 export class SafetyEquipmentService {
@@ -1022,12 +1084,15 @@ export class SafetyEquipmentService {
     return (await response.json()).data || [];
   }
 
-  static async create(payload: { employee_id: number; item_name: string; delivered_date: string; condition?: string; notes?: string }): Promise<SafetyEquipment> {
+  static async create(payload: { employee_id: number; epp_item_id: number; size_delivered?: string; quantity?: number; delivered_date: string; condition?: string; notes?: string }): Promise<SafetyEquipment> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/safety-equipment`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error('Error al registrar EPP');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al registrar EPP');
+    }
     return (await response.json()).data;
   }
 }

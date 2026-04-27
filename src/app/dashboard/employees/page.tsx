@@ -4,7 +4,7 @@ import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Stack,
-  Chip, InputAdornment,
+  Chip, InputAdornment, Divider
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
@@ -35,6 +35,7 @@ export default function EmployeesPage() {
   const emptyForm: CreateEmployeeData & { status?: string; pay_type?: string; monthly_salary?: number } = {
     name: '', lastname: '', dni: '', cuil: '', address: '', phone: '', email: '',
     position: '', hire_date: '', hourly_rate: 0, pay_type: 'hourly', monthly_salary: 0, notes: '',
+    shoe_size: '', shirt_size: '', pant_size: '',
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -73,6 +74,7 @@ export default function EmployeesPage() {
       pay_type: emp.pay_type || 'hourly',
       monthly_salary: emp.monthly_salary || 0,
       notes: emp.notes || '', status: emp.status,
+      shoe_size: emp.shoe_size || '', shirt_size: emp.shirt_size || '', pant_size: emp.pant_size || '',
     });
     setOpenDialog(true);
   };
@@ -256,6 +258,14 @@ export default function EmployeesPage() {
               <TextField label="Email" fullWidth value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </Box>
             <TextField label="Dirección" fullWidth value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            <Divider sx={{ my: 1 }}>
+              <Typography variant="caption" color="text.secondary">Talles (para EPP)</Typography>
+            </Divider>
+            <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
+              <TextField label="Talle Calzado" fullWidth value={form.shoe_size} onChange={(e) => setForm({ ...form, shoe_size: e.target.value })} placeholder="Ej: 42" />
+              <TextField label="Talle Remera" fullWidth value={form.shirt_size} onChange={(e) => setForm({ ...form, shirt_size: e.target.value })} placeholder="Ej: L, XL" />
+              <TextField label="Talle Pantalón" fullWidth value={form.pant_size} onChange={(e) => setForm({ ...form, pant_size: e.target.value })} placeholder="Ej: 44, M" />
+            </Box>
             {editingEmployee && (
               <TextField label="Estado" select fullWidth value={form.status || 'active'} onChange={(e) => setForm({ ...form, status: e.target.value })}
                 SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
