@@ -19,6 +19,7 @@ import {
 
   useTheme,
   useMediaQuery,
+  Collapse,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -39,6 +40,8 @@ import {
   Payments as PaymentsIcon,
   Money as MoneyIcon,
   Security as SecurityIcon,
+  ExpandLess,
+  ExpandMore,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -46,20 +49,44 @@ import ProtectedRoute from '../../components/ProtectedRoute';
 
 const drawerWidth = 280;
 
-const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Carga de Horas', icon: <TimeIcon />, path: '/dashboard/time-entries' },
-  { text: 'Empleados', icon: <BadgeIcon />, path: '/dashboard/employees' },
-  { text: 'Presentismo', icon: <EventAvailableIcon />, path: '/dashboard/attendance' },
-  { text: 'Adelantos', icon: <MoneyIcon />, path: '/dashboard/salary-advances' },
-  { text: 'Quincenas y Pagos', icon: <PaymentsIcon />, path: '/dashboard/pay-periods' },
-  { text: 'EPP', icon: <SecurityIcon />, path: '/dashboard/safety-equipment' },
-  { text: 'Clientes', icon: <Business />, path: '/dashboard/clients' },
-  //{ text: 'Proveedores', icon: <HomeRepairService />, path: '/dashboard/providers' },
-  { text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles' },
-  { text: 'Usuarios', icon: <PeopleIcon />, path: '/dashboard/users' },
-  { text: 'Roles y Permisos', icon: <RolesIcon />, path: '/dashboard/roles' },
-  { text: 'Plantas', icon: <FactoryIcon />, path: '/dashboard/plants' },
+const menuGroups = [
+  {
+    title: '',
+    items: [
+      { text: 'Inicio', icon: <DashboardIcon />, path: '/dashboard' }
+    ]
+  },
+  {
+    title: 'Personal',
+    items: [
+      { text: 'Empleados', icon: <BadgeIcon />, path: '/dashboard/employees' },
+      { text: 'Carga de Horas', icon: <TimeIcon />, path: '/dashboard/time-entries' },
+      { text: 'Presentismo', icon: <EventAvailableIcon />, path: '/dashboard/attendance' },
+      { text: 'EPP', icon: <SecurityIcon />, path: '/dashboard/safety-equipment' },
+    ]
+  },
+  {
+    title: 'Contabilidad',
+    items: [
+      { text: 'Quincenas y Pagos', icon: <PaymentsIcon />, path: '/dashboard/pay-periods' },
+      { text: 'Adelantos', icon: <MoneyIcon />, path: '/dashboard/salary-advances' },
+    ]
+  },
+  {
+    title: 'Gestión de Clientes',
+    items: [
+      { text: 'Clientes', icon: <Business />, path: '/dashboard/clients' },
+      { text: 'Plantas', icon: <FactoryIcon />, path: '/dashboard/plants' },
+    ]
+  },
+  {
+    title: 'Gestión de Usuarios',
+    items: [
+      { text: 'Usuarios', icon: <PeopleIcon />, path: '/dashboard/users' },
+      { text: 'Roles y Permisos', icon: <RolesIcon />, path: '/dashboard/roles' },
+    ]
+  },
+  { title: 'Web', items: [{ text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles' }] }
 ];
 
 interface DashboardLayoutProps {
@@ -74,6 +101,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    'Personal': false,
+    'Contabilidad': false,
+    'Gestión de Clientes': false,
+    'Gestión de Usuarios': false,
+    'Web': false,
+  });
+
+  const handleGroupToggle = (title: string) => {
+    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
 
   // Redirección si no tiene acceso al dashboard
   useEffect(() => {
@@ -135,26 +173,59 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </Toolbar>
       <Divider />
       <List sx={{ pt: 2 }}>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ px: 1 }}>
-            <ListItemButton
-              onClick={() => handleNavigation(item.path)}
-              sx={{
-                minHeight: 48,
-                borderRadius: 1,
-                mx: 1,
-                '&:hover': {
-                  bgcolor: 'primary.light',
-                  color: 'white',
-                },
-              }}
-            >
-              <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
+        {menuGroups.map((group, groupIndex) => (
+          <React.Fragment key={groupIndex}>
+            {group.title && (
+              <ListItemButton 
+                onClick={() => handleGroupToggle(group.title)}
+                sx={{ 
+                  py: 1, 
+                  px: 2, 
+                  mt: groupIndex > 0 ? 1 : 0,
+                  '&:hover': { bgcolor: 'transparent' }
+                }}
+              >
+                <ListItemText 
+                  primary={group.title} 
+                  primaryTypographyProps={{ 
+                    color: 'text.secondary', 
+                    fontWeight: 'bold', 
+                    textTransform: 'uppercase', 
+                    fontSize: '0.75rem', 
+                    lineHeight: '24px' 
+                  }} 
+                />
+                {openGroups[group.title] ? <ExpandLess sx={{ color: 'text.secondary', fontSize: 20 }} /> : <ExpandMore sx={{ color: 'text.secondary', fontSize: 20 }} />}
+              </ListItemButton>
+            )}
+            <Collapse in={group.title === '' || openGroups[group.title]} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                {group.items.map((item) => (
+                  <ListItem key={item.text} disablePadding sx={{ px: 1, mb: 0.5 }}>
+                    <ListItemButton
+                      onClick={() => handleNavigation(item.path)}
+                      sx={{
+                        minHeight: 44,
+                        borderRadius: 1,
+                        mx: 1,
+                        pl: group.title ? 3 : 2, // Indent items if they belong to a group
+                        '&:hover': {
+                          bgcolor: 'primary.light',
+                          color: 'white',
+                        },
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
+                        {item.icon}
+                      </ListItemIcon>
+                      <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '0.9rem' }} />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            </Collapse>
+            {groupIndex < menuGroups.length - 1 && <Divider sx={{ my: 1, mx: 2, opacity: 0.5 }} />}
+          </React.Fragment>
         ))}
       </List>
     </Box>
