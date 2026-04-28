@@ -17,7 +17,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Alert,
   CircularProgress,
   Tooltip,
   TextField,
@@ -32,12 +31,14 @@ import {
   Search as SearchIcon,
 } from '@mui/icons-material';
 import { User, UserService } from '../../../utils/api';
+import FeedbackModal from '../../../components/FeedbackModal';
 import UserForm from './UserForm';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -104,6 +105,7 @@ export default function UsersPage() {
     try {
       await UserService.delete(deleteDialog.user.id);
       setDeleteDialog({ open: false, user: null });
+      setSuccess('Usuario eliminado exitosamente');
       loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar usuario');
@@ -171,12 +173,9 @@ export default function UsersPage() {
         }}
       />
 
-      {/* Error Alert */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
-          {error}
-        </Alert>
-      )}
+      {/* Feedback Modals */}
+      <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+      <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
       {/* Mobile/Tablet Card View */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>

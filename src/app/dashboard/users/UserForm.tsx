@@ -11,13 +11,13 @@ import {
   FormControlLabel,
   Checkbox,
   Typography,
-  Alert,
   CircularProgress,
   FormGroup,
   Paper,
   Divider,
 } from '@mui/material';
 import { Save as SaveIcon } from '@mui/icons-material';
+import FeedbackModal from '../../../components/FeedbackModal';
 import { 
   UserService, 
   RoleService, 
@@ -190,18 +190,9 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>
-      {/* Alertas */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
-          {error}
-        </Alert>
-      )}
-      
-      {success && (
-        <Alert severity="success" sx={{ mb: 3 }}>
-          {success}
-        </Alert>
-      )}
+      {/* Feedback Modals */}
+      <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+      <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {/* Información Personal */}
