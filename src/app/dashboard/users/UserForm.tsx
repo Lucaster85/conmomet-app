@@ -25,7 +25,9 @@ import {
   Role, 
   Permission, 
   CreateUserData,
-  User
+  User,
+  EmployeeService,
+  Employee,
 } from '../../../utils/api';
 
 interface UserFormProps {
@@ -47,10 +49,12 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
     phone: user?.phone || '',
     celphone: user?.celphone || '',
     permissions: user?.permissions?.map(p => p.id) || [],
+    employee_id: undefined as number | undefined,
   });
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [availableEmployees, setAvailableEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState('');
@@ -61,18 +65,26 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
     const loadData = async () => {
       try {
         setLoadingData(true);
-        const [rolesData, permissionsData] = await Promise.all([
+        const [rolesData, permissionsData, employeesData] = await Promise.all([
           RoleService.getAll(),
           PermissionService.getAll(),
+          EmployeeService.getAll(),
         ]);
         
         setRoles(Array.isArray(rolesData) ? rolesData : []);
         setPermissions(Array.isArray(permissionsData) ? permissionsData : []);
+
+        if (Array.isArray(employeesData)) {
+          // Filter employees that don't have a linked user yet
+          const available = employeesData.filter(emp => !emp.user_id);
+          setAvailableEmployees(available);
+        }
       } catch (err) {
-        console.error('Error loading roles and permissions:', err);
-        setError('Error al cargar datos de roles y permisos');
+        console.error('Error loading data:', err);
+        setError('Error al cargar datos necesarios');
         setRoles([]);
         setPermissions([]);
+        setAvailableEmployees([]);
       } finally {
         setLoadingData(false);
       }
@@ -110,6 +122,23 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
         permissions: newPermissions,
       };
     });
+  };
+
+  const handleEmployeeLink = (employeeId: number) => {
+    const emp = availableEmployees.find(e => e.id === employeeId);
+    if (emp) {
+      setFormData(prev => ({
+        ...prev,
+        employee_id: employeeId,
+        name: emp.name || prev.name,
+        lastname: emp.lastname || prev.lastname,
+        email: emp.email || prev.email,
+        phone: emp.phone || prev.phone,
+        cuit: emp.cuil || prev.cuit,
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, employee_id: undefined }));
+    }
   };
 
   // Validar formulario
@@ -195,6 +224,36 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {/* Vincular Empleado (solo al crear o si no tiene) */}
+        {!isEditing && availableEmployees.length > 0 && (
+          <Box>
+            <Typography variant="h6" gutterBottom color="primary.main" sx={{ fontSize: '1.1rem' }}>
+              Vincular Empleado (Opcional)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              Seleccione un empleado existente para autocompletar los datos personales y vincular la cuenta.
+            </Typography>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel>Empleado</InputLabel>
+              <Select
+                value={formData.employee_id || ''}
+                onChange={(e) => handleEmployeeLink(e.target.value as number)}
+                label="Empleado"
+              >
+                <MenuItem value="">
+                  <em>Sin vincular</em>
+                </MenuItem>
+                {availableEmployees.map(emp => (
+                  <MenuItem key={emp.id} value={emp.id}>
+                    {emp.lastname}, {emp.name} (DNI: {emp.dni})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Divider sx={{ mt: 3 }} />
+          </Box>
+        )}
+
         {/* Información Personal */}
         <Typography variant="h6" gutterBottom>
           Información Personal

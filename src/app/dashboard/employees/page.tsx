@@ -35,10 +35,10 @@ export default function EmployeesPage() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
 
-  const emptyForm: CreateEmployeeData & { status?: string; pay_type?: string; monthly_salary?: number } = {
+  const emptyForm: CreateEmployeeData & { status?: string; pay_type?: string; monthly_salary?: number; vacation_days_override?: number | null } = {
     name: '', lastname: '', dni: '', cuil: '', address: '', phone: '', email: '',
     position: '', hire_date: '', hourly_rate: 0, pay_type: 'hourly', monthly_salary: 0, notes: '',
-    shoe_size: '', shirt_size: '', pant_size: '', user_id: undefined,
+    shoe_size: '', shirt_size: '', pant_size: '', user_id: undefined, vacation_days_override: null,
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -94,6 +94,7 @@ export default function EmployeesPage() {
       notes: emp.notes || '', status: emp.status,
       shoe_size: emp.shoe_size || '', shirt_size: emp.shirt_size || '', pant_size: emp.pant_size || '',
       user_id: emp.user_id || undefined,
+      vacation_days_override: emp.vacation_days_override,
     });
     setOpenDialog(true);
   };
@@ -124,6 +125,27 @@ export default function EmployeesPage() {
       loadEmployees();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    }
+  };
+
+  const handleUserLink = (userIdVal: string | number) => {
+    const uId = userIdVal ? Number(userIdVal) : undefined;
+    if (!uId) {
+      setForm(prev => ({ ...prev, user_id: undefined }));
+      return;
+    }
+
+    const u = availableUsers.find(user => user.id === uId);
+    if (u) {
+      setForm(prev => ({
+        ...prev,
+        user_id: uId,
+        name: u.name || prev.name,
+        lastname: u.lastname || prev.lastname,
+        email: u.email || prev.email,
+        phone: u.phone || prev.phone,
+        cuil: !prev.cuil ? u.cuit : prev.cuil, // Only fill cuil if empty
+      }));
     }
   };
 
@@ -284,6 +306,17 @@ export default function EmployeesPage() {
             </Box>
             <TextField label="Dirección" fullWidth value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
             <Divider sx={{ my: 1 }}>
+              <Typography variant="caption" color="text.secondary">Licencias y Vacaciones</Typography>
+            </Divider>
+            <TextField 
+              label="Días de vacaciones (override)" 
+              type="number"
+              fullWidth 
+              value={form.vacation_days_override === null ? '' : form.vacation_days_override} 
+              onChange={(e) => setForm({ ...form, vacation_days_override: e.target.value ? Number(e.target.value) : null })} 
+              helperText="Dejar vacío para usar la escala legal (Art. 150 LCT). Poner 0 para empleados sin vacaciones."
+            />
+            <Divider sx={{ my: 1 }}>
               <Typography variant="caption" color="text.secondary">Talles (para EPP)</Typography>
             </Divider>
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
@@ -299,7 +332,7 @@ export default function EmployeesPage() {
               <Select
                 labelId="user-link-label"
                 value={form.user_id || ''}
-                onChange={(e) => setForm({ ...form, user_id: e.target.value ? Number(e.target.value) : undefined })}
+                onChange={(e) => handleUserLink(e.target.value as string | number)}
                 displayEmpty
                 label="Usuario Vinculado"
               >

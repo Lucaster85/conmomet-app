@@ -41,6 +41,7 @@ import {
   Security as SecurityIcon,
   ExpandLess,
   ExpandMore,
+  BeachAccess as BeachAccessIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -59,6 +60,7 @@ const menuGroups = [
     title: 'Personal',
     items: [
       { text: 'Empleados', icon: <BadgeIcon />, path: '/dashboard/employees' },
+      { text: 'Licencias y Vacaciones', icon: <BeachAccessIcon />, path: '/dashboard/leave-requests' },
       { text: 'Carga de Horas', icon: <TimeIcon />, path: '/dashboard/time-entries' },
       { text: 'Presentismo', icon: <EventAvailableIcon />, path: '/dashboard/attendance' },
       { text: 'EPP', icon: <SecurityIcon />, path: '/dashboard/safety-equipment' },

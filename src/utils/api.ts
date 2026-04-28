@@ -49,6 +49,7 @@ export interface CreateUserData {
   phone?: string;
   celphone?: string;
   permissions?: number[];
+  employee_id?: number;
 }
 
 export interface Client {
@@ -114,7 +115,7 @@ export class UserService {
   }
 
   static async create(userData: CreateUserData): Promise<User> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/auth/register`, {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/users`, {
       method: 'POST',
       body: JSON.stringify(userData),
     });
@@ -585,6 +586,7 @@ export interface Employee {
   shoe_size?: string;
   shirt_size?: string;
   pant_size?: string;
+  vacation_days_override?: number | null;
   user?: { id: number; email: string; name: string; lastname: string };
   createdAt: string;
 }
@@ -607,6 +609,33 @@ export interface CreateEmployeeData {
   shoe_size?: string;
   shirt_size?: string;
   pant_size?: string;
+  vacation_days_override?: number | null;
+}
+
+export interface LeaveRequest {
+  id: number;
+  employee_id: number;
+  leave_type: 'vacation' | 'medical_leave' | 'justified' | 'other';
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  notes?: string;
+  document_url?: string;
+  document_key?: string;
+  document_name?: string;
+  requested_by?: number;
+  approved_by?: number;
+  approved_at?: string;
+  createdAt: string;
+  updatedAt: string;
+  employee?: Employee;
+}
+
+export interface LeaveBalance {
+  corresponding_days: number;
+  used_days: number;
+  balance: number;
 }
 
 export interface TimeEntry {
@@ -874,6 +903,62 @@ export class AttendanceService {
     if (!response.ok) throw new Error('Error al actualizar presentismo');
     const data = await response.json();
     return data.data;
+  }
+}
+
+// LeaveRequest Service
+export class LeaveRequestService {
+  static async getAll(filters?: { employee_id?: number; leave_type?: string; status?: string; year?: number }): Promise<LeaveRequest[]> {
+    const params = new URLSearchParams();
+    if (filters?.employee_id) params.append('employee_id', filters.employee_id.toString());
+    if (filters?.leave_type) params.append('leave_type', filters.leave_type);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.year) params.append('year', filters.year.toString());
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/leave-requests?${params.toString()}`);
+    if (!response.ok) throw new Error('Error al obtener solicitudes de licencia');
+    return (await response.json()).data || [];
+  }
+
+  static async getBalance(employeeId: number): Promise<LeaveBalance> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/leave-requests/balance/${employeeId}`);
+    if (!response.ok) throw new Error('Error al obtener balance de licencia');
+    return (await response.json()).data;
+  }
+
+  static async create(data: FormData): Promise<LeaveRequest> {
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/leave-requests`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: data,
+    });
+    if (!response.ok) throw new Error('Error al crear solicitud');
+    return (await response.json()).data;
+  }
+
+  static async approve(id: number): Promise<LeaveRequest> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/leave-requests/${id}/approve`, {
+      method: 'PUT',
+    });
+    if (!response.ok) throw new Error('Error al aprobar solicitud');
+    return (await response.json()).data;
+  }
+
+  static async reject(id: number, notes?: string): Promise<LeaveRequest> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/leave-requests/${id}/reject`, {
+      method: 'PUT',
+      body: JSON.stringify({ notes }),
+    });
+    if (!response.ok) throw new Error('Error al rechazar solicitud');
+    return (await response.json()).data;
+  }
+
+  static async cancel(id: number): Promise<LeaveRequest> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/leave-requests/${id}/cancel`, {
+      method: 'PUT',
+    });
+    if (!response.ok) throw new Error('Error al cancelar solicitud');
+    return (await response.json()).data;
   }
 }
 
