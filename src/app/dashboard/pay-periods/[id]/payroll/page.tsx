@@ -124,7 +124,7 @@ export default function PayrollPage() {
               <TableRow sx={{ bgcolor: 'grey.50' }}>
                 <TableCell><strong>Empleado</strong></TableCell>
                 <TableCell align="center"><strong>Presentismo</strong></TableCell>
-                <TableCell align="right"><strong>Hs Normales</strong></TableCell>
+                <TableCell align="right"><strong>Base</strong></TableCell>
                 <TableCell align="right"><strong>Hs Extras</strong></TableCell>
                 <TableCell align="right"><strong>Sueldo Bruto</strong></TableCell>
                 <TableCell align="right"><strong>Adelantos</strong></TableCell>
@@ -140,7 +140,16 @@ export default function PayrollPage() {
                 <TableRow key={e.id as number} hover>
                   <TableCell>
                     <Typography variant="body2" fontWeight="bold">{(e.employee as Record<string, string>)?.lastname}, {(e.employee as Record<string, string>)?.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">DNI: {(e.employee as Record<string, string>)?.dni}</Typography>
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                      <Typography variant="caption" color="text.secondary">DNI: {(e.employee as Record<string, string>)?.dni}</Typography>
+                      <Chip 
+                        label={(e.employee as Record<string, string>)?.pay_type === 'monthly' ? 'Mensual' : 'Jornalizado'}
+                        size="small"
+                        variant="outlined"
+                        color={(e.employee as Record<string, string>)?.pay_type === 'monthly' ? 'primary' : 'default'}
+                        sx={{ fontSize: '0.65rem', height: 20 }}
+                      />
+                    </Box>
                   </TableCell>
                   <TableCell align="center">
                     {e.perfect_attendance ? (
@@ -174,8 +183,17 @@ export default function PayrollPage() {
                     )}
                   </TableCell>
                   <TableCell align="right">
-                    <Typography variant="body2">{e.total_regular_hours as number}h</Typography>
-                    <Typography variant="caption" color="text.secondary">{formatCurrency(e.regular_amount as number)}</Typography>
+                    {(e.employee as Record<string, string>)?.pay_type === 'monthly' ? (
+                      <>
+                        <Typography variant="body2">Sueldo Mensual</Typography>
+                        <Typography variant="caption" color="text.secondary">{formatCurrency(e.regular_amount as number)}</Typography>
+                      </>
+                    ) : (
+                      <>
+                        <Typography variant="body2">{e.total_regular_hours as number}h</Typography>
+                        <Typography variant="caption" color="text.secondary">{formatCurrency(e.regular_amount as number)}</Typography>
+                      </>
+                    )}
                   </TableCell>
                   <TableCell align="right">
                     <Typography variant="body2">{Number(e.total_overtime_50_hours) + Number(e.total_overtime_100_hours)}h</Typography>
