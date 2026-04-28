@@ -8,6 +8,7 @@ import {
   FormHelperText
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import CurrencyInput from '../../../components/CurrencyInput';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
   Refresh as RefreshIcon, Search as SearchIcon, Visibility as VisibilityIcon,
@@ -366,11 +367,9 @@ export default function EmployeesPage() {
               <option value="monthly">Mensualizado (sueldo fijo)</option>
             </TextField>
             {form.pay_type === 'monthly' ? (
-              <TextField label="Sueldo Mensual *" type="number" fullWidth value={form.monthly_salary || 0} onChange={(e) => setForm({ ...form, monthly_salary: Number(e.target.value) })}
-                InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
+              <CurrencyInput label="Sueldo Mensual *" fullWidth value={form.monthly_salary || 0} onChange={(value) => setForm({ ...form, monthly_salary: value ?? 0 })} />
             ) : (
-              <TextField label="Valor Hora *" type="number" fullWidth value={form.hourly_rate} onChange={(e) => setForm({ ...form, hourly_rate: Number(e.target.value) })}
-                InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
+              <CurrencyInput label="Valor Hora *" fullWidth value={form.hourly_rate} onChange={(value) => setForm({ ...form, hourly_rate: value ?? 0 })} />
             )}
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
               <TextField label="Teléfono" fullWidth value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />

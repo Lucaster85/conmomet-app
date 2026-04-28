@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, TextField, Stack, InputAdornment, Chip
+  DialogActions, CircularProgress, TextField, Stack, Chip
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import CurrencyInput from '../../../components/CurrencyInput';
 import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService } from '../../../utils/api';
 
@@ -17,7 +18,7 @@ export default function SalaryAdvancesPage() {
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
 
-  const [form, setForm] = useState({ employee_id: '', amount: '', date: new Date().toISOString().split('T')[0], notes: '' });
+  const [form, setForm] = useState<{ employee_id: string; amount: number | null; date: string; notes: string }>({ employee_id: '', amount: null, date: new Date().toISOString().split('T')[0], notes: '' });
 
   const loadData = async () => {
     try {
@@ -42,7 +43,7 @@ export default function SalaryAdvancesPage() {
     try {
       await SalaryAdvanceService.create({
         employee_id: Number(form.employee_id),
-        amount: Number(form.amount),
+        amount: form.amount!,
         date: form.date,
         notes: form.notes
       });
@@ -126,7 +127,7 @@ export default function SalaryAdvancesPage() {
               {employees.map(e => <option key={e.id} value={e.id}>{e.lastname}, {e.name}</option>)}
             </TextField>
             <TextField label="Fecha *" type="date" fullWidth value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} InputLabelProps={{ shrink: true }} />
-            <TextField label="Monto *" type="number" fullWidth value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
+            <CurrencyInput label="Monto *" fullWidth value={form.amount} onChange={(value) => setForm({ ...form, amount: value })} />
             <TextField label="Notas" fullWidth multiline rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </Stack>
         </DialogContent>

@@ -6,6 +6,7 @@ import {
   DialogActions, CircularProgress, TextField, Stack, Chip, Tooltip,
 } from '@mui/material';
 import FeedbackModal from '../../../../../components/FeedbackModal';
+import CurrencyInput from '../../../../../components/CurrencyInput';
 import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon, Payment as PaymentIcon } from '@mui/icons-material';
 import { PayrollEntry, PayrollService, PayPeriod } from '../../../../../utils/api';
 import { TokenManager } from '../../../../../utils/auth';
@@ -244,11 +245,11 @@ export default function PayrollPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Box display="flex" gap={2}>
-              <TextField label="Pagos Extra ($)" type="number" fullWidth value={form.extra_payments} onChange={(e) => setForm({ ...form, extra_payments: Number(e.target.value) })} />
+              <CurrencyInput label="Pagos Extra" fullWidth value={form.extra_payments} onChange={(value) => setForm({ ...form, extra_payments: value ?? 0 })} />
               <TextField label="Motivo (Pagos Extra)" fullWidth value={form.extra_payments_notes} onChange={(e) => setForm({ ...form, extra_payments_notes: e.target.value })} />
             </Box>
             <Box display="flex" gap={2}>
-              <TextField label="Deducciones ($)" type="number" fullWidth value={form.deductions} onChange={(e) => setForm({ ...form, deductions: Number(e.target.value) })} />
+              <CurrencyInput label="Deducciones" fullWidth value={form.deductions} onChange={(value) => setForm({ ...form, deductions: value ?? 0 })} />
               <TextField label="Motivo (Deducciones)" fullWidth value={form.deductions_notes} onChange={(e) => setForm({ ...form, deductions_notes: e.target.value })} />
             </Box>
           </Stack>
