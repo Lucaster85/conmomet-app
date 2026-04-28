@@ -37,7 +37,7 @@ export default function EmployeesPage() {
 
   const emptyForm: CreateEmployeeData & { status?: string; pay_type?: string; monthly_salary?: number; vacation_days_override?: number | null } = {
     name: '', lastname: '', dni: '', cuil: '', address: '', phone: '', email: '',
-    position: '', hire_date: '', hourly_rate: 0, pay_type: 'hourly', monthly_salary: 0, notes: '',
+    position: '', hire_date: '', birth_date: '', hourly_rate: 0, pay_type: 'hourly', monthly_salary: 0, notes: '',
     shoe_size: '', shirt_size: '', pant_size: '', user_id: undefined, vacation_days_override: null,
   };
   const [form, setForm] = useState(emptyForm);
@@ -88,7 +88,7 @@ export default function EmployeesPage() {
     setForm({
       name: emp.name, lastname: emp.lastname, dni: emp.dni, cuil: emp.cuil,
       address: emp.address || '', phone: emp.phone || '', email: emp.email || '',
-      position: emp.position || '', hire_date: emp.hire_date, hourly_rate: emp.hourly_rate,
+      position: emp.position || '', hire_date: emp.hire_date, birth_date: emp.birth_date || '', hourly_rate: emp.hourly_rate,
       pay_type: emp.pay_type || 'hourly',
       monthly_salary: emp.monthly_salary || 0,
       notes: emp.notes || '', status: emp.status,
@@ -276,6 +276,77 @@ export default function EmployeesPage() {
         <DialogTitle>{editingEmployee ? 'Editar Empleado' : 'Nuevo Empleado'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
+            {!editingEmployee && availableUsers.length > 0 && (
+              <Box mb={1}>
+                <Typography variant="h6" gutterBottom color="primary.main" sx={{ fontSize: '1.05rem' }}>
+                  Vincular Usuario (Opcional)
+                </Typography>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  Seleccione un usuario existente para autocompletar los datos personales.
+                </Typography>
+                <FormControl fullWidth variant="outlined">
+                  <InputLabel id="user-link-label">Usuario Vinculado</InputLabel>
+                  <Select
+                    labelId="user-link-label"
+                    value={form.user_id || ''}
+                    onChange={(e) => handleUserLink(e.target.value as string | number)}
+                    label="Usuario Vinculado"
+                  >
+                    <MenuItem value="">
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <LinkOffIcon fontSize="small" color="disabled" />
+                        <em>Sin usuario vinculado</em>
+                      </Box>
+                    </MenuItem>
+                    {availableUsers.map((u) => (
+                      <MenuItem key={u.id} value={u.id}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <LinkIcon fontSize="small" color="primary" />
+                          {u.name} {u.lastname} ({u.email})
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    Vincular un usuario permite al empleado acceder al Portal de Autogestión.
+                  </FormHelperText>
+                </FormControl>
+                <Divider sx={{ mt: 3 }} />
+              </Box>
+            )}
+
+            {editingEmployee && form.user_id && (
+              <Box mb={1}>
+                <Typography variant="caption" color="text.secondary" gutterBottom sx={{ display: 'block' }}>
+                  Cuenta de Usuario Vinculada
+                </Typography>
+                <FormControl fullWidth size="small">
+                  <Select
+                    value={form.user_id || ''}
+                    onChange={(e) => handleUserLink(e.target.value as string | number)}
+                    displayEmpty
+                  >
+                    <MenuItem value="">
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <LinkOffIcon fontSize="small" color="disabled" />
+                        <em>Desvincular usuario</em>
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value={form.user_id}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <LinkIcon fontSize="small" color="primary" />
+                        <em>Usuario vinculado (ID: {form.user_id})</em>
+                      </Box>
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+                <Divider sx={{ mt: 3 }} />
+              </Box>
+            )}
+
+            <Typography variant="h6" gutterBottom color="primary.main" sx={{ fontSize: '1.05rem', mt: editingEmployee || availableUsers.length > 0 ? 0 : 2 }}>
+              Datos Personales
+            </Typography>
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
               <TextField label="Nombre *" fullWidth value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               <TextField label="Apellido *" fullWidth value={form.lastname} onChange={(e) => setForm({ ...form, lastname: e.target.value })} />
@@ -287,12 +358,13 @@ export default function EmployeesPage() {
             <TextField label="Puesto" fullWidth value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} placeholder="Ej: Soldador, Tornero" />
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
               <TextField label="Fecha Ingreso *" type="date" fullWidth value={form.hire_date} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} InputLabelProps={{ shrink: true }} />
-              <TextField label="Tipo de Pago" select fullWidth value={form.pay_type || 'hourly'} onChange={(e) => setForm({ ...form, pay_type: e.target.value })}
-                SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-                <option value="hourly">Jornalizado (por hora)</option>
-                <option value="monthly">Mensualizado (sueldo fijo)</option>
-              </TextField>
+              <TextField label="Fecha Nacimiento" type="date" fullWidth value={form.birth_date || ''} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} InputLabelProps={{ shrink: true }} />
             </Box>
+            <TextField label="Tipo de Pago" select fullWidth value={form.pay_type || 'hourly'} onChange={(e) => setForm({ ...form, pay_type: e.target.value })}
+              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
+              <option value="hourly">Jornalizado (por hora)</option>
+              <option value="monthly">Mensualizado (sueldo fijo)</option>
+            </TextField>
             {form.pay_type === 'monthly' ? (
               <TextField label="Sueldo Mensual *" type="number" fullWidth value={form.monthly_salary || 0} onChange={(e) => setForm({ ...form, monthly_salary: Number(e.target.value) })}
                 InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
@@ -324,37 +396,7 @@ export default function EmployeesPage() {
               <TextField label="Talle Remera" fullWidth value={form.shirt_size} onChange={(e) => setForm({ ...form, shirt_size: e.target.value })} placeholder="Ej: L, XL" />
               <TextField label="Talle Pantalón" fullWidth value={form.pant_size} onChange={(e) => setForm({ ...form, pant_size: e.target.value })} placeholder="Ej: 44, M" />
             </Box>
-            <Divider sx={{ my: 1 }}>
-              <Typography variant="caption" color="text.secondary">Cuenta de Usuario</Typography>
-            </Divider>
-            <FormControl fullWidth>
-              <InputLabel id="user-link-label" shrink>Usuario Vinculado</InputLabel>
-              <Select
-                labelId="user-link-label"
-                value={form.user_id || ''}
-                onChange={(e) => handleUserLink(e.target.value as string | number)}
-                displayEmpty
-                label="Usuario Vinculado"
-              >
-                <MenuItem value="">
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <LinkOffIcon fontSize="small" color="disabled" />
-                    <em>Sin usuario vinculado</em>
-                  </Box>
-                </MenuItem>
-                {availableUsers.map((u) => (
-                  <MenuItem key={u.id} value={u.id}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <LinkIcon fontSize="small" color="primary" />
-                      {u.name} {u.lastname} ({u.email})
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-              <FormHelperText>
-                Vincular un usuario permite al empleado acceder al Portal de Autogestión.
-              </FormHelperText>
-            </FormControl>
+            <Divider sx={{ my: 1 }} />
             {editingEmployee && (
               <TextField label="Estado" select fullWidth value={form.status || 'active'} onChange={(e) => setForm({ ...form, status: e.target.value })}
                 SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>

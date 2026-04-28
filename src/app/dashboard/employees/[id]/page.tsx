@@ -237,6 +237,8 @@ export default function EmployeeDetailPage() {
             <Typography><strong>Teléfono:</strong> {employee.phone || '—'}</Typography>
             <Typography><strong>Email:</strong> {employee.email || '—'}</Typography>
             <Typography><strong>Dirección:</strong> {employee.address || '—'}</Typography>
+            <Typography><strong>Fecha Ingreso:</strong> {employee.hire_date ? new Date(employee.hire_date).toLocaleDateString() : '—'}</Typography>
+            <Typography><strong>Fecha Nacimiento:</strong> {employee.birth_date ? new Date(employee.birth_date).toLocaleDateString() : '—'}</Typography>
             <Typography>
               <strong>Remuneración:</strong> {employee.pay_type === 'monthly' ? `$${employee.monthly_salary} (Mensual)` : `$${employee.hourly_rate} (Hora)`}
             </Typography>

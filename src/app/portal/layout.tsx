@@ -25,7 +25,8 @@ import {
   AccessTime as TimeIcon,
   Security as SecurityIcon,
   Payments as PaymentsIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  EventAvailable as EventAvailableIcon
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -73,6 +74,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     { label: 'Mi Legajo', path: '/portal', icon: <BadgeIcon /> },
     { label: 'Documentos', path: '/portal/documents', icon: <ArticleIcon /> },
     { label: 'Mis Horas', path: '/portal/time-entries', icon: <TimeIcon /> },
+    { label: 'Mi Asistencia', path: '/portal/attendance', icon: <EventAvailableIcon /> },
     { label: 'Mi EPP', path: '/portal/safety-equipment', icon: <SecurityIcon /> },
     { label: 'Liquidaciones', path: '/portal/payroll', icon: <PaymentsIcon /> },
   ];

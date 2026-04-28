@@ -571,7 +571,7 @@ export interface Employee {
   dni: string;
   cuil: string;
   address?: string;
-  birthdate?: string;
+  birth_date?: string;
   phone?: string;
   email?: string;
   position?: string;
@@ -597,6 +597,7 @@ export interface CreateEmployeeData {
   dni: string;
   cuil: string;
   address?: string;
+  birth_date?: string;
   phone?: string;
   email?: string;
   position?: string;
@@ -1357,5 +1358,17 @@ export class SelfService {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/payroll`);
     if (!response.ok) throw new Error('Error al obtener mis liquidaciones');
     return (await response.json()).data || [];
+  }
+
+  static async getMyLeaveRequests(): Promise<LeaveRequest[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/leave-requests`);
+    if (!response.ok) throw new Error('Error al obtener mis solicitudes');
+    return (await response.json()).data || [];
+  }
+
+  static async getMyVacationBalance(): Promise<LeaveBalance> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/vacation-balance`);
+    if (!response.ok) throw new Error('Error al obtener mi saldo de vacaciones');
+    return (await response.json()).data;
   }
 }

@@ -96,7 +96,7 @@ export default function PortalDashboard() {
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary">Fecha de Nacimiento</Typography>
-                  <Typography variant="body1">{dayjs(employee.birthdate).format('DD/MM/YYYY')}</Typography>
+                  <Typography variant="body1">{employee.birth_date ? dayjs(employee.birth_date).format('DD/MM/YYYY') : '-'}</Typography>
                 </Grid>
                 <Grid size={{ xs: 12 }}>
                   <Typography variant="caption" color="text.secondary">Dirección</Typography>
