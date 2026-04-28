@@ -45,9 +45,9 @@ export default function DashboardPage() {
   const [file, setFile] = useState<File | null>(null);
 
   const getUserWelcomeMessage = () => {
-    if (user?.fullName) return `Bienvenido de vuelta, ${user.fullName}`;
-    if (user?.name) return `Bienvenido de vuelta, ${user.name}`;
-    return 'Bienvenido de vuelta';
+    if (user?.fullName) return `Bienvenido, ${user.fullName}`;
+    if (user?.name) return `Bienvenido, ${user.name}`;
+    return 'Bienvenido';
   };
 
   const fetchExpirations = async () => {

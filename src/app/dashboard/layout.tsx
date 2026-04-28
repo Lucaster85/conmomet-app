@@ -29,7 +29,6 @@ import {
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   AccountCircle,
-  Notifications,
   Business,
   Article as ArticleIcon,
   AdminPanelSettings as RolesIcon,
@@ -257,13 +256,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </IconButton>
             
             <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-              Dashboard
+              
             </Typography>
-
-            {/* Notificaciones */}
-            <IconButton color="inherit" sx={{ mr: 1 }}>
-              <Notifications />
-            </IconButton>
 
             {/* Usuario logueado */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
