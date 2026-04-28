@@ -125,6 +125,17 @@ export default function TimeEntriesPage() {
 
       setOpenCreateDialog(false);
       setSelectedEmployees([]);
+      setInPlant(false);
+      setSelectedPlantId('');
+      setForm({
+        date: new Date().toISOString().split('T')[0],
+        check_in: '08:00',
+        check_out: '17:00',
+        overtime_50_hours: 0,
+        overtime_100_hours: 0,
+        is_late: false,
+        notes: '',
+      });
       loadEntries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear');
