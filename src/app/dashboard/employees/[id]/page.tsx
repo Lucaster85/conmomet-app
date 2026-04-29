@@ -7,7 +7,8 @@ import {
   Button, IconButton, Chip, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Tooltip, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Switch, FormControlLabel
+  Switch, FormControlLabel, Card, CardContent, Divider, Grid,
+  LinearProgress, Alert
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -20,8 +21,24 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import PaymentIcon from '@mui/icons-material/Payment';
 import HistoryIcon from '@mui/icons-material/History';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import BadgeIcon from '@mui/icons-material/Badge';
+import WorkIcon from '@mui/icons-material/Work';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import CheckroomIcon from '@mui/icons-material/Checkroom';
+import PersonIcon from '@mui/icons-material/Person';
+import BeachAccessIcon from '@mui/icons-material/BeachAccess';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
+import EventBusyIcon from '@mui/icons-material/EventBusy';
+import SearchIcon from '@mui/icons-material/Search';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
+import dayjs from 'dayjs';
 
-import { EmployeeService, Employee, EntityDocumentService, EntityDocument } from '@/utils/api';
+import {
+  EmployeeService, Employee, EntityDocumentService, EntityDocument,
+  AttendanceService, Attendance, LeaveRequestService, LeaveRequest, LeaveBalance
+} from '@/utils/api';
 import FeedbackModal from '@/components/FeedbackModal';
 
 const STATUS_CONFIG = {
@@ -63,6 +80,18 @@ export default function EmployeeDetailPage() {
   // History State
   const [historyDocs, setHistoryDocs] = useState<EntityDocument[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Attendance tab state
+  const [attendances, setAttendances] = useState<Attendance[]>([]);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const [attDateFrom, setAttDateFrom] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
+  const [attDateTo, setAttDateTo] = useState(dayjs().format('YYYY-MM-DD'));
+
+  // Leave tab state
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null);
+  const [loadingLeave, setLoadingLeave] = useState(false);
+  const [leaveLoaded, setLeaveLoaded] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -205,6 +234,64 @@ export default function EmployeeDetailPage() {
 
   const filteredDocuments = documents.filter(doc => showResolved ? true : doc.alert_status !== 'resolved');
 
+  const loadAttendance = async (from: string, to: string) => {
+    try {
+      setLoadingAttendance(true);
+      const data = await AttendanceService.getAll({ employee_id: employeeId, date_from: from, date_to: to });
+      setAttendances(Array.isArray(data) ? data : []);
+    } catch (err: unknown) {
+      const e = err as Error;
+      setError(e.message || 'Error al cargar presentismo');
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
+
+  const loadLeave = async () => {
+    try {
+      setLoadingLeave(true);
+      const [balance, requests] = await Promise.all([
+        LeaveRequestService.getBalance(employeeId),
+        LeaveRequestService.getAll({ employee_id: employeeId }),
+      ]);
+      setLeaveBalance(balance);
+      setLeaveRequests(Array.isArray(requests) ? requests : []);
+      setLeaveLoaded(true);
+    } catch (err: unknown) {
+      const e = err as Error;
+      setError(e.message || 'Error al cargar licencias');
+    } finally {
+      setLoadingLeave(false);
+    }
+  };
+
+  const handleApproveLeave = async (id: number) => {
+    try {
+      await LeaveRequestService.approve(id);
+      setSuccess('Solicitud aprobada');
+      loadLeave();
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Error al aprobar');
+    }
+  };
+
+  const handleRejectLeave = async (id: number) => {
+    try {
+      await LeaveRequestService.reject(id);
+      setSuccess('Solicitud rechazada');
+      loadLeave();
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Error al rechazar');
+    }
+  };
+
+  // Lazy load per tab
+  useEffect(() => {
+    if (tabValue === 2) loadAttendance(attDateFrom, attDateTo);
+    if (tabValue === 3 && !leaveLoaded) loadLeave();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabValue]);
+
   if (loading) return <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>;
   if (!employee) return <Typography color="error">Empleado no encontrado.</Typography>;
 
@@ -224,26 +311,191 @@ export default function EmployeeDetailPage() {
         <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)} variant="scrollable" scrollButtons="auto">
           <Tab label="Información General" />
           <Tab label="Documentos y Vencimientos" />
+          <Tab label="Presentismo" />
+          <Tab label="Vacaciones y Licencias" />
         </Tabs>
       </Paper>
 
       {tabValue === 0 && (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>Datos del Empleado</Typography>
-          <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }} gap={2}>
-            <Typography><strong>DNI:</strong> {employee.dni}</Typography>
-            <Typography><strong>CUIL:</strong> {employee.cuil}</Typography>
-            <Typography><strong>Puesto:</strong> {employee.position || '—'}</Typography>
-            <Typography><strong>Teléfono:</strong> {employee.phone || '—'}</Typography>
-            <Typography><strong>Email:</strong> {employee.email || '—'}</Typography>
-            <Typography><strong>Dirección:</strong> {employee.address || '—'}</Typography>
-            <Typography><strong>Fecha Ingreso:</strong> {employee.hire_date ? new Date(employee.hire_date).toLocaleDateString() : '—'}</Typography>
-            <Typography><strong>Fecha Nacimiento:</strong> {employee.birth_date ? new Date(employee.birth_date).toLocaleDateString() : '—'}</Typography>
-            <Typography>
-              <strong>Remuneración:</strong> {employee.pay_type === 'monthly' ? `$${employee.monthly_salary} (Mensual)` : `$${employee.hourly_rate} (Hora)`}
-            </Typography>
-          </Box>
-        </Paper>
+        <Box>
+          <Grid container spacing={3}>
+            {/* Datos Personales */}
+            <Grid size={{ xs: 12, md: 8 }}>
+              <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)' }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Box display="flex" alignItems="center" gap={1} mb={2}>
+                    <BadgeIcon color="primary" />
+                    <Typography variant="h6" fontWeight={600}>Datos Personales</Typography>
+                  </Box>
+                  <Divider sx={{ mb: 3 }} />
+                  <Grid container spacing={2.5}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography variant="caption" color="text.secondary">Nombre y Apellido</Typography>
+                      <Typography variant="body1" fontWeight={500}>{employee.name} {employee.lastname}</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography variant="caption" color="text.secondary">DNI</Typography>
+                      <Typography variant="body1">{employee.dni}</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography variant="caption" color="text.secondary">CUIL</Typography>
+                      <Typography variant="body1">{employee.cuil}</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography variant="caption" color="text.secondary">Fecha de Nacimiento</Typography>
+                      <Typography variant="body1">{employee.birth_date ? dayjs(employee.birth_date).format('DD/MM/YYYY') : '—'}</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography variant="caption" color="text.secondary">Teléfono</Typography>
+                      <Typography variant="body1">{employee.phone || '—'}</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography variant="caption" color="text.secondary">Email</Typography>
+                      <Typography variant="body1">{employee.email || '—'}</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography variant="caption" color="text.secondary">Dirección</Typography>
+                      <Typography variant="body1">{employee.address || '—'}</Typography>
+                    </Grid>
+                  </Grid>
+
+                  <Box mt={4} mb={2} display="flex" alignItems="center" gap={1}>
+                    <WorkIcon color="primary" />
+                    <Typography variant="h6" fontWeight={600}>Datos Laborales</Typography>
+                  </Box>
+                  <Divider sx={{ mb: 3 }} />
+                  <Grid container spacing={2.5}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography variant="caption" color="text.secondary">Puesto / Cargo</Typography>
+                      <Typography variant="body1" fontWeight={500}>{employee.position || '—'}</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography variant="caption" color="text.secondary">Estado</Typography>
+                      <Box mt={0.5}>
+                        <Chip
+                          label={employee.status === 'active' ? 'Activo' : employee.status === 'vacation' ? 'Vacaciones' : employee.status === 'medical_leave' ? 'Licencia Médica' : 'Inactivo'}
+                          color={employee.status === 'active' ? 'success' : employee.status === 'vacation' ? 'info' : employee.status === 'medical_leave' ? 'warning' : 'default'}
+                          size="small"
+                        />
+                      </Box>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography variant="caption" color="text.secondary">Fecha de Ingreso</Typography>
+                      <Typography variant="body1">{employee.hire_date ? dayjs(employee.hire_date).format('DD/MM/YYYY') : '—'}</Typography>
+                    </Grid>
+                    {employee.termination_date && (
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Typography variant="caption" color="text.secondary">Fecha de Baja</Typography>
+                        <Typography variant="body1" color="error">{dayjs(employee.termination_date).format('DD/MM/YYYY')}</Typography>
+                      </Grid>
+                    )}
+                    {employee.vacation_days_override != null && (
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Typography variant="caption" color="text.secondary">Días de Vacaciones (override)</Typography>
+                        <Typography variant="body1">{employee.vacation_days_override} días</Typography>
+                      </Grid>
+                    )}
+                  </Grid>
+
+                  <Box mt={4} mb={2} display="flex" alignItems="center" gap={1}>
+                    <AttachMoneyIcon color="primary" />
+                    <Typography variant="h6" fontWeight={600}>Remuneración</Typography>
+                  </Box>
+                  <Divider sx={{ mb: 3 }} />
+                  <Grid container spacing={2.5}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography variant="caption" color="text.secondary">Tipo de Pago</Typography>
+                      <Typography variant="body1" fontWeight={500}>{employee.pay_type === 'monthly' ? 'Mensual' : 'Por Hora'}</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        {employee.pay_type === 'monthly' ? 'Sueldo Mensual' : 'Valor Hora'}
+                      </Typography>
+                      <Typography variant="body1" fontWeight={600} color="primary">
+                        {employee.pay_type === 'monthly'
+                          ? `$${Number(employee.monthly_salary || 0).toLocaleString('es-AR')}`
+                          : `$${Number(employee.hourly_rate).toLocaleString('es-AR')}/h`}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Columna derecha */}
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Stack spacing={3}>
+                {/* Talles */}
+                <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)' }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Box display="flex" alignItems="center" gap={1} mb={2}>
+                      <CheckroomIcon color="primary" />
+                      <Typography variant="h6" fontWeight={600}>Talles (EPP)</Typography>
+                    </Box>
+                    <Divider sx={{ mb: 2.5 }} />
+                    <Stack spacing={1.5}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Calzado</Typography>
+                        <Typography variant="body1" fontWeight={500}>{employee.shoe_size || 'No registrado'}</Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Remera / Camisa</Typography>
+                        <Typography variant="body1" fontWeight={500}>{employee.shirt_size || 'No registrado'}</Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Pantalón</Typography>
+                        <Typography variant="body1" fontWeight={500}>{employee.pant_size || 'No registrado'}</Typography>
+                      </Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+
+                {/* Usuario vinculado */}
+                <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)' }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Box display="flex" alignItems="center" gap={1} mb={2}>
+                      <PersonIcon color="primary" />
+                      <Typography variant="h6" fontWeight={600}>Acceso al Portal</Typography>
+                    </Box>
+                    <Divider sx={{ mb: 2.5 }} />
+                    {employee.user ? (
+                      <Stack spacing={1}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Usuario</Typography>
+                          <Typography variant="body1" fontWeight={500}>{employee.user.name} {employee.user.lastname}</Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Email</Typography>
+                          <Typography variant="body2">{employee.user.email}</Typography>
+                        </Box>
+                        <Box mt={0.5}>
+                          <Chip label="Con acceso" color="success" size="small" />
+                        </Box>
+                      </Stack>
+                    ) : (
+                      <Box>
+                        <Chip label="Sin acceso al portal" color="default" size="small" />
+                        <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+                          El empleado no tiene usuario vinculado.
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Notas */}
+                {employee.notes && (
+                  <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)', border: '1px solid', borderColor: 'warning.light' }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="subtitle2" fontWeight={600} color="warning.dark" gutterBottom>Notas internas</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>{employee.notes}</Typography>
+                    </CardContent>
+                  </Card>
+                )}
+              </Stack>
+            </Grid>
+          </Grid>
+        </Box>
       )}
 
       {tabValue === 1 && (
@@ -365,6 +617,237 @@ export default function EmployeeDetailPage() {
             </Table>
           </TableContainer>
         </Paper>
+      )}
+
+      {/* Tab 2 — Presentismo */}
+      {tabValue === 2 && (
+        <Box>
+          <Card sx={{ mb: 3, borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)' }}>
+            <CardContent sx={{ p: 2 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+                <TextField
+                  label="Desde"
+                  type="date"
+                  size="small"
+                  value={attDateFrom}
+                  onChange={(e) => setAttDateFrom(e.target.value)}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  fullWidth
+                />
+                <TextField
+                  label="Hasta"
+                  type="date"
+                  size="small"
+                  value={attDateTo}
+                  onChange={(e) => setAttDateTo(e.target.value)}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  fullWidth
+                />
+                <Button
+                  variant="contained"
+                  startIcon={<SearchIcon />}
+                  onClick={() => loadAttendance(attDateFrom, attDateTo)}
+                  sx={{ whiteSpace: 'nowrap', minWidth: 120 }}
+                >
+                  Buscar
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Registro de Ausencias
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+
+              {loadingAttendance ? (
+                <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+              ) : attendances.length === 0 ? (
+                <Alert severity="success">No hay ausencias registradas en el período seleccionado.</Alert>
+              ) : (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell><strong>Fecha</strong></TableCell>
+                        <TableCell><strong>Tipo</strong></TableCell>
+                        <TableCell><strong>Notas</strong></TableCell>
+                        <TableCell align="center"><strong>Comprobante</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {attendances.map((att) => {
+                        const attChipProps: Record<string, { label: string; color: 'primary' | 'error' | 'warning' | 'info'; icon: React.ReactElement }> = {
+                          vacation:      { label: 'Vacaciones',    color: 'primary', icon: <BeachAccessIcon /> },
+                          medical_leave: { label: 'Lic. Médica',   color: 'error',   icon: <LocalHospitalIcon /> },
+                          justified:     { label: 'Justificada',   color: 'warning', icon: <FactCheckIcon /> },
+                          absent:        { label: 'Ausente',       color: 'error',   icon: <EventBusyIcon /> },
+                        };
+                        const cfg = attChipProps[att.status] ?? { label: att.status, color: 'default' as const, icon: <EventBusyIcon /> };
+                        return (
+                          <TableRow key={att.id}>
+                            <TableCell>{dayjs(att.date).format('DD/MM/YYYY')}</TableCell>
+                            <TableCell>
+                              <Chip size="small" icon={cfg.icon} label={cfg.label} color={cfg.color} variant="outlined" />
+                            </TableCell>
+                            <TableCell sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>{att.notes || '—'}</TableCell>
+                            <TableCell align="center">
+                              {att.document_url ? (
+                                <Tooltip title="Ver comprobante">
+                                  <IconButton size="small" color="info" onClick={() => window.open(att.document_url, '_blank')}>
+                                    <VisibilityIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : '—'}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
+      )}
+
+      {/* Tab 3 — Vacaciones y Licencias */}
+      {tabValue === 3 && (
+        <Box>
+          {loadingLeave ? (
+            <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
+          ) : (
+            <Grid container spacing={3}>
+              {/* Balance de vacaciones */}
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)', height: '100%' }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Box display="flex" alignItems="center" gap={1} mb={2}>
+                      <BeachAccessIcon color="primary" />
+                      <Typography variant="h6" fontWeight={600}>
+                        Saldo de Vacaciones {new Date().getFullYear()}
+                      </Typography>
+                    </Box>
+                    <Divider sx={{ mb: 3 }} />
+                    {leaveBalance ? (
+                      <Box>
+                        <Box display="flex" justifyContent="space-between" mb={1}>
+                          <Typography variant="body2" color="text.secondary">Días correspondientes:</Typography>
+                          <Typography variant="body2" fontWeight={600}>{leaveBalance.corresponding_days}</Typography>
+                        </Box>
+                        <Box display="flex" justifyContent="space-between" mb={1}>
+                          <Typography variant="body2" color="text.secondary">Días usados:</Typography>
+                          <Typography variant="body2" fontWeight={600}>{leaveBalance.used_days}</Typography>
+                        </Box>
+                        <Divider sx={{ my: 2 }} />
+                        <Box display="flex" justifyContent="space-between" mb={1.5}>
+                          <Typography variant="body1" fontWeight={700} color="primary">Días disponibles:</Typography>
+                          <Typography variant="body1" fontWeight={700} color="primary">{leaveBalance.balance}</Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={leaveBalance.corresponding_days > 0 ? Math.min((leaveBalance.used_days / leaveBalance.corresponding_days) * 100, 100) : 0}
+                          sx={{ height: 10, borderRadius: 5, bgcolor: 'rgba(0,0,0,0.06)' }}
+                          color={leaveBalance.balance === 0 ? 'error' : 'primary'}
+                        />
+                        <Typography variant="caption" color="text.secondary" display="block" mt={1.5}>
+                          * Calculado según antigüedad (Art. 150 LCT).
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">Sin información de balance.</Typography>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Tabla de solicitudes */}
+              <Grid size={{ xs: 12, md: 8 }}>
+                <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)' }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" fontWeight={600} mb={2}>Solicitudes de Licencia</Typography>
+                    <Divider sx={{ mb: 2 }} />
+                    {leaveRequests.length === 0 ? (
+                      <Alert severity="info">No hay solicitudes registradas.</Alert>
+                    ) : (
+                      <TableContainer>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow sx={{ bgcolor: 'grey.50' }}>
+                              <TableCell><strong>Tipo</strong></TableCell>
+                              <TableCell><strong>Desde</strong></TableCell>
+                              <TableCell><strong>Hasta</strong></TableCell>
+                              <TableCell align="center"><strong>Días</strong></TableCell>
+                              <TableCell><strong>Estado</strong></TableCell>
+                              <TableCell align="center"><strong>Acciones</strong></TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {leaveRequests.map((req) => {
+                              const typeChips: Record<string, { label: string; color: 'primary' | 'error' | 'warning' | 'default'; icon: React.ReactElement }> = {
+                                vacation:      { label: 'Vacaciones',  color: 'primary', icon: <BeachAccessIcon /> },
+                                medical_leave: { label: 'Lic. Médica', color: 'error',   icon: <LocalHospitalIcon /> },
+                                justified:     { label: 'Justificada', color: 'warning', icon: <FactCheckIcon /> },
+                                other:         { label: 'Otro',        color: 'default', icon: <EventBusyIcon /> },
+                              };
+                              const typeCfg = typeChips[req.leave_type] ?? typeChips.other;
+                              const statusChips: Record<string, { label: string; color: 'success' | 'warning' | 'error' | 'default' }> = {
+                                approved:  { label: 'Aprobada',  color: 'success' },
+                                pending:   { label: 'Pendiente', color: 'warning' },
+                                rejected:  { label: 'Rechazada', color: 'error' },
+                                cancelled: { label: 'Cancelada', color: 'default' },
+                              };
+                              const statusCfg = statusChips[req.status] ?? { label: req.status, color: 'default' as const };
+                              return (
+                                <TableRow key={req.id}>
+                                  <TableCell>
+                                    <Chip size="small" icon={typeCfg.icon} label={typeCfg.label} color={typeCfg.color} variant="outlined" />
+                                  </TableCell>
+                                  <TableCell>{dayjs(req.start_date).format('DD/MM/YYYY')}</TableCell>
+                                  <TableCell>{dayjs(req.end_date).format('DD/MM/YYYY')}</TableCell>
+                                  <TableCell align="center"><strong>{req.total_days}</strong></TableCell>
+                                  <TableCell>
+                                    <Chip size="small" label={statusCfg.label} color={statusCfg.color} />
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    {req.status === 'pending' && (
+                                      <>
+                                        <Tooltip title="Aprobar">
+                                          <IconButton size="small" color="success" onClick={() => handleApproveLeave(req.id)}>
+                                            <ThumbUpIcon fontSize="small" />
+                                          </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Rechazar">
+                                          <IconButton size="small" color="error" onClick={() => handleRejectLeave(req.id)}>
+                                            <ThumbDownIcon fontSize="small" />
+                                          </IconButton>
+                                        </Tooltip>
+                                      </>
+                                    )}
+                                    {req.document_url && (
+                                      <Tooltip title="Ver comprobante">
+                                        <IconButton size="small" color="info" onClick={() => window.open(req.document_url, '_blank')}>
+                                          <VisibilityIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          )}
+        </Box>
       )}
 
       {/* Upload/Edit Dialog */}
