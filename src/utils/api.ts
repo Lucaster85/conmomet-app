@@ -1199,6 +1199,7 @@ export interface EntityDocument {
   notes?: string;
   entity_type: 'employee' | 'vehicle' | 'project' | 'company';
   entity_id?: number;
+  entity_name?: string;
   file_url?: string;
   file_name?: string;
   expiration_date?: string;

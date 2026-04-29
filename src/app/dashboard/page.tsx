@@ -8,12 +8,10 @@ import {
   Paper,
   Stack,
   CircularProgress,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Chip,
-  Button
+  Button,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import {
   Warning as WarningIcon,
@@ -150,98 +148,131 @@ export default function DashboardPage() {
               <Typography color="text.secondary">¡Todo al día! No hay documentos por vencer.</Typography>
             </Box>
           ) : (
-            <List sx={{ width: '100%', bgcolor: 'background.paper', p: 0 }}>
+            <Stack spacing={1.5}>
               {expiringDocs.map((doc) => {
                 const isExpired = doc.computed_status === 'expired';
-                
-                let entityLabel = "Global";
-                if (doc.entity_type === 'employee') entityLabel = "Empleado";
-                if (doc.entity_type === 'vehicle') entityLabel = "Vehículo";
-                
+
+                const entityLabel = doc.entity_name || 'Global';
+                const entityTypeLabel: Record<string, string> = {
+                  employee: 'Empleado',
+                  vehicle: 'Vehículo',
+                  client: 'Cliente',
+                  provider: 'Proveedor',
+                  plant: 'Planta',
+                  company: 'Empresa',
+                };
+                const typeLabel = entityTypeLabel[doc.entity_type] ?? doc.entity_type;
+
                 return (
-                  <ListItem
+                  <Box
                     key={doc.id}
                     sx={{
-                      mb: 1,
                       border: 1,
                       borderColor: isExpired ? 'error.light' : 'warning.light',
-                      borderRadius: 1,
+                      borderRadius: 2,
                       bgcolor: isExpired ? 'error.50' : 'warning.50',
+                      p: 2,
                     }}
-                    secondaryAction={
-                      <Stack direction="row" spacing={1}>
-                        {doc.is_renewable ? (
-                          <Button 
-                            size="small" 
-                            variant="contained" 
-                            color="warning"
-                            startIcon={<RefreshIcon />}
-                            onClick={() => {
-                              setEditingDoc(doc);
-                              setForm({ expiration_date: '', notify_days_before: doc.notify_days_before || 15 });
-                              setFile(null);
-                              setRenewDialog(true);
-                            }}
-                          >
-                            Renovar
-                          </Button>
-                        ) : (
-                          <Button 
-                            size="small" 
-                            variant="contained" 
-                            color="success"
-                            startIcon={<PaymentIcon />}
-                            onClick={() => {
-                              setEditingDoc(doc);
-                              setFile(null);
-                              setResolveDialog(true);
-                            }}
-                          >
-                            Pagar
-                          </Button>
-                        )}
-                        <Button 
-                          size="small" 
-                          variant="outlined" 
-                          color="primary"
-                          startIcon={<VisibilityIcon />}
-                          onClick={() => {
-                            if (doc.entity_type === 'employee') {
-                              router.push(`/dashboard/employees/${doc.entity_id}`);
-                            }
-                          }}
-                        >
-                          Ver
-                        </Button>
-                      </Stack>
-                    }
                   >
-                    <ListItemIcon>
-                      {isExpired ? <ErrorIcon color="error" /> : <WarningIcon color="warning" />}
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Typography fontWeight="bold">{doc.title}</Typography>
-                          <Chip label={entityLabel} size="small" variant="outlined" />
+                    {/* Header row: icon + title + chip */}
+                    <Box display="flex" alignItems="flex-start" gap={1} mb={0.5}>
+                      {isExpired ? <ErrorIcon color="error" fontSize="small" sx={{ mt: 0.25, flexShrink: 0 }} /> : <WarningIcon color="warning" fontSize="small" sx={{ mt: 0.25, flexShrink: 0 }} />}
+                      <Box flex={1} minWidth={0}>
+                        <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                          <Typography fontWeight="bold" sx={{ wordBreak: 'break-word' }}>{doc.title}</Typography>
+                          <Chip
+                            label={doc.entity_id ? `${typeLabel}: ${entityLabel}` : typeLabel}
+                            size="small"
+                            variant="outlined"
+                          />
                         </Box>
-                      }
-                      secondary={
-                        <React.Fragment>
-                          <Typography variant="body2" component="span" display="block">
-                            {doc.notes || 'Sin notas'}
+                        {doc.notes && (
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                            {doc.notes}
                           </Typography>
-                          <Typography variant="caption" color={isExpired ? "error" : "warning.dark"} fontWeight="bold">
-                            {isExpired ? 'Venció el: ' : 'Vence el: '}
-                            {doc.expiration_date ? new Date(doc.expiration_date + 'T00:00:00').toLocaleDateString('es-AR') : ''}
-                          </Typography>
-                        </React.Fragment>
-                      }
-                    />
-                  </ListItem>
+                        )}
+                        <Typography variant="caption" color={isExpired ? 'error' : 'warning.dark'} fontWeight="bold" display="block" sx={{ mt: 0.5 }}>
+                          {isExpired ? 'Venció el: ' : 'Vence el: '}
+                          {doc.expiration_date ? new Date(doc.expiration_date + 'T00:00:00').toLocaleDateString('es-AR') : ''}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    {/* Action buttons — icon-only on mobile, full buttons on sm+ */}
+                    <Box sx={{ mt: 1.5, display: 'flex', gap: 1, justifyContent: { xs: 'flex-end', sm: 'flex-start' } }}>
+                      {/* Mobile: icon-only */}
+                      {doc.is_renewable ? (
+                        <Tooltip title="Renovar">
+                          <IconButton
+                            size="small"
+                            color="warning"
+                            sx={{ display: { xs: 'inline-flex', sm: 'none' }, bgcolor: 'warning.main', color: 'white', '&:hover': { bgcolor: 'warning.dark' } }}
+                            onClick={() => { setEditingDoc(doc); setForm({ expiration_date: '', notify_days_before: doc.notify_days_before || 15 }); setFile(null); setRenewDialog(true); }}
+                          >
+                            <RefreshIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title="Pagar / Resolver">
+                          <IconButton
+                            size="small"
+                            sx={{ display: { xs: 'inline-flex', sm: 'none' }, bgcolor: 'success.main', color: 'white', '&:hover': { bgcolor: 'success.dark' } }}
+                            onClick={() => { setEditingDoc(doc); setFile(null); setResolveDialog(true); }}
+                          >
+                            <PaymentIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      <Tooltip title="Ver detalle">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          sx={{ display: { xs: 'inline-flex', sm: 'none' }, border: 1, borderColor: 'primary.main' }}
+                          onClick={() => { if (doc.entity_type === 'employee') router.push(`/dashboard/employees/${doc.entity_id}`); }}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+
+                      {/* Desktop: full buttons */}
+                      {doc.is_renewable ? (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="warning"
+                          startIcon={<RefreshIcon />}
+                          sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                          onClick={() => { setEditingDoc(doc); setForm({ expiration_date: '', notify_days_before: doc.notify_days_before || 15 }); setFile(null); setRenewDialog(true); }}
+                        >
+                          Renovar
+                        </Button>
+                      ) : (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="success"
+                          startIcon={<PaymentIcon />}
+                          sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                          onClick={() => { setEditingDoc(doc); setFile(null); setResolveDialog(true); }}
+                        >
+                          Pagar / Resolver
+                        </Button>
+                      )}
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        startIcon={<VisibilityIcon />}
+                        sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                        onClick={() => { if (doc.entity_type === 'employee') router.push(`/dashboard/employees/${doc.entity_id}`); }}
+                      >
+                        Ver detalle
+                      </Button>
+                    </Box>
+                  </Box>
                 );
               })}
-            </List>
+            </Stack>
           )}
         </Paper>
 
