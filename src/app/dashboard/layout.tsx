@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   Box,
   Drawer,
@@ -167,10 +168,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const drawer = (
     <Box>
-      <Toolbar sx={{ bgcolor: 'primary.main', color: 'white' }}>
-        <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold' }}>
-          Conmomet
-        </Typography>
+      <Toolbar sx={{ bgcolor: 'white', borderBottom: '1px solid', borderColor: 'divider', minHeight: { xs: 56, sm: 64 }, justifyContent: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', py: 1 }}>
+          <Image
+            src="/img/logos/logo-conmomet-ROJO.png"
+            alt="Conmomet S.A."
+            width={192}
+            height={58}
+            style={{ objectFit: 'contain', width: 'auto', maxHeight: 58 }}
+            priority
+          />
+        </Box>
       </Toolbar>
       <Divider />
       <List sx={{ pt: 2 }}>

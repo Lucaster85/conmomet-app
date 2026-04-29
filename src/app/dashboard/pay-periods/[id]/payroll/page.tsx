@@ -7,7 +7,8 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../../../components/FeedbackModal';
 import CurrencyInput from '../../../../../components/CurrencyInput';
-import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon, Payment as PaymentIcon } from '@mui/icons-material';
+import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon, Payment as PaymentIcon, Visibility as ViewIcon, Print as PrintIcon } from '@mui/icons-material';
+import Divider from '@mui/material/Divider';
 import { PayrollEntry, PayrollService, PayPeriod } from '../../../../../utils/api';
 import { TokenManager } from '../../../../../utils/auth';
 import { useParams, useRouter } from 'next/navigation';
@@ -26,6 +27,10 @@ export default function PayrollPage() {
   const [openEdit, setOpenEdit] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PayrollEntry | null>(null);
   const [form, setForm] = useState({ extra_payments: 0, extra_payments_notes: '', deductions: 0, deductions_notes: '' });
+
+  const [openDetail, setOpenDetail] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [detailEntry, setDetailEntry] = useState<any>(null);
 
   const loadData = async () => {
     try {
@@ -90,6 +95,15 @@ export default function PayrollPage() {
   };
 
   const formatCurrency = (v: number) => `$${Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+
+  const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const formatPeriodLabel = (p: PayPeriod) => {
+    const half = p.type === 'first_half' ? '1ª Quincena' : '2ª Quincena';
+    const month = MONTHS[(p.month ?? 1) - 1];
+    return `${half} de ${month} ${p.year}`;
+  };
+
+  const handlePrint = () => window.print();
 
   if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
 
@@ -213,10 +227,19 @@ export default function PayrollPage() {
                     <Typography fontWeight="bold" color="success.dark">{formatCurrency(e.net_amount as number)}</Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <Chip label={e.status as string} size="small" color={e.status === 'paid' ? 'info' : e.status === 'confirmed' ? 'success' : 'warning'} />
+                    <Chip
+                      label={e.status === 'draft' ? 'Borrador' : e.status === 'confirmed' ? 'Confirmado' : 'Pagado'}
+                      size="small"
+                      color={e.status === 'paid' ? 'info' : e.status === 'confirmed' ? 'success' : 'warning'}
+                    />
                   </TableCell>
                   <TableCell align="center">
                     <Box display="flex" justifyContent="center">
+                      <Tooltip title="Ver detalle">
+                        <IconButton size="small" onClick={() => { setDetailEntry(e); setOpenDetail(true); }}>
+                          <ViewIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       {e.status === 'draft' && (
                         <>
                           <Tooltip title="Ajustes (Extras/Retenciones)"><IconButton size="small" color="primary" onClick={() => {
@@ -238,6 +261,166 @@ export default function PayrollPage() {
           </Table>
         </TableContainer>
       )}
+
+      {/* Detail Dialog */}
+      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="sm" fullWidth>
+        {detailEntry && (
+          <>
+            <DialogTitle className="no-print" sx={{ pb: 0 }}>
+              Detalle de Liquidación
+            </DialogTitle>
+            <DialogContent>
+              <Box className="print-area" sx={{ pt: 1 }}>
+                {/* Header */}
+                <Box mb={2}>
+                  <Typography variant="h6" fontWeight={700} sx={{ letterSpacing: '-0.02em' }}>
+                    {detailEntry.employee?.lastname}, {detailEntry.employee?.name}
+                  </Typography>
+                  <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                    <Typography variant="body2" color="text.secondary">DNI: {detailEntry.employee?.dni}</Typography>
+                    <Typography variant="body2" color="text.secondary">·</Typography>
+                    <Typography variant="body2" color="text.secondary">{detailEntry.employee?.position || 'Sin cargo'}</Typography>
+                    <Typography variant="body2" color="text.secondary">·</Typography>
+                    <Chip
+                      label={detailEntry.employee?.pay_type === 'monthly' ? 'Mensual' : 'Jornalizado'}
+                      size="small" variant="outlined"
+                      color={detailEntry.employee?.pay_type === 'monthly' ? 'primary' : 'default'}
+                      sx={{ fontSize: '0.7rem', height: 20 }}
+                    />
+                    <Chip
+                      label={detailEntry.status === 'paid' ? 'Pagado' : detailEntry.status === 'confirmed' ? 'Confirmado' : 'Borrador'}
+                      size="small"
+                      color={detailEntry.status === 'paid' ? 'info' : detailEntry.status === 'confirmed' ? 'success' : 'warning'}
+                      sx={{ fontSize: '0.7rem', height: 20 }}
+                    />
+                  </Box>
+                  {period && (
+                    <Box mt={0.5}>
+                      <Typography variant="body2" fontWeight={600} color="text.primary">
+                        {formatPeriodLabel(period)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {period.start_date.split('-').reverse().join('/')} — {period.end_date.split('-').reverse().join('/')}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+
+                <Divider sx={{ my: 1.5 }} />
+
+                {/* Asistencia y Horas */}
+                <Box display="flex" gap={3} mb={2} flexWrap="wrap">
+                  <Box flex={1} minWidth={140}>
+                    <Typography variant="overline" color="text.secondary" fontWeight={600}>Asistencia</Typography>
+                    {detailEntry.perfect_attendance ? (
+                      <Typography variant="body2" color="success.main" fontWeight={600}>✓ Presentismo perfecto</Typography>
+                    ) : (
+                      <Stack spacing={0.25} mt={0.5}>
+                        {Number(detailEntry.absent_unjustified) > 0 && <Typography variant="body2" color="error.main">• {detailEntry.absent_unjustified} falta(s) injustificada(s)</Typography>}
+                        {Number(detailEntry.absent_justified) > 0 && <Typography variant="body2" color="warning.main">• {detailEntry.absent_justified} falta(s) justificada(s)</Typography>}
+                        {Number(detailEntry.medical_leave_count) > 0 && <Typography variant="body2" color="info.main">• {detailEntry.medical_leave_count} día(s) lic. médica</Typography>}
+                        {Number(detailEntry.vacation_count) > 0 && <Typography variant="body2">• {detailEntry.vacation_count} día(s) vacaciones</Typography>}
+                      </Stack>
+                    )}
+                    {Number(detailEntry.late_count) > 0 && (
+                      <Typography variant="body2" color="warning.main">• {detailEntry.late_count} llegada(s) tarde</Typography>
+                    )}
+                  </Box>
+                  <Box flex={1} minWidth={140}>
+                    <Typography variant="overline" color="text.secondary" fontWeight={600}>Horas trabajadas</Typography>
+                    <Stack spacing={0.25} mt={0.5}>
+                      {detailEntry.employee?.pay_type !== 'monthly' && (
+                        <Typography variant="body2">Regulares: <strong>{detailEntry.total_regular_hours}h</strong></Typography>
+                      )}
+                      {Number(detailEntry.total_overtime_50_hours) > 0 && (
+                        <Typography variant="body2">Extras 50%: <strong>{detailEntry.total_overtime_50_hours}h</strong></Typography>
+                      )}
+                      {Number(detailEntry.total_overtime_100_hours) > 0 && (
+                        <Typography variant="body2">Extras 100%: <strong>{detailEntry.total_overtime_100_hours}h</strong></Typography>
+                      )}
+                      {detailEntry.employee?.pay_type === 'monthly' && Number(detailEntry.total_overtime_50_hours) === 0 && Number(detailEntry.total_overtime_100_hours) === 0 && (
+                        <Typography variant="body2" color="text.secondary">Sin horas extras</Typography>
+                      )}
+                    </Stack>
+                  </Box>
+                </Box>
+
+                <Divider sx={{ my: 1.5 }} />
+
+                {/* Desglose de haberes */}
+                <Typography variant="overline" color="text.secondary" fontWeight={600}>Desglose de haberes</Typography>
+                <Stack spacing={0.5} mt={1} mb={1}>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2">{detailEntry.employee?.pay_type === 'monthly' ? 'Sueldo mensual' : `Horas regulares (${detailEntry.total_regular_hours}h)`}</Typography>
+                    <Typography variant="body2">{formatCurrency(detailEntry.regular_amount)}</Typography>
+                  </Box>
+                  {Number(detailEntry.overtime_50_amount) > 0 && (
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2">Horas extra 50% ({detailEntry.total_overtime_50_hours}h)</Typography>
+                      <Typography variant="body2">{formatCurrency(detailEntry.overtime_50_amount)}</Typography>
+                    </Box>
+                  )}
+                  {Number(detailEntry.overtime_100_amount) > 0 && (
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2">Horas extra 100% ({detailEntry.total_overtime_100_hours}h)</Typography>
+                      <Typography variant="body2">{formatCurrency(detailEntry.overtime_100_amount)}</Typography>
+                    </Box>
+                  )}
+                  {Number(detailEntry.extra_payments) > 0 && (
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2" color="success.main">
+                        Pagos extra{detailEntry.extra_payments_notes ? ` (${detailEntry.extra_payments_notes})` : ''}
+                      </Typography>
+                      <Typography variant="body2" color="success.main">+{formatCurrency(detailEntry.extra_payments)}</Typography>
+                    </Box>
+                  )}
+                  <Divider />
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" fontWeight={600}>Sueldo bruto</Typography>
+                    <Typography variant="body2" fontWeight={600}>{formatCurrency(detailEntry.gross_amount)}</Typography>
+                  </Box>
+                </Stack>
+
+                <Divider sx={{ my: 1.5 }} />
+
+                {/* Deducciones */}
+                <Typography variant="overline" color="text.secondary" fontWeight={600}>Deducciones</Typography>
+                <Stack spacing={0.5} mt={1} mb={1}>
+                  {Number(detailEntry.advances_deducted) > 0 && (
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2" color="error.main">Adelantos</Typography>
+                      <Typography variant="body2" color="error.main">-{formatCurrency(detailEntry.advances_deducted)}</Typography>
+                    </Box>
+                  )}
+                  {Number(detailEntry.deductions) > 0 && (
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2" color="error.main">
+                        Retenciones{detailEntry.deductions_notes ? ` (${detailEntry.deductions_notes})` : ''}
+                      </Typography>
+                      <Typography variant="body2" color="error.main">-{formatCurrency(detailEntry.deductions)}</Typography>
+                    </Box>
+                  )}
+                  {Number(detailEntry.advances_deducted) === 0 && Number(detailEntry.deductions) === 0 && (
+                    <Typography variant="body2" color="text.secondary">Sin deducciones</Typography>
+                  )}
+                </Stack>
+
+                <Divider sx={{ my: 1.5 }} />
+
+                {/* Neto */}
+                <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ bgcolor: 'success.50', borderRadius: 1, px: 1.5, py: 1 }}>
+                  <Typography variant="subtitle1" fontWeight={700}>Neto a cobrar</Typography>
+                  <Typography variant="h6" fontWeight={700} color="success.dark">{formatCurrency(detailEntry.net_amount)}</Typography>
+                </Box>
+              </Box>
+            </DialogContent>
+            <DialogActions className="no-print">
+              <Button onClick={() => setOpenDetail(false)}>Cerrar</Button>
+              <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Imprimir</Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
 
       {/* Edit Adjustments Dialog */}
       <Dialog open={openEdit} onClose={() => setOpenEdit(false)} maxWidth="sm" fullWidth>

@@ -25,6 +25,7 @@ export default function PayPeriodsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; action: () => void } | null>(null);
   const router = useRouter();
 
   const currentDate = new Date();
@@ -63,26 +64,34 @@ export default function PayPeriodsPage() {
     }
   };
 
-  const handleClose = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de cerrar esta quincena? Ya no se podrán cargar más horas.')) return;
-    try {
-      await PayPeriodService.close(id);
-      setSuccess('Quincena cerrada');
-      loadPeriods();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cerrar');
-    }
+  const handleClose = (id: number) => {
+    setConfirmModal({
+      message: '¿Estás seguro de cerrar esta quincena? Ya no se podrán cargar más horas.',
+      action: async () => {
+        try {
+          await PayPeriodService.close(id);
+          setSuccess('Quincena cerrada');
+          loadPeriods();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Error al cerrar');
+        }
+      },
+    });
   };
 
-  const handlePay = async (id: number) => {
-    if (!window.confirm('¿Marcar como pagada? Las liquidaciones se marcarán como pagadas.')) return;
-    try {
-      await PayPeriodService.pay(id);
-      setSuccess('Quincena marcada como pagada');
-      loadPeriods();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al pagar');
-    }
+  const handlePay = (id: number) => {
+    setConfirmModal({
+      message: '¿Marcar como pagada? Las liquidaciones se marcarán como pagadas.',
+      action: async () => {
+        try {
+          await PayPeriodService.pay(id);
+          setSuccess('Quincena marcada como pagada');
+          loadPeriods();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Error al pagar');
+        }
+      },
+    });
   };
 
   const formatPeriod = (p: PayPeriod) => {
@@ -106,6 +115,15 @@ export default function PayPeriodsPage() {
 
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
+      <FeedbackModal
+        open={!!confirmModal}
+        onClose={() => setConfirmModal(null)}
+        message={confirmModal?.message || ''}
+        type="warning"
+        title="Confirmar acción"
+        onConfirm={confirmModal?.action}
+        confirmLabel="Confirmar"
+      />
 
       <Grid container spacing={3}>
         {periods.map((p) => (

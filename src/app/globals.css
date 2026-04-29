@@ -19,3 +19,37 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  /* Hide everything except the MUI portal that contains the print area */
+  body > *:not(:has(.print-area)) {
+    display: none !important;
+  }
+  /* Hide dialog chrome */
+  .MuiBackdrop-root,
+  .MuiDialogTitle-root,
+  .MuiDialogActions-root,
+  .no-print {
+    display: none !important;
+  }
+  /* Reset dialog positioning so it flows normally on the page */
+  .MuiModal-root,
+  .MuiDialog-root,
+  .MuiDialog-container {
+    position: static !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+  .MuiDialog-paper {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-height: none !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 16px !important;
+  }
+  .MuiDialogContent-root {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+}
