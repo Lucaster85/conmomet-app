@@ -8,6 +8,7 @@ import {
   FormHelperText
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import CurrencyInput from '../../../components/CurrencyInput';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
@@ -375,12 +376,12 @@ export default function EmployeesPage() {
               <TextField label="Teléfono" fullWidth value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               <TextField label="Email" fullWidth value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </Box>
-            <TextField label="Dirección" fullWidth value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            <AddressAutocomplete label="Dirección" fullWidth value={form.address ?? ''} onChange={(v) => setForm({ ...form, address: v })} />
             <Divider sx={{ my: 1 }}>
               <Typography variant="caption" color="text.secondary">Licencias y Vacaciones</Typography>
             </Divider>
             <TextField 
-              label="Días de vacaciones (override)" 
+              label="Días de vacaciones (sobre-escribir)" 
               type="number"
               fullWidth 
               value={form.vacation_days_override === null ? '' : form.vacation_days_override} 

@@ -20,6 +20,11 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Google Places autocomplete dropdown must appear above MUI Dialogs (z-index ~1300) */
+.pac-container {
+  z-index: 10000 !important;
+}
+
 @media print {
   /* Hide everything except the MUI portal that contains the print area */
   body > *:not(:has(.print-area)) {

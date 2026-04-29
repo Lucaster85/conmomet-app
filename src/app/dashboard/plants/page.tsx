@@ -7,6 +7,7 @@ import {
   FormControlLabel, Stack,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
   Refresh as RefreshIcon,
@@ -206,7 +207,7 @@ export default function PlantsPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField label="Nombre *" fullWidth value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <TextField label="Dirección" fullWidth value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            <AddressAutocomplete label="Dirección" fullWidth value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
             <TextField label="Cliente" select fullWidth value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })}
               SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
               <option value="">Sin cliente</option>
