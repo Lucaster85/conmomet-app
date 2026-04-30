@@ -130,6 +130,15 @@ export class TokenManager {
 
       if (isTokenError) {
         this.removeToken();
+        if (typeof window !== 'undefined') {
+          // Si estamos en la misma pestaña de login, no redirigir para evitar loop.
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login?session_expired=true';
+            // Devolvemos un dummy response para evitar que las Promesas en el UI rompan 
+            // intentando parsear JSON, mientras ocurre el reload completo.
+            return new Response(JSON.stringify({}), { status: 200 }); 
+          }
+        }
       }
 
       const message = body.error || 'Sin autorización';
