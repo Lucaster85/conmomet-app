@@ -39,6 +39,7 @@ import {
   EmployeeService, Employee, EntityDocumentService, EntityDocument,
   AttendanceService, Attendance, LeaveRequestService, LeaveRequest, LeaveBalance,
   EmployeeRateService, EmployeeRate, PayrollConceptService, PayrollConcept,
+  CategoryService, Category,
 } from '@/utils/api';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
@@ -115,8 +116,10 @@ export default function EmployeeDetailPage() {
     pay_type: 'hourly',
     hourly_rate: 0,
     monthly_salary: 0,
-    snr_amount: 0
+    snr_amount: 0,
+    category_id: null as number | null,
   });
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const loadData = useCallback(async () => {
     try {
@@ -912,19 +915,35 @@ export default function EmployeeDetailPage() {
                   <Grid size={{ xs: 12, md: 3 }}>
                     <Typography variant="caption" color="text.secondary">{employee?.pay_type === 'monthly' ? 'Sueldo Base' : 'Valor Hora Base'}</Typography>
                     <Typography variant="body1" fontWeight="bold">${Number(employee?.pay_type === 'monthly' ? employee?.monthly_salary : employee?.hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                    {/* Valor hora gremio (CCT) si corresponde */}
+                    {employee?.pay_type !== 'monthly' && employee?.category && employee.category.guild_hourly_rate && (
+                      <Box mt={1}>
+                        <Typography variant="caption" color="text.secondary">Valor hora gremio (CCT)</Typography>
+                        <Typography variant="body2" fontWeight={700} color="primary.main">
+                          ${Number(employee.category.guild_hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })} / hora
+                        </Typography>
+                      </Box>
+                    )}
                   </Grid>
                   <Grid size={{ xs: 12, md: 3 }}>
                     <Typography variant="caption" color="text.secondary">SNR (Global por quincena)</Typography>
                     <Typography variant="body1" fontWeight="bold">${Number(employee?.snr_amount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
                   </Grid>
                   <Grid size={{ xs: 12, md: 3 }} sx={{ textAlign: "right" }}>
-                    <Button variant="outlined" size="small" onClick={() => {
+                    <Button variant="outlined" size="small" onClick={async () => {
                       setBaseConfigForm({
                         pay_type: employee?.pay_type || 'hourly',
                         hourly_rate: Number(employee?.hourly_rate) || 0,
                         monthly_salary: Number(employee?.monthly_salary) || 0,
-                        snr_amount: Number(employee?.snr_amount) || 0
+                        snr_amount: Number(employee?.snr_amount) || 0,
+                        category_id: employee?.category_id || null,
                       });
+                      if (categories.length === 0) {
+                        try {
+                          const cats = await CategoryService.getAll();
+                          setCategories(cats);
+                        } catch { /* ignore */ }
+                      }
                       setBaseConfigDialogOpen(true);
                     }}>Editar Base</Button>
                   </Grid>
@@ -1107,10 +1126,38 @@ export default function EmployeeDetailPage() {
                 {baseConfigForm.pay_type === 'monthly' ? (
                   <CurrencyInput label="Sueldo Fijo Mensual" fullWidth value={baseConfigForm.monthly_salary} onChange={(v) => setBaseConfigForm({ ...baseConfigForm, monthly_salary: v ?? 0 })} />
                 ) : (
-                  <CurrencyInput label="Valor de Hora Base" fullWidth value={baseConfigForm.hourly_rate} onChange={(v) => setBaseConfigForm({ ...baseConfigForm, hourly_rate: v ?? 0 })} />
+                  <CurrencyInput label="Arreglo Particular (valor hora)" fullWidth value={baseConfigForm.hourly_rate} onChange={(v) => setBaseConfigForm({ ...baseConfigForm, hourly_rate: v ?? 0 })} helperText="Valor hora acordado con el empleado (puede diferir del gremio)" />
                 )}
 
                 <CurrencyInput label="Monto SNR (Global por quincena)" fullWidth value={baseConfigForm.snr_amount} onChange={(v) => setBaseConfigForm({ ...baseConfigForm, snr_amount: v ?? 0 })} />
+
+                {baseConfigForm.pay_type !== 'monthly' && (
+                  <Box>
+                    <TextField
+                      label="Categoría (CCT)"
+                      select
+                      fullWidth
+                      value={baseConfigForm.category_id ?? ''}
+                      onChange={(e) => setBaseConfigForm({ ...baseConfigForm, category_id: e.target.value ? Number(e.target.value) : null })}
+                      SelectProps={{ native: true }}
+                      InputLabelProps={{ shrink: true }}
+                      helperText="Categoría del convenio colectivo de trabajo"
+                    >
+                      <option value="">— Sin categoría —</option>
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </TextField>
+                    {baseConfigForm.category_id && categories.find(c => c.id === baseConfigForm.category_id) && (
+                      <Box mt={1} p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
+                        <Typography variant="caption" color="text.secondary">Valor hora gremio (CCT)</Typography>
+                        <Typography variant="body2" fontWeight={700} color="primary.main">
+                          ${Number(categories.find(c => c.id === baseConfigForm.category_id)!.guild_hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })} / hora
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                )}
               </Stack>
             </DialogContent>
             <DialogActions>
@@ -1122,6 +1169,7 @@ export default function EmployeeDetailPage() {
                     hourly_rate: baseConfigForm.pay_type === 'hourly' ? baseConfigForm.hourly_rate : 0,
                     monthly_salary: baseConfigForm.pay_type === 'monthly' ? baseConfigForm.monthly_salary : 0,
                     snr_amount: baseConfigForm.snr_amount,
+                    category_id: baseConfigForm.pay_type === 'hourly' ? baseConfigForm.category_id : null,
                   });
                   setSuccess('Configuración salarial base actualizada');
                   setBaseConfigDialogOpen(false);

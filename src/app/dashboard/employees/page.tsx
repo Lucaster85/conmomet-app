@@ -16,7 +16,7 @@ import {
   Link as LinkIcon, LinkOff as LinkOffIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-import { Employee, EmployeeService, CreateEmployeeData, User, UserService } from '../../../utils/api';
+import { Employee, EmployeeService, CreateEmployeeData, User, UserService, CategoryService, Category } from '../../../utils/api';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'success' | 'error' | 'warning' | 'info' }> = {
   active: { label: 'Activo', color: 'success' },
@@ -29,6 +29,7 @@ export default function EmployeesPage() {
   const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -40,7 +41,7 @@ export default function EmployeesPage() {
   const emptyForm: CreateEmployeeData & { status?: string; pay_type?: string; monthly_salary?: number; vacation_days_override?: number | null } = {
     name: '', lastname: '', dni: '', cuil: '', address: '', phone: '', email: '',
     position: '', hire_date: '', birth_date: '', hourly_rate: 0, pay_type: 'hourly', monthly_salary: 0, notes: '',
-    shoe_size: '', shirt_size: '', pant_size: '', user_id: undefined, vacation_days_override: null,
+    shoe_size: '', shirt_size: '', pant_size: '', user_id: undefined, vacation_days_override: null, category_id: null,
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -66,7 +67,16 @@ export default function EmployeesPage() {
     }
   };
 
-  useEffect(() => { loadEmployees(); loadUsers(); }, []);
+  const loadCategories = async () => {
+    try {
+      const data = await CategoryService.getAll();
+      setCategories(data);
+    } catch (err) {
+      console.error('Error loading categories:', err);
+    }
+  };
+
+  useEffect(() => { loadEmployees(); loadUsers(); loadCategories(); }, []);;
 
   // Usuarios que NO están vinculados a otro empleado (excepto el que estamos editando)
   const availableUsers = users.filter(u => {
@@ -97,6 +107,7 @@ export default function EmployeesPage() {
       shoe_size: emp.shoe_size || '', shirt_size: emp.shirt_size || '', pant_size: emp.pant_size || '',
       user_id: emp.user_id || undefined,
       vacation_days_override: emp.vacation_days_override,
+      category_id: emp.category_id || null,
     });
     setOpenDialog(true);
   };
@@ -370,7 +381,34 @@ export default function EmployeesPage() {
             {form.pay_type === 'monthly' ? (
               <CurrencyInput label="Sueldo Mensual *" fullWidth value={form.monthly_salary || 0} onChange={(value) => setForm({ ...form, monthly_salary: value ?? 0 })} />
             ) : (
-              <CurrencyInput label="Valor Hora *" fullWidth value={form.hourly_rate} onChange={(value) => setForm({ ...form, hourly_rate: value ?? 0 })} />
+              <>
+                <CurrencyInput label="Arreglo Particular (valor hora) *" fullWidth value={form.hourly_rate} onChange={(value) => setForm({ ...form, hourly_rate: value ?? 0 })} helperText="Valor hora acordado con el empleado" />
+                <Box>
+                  <TextField
+                    label="Categoría (CCT)"
+                    select
+                    fullWidth
+                    value={form.category_id ?? ''}
+                    onChange={(e) => setForm({ ...form, category_id: e.target.value ? Number(e.target.value) : null })}
+                    SelectProps={{ native: true }}
+                    InputLabelProps={{ shrink: true }}
+                    helperText="Categoría del convenio colectivo de trabajo"
+                  >
+                    <option value="">— Sin categoría —</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </TextField>
+                  {form.category_id && categories.find(c => c.id === form.category_id) && (
+                    <Box mt={1} p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
+                      <Typography variant="caption" color="text.secondary">Valor hora gremio (CCT)</Typography>
+                      <Typography variant="body2" fontWeight={700} color="primary.main">
+                        ${Number(categories.find(c => c.id === form.category_id)!.guild_hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })} / hora
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </>
             )}
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
               <TextField label="Teléfono" fullWidth value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />

@@ -94,6 +94,7 @@ const menuGroups = [
   {
     title: 'Configuración',
     items: [
+      { text: 'Categorías (CCT)', icon: <CategoryIcon />, path: '/dashboard/categories' },
       { text: 'Conceptos de Liquidación', icon: <CategoryIcon />, path: '/dashboard/payroll-concepts' },
       { text: 'Feriados', icon: <CalendarIcon />, path: '/dashboard/holidays' },
     ]

@@ -564,6 +564,14 @@ export interface Plant {
   createdAt: string;
 }
 
+export interface Category {
+  id: number;
+  name: string;
+  guild_hourly_rate: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Employee {
   id: number;
   name: string;
@@ -583,12 +591,14 @@ export interface Employee {
   monthly_salary?: number;
   snr_amount?: number;
   user_id?: number;
+  category_id?: number | null;
   notes?: string;
   shoe_size?: string;
   shirt_size?: string;
   pant_size?: string;
   vacation_days_override?: number | null;
   user?: { id: number; email: string; name: string; lastname: string };
+  category?: Category;
   createdAt: string;
 }
 
@@ -608,6 +618,7 @@ export interface CreateEmployeeData {
   monthly_salary?: number;
   snr_amount?: number;
   user_id?: number;
+  category_id?: number | null;
   notes?: string;
   shoe_size?: string;
   shirt_size?: string;
@@ -780,6 +791,51 @@ export class EmployeeService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Error al eliminar empleado');
+    }
+  }
+}
+
+export class CategoryService {
+  static async getAll(): Promise<Category[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/categories`);
+    if (!response.ok) throw new Error('Error al obtener categorías');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async create(body: { name: string; guild_hourly_rate: number }): Promise<Category> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/categories`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear categoría');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async update(id: number, body: { name?: string; guild_hourly_rate?: number }): Promise<Category> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar categoría');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/categories/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar categoría');
     }
   }
 }
