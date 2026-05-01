@@ -6,6 +6,7 @@ import {
   DialogContent, DialogActions, Divider, IconButton, Tooltip, Switch, Grid
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import DateField from '../../../components/DateField';
 import {
   Add as AddIcon, Refresh as RefreshIcon, Block as VoidIcon,
   CheckCircle as ApproveIcon, FilterList as FilterIcon, Delete as DeleteIcon
@@ -273,8 +274,8 @@ export default function TimeEntriesPage() {
             <option value="">Todos</option>
             {employees.map(e => <option key={e.id} value={e.id}>{e.lastname}, {e.name}</option>)}
           </TextField>
-          <TextField label="Desde" type="date" size="small" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField label="Hasta" type="date" size="small" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <DateField label="Desde" size="small" value={filterDateFrom} onChange={(val) => setFilterDateFrom(val)} InputLabelProps={{ shrink: true }} />
+          <DateField label="Hasta" size="small" value={filterDateTo} onChange={(val) => setFilterDateTo(val)} InputLabelProps={{ shrink: true }} />
         </Box>
       </Paper>
 
@@ -365,8 +366,8 @@ export default function TimeEntriesPage() {
                   }
                 />
               </Box>
-              <TextField label="Fecha *" type="date" value={formDate}
-                onChange={(e) => setFormDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 150 }} />
+              <DateField label="Fecha *" value={formDate}
+                onChange={(val) => setFormDate(val)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 150 }} />
             </Box>
 
             {/* Mode Switch */}

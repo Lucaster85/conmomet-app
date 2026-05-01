@@ -6,6 +6,7 @@ import {
   DialogActions, CircularProgress, TextField, Stack, Chip
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import DateField from '../../../components/DateField';
 import CurrencyInput from '../../../components/CurrencyInput';
 import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService } from '../../../utils/api';
@@ -126,7 +127,7 @@ export default function SalaryAdvancesPage() {
               <option value="">Seleccionar empleado</option>
               {employees.map(e => <option key={e.id} value={e.id}>{e.lastname}, {e.name}</option>)}
             </TextField>
-            <TextField label="Fecha *" type="date" fullWidth value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} InputLabelProps={{ shrink: true }} />
+            <DateField label="Fecha *" fullWidth value={form.date} onChange={(val) => setForm({ ...form, date: val })} InputLabelProps={{ shrink: true }} />
             <CurrencyInput label="Monto *" fullWidth value={form.amount} onChange={(value) => setForm({ ...form, amount: value })} />
             <TextField label="Notas" fullWidth multiline rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </Stack>

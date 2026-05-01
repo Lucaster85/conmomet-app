@@ -10,6 +10,7 @@ import {
   Switch, FormControlLabel, Card, CardContent, Divider, Grid,
   LinearProgress, Alert
 } from '@mui/material';
+import DateField from '../../../../components/DateField';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -671,21 +672,19 @@ export default function EmployeeDetailPage() {
           <Card sx={{ mb: 3, borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)' }}>
             <CardContent sx={{ p: 2 }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-                <TextField
+                <DateField
                   label="Desde"
-                  type="date"
                   size="small"
                   value={attDateFrom}
-                  onChange={(e) => setAttDateFrom(e.target.value)}
+                  onChange={(val) => setAttDateFrom(val)}
                   slotProps={{ inputLabel: { shrink: true } }}
                   fullWidth
                 />
-                <TextField
+                <DateField
                   label="Hasta"
-                  type="date"
                   size="small"
                   value={attDateTo}
-                  onChange={(e) => setAttDateTo(e.target.value)}
+                  onChange={(val) => setAttDateTo(val)}
                   slotProps={{ inputLabel: { shrink: true } }}
                   fullWidth
                 />
@@ -1205,12 +1204,11 @@ export default function EmployeeDetailPage() {
 
             {hasExpiration && (
               <Box display="flex" gap={2}>
-                <TextField 
+                <DateField 
                   label="Fecha de Vencimiento *" 
-                  type="date" 
                   fullWidth 
                   value={form.expiration_date} 
-                  onChange={(e) => setForm({ ...form, expiration_date: e.target.value })}
+                  onChange={(val) => setForm({ ...form, expiration_date: val })}
                   InputLabelProps={{ shrink: true }} 
                 />
                 <TextField 
@@ -1247,12 +1245,11 @@ export default function EmployeeDetailPage() {
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Typography variant="body2" color="text.secondary">Estás renovando: <strong>{editingDoc?.title}</strong></Typography>
             <Box display="flex" gap={2}>
-              <TextField 
+              <DateField 
                 label="Nueva Fecha de Vencimiento *" 
-                type="date" 
                 fullWidth 
                 value={form.expiration_date} 
-                onChange={(e) => setForm({ ...form, expiration_date: e.target.value })}
+                onChange={(val) => setForm({ ...form, expiration_date: val })}
                 InputLabelProps={{ shrink: true }} 
               />
               <TextField 

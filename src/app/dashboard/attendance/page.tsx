@@ -12,6 +12,7 @@ import {
   Refresh as RefreshIcon, FilterList as FilterIcon,
   AttachFile as AttachFileIcon, OpenInNew as OpenIcon
 } from '@mui/icons-material';
+import DateField from '../../../components/DateField';
 import { Attendance, AttendanceService, Employee, EmployeeService } from '../../../utils/api';
 
 const STATUS_CONFIG: Record<string, { label: string; color: 'error' | 'warning' | 'info' | 'success' }> = {
@@ -148,8 +149,8 @@ export default function AttendancePage() {
             <option value="">Todos</option>
             {employees.map(e => <option key={e.id} value={e.id}>{e.lastname}, {e.name}</option>)}
           </TextField>
-          <TextField label="Desde" type="date" size="small" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField label="Hasta" type="date" size="small" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <DateField label="Desde" size="small" value={filterDateFrom} onChange={(val) => setFilterDateFrom(val)} InputLabelProps={{ shrink: true }} />
+          <DateField label="Hasta" size="small" value={filterDateTo} onChange={(val) => setFilterDateTo(val)} InputLabelProps={{ shrink: true }} />
         </Box>
       </Paper>
 
@@ -235,7 +236,7 @@ export default function AttendancePage() {
               {employees.map(e => <option key={e.id} value={e.id}>{e.lastname}, {e.name}</option>)}
             </TextField>
 
-            <TextField label="Fecha *" type="date" fullWidth value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
+            <DateField label="Fecha *" fullWidth value={form.date} onChange={(val) => setForm({ ...form, date: val })}
               InputLabelProps={{ shrink: true }} />
 
             <TextField label="Estado *" select fullWidth value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}

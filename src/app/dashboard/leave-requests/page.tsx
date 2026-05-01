@@ -8,6 +8,7 @@ import {
   Chip, MenuItem, Select, FormControl, InputLabel,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import DateField from '../../../components/DateField';
 import {
   Add as AddIcon,
   Refresh as RefreshIcon,
@@ -345,23 +346,21 @@ export default function LeaveRequestsPage() {
             </FormControl>
 
             <Box display="flex" gap={2}>
-              <TextField
-                type="date"
+              <DateField
                 label="Fecha de Inicio"
                 fullWidth
                 required
                 InputLabelProps={{ shrink: true }}
                 value={form.start_date}
-                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                onChange={(val) => setForm({ ...form, start_date: val })}
               />
-              <TextField
-                type="date"
+              <DateField
                 label="Fecha de Fin"
                 fullWidth
                 required
                 InputLabelProps={{ shrink: true }}
                 value={form.end_date}
-                onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                onChange={(val) => setForm({ ...form, end_date: val })}
               />
             </Box>
 

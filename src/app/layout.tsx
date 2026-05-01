@@ -5,6 +5,8 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme';
 
+import MuiXProvider from "./MuiXProvider";
+
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
   subsets: ["latin"],
@@ -25,13 +27,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es-AR">
       <body
         className={`${plusJakartaSans.variable} antialiased`}
       >
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          {children}
+          <MuiXProvider>
+            {children}
+          </MuiXProvider>
         </ThemeProvider>
       </body>
     </html>

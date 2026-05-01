@@ -8,6 +8,7 @@ import {
   FormHelperText
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import DateField from '../../../components/DateField';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import CurrencyInput from '../../../components/CurrencyInput';
 import {
@@ -370,8 +371,8 @@ export default function EmployeesPage() {
             </Box>
             <TextField label="Puesto" fullWidth value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} placeholder="Ej: Soldador, Tornero" />
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
-              <TextField label="Fecha Ingreso *" type="date" fullWidth value={form.hire_date} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} InputLabelProps={{ shrink: true }} />
-              <TextField label="Fecha Nacimiento" type="date" fullWidth value={form.birth_date || ''} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} InputLabelProps={{ shrink: true }} />
+              <DateField label="Fecha Ingreso *" fullWidth value={form.hire_date} onChange={(val) => setForm({ ...form, hire_date: val })} InputLabelProps={{ shrink: true }} />
+              <DateField label="Fecha Nacimiento" fullWidth value={form.birth_date || ''} onChange={(val) => setForm({ ...form, birth_date: val })} InputLabelProps={{ shrink: true }} />
             </Box>
             <TextField label="Tipo de Pago" select fullWidth value={form.pay_type || 'hourly'} onChange={(e) => setForm({ ...form, pay_type: e.target.value })}
               SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>

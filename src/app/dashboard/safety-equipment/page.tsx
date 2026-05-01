@@ -8,8 +8,9 @@ import {
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
   Add as AddIcon, Refresh as RefreshIcon, Settings as SettingsIcon,
-  Edit as EditIcon, ToggleOn as ToggleOnIcon, ToggleOff as ToggleOffIcon,
+  Edit as EditIcon, ToggleOn as ToggleOnIcon, ToggleOff as ToggleOffIcon
 } from '@mui/icons-material';
+import DateField from '../../../components/DateField';
 import {
   SafetyEquipment, SafetyEquipmentService,
   Employee, EmployeeService,
@@ -324,8 +325,8 @@ export default function SafetyEquipmentPage() {
               onChange={(e) => setForm({ ...form, quantity: Math.max(1, Number(e.target.value)) })}
               inputProps={{ min: 1 }} />
 
-            <TextField label="Fecha de entrega *" type="date" fullWidth value={form.delivered_date}
-              onChange={(e) => setForm({ ...form, delivered_date: e.target.value })}
+            <DateField label="Fecha de entrega *" fullWidth value={form.delivered_date}
+              onChange={(val) => setForm({ ...form, delivered_date: val })}
               InputLabelProps={{ shrink: true }} />
 
             <TextField label="Estado del artículo" select fullWidth value={form.condition}

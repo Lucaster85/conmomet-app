@@ -11,6 +11,7 @@ import {
   Add as AddIcon, Refresh as RefreshIcon, Edit as EditIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
+import DateField from '../../../components/DateField';
 import { Holiday, HolidayService } from '../../../utils/api';
 
 export default function HolidaysPage() {
@@ -158,8 +159,8 @@ export default function HolidaysPage() {
         <DialogTitle>{editing ? 'Editar Feriado' : 'Agregar Feriado'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="Fecha *" type="date" fullWidth value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
+            <DateField label="Fecha *" fullWidth value={form.date}
+              onChange={(val) => setForm({ ...form, date: val })}
               InputLabelProps={{ shrink: true }} />
             <TextField label="Nombre *" fullWidth value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}

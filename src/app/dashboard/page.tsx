@@ -25,6 +25,7 @@ import { useAuth } from '../../utils/auth';
 import { EntityDocumentService, EntityDocument } from '../../utils/api';
 import FeedbackModal from '../../components/FeedbackModal';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import DateField from '../../components/DateField';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -300,12 +301,11 @@ export default function DashboardPage() {
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Typography variant="body2" color="text.secondary">Estás renovando: <strong>{editingDoc?.title}</strong></Typography>
             <Box display="flex" gap={2}>
-              <TextField 
+              <DateField 
                 label="Nueva Fecha de Vencimiento *" 
-                type="date" 
                 fullWidth 
                 value={form.expiration_date} 
-                onChange={(e) => setForm({ ...form, expiration_date: e.target.value })}
+                onChange={(val) => setForm({ ...form, expiration_date: val })}
                 InputLabelProps={{ shrink: true }} 
               />
               <TextField 
