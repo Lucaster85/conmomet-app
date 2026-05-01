@@ -52,51 +52,63 @@ import ProtectedRoute from '../../components/ProtectedRoute';
 
 const drawerWidth = 280;
 
-const menuGroups = [
+interface MenuItemDef {
+  text: string;
+  icon: React.ReactNode;
+  path: string;
+  requiredPermission: string | null;
+}
+
+interface MenuGroupDef {
+  title: string;
+  items: MenuItemDef[];
+}
+
+const menuGroups: MenuGroupDef[] = [
   {
     title: '',
     items: [
-      { text: 'Inicio', icon: <DashboardIcon />, path: '/dashboard' }
+      { text: 'Inicio', icon: <DashboardIcon />, path: '/dashboard', requiredPermission: null }
     ]
   },
   {
     title: 'Personal',
     items: [
-      { text: 'Empleados', icon: <BadgeIcon />, path: '/dashboard/employees' },
-      { text: 'Licencias y Vacaciones', icon: <BeachAccessIcon />, path: '/dashboard/leave-requests' },
-      { text: 'Carga de Horas', icon: <TimeIcon />, path: '/dashboard/time-entries' },
-      { text: 'Presentismo', icon: <EventAvailableIcon />, path: '/dashboard/attendance' },
-      { text: 'EPP', icon: <SecurityIcon />, path: '/dashboard/safety-equipment' },
+      { text: 'Empleados', icon: <BadgeIcon />, path: '/dashboard/employees', requiredPermission: 'employees_read' },
+      { text: 'Licencias y Vacaciones', icon: <BeachAccessIcon />, path: '/dashboard/leave-requests', requiredPermission: 'leave_requests_read' },
+      { text: 'Carga de Horas', icon: <TimeIcon />, path: '/dashboard/time-entries', requiredPermission: 'time_entries_read' },
+      { text: 'Presentismo', icon: <EventAvailableIcon />, path: '/dashboard/attendance', requiredPermission: 'attendance_read' },
+      { text: 'EPP', icon: <SecurityIcon />, path: '/dashboard/safety-equipment', requiredPermission: 'safety_equipment_read' },
     ]
   },
   {
     title: 'Contabilidad',
     items: [
-      { text: 'Quincenas y Pagos', icon: <PaymentsIcon />, path: '/dashboard/pay-periods' },
-      { text: 'Adelantos', icon: <MoneyIcon />, path: '/dashboard/salary-advances' },
+      { text: 'Quincenas y Pagos', icon: <PaymentsIcon />, path: '/dashboard/pay-periods', requiredPermission: 'pay_periods_read' },
+      { text: 'Adelantos', icon: <MoneyIcon />, path: '/dashboard/salary-advances', requiredPermission: 'salary_advances_read' },
     ]
   },
   {
     title: 'Gestión de Clientes',
     items: [
-      { text: 'Clientes', icon: <Business />, path: '/dashboard/clients' },
-      { text: 'Plantas', icon: <FactoryIcon />, path: '/dashboard/plants' },
+      { text: 'Clientes', icon: <Business />, path: '/dashboard/clients', requiredPermission: 'clients_read' },
+      { text: 'Plantas', icon: <FactoryIcon />, path: '/dashboard/plants', requiredPermission: 'plants_read' },
     ]
   },
   {
     title: 'Gestión de Usuarios',
     items: [
-      { text: 'Usuarios', icon: <PeopleIcon />, path: '/dashboard/users' },
-      { text: 'Roles y Permisos', icon: <RolesIcon />, path: '/dashboard/roles' },
+      { text: 'Usuarios', icon: <PeopleIcon />, path: '/dashboard/users', requiredPermission: 'users_read' },
+      { text: 'Roles y Permisos', icon: <RolesIcon />, path: '/dashboard/roles', requiredPermission: 'roles_read' },
     ]
   },
-  { title: 'Web', items: [{ text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles' }] },
+  { title: 'Web', items: [{ text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles', requiredPermission: 'media_read' }] },
   {
     title: 'Configuración',
     items: [
-      { text: 'Categorías (CCT)', icon: <CategoryIcon />, path: '/dashboard/categories' },
-      { text: 'Conceptos de Liquidación', icon: <CategoryIcon />, path: '/dashboard/payroll-concepts' },
-      { text: 'Feriados', icon: <CalendarIcon />, path: '/dashboard/holidays' },
+      { text: 'Categorías (CCT)', icon: <CategoryIcon />, path: '/dashboard/categories', requiredPermission: 'categories_read' },
+      { text: 'Conceptos de Liquidación', icon: <CategoryIcon />, path: '/dashboard/payroll-concepts', requiredPermission: 'payroll_concepts_read' },
+      { text: 'Feriados', icon: <CalendarIcon />, path: '/dashboard/holidays', requiredPermission: 'holidays_read' },
     ]
   },
 ];
@@ -176,6 +188,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return user?.roleName || user?.role || 'Usuario';
   };
 
+  // Verificar si el usuario tiene un permiso específico
+  const userPermissions: string[] = Array.isArray((user as Record<string, unknown>)?.permissions)
+    ? ((user as Record<string, unknown>).permissions as string[])
+    : [];
+
+  const hasPermission = (permission: string | null): boolean => {
+    if (!permission) return true; // null = siempre visible
+    if (userPermissions.includes('admin_granted')) return true; // admin ve todo
+    return userPermissions.includes(permission);
+  };
+
+  // Filtrar grupos del menú según permisos del usuario
+  const filteredMenuGroups = menuGroups
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => hasPermission(item.requiredPermission)),
+    }))
+    .filter(group => group.items.length > 0);
+
   const drawer = (
     <Box>
       <Toolbar sx={{ bgcolor: 'white', borderBottom: '1px solid', borderColor: 'divider', minHeight: { xs: 56, sm: 64 }, justifyContent: 'center' }}>
@@ -192,7 +223,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </Toolbar>
       <Divider />
       <List sx={{ pt: 2 }}>
-        {menuGroups.map((group, groupIndex) => (
+        {filteredMenuGroups.map((group, groupIndex) => (
           <React.Fragment key={groupIndex}>
             {group.title && (
               <ListItemButton 
@@ -227,7 +258,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         minHeight: 44,
                         borderRadius: 1,
                         mx: 1,
-                        pl: group.title ? 3 : 2, // Indent items if they belong to a group
+                        pl: group.title ? 3 : 2,
                         '&:hover': {
                           bgcolor: 'primary.light',
                           color: 'white',
@@ -243,7 +274,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 ))}
               </List>
             </Collapse>
-            {groupIndex < menuGroups.length - 1 && <Divider sx={{ my: 1, mx: 2, opacity: 0.5 }} />}
+            {groupIndex < filteredMenuGroups.length - 1 && <Divider sx={{ my: 1, mx: 2, opacity: 0.5 }} />}
           </React.Fragment>
         ))}
       </List>

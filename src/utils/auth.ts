@@ -200,6 +200,11 @@ export function useAuth() {
       }
       
       // Limpiar y estructurar los datos del usuario para evitar problemas con objetos complejos
+      // Merge role permissions + user individual permissions into a flat, deduplicated array of names
+      const rolePermissions = (data.user.role?.permissions || []).map((p: { name: string }) => p.name);
+      const userPermissions = (data.user.permissions || []).map((p: { name: string }) => p.name);
+      const allPermissions = [...new Set([...rolePermissions, ...userPermissions])];
+
       const cleanUser = {
         id: data.user.id,
         name: data.user.name,
@@ -207,7 +212,7 @@ export function useAuth() {
         email: data.user.email,
         role: data.user.role?.name || 'Usuario',
         roleName: data.user.role?.name || 'Usuario',
-        permissions: data.user.role?.permissions || [],
+        permissions: allPermissions,
         fullName: `${data.user.name} ${data.user.lastname}`.trim(),
         employee_id: data.user.employee_id || null,
         has_dashboard_access: data.user.has_dashboard_access !== undefined ? data.user.has_dashboard_access : true,
