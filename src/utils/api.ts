@@ -1373,3 +1373,170 @@ export class SelfService {
     return (await response.json()).data;
   }
 }
+
+// ==================== PAYROLL FLEXIBLE SYSTEM ====================
+
+export interface Holiday {
+  id: number;
+  date: string;
+  name: string;
+}
+
+export interface PayrollConcept {
+  id: number;
+  name: string;
+  code: string;
+  calc_type: 'hourly' | 'fixed';
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface EmployeeRate {
+  id: number;
+  employee_id: number;
+  concept_id: number | null;
+  rate: number;
+  guild_rate: number | null;
+  snr_amount: number | null;
+  extras_rate: number | null;
+  concept?: PayrollConcept;
+}
+
+export interface PayrollLine {
+  id: number;
+  payroll_entry_id: number;
+  concept_id: number | null;
+  label: string;
+  quantity: number;
+  rate: number;
+  subtotal: number;
+  line_type: 'regular' | 'extras_50' | 'extras_100' | 'holiday' | 'fixed' | 'retroactive';
+  source_period_id: number | null;
+  concept?: PayrollConcept;
+}
+
+export class HolidayService {
+  static async getAll(year?: number): Promise<Holiday[]> {
+    const params = year ? `?year=${year}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/holidays${params}`);
+    if (!response.ok) throw new Error('Error al obtener feriados');
+    return (await response.json()).data || [];
+  }
+
+  static async create(data: { date: string; name: string }): Promise<Holiday> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/holidays`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Error al crear feriado');
+    }
+    return (await response.json()).data;
+  }
+
+  static async bulkCreate(holidays: { date: string; name: string }[]): Promise<Holiday[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/holidays/bulk`, {
+      method: 'POST',
+      body: JSON.stringify({ holidays }),
+    });
+    if (!response.ok) throw new Error('Error al crear feriados');
+    return (await response.json()).data || [];
+  }
+
+  static async update(id: number, data: { date?: string; name?: string }): Promise<Holiday> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/holidays/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al actualizar feriado');
+    return (await response.json()).data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/holidays/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Error al eliminar feriado');
+  }
+}
+
+export class PayrollConceptService {
+  static async getAll(activeOnly = false): Promise<PayrollConcept[]> {
+    const params = activeOnly ? '?active=true' : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll-concepts${params}`);
+    if (!response.ok) throw new Error('Error al obtener conceptos');
+    return (await response.json()).data || [];
+  }
+
+  static async create(data: { name: string; code: string; calc_type?: string; sort_order?: number }): Promise<PayrollConcept> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll-concepts`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Error al crear concepto');
+    }
+    return (await response.json()).data;
+  }
+
+  static async update(id: number, data: Partial<PayrollConcept>): Promise<PayrollConcept> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll-concepts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al actualizar concepto');
+    return (await response.json()).data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll-concepts/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Error al eliminar concepto');
+  }
+}
+
+export class EmployeeRateService {
+  static async getByEmployee(employeeId: number): Promise<EmployeeRate[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-rates/${employeeId}`);
+    if (!response.ok) throw new Error('Error al obtener tarifas');
+    return (await response.json()).data || [];
+  }
+
+  static async upsert(data: {
+    employee_id: number;
+    concept_id?: number | null;
+    rate: number;
+    guild_rate?: number | null;
+    snr_amount?: number | null;
+    extras_rate?: number | null;
+  }): Promise<EmployeeRate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-rates`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Error al guardar tarifa');
+    }
+    return (await response.json()).data;
+  }
+
+  static async bulkSave(employeeId: number, rates: Array<{
+    concept_id?: number | null;
+    rate: number;
+    guild_rate?: number | null;
+    snr_amount?: number | null;
+    extras_rate?: number | null;
+  }>): Promise<EmployeeRate[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-rates/bulk`, {
+      method: 'POST',
+      body: JSON.stringify({ employee_id: employeeId, rates }),
+    });
+    if (!response.ok) throw new Error('Error al guardar tarifas');
+    return (await response.json()).data || [];
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-rates/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Error al eliminar tarifa');
+  }
+}
