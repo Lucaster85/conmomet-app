@@ -914,10 +914,10 @@ export default function EmployeeDetailPage() {
                   <Grid size={{ xs: 12, md: 3 }}>
                     <Typography variant="caption" color="text.secondary">{employee?.pay_type === 'monthly' ? 'Sueldo Base' : 'Valor Hora Base'}</Typography>
                     <Typography variant="body1" fontWeight="bold">${Number(employee?.pay_type === 'monthly' ? employee?.monthly_salary : employee?.hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                    {/* Valor hora gremio (CCT) si corresponde */}
+                    {/* Valor hora CCT si corresponde */}
                     {employee?.pay_type !== 'monthly' && employee?.category && employee.category.guild_hourly_rate && (
                       <Box mt={1}>
-                        <Typography variant="caption" color="text.secondary">Valor hora gremio (CCT)</Typography>
+                        <Typography variant="caption" color="text.secondary">Valor hora CCT</Typography>
                         <Typography variant="body2" fontWeight={700} color="primary.main">
                           ${Number(employee.category.guild_hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })} / hora
                         </Typography>
@@ -1149,7 +1149,7 @@ export default function EmployeeDetailPage() {
                     </TextField>
                     {baseConfigForm.category_id && categories.find(c => c.id === baseConfigForm.category_id) && (
                       <Box mt={1} p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
-                        <Typography variant="caption" color="text.secondary">Valor hora gremio (CCT)</Typography>
+                        <Typography variant="caption" color="text.secondary">Valor hora CCT</Typography>
                         <Typography variant="body2" fontWeight={700} color="primary.main">
                           ${Number(categories.find(c => c.id === baseConfigForm.category_id)!.guild_hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })} / hora
                         </Typography>

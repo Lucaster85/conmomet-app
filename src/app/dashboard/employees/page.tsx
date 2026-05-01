@@ -402,7 +402,7 @@ export default function EmployeesPage() {
                   </TextField>
                   {form.category_id && categories.find(c => c.id === form.category_id) && (
                     <Box mt={1} p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
-                      <Typography variant="caption" color="text.secondary">Valor hora gremio (CCT)</Typography>
+                      <Typography variant="caption" color="text.secondary">Valor hora CCT</Typography>
                       <Typography variant="body2" fontWeight={700} color="primary.main">
                         ${Number(categories.find(c => c.id === form.category_id)!.guild_hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })} / hora
                       </Typography>
