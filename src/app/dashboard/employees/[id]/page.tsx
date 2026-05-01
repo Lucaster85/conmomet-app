@@ -37,9 +37,11 @@ import dayjs from 'dayjs';
 
 import {
   EmployeeService, Employee, EntityDocumentService, EntityDocument,
-  AttendanceService, Attendance, LeaveRequestService, LeaveRequest, LeaveBalance
+  AttendanceService, Attendance, LeaveRequestService, LeaveRequest, LeaveBalance,
+  EmployeeRateService, EmployeeRate, PayrollConceptService, PayrollConcept,
 } from '@/utils/api';
 import FeedbackModal from '@/components/FeedbackModal';
+import CurrencyInput from '@/components/CurrencyInput';
 
 const STATUS_CONFIG = {
   permanent: { label: 'Permanente', color: 'default', icon: <CheckCircleIcon fontSize="small" /> },
@@ -93,6 +95,21 @@ export default function EmployeeDetailPage() {
   const [loadingLeave, setLoadingLeave] = useState(false);
   const [leaveLoaded, setLeaveLoaded] = useState(false);
 
+  // Rates tab state
+  const [empRates, setEmpRates] = useState<EmployeeRate[]>([]);
+  const [concepts, setConcepts] = useState<PayrollConcept[]>([]);
+  const [loadingRates, setLoadingRates] = useState(false);
+  const [ratesLoaded, setRatesLoaded] = useState(false);
+  const [rateForm, setRateForm] = useState<{
+    concept_id: number | '';
+    rate: number;
+    guild_rate: number;
+    snr_amount: number;
+    extras_rate: number;
+  }>({ concept_id: '', rate: 0, guild_rate: 0, snr_amount: 0, extras_rate: 0 });
+  const [rateDialogOpen, setRateDialogOpen] = useState(false);
+  const [editingRate, setEditingRate] = useState<EmployeeRate | null>(null);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -114,6 +131,23 @@ export default function EmployeeDetailPage() {
       loadData();
     }
   }, [employeeId, loadData]);
+
+  // Load rates when tab 4 is selected
+  useEffect(() => {
+    if (tabValue === 4 && !ratesLoaded) {
+      setLoadingRates(true);
+      Promise.all([
+        EmployeeRateService.getByEmployee(employeeId),
+        PayrollConceptService.getAll(true),
+      ]).then(([rates, concepts]) => {
+        setEmpRates(rates);
+        setConcepts(concepts);
+        setRatesLoaded(true);
+      }).catch(err => {
+        setError(err instanceof Error ? err.message : 'Error al cargar tarifas');
+      }).finally(() => setLoadingRates(false));
+    }
+  }, [tabValue, ratesLoaded, employeeId]);
 
   const handleUploadSubmit = async () => {
     if (!form.title) return setError('El título es obligatorio');
@@ -313,6 +347,7 @@ export default function EmployeeDetailPage() {
           <Tab label="Documentos y Vencimientos" />
           <Tab label="Presentismo" />
           <Tab label="Vacaciones y Licencias" />
+          <Tab label="Tarifas" />
         </Tabs>
       </Paper>
 
@@ -847,6 +882,186 @@ export default function EmployeeDetailPage() {
               </Grid>
             </Grid>
           )}
+        </Box>
+      )}
+
+      {/* Tab 4 — Tarifas */}
+      {tabValue === 4 && (
+        <Box>
+          {loadingRates ? (
+            <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
+          ) : (
+            <Stack spacing={3}>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="h6" fontWeight="bold">Tarifas por Concepto</Typography>
+                <Button variant="contained" size="small" onClick={() => {
+                  setEditingRate(null);
+                  setRateForm({ concept_id: '', rate: 0, guild_rate: 0, snr_amount: 0, extras_rate: 0 });
+                  setRateDialogOpen(true);
+                }}>+ Agregar Tarifa</Button>
+              </Box>
+
+              {employee?.pay_type === 'monthly' ? (
+                <Alert severity="info">Empleado mensualizado: configurar sueldo base, tarifa de extras y SNR.</Alert>
+              ) : (
+                <Alert severity="info">Empleado jornalizado: configurar tarifa por hora para cada tipo de trabajo, tarifa de gremio (feriados) y SNR.</Alert>
+              )}
+
+              {empRates.length === 0 ? (
+                <Paper sx={{ p: 4, textAlign: 'center' }}>
+                  <Typography color="text.secondary">No hay tarifas configuradas. El sistema usará la tarifa clásica del legajo.</Typography>
+                </Paper>
+              ) : (
+                <TableContainer component={Paper}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell><strong>Concepto</strong></TableCell>
+                        <TableCell align="right"><strong>{employee?.pay_type === 'monthly' ? 'Sueldo' : 'Tarifa'}</strong></TableCell>
+                        <TableCell align="right"><strong>Tarifa Gremio</strong></TableCell>
+                        <TableCell align="right"><strong>SNR</strong></TableCell>
+                        {employee?.pay_type === 'monthly' && (
+                          <TableCell align="right"><strong>Tarifa Extras</strong></TableCell>
+                        )}
+                        <TableCell align="right"><strong>Acciones</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {empRates.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell>
+                            <Chip label={r.concept?.name || (employee?.pay_type === 'monthly' ? 'Sueldo base' : 'General')} size="small" color="primary" variant="outlined" />
+                          </TableCell>
+                          <TableCell align="right">{'$' + Number(r.rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell align="right">{r.guild_rate ? '$' + Number(r.guild_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</TableCell>
+                          <TableCell align="right">{r.snr_amount ? '$' + Number(r.snr_amount).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</TableCell>
+                          {employee?.pay_type === 'monthly' && (
+                            <TableCell align="right">{r.extras_rate ? '$' + Number(r.extras_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</TableCell>
+                          )}
+                          <TableCell align="right">
+                            <Tooltip title="Editar">
+                              <IconButton size="small" onClick={() => {
+                                setEditingRate(r);
+                                setRateForm({
+                                  concept_id: r.concept_id || '',
+                                  rate: Number(r.rate),
+                                  guild_rate: Number(r.guild_rate || 0),
+                                  snr_amount: Number(r.snr_amount || 0),
+                                  extras_rate: Number(r.extras_rate || 0),
+                                });
+                                setRateDialogOpen(true);
+                              }}><EditIcon fontSize="small" /></IconButton>
+                            </Tooltip>
+                            <Tooltip title="Eliminar">
+                              <IconButton size="small" color="error" onClick={async () => {
+                                try {
+                                  await EmployeeRateService.delete(r.id);
+                                  setSuccess('Tarifa eliminada');
+                                  const updated = await EmployeeRateService.getByEmployee(employeeId);
+                                  setEmpRates(updated);
+                                } catch (err) {
+                                  setError(err instanceof Error ? err.message : 'Error');
+                                }
+                              }}><DeleteIcon fontSize="small" /></IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+
+              {/* Preview: cómo se verían las extras */}
+              {empRates.filter(r => r.concept_id && employee?.pay_type !== 'monthly').length > 0 && (
+                <Paper sx={{ p: 2 }} variant="outlined">
+                  <Typography variant="subtitle2" gutterBottom>Vista previa: Tarifas derivadas</Typography>
+                  <Table size="small">
+                    <TableBody>
+                      {empRates.filter(r => r.concept_id).map(r => (
+                        <TableRow key={`preview-${r.id}`}>
+                          <TableCell>{r.concept?.name}</TableCell>
+                          <TableCell>Extras 50%: {'$' + (Number(r.rate) * 1.5).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell>Extras 100%: {'$' + (Number(r.rate) * 2.0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Paper>
+              )}
+            </Stack>
+          )}
+
+          {/* Rate Dialog */}
+          <Dialog open={rateDialogOpen} onClose={() => setRateDialogOpen(false)} maxWidth="sm" fullWidth>
+            <DialogTitle>{editingRate ? 'Editar Tarifa' : 'Agregar Tarifa'}</DialogTitle>
+            <DialogContent>
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                {employee?.pay_type !== 'monthly' && (
+                  <TextField label="Concepto" select fullWidth value={rateForm.concept_id}
+                    onChange={(e) => setRateForm({ ...rateForm, concept_id: e.target.value ? Number(e.target.value) : '' })}
+                    SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
+                    disabled={!!editingRate}>
+                    <option value="">— Sin concepto —</option>
+                    {concepts.filter(c => c.is_active).map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </TextField>
+                )}
+                <CurrencyInput
+                  label={employee?.pay_type === 'monthly' ? 'Sueldo base *' : 'Tarifa por hora *'}
+                  fullWidth
+                  value={rateForm.rate}
+                  onChange={(v) => setRateForm({ ...rateForm, rate: v ?? 0 })}
+                />
+                {employee?.pay_type !== 'monthly' && (
+                  <CurrencyInput
+                    label="Tarifa Gremio (para feriados)"
+                    fullWidth
+                    value={rateForm.guild_rate}
+                    onChange={(v) => setRateForm({ ...rateForm, guild_rate: v ?? 0 })}
+                    helperText="Tarifa base del gremio sin acuerdo particular"
+                  />
+                )}
+                <CurrencyInput
+                  label="SNR por quincena"
+                  fullWidth
+                  value={rateForm.snr_amount}
+                  onChange={(v) => setRateForm({ ...rateForm, snr_amount: v ?? 0 })}
+                />
+                {employee?.pay_type === 'monthly' && (
+                  <CurrencyInput
+                    label="Tarifa de horas extras"
+                    fullWidth
+                    value={rateForm.extras_rate}
+                    onChange={(v) => setRateForm({ ...rateForm, extras_rate: v ?? 0 })}
+                    helperText="Valor de la hora extra para mensualizados"
+                  />
+                )}
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setRateDialogOpen(false)}>Cancelar</Button>
+              <Button variant="contained" onClick={async () => {
+                try {
+                  await EmployeeRateService.upsert({
+                    employee_id: employeeId,
+                    concept_id: rateForm.concept_id || null,
+                    rate: rateForm.rate,
+                    guild_rate: rateForm.guild_rate || null,
+                    snr_amount: rateForm.snr_amount || null,
+                    extras_rate: rateForm.extras_rate || null,
+                  });
+                  setSuccess(editingRate ? 'Tarifa actualizada' : 'Tarifa creada');
+                  setRateDialogOpen(false);
+                  const updated = await EmployeeRateService.getByEmployee(employeeId);
+                  setEmpRates(updated);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Error al guardar');
+                }
+              }}>{editingRate ? 'Guardar' : 'Crear'}</Button>
+            </DialogActions>
+          </Dialog>
         </Box>
       )}
 

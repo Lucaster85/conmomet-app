@@ -664,6 +664,8 @@ export interface TimeEntry {
   registeredBy?: { id: number; name: string; lastname: string };
   approvedBy?: { id: number; name: string; lastname: string };
   createdAt: string;
+  concept_id?: number;
+  concept?: PayrollConcept;
 }
 
 export interface CreateTimeEntryData {
@@ -673,6 +675,7 @@ export interface CreateTimeEntryData {
   date: string;
   check_in: string;
   check_out: string;
+  concept_id?: number;
   overtime_50_hours?: number;
   overtime_100_hours?: number;
   is_late?: boolean;
@@ -1034,6 +1037,7 @@ export interface PayrollEntry {
     end_date: string;
     status: string;
   };
+  lines?: PayrollLine[];
 }
 
 export class PayrollService {
@@ -1042,6 +1046,12 @@ export class PayrollService {
     if (!response.ok) throw new Error('Error al obtener liquidaciones');
     const data = await response.json();
     return data.data || [];
+  }
+
+  static async getLines(entryId: number): Promise<{ data: PayrollLine[]; entry: PayrollEntry }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/entry/${entryId}/lines`);
+    if (!response.ok) throw new Error('Error al obtener líneas de liquidación');
+    return await response.json();
   }
 
   static async generate(periodId: number): Promise<PayrollEntry[]> {

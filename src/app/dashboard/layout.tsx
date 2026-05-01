@@ -43,6 +43,8 @@ import {
   ExpandLess,
   ExpandMore,
   BeachAccess as BeachAccessIcon,
+  CalendarMonth as CalendarIcon,
+  Category as CategoryIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -88,7 +90,14 @@ const menuGroups = [
       { text: 'Roles y Permisos', icon: <RolesIcon />, path: '/dashboard/roles' },
     ]
   },
-  { title: 'Web', items: [{ text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles' }] }
+  { title: 'Web', items: [{ text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles' }] },
+  {
+    title: 'Configuración',
+    items: [
+      { text: 'Conceptos de Liquidación', icon: <CategoryIcon />, path: '/dashboard/payroll-concepts' },
+      { text: 'Feriados', icon: <CalendarIcon />, path: '/dashboard/holidays' },
+    ]
+  },
 ];
 
 interface DashboardLayoutProps {

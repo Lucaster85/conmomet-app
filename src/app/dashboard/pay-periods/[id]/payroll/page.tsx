@@ -350,21 +350,48 @@ export default function PayrollPage() {
                 {/* Desglose de haberes */}
                 <Typography variant="overline" color="text.secondary" fontWeight={600}>Desglose de haberes</Typography>
                 <Stack spacing={0.5} mt={1} mb={1}>
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="body2">{detailEntry.employee?.pay_type === 'monthly' ? 'Sueldo mensual' : `Horas regulares (${detailEntry.total_regular_hours}h)`}</Typography>
-                    <Typography variant="body2">{formatCurrency(detailEntry.regular_amount)}</Typography>
-                  </Box>
-                  {Number(detailEntry.overtime_50_amount) > 0 && (
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="body2">Horas extra 50% ({detailEntry.total_overtime_50_hours}h)</Typography>
-                      <Typography variant="body2">{formatCurrency(detailEntry.overtime_50_amount)}</Typography>
-                    </Box>
-                  )}
-                  {Number(detailEntry.overtime_100_amount) > 0 && (
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="body2">Horas extra 100% ({detailEntry.total_overtime_100_hours}h)</Typography>
-                      <Typography variant="body2">{formatCurrency(detailEntry.overtime_100_amount)}</Typography>
-                    </Box>
+                  {detailEntry.lines && detailEntry.lines.length > 0 ? (
+                    <>
+                      <Table size="small" sx={{ mb: 1, '& th, & td': { borderBottom: 'none', py: 0.5, px: 0 } }}>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell><Typography variant="caption" color="text.secondary">Concepto</Typography></TableCell>
+                            <TableCell align="right"><Typography variant="caption" color="text.secondary">Cant.</Typography></TableCell>
+                            <TableCell align="right"><Typography variant="caption" color="text.secondary">Tarifa</Typography></TableCell>
+                            <TableCell align="right"><Typography variant="caption" color="text.secondary">Subtotal</Typography></TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {detailEntry.lines.map((line: { id: number, label: string, quantity: number, rate: number, subtotal: number }) => (
+                            <TableRow key={line.id}>
+                              <TableCell><Typography variant="body2">{line.label}</Typography></TableCell>
+                              <TableCell align="right"><Typography variant="body2">{Number(line.quantity).toFixed(1)}</Typography></TableCell>
+                              <TableCell align="right"><Typography variant="body2">{formatCurrency(line.rate)}</Typography></TableCell>
+                              <TableCell align="right"><Typography variant="body2">{formatCurrency(line.subtotal)}</Typography></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </>
+                  ) : (
+                    <>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="body2">{detailEntry.employee?.pay_type === 'monthly' ? 'Sueldo mensual' : `Horas regulares (${detailEntry.total_regular_hours}h)`}</Typography>
+                        <Typography variant="body2">{formatCurrency(detailEntry.regular_amount)}</Typography>
+                      </Box>
+                      {Number(detailEntry.overtime_50_amount) > 0 && (
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="body2">Horas extra 50% ({detailEntry.total_overtime_50_hours}h)</Typography>
+                          <Typography variant="body2">{formatCurrency(detailEntry.overtime_50_amount)}</Typography>
+                        </Box>
+                      )}
+                      {Number(detailEntry.overtime_100_amount) > 0 && (
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="body2">Horas extra 100% ({detailEntry.total_overtime_100_hours}h)</Typography>
+                          <Typography variant="body2">{formatCurrency(detailEntry.overtime_100_amount)}</Typography>
+                        </Box>
+                      )}
+                    </>
                   )}
                   {Number(detailEntry.extra_payments) > 0 && (
                     <Box display="flex" justifyContent="space-between">
