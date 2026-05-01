@@ -581,6 +581,7 @@ export interface Employee {
   hourly_rate: number;
   pay_type: 'hourly' | 'monthly';
   monthly_salary?: number;
+  snr_amount?: number;
   user_id?: number;
   notes?: string;
   shoe_size?: string;
@@ -605,6 +606,7 @@ export interface CreateEmployeeData {
   hourly_rate: number;
   pay_type?: string;
   monthly_salary?: number;
+  snr_amount?: number;
   user_id?: number;
   notes?: string;
   shoe_size?: string;
@@ -1407,7 +1409,6 @@ export interface EmployeeRate {
   concept_id: number | null;
   rate: number;
   guild_rate: number | null;
-  snr_amount: number | null;
   extras_rate: number | null;
   concept?: PayrollConcept;
 }
@@ -1516,7 +1517,6 @@ export class EmployeeRateService {
     concept_id?: number | null;
     rate: number;
     guild_rate?: number | null;
-    snr_amount?: number | null;
     extras_rate?: number | null;
   }): Promise<EmployeeRate> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-rates`, {
@@ -1534,7 +1534,6 @@ export class EmployeeRateService {
     concept_id?: number | null;
     rate: number;
     guild_rate?: number | null;
-    snr_amount?: number | null;
     extras_rate?: number | null;
   }>): Promise<EmployeeRate[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-rates/bulk`, {

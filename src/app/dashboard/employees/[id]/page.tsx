@@ -104,11 +104,19 @@ export default function EmployeeDetailPage() {
     concept_id: number | '';
     rate: number;
     guild_rate: number;
-    snr_amount: number;
     extras_rate: number;
-  }>({ concept_id: '', rate: 0, guild_rate: 0, snr_amount: 0, extras_rate: 0 });
+  }>({ concept_id: '', rate: 0, guild_rate: 0, extras_rate: 0 });
   const [rateDialogOpen, setRateDialogOpen] = useState(false);
   const [editingRate, setEditingRate] = useState<EmployeeRate | null>(null);
+
+  // Base Config State
+  const [baseConfigDialogOpen, setBaseConfigDialogOpen] = useState(false);
+  const [baseConfigForm, setBaseConfigForm] = useState({
+    pay_type: 'hourly',
+    hourly_rate: 0,
+    monthly_salary: 0,
+    snr_amount: 0
+  });
 
   const loadData = useCallback(async () => {
     try {
@@ -893,18 +901,51 @@ export default function EmployeeDetailPage() {
           ) : (
             <Stack spacing={3}>
               <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Typography variant="h6" fontWeight="bold">Tarifas por Concepto</Typography>
+                <Typography variant="h6" fontWeight="bold">Configuración Salarial Base</Typography>
+              </Box>
+              <Paper variant="outlined" sx={{ p: 2, bgcolor: 'primary.50' }}>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <Typography variant="caption" color="text.secondary">Modalidad</Typography>
+                    <Typography variant="body1" fontWeight="bold">{employee?.pay_type === 'monthly' ? 'Mensualizado' : 'Jornalizado'}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <Typography variant="caption" color="text.secondary">{employee?.pay_type === 'monthly' ? 'Sueldo Base' : 'Valor Hora Base'}</Typography>
+                    <Typography variant="body1" fontWeight="bold">${Number(employee?.pay_type === 'monthly' ? employee?.monthly_salary : employee?.hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <Typography variant="caption" color="text.secondary">SNR (Global por quincena)</Typography>
+                    <Typography variant="body1" fontWeight="bold">${Number(employee?.snr_amount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 3 }} sx={{ textAlign: "right" }}>
+                    <Button variant="outlined" size="small" onClick={() => {
+                      setBaseConfigForm({
+                        pay_type: employee?.pay_type || 'hourly',
+                        hourly_rate: Number(employee?.hourly_rate) || 0,
+                        monthly_salary: Number(employee?.monthly_salary) || 0,
+                        snr_amount: Number(employee?.snr_amount) || 0
+                      });
+                      setBaseConfigDialogOpen(true);
+                    }}>Editar Base</Button>
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              <Divider />
+
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="h6" fontWeight="bold">Tarifas Especiales por Concepto</Typography>
                 <Button variant="contained" size="small" onClick={() => {
                   setEditingRate(null);
-                  setRateForm({ concept_id: '', rate: 0, guild_rate: 0, snr_amount: 0, extras_rate: 0 });
+                  setRateForm({ concept_id: '', rate: 0, guild_rate: 0, extras_rate: 0 });
                   setRateDialogOpen(true);
                 }}>+ Agregar Tarifa</Button>
               </Box>
 
               {employee?.pay_type === 'monthly' ? (
-                <Alert severity="info">Empleado mensualizado: configurar sueldo base, tarifa de extras y SNR.</Alert>
+                <Alert severity="info">Empleado mensualizado: aquí puedes configurar excepciones o la tarifa de extras para un tipo de trabajo.</Alert>
               ) : (
-                <Alert severity="info">Empleado jornalizado: configurar tarifa por hora para cada tipo de trabajo, tarifa de gremio (feriados) y SNR.</Alert>
+                <Alert severity="info">Empleado jornalizado: configurar tarifa por hora para cada tipo de trabajo (ej: Horas Grúa) y su tarifa de gremio (feriados).</Alert>
               )}
 
               {empRates.length === 0 ? (
@@ -919,7 +960,6 @@ export default function EmployeeDetailPage() {
                         <TableCell><strong>Concepto</strong></TableCell>
                         <TableCell align="right"><strong>{employee?.pay_type === 'monthly' ? 'Sueldo' : 'Tarifa'}</strong></TableCell>
                         <TableCell align="right"><strong>Tarifa Gremio</strong></TableCell>
-                        <TableCell align="right"><strong>SNR</strong></TableCell>
                         {employee?.pay_type === 'monthly' && (
                           <TableCell align="right"><strong>Tarifa Extras</strong></TableCell>
                         )}
@@ -930,11 +970,10 @@ export default function EmployeeDetailPage() {
                       {empRates.map((r) => (
                         <TableRow key={r.id}>
                           <TableCell>
-                            <Chip label={r.concept?.name || (employee?.pay_type === 'monthly' ? 'Sueldo base' : 'General')} size="small" color="primary" variant="outlined" />
+                            <Chip label={r.concept?.name || 'General'} size="small" color="primary" variant="outlined" />
                           </TableCell>
                           <TableCell align="right">{'$' + Number(r.rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell align="right">{r.guild_rate ? '$' + Number(r.guild_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</TableCell>
-                          <TableCell align="right">{r.snr_amount ? '$' + Number(r.snr_amount).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</TableCell>
                           {employee?.pay_type === 'monthly' && (
                             <TableCell align="right">{r.extras_rate ? '$' + Number(r.extras_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</TableCell>
                           )}
@@ -946,7 +985,6 @@ export default function EmployeeDetailPage() {
                                   concept_id: r.concept_id || '',
                                   rate: Number(r.rate),
                                   guild_rate: Number(r.guild_rate || 0),
-                                  snr_amount: Number(r.snr_amount || 0),
                                   extras_rate: Number(r.extras_rate || 0),
                                 });
                                 setRateDialogOpen(true);
@@ -1024,20 +1062,12 @@ export default function EmployeeDetailPage() {
                   />
                 )}
                 <CurrencyInput
-                  label="SNR por quincena"
-                  fullWidth
-                  value={rateForm.snr_amount}
-                  onChange={(v) => setRateForm({ ...rateForm, snr_amount: v ?? 0 })}
-                />
-                {employee?.pay_type === 'monthly' && (
-                  <CurrencyInput
-                    label="Tarifa de horas extras"
+                  label="Tarifa de extras (Para mensualizados)"
                     fullWidth
                     value={rateForm.extras_rate}
                     onChange={(v) => setRateForm({ ...rateForm, extras_rate: v ?? 0 })}
                     helperText="Valor de la hora extra para mensualizados"
                   />
-                )}
               </Stack>
             </DialogContent>
             <DialogActions>
@@ -1049,7 +1079,6 @@ export default function EmployeeDetailPage() {
                     concept_id: rateForm.concept_id || null,
                     rate: rateForm.rate,
                     guild_rate: rateForm.guild_rate || null,
-                    snr_amount: rateForm.snr_amount || null,
                     extras_rate: rateForm.extras_rate || null,
                   });
                   setSuccess(editingRate ? 'Tarifa actualizada' : 'Tarifa creada');
@@ -1062,6 +1091,48 @@ export default function EmployeeDetailPage() {
               }}>{editingRate ? 'Guardar' : 'Crear'}</Button>
             </DialogActions>
           </Dialog>
+
+          {/* Base Config Dialog */}
+          <Dialog open={baseConfigDialogOpen} onClose={() => setBaseConfigDialogOpen(false)} maxWidth="sm" fullWidth>
+            <DialogTitle>Editar Configuración Salarial Base</DialogTitle>
+            <DialogContent>
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                <TextField label="Modalidad de Pago" select fullWidth value={baseConfigForm.pay_type}
+                  onChange={(e) => setBaseConfigForm({ ...baseConfigForm, pay_type: e.target.value })}
+                  SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
+                  <option value="hourly">Jornalizado (Por Hora)</option>
+                  <option value="monthly">Mensualizado (Sueldo Fijo)</option>
+                </TextField>
+                
+                {baseConfigForm.pay_type === 'monthly' ? (
+                  <CurrencyInput label="Sueldo Fijo Mensual" fullWidth value={baseConfigForm.monthly_salary} onChange={(v) => setBaseConfigForm({ ...baseConfigForm, monthly_salary: v ?? 0 })} />
+                ) : (
+                  <CurrencyInput label="Valor de Hora Base" fullWidth value={baseConfigForm.hourly_rate} onChange={(v) => setBaseConfigForm({ ...baseConfigForm, hourly_rate: v ?? 0 })} />
+                )}
+
+                <CurrencyInput label="Monto SNR (Global por quincena)" fullWidth value={baseConfigForm.snr_amount} onChange={(v) => setBaseConfigForm({ ...baseConfigForm, snr_amount: v ?? 0 })} />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setBaseConfigDialogOpen(false)}>Cancelar</Button>
+              <Button variant="contained" onClick={async () => {
+                try {
+                  await EmployeeService.update(employeeId, {
+                    pay_type: baseConfigForm.pay_type,
+                    hourly_rate: baseConfigForm.pay_type === 'hourly' ? baseConfigForm.hourly_rate : 0,
+                    monthly_salary: baseConfigForm.pay_type === 'monthly' ? baseConfigForm.monthly_salary : 0,
+                    snr_amount: baseConfigForm.snr_amount,
+                  });
+                  setSuccess('Configuración salarial base actualizada');
+                  setBaseConfigDialogOpen(false);
+                  loadData(); // reload employee
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Error al guardar');
+                }
+              }}>Guardar Configuración</Button>
+            </DialogActions>
+          </Dialog>
+
         </Box>
       )}
 

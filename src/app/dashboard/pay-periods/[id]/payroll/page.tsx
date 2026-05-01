@@ -330,7 +330,7 @@ export default function PayrollPage() {
                     <Typography variant="overline" color="text.secondary" fontWeight={600}>Horas trabajadas</Typography>
                     <Stack spacing={0.25} mt={0.5}>
                       {detailEntry.employee?.pay_type !== 'monthly' && (
-                        <Typography variant="body2">Regulares: <strong>{detailEntry.total_regular_hours}h</strong></Typography>
+                        <Typography variant="body2">Total: <strong>{detailEntry.total_regular_hours}h</strong></Typography>
                       )}
                       {Number(detailEntry.total_overtime_50_hours) > 0 && (
                         <Typography variant="body2">Extras 50%: <strong>{detailEntry.total_overtime_50_hours}h</strong></Typography>
