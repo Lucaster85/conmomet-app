@@ -319,7 +319,7 @@ export default function TimeEntriesPage() {
                         </Box>
                         <Box display="flex" alignItems="center" gap={0.5}>
                           <Chip label={STATUS_LABELS[entry.status] || entry.status} color={STATUS_COLORS[entry.status] || 'default'} size="small" />
-                          {entry.status === 'pending' && (
+                          {entry.status === 'pending' &&  (
                             <Tooltip title="Aprobar">
                               <IconButton size="small" color="success" onClick={() => handleApprove(entry)}><ApproveIcon fontSize="small" /></IconButton>
                             </Tooltip>
