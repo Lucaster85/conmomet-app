@@ -13,6 +13,7 @@ import {
 } from '@mui/icons-material';
 import {
   Employee, EmployeeService, Plant, PlantService,
+  Project, ProjectService,
   TimeEntry, TimeEntryService, CreateTimeEntryData,
   PayrollConcept, PayrollConceptService
 } from '../../../utils/api';
@@ -37,6 +38,7 @@ interface TimeBlock {
   overtime_50_hours: number;
   overtime_100_hours: number;
   plant_id: number | '';
+  project_id: number | '';
   notes: string;
 }
 
@@ -44,6 +46,7 @@ export default function TimeEntriesPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [plants, setPlants] = useState<Plant[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [concepts, setConcepts] = useState<PayrollConcept[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -66,24 +69,26 @@ export default function TimeEntriesPage() {
   
   // Masivo state
   const [massiveBlock, setMassiveBlock] = useState<TimeBlock>({
-    id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', notes: ''
+    id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: ''
   });
 
   // Individual state
   const [individualBlocks, setIndividualBlocks] = useState<TimeBlock[]>([{
-    id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', notes: ''
+    id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: ''
   }]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [emps, plts, concs] = await Promise.all([
+      const [emps, plts, projs, concs] = await Promise.all([
         EmployeeService.getAll('active'),
         PlantService.getAll(),
+        ProjectService.getAll({ status: 'active' }),
         PayrollConceptService.getAll(true), // active only
       ]);
       setEmployees(emps);
       setPlants(plts);
+      setProjects(projs);
       setConcepts(concs);
       await loadEntries();
     } catch (err) {
@@ -151,6 +156,7 @@ export default function TimeEntriesPage() {
           is_late: isLate,
           notes: massiveBlock.notes,
           plant_id: massiveBlock.plant_id ? Number(massiveBlock.plant_id) : undefined,
+          project_id: massiveBlock.project_id ? Number(massiveBlock.project_id) : undefined,
         });
       } else {
         // Individual blocks (only 1 employee allowed)
@@ -169,6 +175,7 @@ export default function TimeEntriesPage() {
             is_late: isLate,
             notes: block.notes,
             plant_id: block.plant_id ? Number(block.plant_id) : undefined,
+            project_id: block.project_id ? Number(block.project_id) : undefined,
           });
         }
       }
@@ -203,12 +210,12 @@ export default function TimeEntriesPage() {
     setSelectedEmployees([]);
     setFormDate(new Date().toISOString().split('T')[0]);
     setIsLate(false);
-    setMassiveBlock({ id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', notes: '' });
-    setIndividualBlocks([{ id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', notes: '' }]);
+    setMassiveBlock({ id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '' });
+    setIndividualBlocks([{ id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '' }]);
   };
 
   const addBlock = () => {
-    setIndividualBlocks([...individualBlocks, { id: Date.now().toString(), check_in: '13:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', notes: '' }]);
+    setIndividualBlocks([...individualBlocks, { id: Date.now().toString(), check_in: '13:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '' }]);
   };
 
   const removeBlock = (id: string) => {
@@ -431,10 +438,20 @@ export default function TimeEntriesPage() {
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField label="Planta" select fullWidth value={massiveBlock.plant_id}
-                      onChange={(e) => setMassiveBlock({ ...massiveBlock, plant_id: e.target.value ? Number(e.target.value) : '' })} 
+                      onChange={(e) => setMassiveBlock({ ...massiveBlock, plant_id: e.target.value ? Number(e.target.value) : '', project_id: '' })} 
                       SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
                       <option value="">— Ninguna —</option>
                       {plants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </TextField>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField label="Proyecto" select fullWidth value={massiveBlock.project_id}
+                      onChange={(e) => setMassiveBlock({ ...massiveBlock, project_id: e.target.value ? Number(e.target.value) : '' })} 
+                      SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
+                      <option value="">— Ninguno —</option>
+                      {projects
+                        .filter(p => !massiveBlock.plant_id || p.plant_id === massiveBlock.plant_id)
+                        .map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
                     </TextField>
                   </Grid>
                   <Grid size={{ xs: 12 }}>
@@ -489,10 +506,24 @@ export default function TimeEntriesPage() {
                             onChange={(e) => {
                               const newBlocks = [...individualBlocks];
                               newBlocks[index].plant_id = e.target.value ? Number(e.target.value) : '';
+                              newBlocks[index].project_id = ''; // Reset project when plant changes
                               setIndividualBlocks(newBlocks);
                             }} SelectProps={{ native: true }} InputLabelProps={{ shrink: true }} size="small">
                             <option value="">— Ninguna —</option>
                             {plants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </TextField>
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <TextField label="Proyecto" select fullWidth value={block.project_id}
+                            onChange={(e) => {
+                              const newBlocks = [...individualBlocks];
+                              newBlocks[index].project_id = e.target.value ? Number(e.target.value) : '';
+                              setIndividualBlocks(newBlocks);
+                            }} SelectProps={{ native: true }} InputLabelProps={{ shrink: true }} size="small">
+                            <option value="">— Ninguno —</option>
+                            {projects
+                              .filter(p => !block.plant_id || p.plant_id === block.plant_id)
+                              .map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
                           </TextField>
                         </Grid>
                         <Grid size={{ xs: 6, md: 2 }}>

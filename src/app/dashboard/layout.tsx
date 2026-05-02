@@ -32,6 +32,7 @@ import {
   AccountCircle,
   Business,
   Article as ArticleIcon,
+  Assignment as AssignmentIcon,
   AdminPanelSettings as RolesIcon,
   Factory as FactoryIcon,
   Badge as BadgeIcon,
@@ -93,6 +94,7 @@ const menuGroups: MenuGroupDef[] = [
     items: [
       { text: 'Clientes', icon: <Business />, path: '/dashboard/clients', requiredPermission: 'clients_read' },
       { text: 'Plantas', icon: <FactoryIcon />, path: '/dashboard/plants', requiredPermission: 'plants_read' },
+      { text: 'Proyectos', icon: <AssignmentIcon />, path: '/dashboard/projects', requiredPermission: 'projects_read' },
     ]
   },
   {

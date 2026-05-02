@@ -564,6 +564,37 @@ export interface Plant {
   createdAt: string;
 }
 
+export interface Project {
+  id: number;
+  name: string;
+  code: string;
+  client_id: number;
+  plant_id?: number;
+  description?: string;
+  budgeted_hours: number;
+  consumed_hours?: number;
+  status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
+  start_date?: string;
+  end_date?: string;
+  notes?: string;
+  client?: { id: number; razonSocial: string };
+  plant?: { id: number; name: string };
+  createdAt: string;
+}
+
+export interface CreateProjectData {
+  name: string;
+  code?: string;
+  client_id: number;
+  plant_id?: number;
+  description?: string;
+  budgeted_hours?: number;
+  status?: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
+  start_date?: string;
+  end_date?: string;
+  notes?: string;
+}
+
 export interface Category {
   id: number;
   name: string;
@@ -674,6 +705,7 @@ export interface TimeEntry {
   void_reason?: string;
   employee?: { id: number; name: string; lastname: string; hourly_rate: number };
   plant?: { id: number; name: string };
+  project?: { id: number; name: string; code: string };
   registeredBy?: { id: number; name: string; lastname: string };
   approvedBy?: { id: number; name: string; lastname: string };
   createdAt: string;
@@ -792,6 +824,55 @@ export class EmployeeService {
       const error = await response.json();
       throw new Error(error.error || 'Error al eliminar empleado');
     }
+  }
+}
+
+export class ProjectService {
+  static async getAll(params?: { client_id?: number; status?: string; plant_id?: number }): Promise<Project[]> {
+    let url = `${API_BASE_URL}/projects`;
+    if (params) {
+      const qs = new URLSearchParams();
+      if (params.client_id) qs.append('client_id', params.client_id.toString());
+      if (params.status) qs.append('status', params.status);
+      if (params.plant_id) qs.append('plant_id', params.plant_id.toString());
+      if (qs.toString()) url += `?${qs.toString()}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener proyectos');
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async getById(id: number): Promise<Project> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/projects/${id}`);
+    if (!response.ok) throw new Error('Error al obtener proyecto');
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async create(projectData: CreateProjectData): Promise<Project> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/projects`, {
+      method: 'POST',
+      body: JSON.stringify(projectData),
+    });
+    if (!response.ok) throw new Error('Error al crear proyecto');
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async update(id: number, projectData: Partial<CreateProjectData>): Promise<Project> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/projects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(projectData),
+    });
+    if (!response.ok) throw new Error('Error al actualizar proyecto');
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/projects/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Error al eliminar proyecto');
   }
 }
 
