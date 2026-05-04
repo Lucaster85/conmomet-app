@@ -377,56 +377,131 @@ export default function ProjectsPage() {
           ) : !teamData || teamData.team.length === 0 ? (
             <Typography color="text.secondary" textAlign="center" py={3}>No hay empleados con horas registradas en este proyecto.</Typography>
           ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'grey.50' }}>
-                    <TableCell><strong>Empleado</strong></TableCell>
-                    <TableCell align="right"><strong>Hs Regulares</strong></TableCell>
-                    <TableCell align="right"><strong>Hs 50%</strong></TableCell>
-                    <TableCell align="right"><strong>Hs 100%</strong></TableCell>
-                    <TableCell align="right"><strong>Total Ponderado</strong></TableCell>
-                    <TableCell align="center"><strong>Habilitación</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+            <Box>
+              {/* Mobile View */}
+              <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Stack spacing={2}>
                   {teamData.team.map((m) => (
-                    <TableRow key={m.employee.id} hover>
-                      <TableCell>
-                        <Typography fontWeight="medium">{m.employee.lastname}, {m.employee.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">{m.entries} registros • {m.first_date} a {m.last_date}</Typography>
-                      </TableCell>
-                      <TableCell align="right">{m.hours.regular.toFixed(1)}</TableCell>
-                      <TableCell align="right">{m.hours.overtime_50.toFixed(1)}</TableCell>
-                      <TableCell align="right">{m.hours.overtime_100.toFixed(1)}</TableCell>
-                      <TableCell align="right"><Typography fontWeight="bold">{m.hours.weighted_total.toFixed(1)}</Typography></TableCell>
-                      <TableCell align="center">
-                        {m.compliance ? (
-                          <Tooltip title={`${m.compliance.summary.met}/${m.compliance.summary.total} requisitos`}>
-                            <Chip
-                              label={(COMPLIANCE_CHIP[m.compliance.status] || COMPLIANCE_CHIP.non_compliant).label}
-                              size="small"
-                              color={(COMPLIANCE_CHIP[m.compliance.status] || COMPLIANCE_CHIP.non_compliant).color}
-                              variant="outlined"
-                            />
-                          </Tooltip>
-                        ) : (
-                          <Typography variant="caption" color="text.secondary">—</Typography>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                    <Paper key={m.employee.id} variant="outlined" sx={{ p: 2 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                        <Box>
+                          <Typography fontWeight="medium">{m.employee.lastname}, {m.employee.name}</Typography>
+                          <Typography variant="caption" color="text.secondary">{m.entries} registros • {m.first_date} a {m.last_date}</Typography>
+                        </Box>
+                        <Box>
+                          {m.compliance ? (
+                            <Tooltip title={`${m.compliance.summary.met}/${m.compliance.summary.total} requisitos`}>
+                              <Chip
+                                label={(COMPLIANCE_CHIP[m.compliance.status] || COMPLIANCE_CHIP.non_compliant).label}
+                                size="small"
+                                color={(COMPLIANCE_CHIP[m.compliance.status] || COMPLIANCE_CHIP.non_compliant).color}
+                                variant="outlined"
+                              />
+                            </Tooltip>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">—</Typography>
+                          )}
+                        </Box>
+                      </Box>
+                      <Divider sx={{ my: 1 }} />
+                      <Grid container spacing={1} sx={{ textAlign: 'center' }}>
+                        <Grid size={{ xs: 3 }}>
+                          <Typography variant="caption" color="text.secondary">Reg</Typography>
+                          <Typography variant="body2">{m.hours.regular.toFixed(1)}</Typography>
+                        </Grid>
+                        <Grid size={{ xs: 3 }}>
+                          <Typography variant="caption" color="text.secondary">50%</Typography>
+                          <Typography variant="body2">{m.hours.overtime_50.toFixed(1)}</Typography>
+                        </Grid>
+                        <Grid size={{ xs: 3 }}>
+                          <Typography variant="caption" color="text.secondary">100%</Typography>
+                          <Typography variant="body2">{m.hours.overtime_100.toFixed(1)}</Typography>
+                        </Grid>
+                        <Grid size={{ xs: 3 }}>
+                          <Typography variant="caption" color="text.secondary" fontWeight="bold">Total</Typography>
+                          <Typography variant="body2" fontWeight="bold">{m.hours.weighted_total.toFixed(1)}</Typography>
+                        </Grid>
+                      </Grid>
+                    </Paper>
                   ))}
-                  <TableRow sx={{ bgcolor: 'grey.50' }}>
-                    <TableCell><Typography fontWeight="bold">Total</Typography></TableCell>
-                    <TableCell align="right"><strong>{teamData.team.reduce((s, m) => s + m.hours.regular, 0).toFixed(1)}</strong></TableCell>
-                    <TableCell align="right"><strong>{teamData.team.reduce((s, m) => s + m.hours.overtime_50, 0).toFixed(1)}</strong></TableCell>
-                    <TableCell align="right"><strong>{teamData.team.reduce((s, m) => s + m.hours.overtime_100, 0).toFixed(1)}</strong></TableCell>
-                    <TableCell align="right"><Typography fontWeight="bold">{teamData.team.reduce((s, m) => s + m.hours.weighted_total, 0).toFixed(1)}</Typography></TableCell>
-                    <TableCell />
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                    <Typography fontWeight="bold" textAlign="center" mb={1}>Totales del Equipo</Typography>
+                    <Grid container spacing={1} sx={{ textAlign: 'center' }}>
+                      <Grid size={{ xs: 3 }}>
+                        <Typography variant="caption" color="text.secondary">Reg</Typography>
+                        <Typography variant="body2" fontWeight="bold">{teamData.team.reduce((s, m) => s + m.hours.regular, 0).toFixed(1)}</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 3 }}>
+                        <Typography variant="caption" color="text.secondary">50%</Typography>
+                        <Typography variant="body2" fontWeight="bold">{teamData.team.reduce((s, m) => s + m.hours.overtime_50, 0).toFixed(1)}</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 3 }}>
+                        <Typography variant="caption" color="text.secondary">100%</Typography>
+                        <Typography variant="body2" fontWeight="bold">{teamData.team.reduce((s, m) => s + m.hours.overtime_100, 0).toFixed(1)}</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 3 }}>
+                        <Typography variant="caption" color="text.secondary" fontWeight="bold">Total</Typography>
+                        <Typography variant="body2" fontWeight="bold">{teamData.team.reduce((s, m) => s + m.hours.weighted_total, 0).toFixed(1)}</Typography>
+                      </Grid>
+                    </Grid>
+                  </Paper>
+                </Stack>
+              </Box>
+
+              {/* Desktop View */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell><strong>Empleado</strong></TableCell>
+                        <TableCell align="right"><strong>Hs Regulares</strong></TableCell>
+                        <TableCell align="right"><strong>Hs 50%</strong></TableCell>
+                        <TableCell align="right"><strong>Hs 100%</strong></TableCell>
+                        <TableCell align="right"><strong>Total Ponderado</strong></TableCell>
+                        <TableCell align="center"><strong>Habilitación</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {teamData.team.map((m) => (
+                        <TableRow key={m.employee.id} hover>
+                          <TableCell>
+                            <Typography fontWeight="medium">{m.employee.lastname}, {m.employee.name}</Typography>
+                            <Typography variant="caption" color="text.secondary">{m.entries} registros • {m.first_date} a {m.last_date}</Typography>
+                          </TableCell>
+                          <TableCell align="right">{m.hours.regular.toFixed(1)}</TableCell>
+                          <TableCell align="right">{m.hours.overtime_50.toFixed(1)}</TableCell>
+                          <TableCell align="right">{m.hours.overtime_100.toFixed(1)}</TableCell>
+                          <TableCell align="right"><Typography fontWeight="bold">{m.hours.weighted_total.toFixed(1)}</Typography></TableCell>
+                          <TableCell align="center">
+                            {m.compliance ? (
+                              <Tooltip title={`${m.compliance.summary.met}/${m.compliance.summary.total} requisitos`}>
+                                <Chip
+                                  label={(COMPLIANCE_CHIP[m.compliance.status] || COMPLIANCE_CHIP.non_compliant).label}
+                                  size="small"
+                                  color={(COMPLIANCE_CHIP[m.compliance.status] || COMPLIANCE_CHIP.non_compliant).color}
+                                  variant="outlined"
+                                />
+                              </Tooltip>
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">—</Typography>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell><Typography fontWeight="bold">Total</Typography></TableCell>
+                        <TableCell align="right"><strong>{teamData.team.reduce((s, m) => s + m.hours.regular, 0).toFixed(1)}</strong></TableCell>
+                        <TableCell align="right"><strong>{teamData.team.reduce((s, m) => s + m.hours.overtime_50, 0).toFixed(1)}</strong></TableCell>
+                        <TableCell align="right"><strong>{teamData.team.reduce((s, m) => s + m.hours.overtime_100, 0).toFixed(1)}</strong></TableCell>
+                        <TableCell align="right"><Typography fontWeight="bold">{teamData.team.reduce((s, m) => s + m.hours.weighted_total, 0).toFixed(1)}</Typography></TableCell>
+                        <TableCell />
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            </Box>
           )}
         </DialogContent>
         <DialogActions>

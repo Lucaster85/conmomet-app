@@ -428,12 +428,12 @@ export default function PlantsPage() {
                     const isExpanded = expandedEmp === emp.employee.id;
                     return (
                       <Paper key={emp.employee.id} variant="outlined" sx={{ p: 1.5, cursor: 'pointer' }} onClick={() => setExpandedEmp(isExpanded ? null : emp.employee.id)}>
-                        <Box display="flex" justifyContent="space-between" alignItems="center">
-                          <Box display="flex" alignItems="center" gap={1}>
+                        <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1}>
+                          <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
                             <Typography fontWeight="medium">{emp.employee.lastname}, {emp.employee.name}</Typography>
                             <Chip label={cfg.label} size="small" color={cfg.color} variant="outlined" />
                           </Box>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: { xs: 'left', sm: 'right' } }}>
                             {emp.summary.met}/{emp.summary.total} requisitos
                             {emp.summary.expiring > 0 && ` • ${emp.summary.expiring} por vencer`}
                           </Typography>
