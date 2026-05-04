@@ -4,15 +4,27 @@ import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Switch,
-  FormControlLabel, Stack,
+  FormControlLabel, Stack, Chip, Divider,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Refresh as RefreshIcon,
+  Refresh as RefreshIcon, Checklist as ChecklistIcon,
+  VerifiedUser as ComplianceIcon,
 } from '@mui/icons-material';
-import { Plant, PlantService, Client, ClientService } from '../../../utils/api';
+import {
+  Plant, PlantService, Client, ClientService,
+  DocumentCategory, DocumentCategoryService,
+  PlantRequirement, PlantRequirementService,
+  ComplianceService, PlantComplianceResult,
+} from '../../../utils/api';
+
+const STATUS_ICON: Record<string, { label: string; color: 'success' | 'warning' | 'error' }> = {
+  compliant: { label: '🟢 Habilitado', color: 'success' },
+  partial: { label: '🟡 Parcial', color: 'warning' },
+  non_compliant: { label: '🔴 No Habilitado', color: 'error' },
+};
 
 export default function PlantsPage() {
   const [plants, setPlants] = useState<Plant[]>([]);
@@ -23,6 +35,20 @@ export default function PlantsPage() {
   const [editingPlant, setEditingPlant] = useState<Plant | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; plant: Plant | null }>({ open: false, plant: null });
   const [clients, setClients] = useState<Client[]>([]);
+
+  // Requirements state
+  const [reqDialog, setReqDialog] = useState<{ open: boolean; plant: Plant | null }>({ open: false, plant: null });
+  const [requirements, setRequirements] = useState<PlantRequirement[]>([]);
+  const [docCategories, setDocCategories] = useState<DocumentCategory[]>([]);
+  const [loadingReqs, setLoadingReqs] = useState(false);
+  const [addReqForm, setAddReqForm] = useState({ document_category_id: '', is_mandatory: true, notes: '' });
+
+  // Compliance state
+  const [compDialog, setCompDialog] = useState<{ open: boolean; plant: Plant | null }>({ open: false, plant: null });
+  const [compData, setCompData] = useState<PlantComplianceResult | null>(null);
+  const [loadingComp, setLoadingComp] = useState(false);
+  const [compFilter, setCompFilter] = useState<string>('all');
+  const [expandedEmp, setExpandedEmp] = useState<number | null>(null);
 
   // Form state
   const [form, setForm] = useState({ name: '', address: '', client_id: '', is_active: true, notes: '' });
@@ -110,6 +136,69 @@ export default function PlantsPage() {
     }
   };
 
+  const handleOpenRequirements = async (plant: Plant) => {
+    setReqDialog({ open: true, plant });
+    setLoadingReqs(true);
+    setAddReqForm({ document_category_id: '', is_mandatory: true, notes: '' });
+    try {
+      const [reqs, cats] = await Promise.all([
+        PlantRequirementService.getAll(plant.id),
+        DocumentCategoryService.getAll('employee'),
+      ]);
+      setRequirements(Array.isArray(reqs) ? reqs : []);
+      setDocCategories(Array.isArray(cats) ? cats : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar requisitos');
+    } finally {
+      setLoadingReqs(false);
+    }
+  };
+
+  const handleAddRequirement = async () => {
+    if (!reqDialog.plant || !addReqForm.document_category_id) return;
+    try {
+      await PlantRequirementService.create(reqDialog.plant.id, {
+        document_category_id: Number(addReqForm.document_category_id),
+        is_mandatory: addReqForm.is_mandatory,
+        notes: addReqForm.notes || undefined,
+      });
+      setAddReqForm({ document_category_id: '', is_mandatory: true, notes: '' });
+      setSuccess('Requisito agregado');
+      // Reload requirements
+      const reqs = await PlantRequirementService.getAll(reqDialog.plant.id);
+      setRequirements(Array.isArray(reqs) ? reqs : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al agregar requisito');
+    }
+  };
+
+  const handleDeleteRequirement = async (reqId: number) => {
+    if (!reqDialog.plant) return;
+    try {
+      await PlantRequirementService.delete(reqDialog.plant.id, reqId);
+      setSuccess('Requisito eliminado');
+      const reqs = await PlantRequirementService.getAll(reqDialog.plant.id);
+      setRequirements(Array.isArray(reqs) ? reqs : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar requisito');
+    }
+  };
+
+  const handleOpenCompliance = async (plant: Plant) => {
+    setCompDialog({ open: true, plant });
+    setLoadingComp(true);
+    setCompFilter('all');
+    setExpandedEmp(null);
+    try {
+      const data = await ComplianceService.getPlantCompliance(plant.id);
+      setCompData(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar habilitaciones');
+    } finally {
+      setLoadingComp(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -150,6 +239,8 @@ export default function PlantsPage() {
                   </Box>
                   <Box>
                     <IconButton size="small" color="primary" onClick={() => handleOpenEdit(plant)}><EditIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="secondary" onClick={() => handleOpenRequirements(plant)}><ChecklistIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="info" onClick={() => handleOpenCompliance(plant)}><ComplianceIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, plant })}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
                 </Box>
@@ -191,6 +282,8 @@ export default function PlantsPage() {
                     </TableCell>
                     <TableCell align="center">
                       <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(plant)}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="Requisitos"><IconButton size="small" color="secondary" onClick={() => handleOpenRequirements(plant)}><ChecklistIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="Habilitaciones"><IconButton size="small" color="info" onClick={() => handleOpenCompliance(plant)}><ComplianceIcon fontSize="small" /></IconButton></Tooltip>
                       <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, plant })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
                   </TableRow>
@@ -234,6 +327,153 @@ export default function PlantsPage() {
         <DialogActions>
           <Button onClick={() => setDeleteDialog({ open: false, plant: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
+        </DialogActions>
+      </Dialog>
+      {/* Requirements Dialog */}
+      <Dialog open={reqDialog.open} onClose={() => setReqDialog({ open: false, plant: null })} maxWidth="md" fullWidth>
+        <DialogTitle>Requisitos de Ingreso — {reqDialog.plant?.name}</DialogTitle>
+        <DialogContent>
+          {loadingReqs ? (
+            <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+          ) : (
+            <Box>
+              {/* Current requirements */}
+              {requirements.length === 0 ? (
+                <Typography color="text.secondary" textAlign="center" py={3}>Esta planta no tiene requisitos definidos.</Typography>
+              ) : (
+                <Stack spacing={1} mb={3}>
+                  {requirements.map((req) => (
+                    <Paper key={req.id} variant="outlined" sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Typography fontWeight="medium">{req.documentCategory?.name}</Typography>
+                          <Chip
+                            label={req.is_mandatory ? 'Obligatorio' : 'Deseable'}
+                            size="small"
+                            color={req.is_mandatory ? 'error' : 'default'}
+                            variant="outlined"
+                          />
+                          {req.documentCategory?.is_plant_specific && <Chip label="Específico" size="small" color="info" variant="outlined" />}
+                        </Box>
+                        {req.notes && <Typography variant="caption" color="text.secondary">{req.notes}</Typography>}
+                      </Box>
+                      <IconButton size="small" color="error" onClick={() => handleDeleteRequirement(req.id)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Paper>
+                  ))}
+                </Stack>
+              )}
+
+              {/* Add requirement form */}
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" gutterBottom>Agregar Requisito</Typography>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="flex-end">
+                <TextField
+                  label="Categoría de Documento" select fullWidth
+                  value={addReqForm.document_category_id}
+                  onChange={(e) => setAddReqForm({ ...addReqForm, document_category_id: e.target.value })}
+                  SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
+                  size="small"
+                >
+                  <option value="">— Seleccionar —</option>
+                  {docCategories
+                    .filter(dc => !requirements.some(r => r.document_category_id === dc.id))
+                    .map(dc => <option key={dc.id} value={dc.id}>{dc.name}{dc.is_plant_specific ? ' (Específico de Planta)' : ''}</option>)
+                  }
+                </TextField>
+                <FormControlLabel
+                  control={<Switch checked={addReqForm.is_mandatory} onChange={(e) => setAddReqForm({ ...addReqForm, is_mandatory: e.target.checked })} size="small" />}
+                  label="Obligatorio"
+                  sx={{ whiteSpace: 'nowrap' }}
+                />
+                <Button
+                  variant="contained" size="small" startIcon={<AddIcon />}
+                  onClick={handleAddRequirement}
+                  disabled={!addReqForm.document_category_id}
+                  sx={{ whiteSpace: 'nowrap' }}
+                >
+                  Agregar
+                </Button>
+              </Stack>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReqDialog({ open: false, plant: null })}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Compliance Dialog */}
+      <Dialog open={compDialog.open} onClose={() => { setCompDialog({ open: false, plant: null }); setExpandedEmp(null); }} maxWidth="md" fullWidth>
+        <DialogTitle>Habilitaciones — {compDialog.plant?.name}</DialogTitle>
+        <DialogContent>
+          {loadingComp ? (
+            <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+          ) : !compData || compData.requirements.length === 0 ? (
+            <Typography color="text.secondary" textAlign="center" py={3}>Esta planta no tiene requisitos definidos. Configurá los requisitos primero.</Typography>
+          ) : (
+            <Box>
+              <Box display="flex" gap={1} mb={2} flexWrap="wrap">
+                <Chip label="Todos" variant={compFilter === 'all' ? 'filled' : 'outlined'} onClick={() => setCompFilter('all')} />
+                <Chip label="🟢 Habilitados" color="success" variant={compFilter === 'compliant' ? 'filled' : 'outlined'} onClick={() => setCompFilter('compliant')} />
+                <Chip label="🟡 Parcial" color="warning" variant={compFilter === 'partial' ? 'filled' : 'outlined'} onClick={() => setCompFilter('partial')} />
+                <Chip label="🔴 No Habilitados" color="error" variant={compFilter === 'non_compliant' ? 'filled' : 'outlined'} onClick={() => setCompFilter('non_compliant')} />
+              </Box>
+              <Stack spacing={1}>
+                {compData.employees
+                  .filter(e => compFilter === 'all' || e.status === compFilter)
+                  .map((emp) => {
+                    const cfg = STATUS_ICON[emp.status] || STATUS_ICON.non_compliant;
+                    const isExpanded = expandedEmp === emp.employee.id;
+                    return (
+                      <Paper key={emp.employee.id} variant="outlined" sx={{ p: 1.5, cursor: 'pointer' }} onClick={() => setExpandedEmp(isExpanded ? null : emp.employee.id)}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <Typography fontWeight="medium">{emp.employee.lastname}, {emp.employee.name}</Typography>
+                            <Chip label={cfg.label} size="small" color={cfg.color} variant="outlined" />
+                          </Box>
+                          <Typography variant="caption" color="text.secondary">
+                            {emp.summary.met}/{emp.summary.total} requisitos
+                            {emp.summary.expiring > 0 && ` • ${emp.summary.expiring} por vencer`}
+                          </Typography>
+                        </Box>
+                        {isExpanded && (
+                          <Box mt={1.5}>
+                            <Divider sx={{ mb: 1 }} />
+                            <Stack spacing={0.5}>
+                              {emp.details.map((d, i) => (
+                                <Box key={i} display="flex" justifyContent="space-between" alignItems="center">
+                                  <Box display="flex" alignItems="center" gap={1}>
+                                    <Typography variant="body2">
+                                      {d.status === 'valid' && '✅'}
+                                      {d.status === 'expiring_soon' && '⚠️'}
+                                      {d.status === 'expired' && '❌'}
+                                      {d.status === 'missing' && '❓'}
+                                      {' '}{d.requirement.category_name}
+                                    </Typography>
+                                    {d.requirement.is_mandatory && <Chip label="Obligatorio" size="small" color="error" variant="outlined" sx={{ height: 20, fontSize: 10 }} />}
+                                  </Box>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {d.document ? (d.document.expiration_date || 'Sin vencimiento') : 'Sin documento'}
+                                  </Typography>
+                                </Box>
+                              ))}
+                            </Stack>
+                          </Box>
+                        )}
+                      </Paper>
+                    );
+                  })}
+                {compData.employees.filter(e => compFilter === 'all' || e.status === compFilter).length === 0 && (
+                  <Typography color="text.secondary" textAlign="center" py={2}>Ningún empleado coincide con el filtro.</Typography>
+                )}
+              </Stack>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setCompDialog({ open: false, plant: null }); setExpandedEmp(null); }}>Cerrar</Button>
         </DialogActions>
       </Dialog>
     </Box>

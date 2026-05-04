@@ -876,6 +876,180 @@ export class ProjectService {
   }
 }
 
+// Document Categories (for compliance system)
+export interface DocumentCategory {
+  id: number;
+  name: string;
+  description?: string;
+  applies_to: 'employee' | 'vehicle' | 'project' | 'company';
+  is_plant_specific: boolean;
+  createdAt: string;
+}
+
+export interface CreateDocumentCategoryData {
+  name: string;
+  description?: string;
+  applies_to: 'employee' | 'vehicle' | 'project' | 'company';
+  is_plant_specific?: boolean;
+}
+
+export class DocumentCategoryService {
+  static async getAll(appliesTo?: string): Promise<DocumentCategory[]> {
+    let url = `${API_BASE_URL}/document-categories`;
+    if (appliesTo) url += `?applies_to=${appliesTo}`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener categorías de documentos');
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async create(body: CreateDocumentCategoryData): Promise<DocumentCategory> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/document-categories`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear categoría de documento');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async update(id: number, body: Partial<CreateDocumentCategoryData>): Promise<DocumentCategory> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/document-categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar categoría de documento');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/document-categories/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar categoría de documento');
+    }
+  }
+}
+
+// Plant Requirements (for compliance system)
+export interface PlantRequirement {
+  id: number;
+  plant_id: number;
+  document_category_id: number;
+  is_mandatory: boolean;
+  notes?: string;
+  documentCategory?: { id: number; name: string; applies_to: string; is_plant_specific: boolean };
+  createdAt: string;
+}
+
+export class PlantRequirementService {
+  static async getAll(plantId: number): Promise<PlantRequirement[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/plants/${plantId}/requirements`);
+    if (!response.ok) throw new Error('Error al obtener requisitos');
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async create(plantId: number, body: { document_category_id: number; is_mandatory?: boolean; notes?: string }): Promise<PlantRequirement> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/plants/${plantId}/requirements`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al agregar requisito');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async update(plantId: number, reqId: number, body: { is_mandatory?: boolean; notes?: string }): Promise<PlantRequirement> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/plants/${plantId}/requirements/${reqId}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar requisito');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async delete(plantId: number, reqId: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/plants/${plantId}/requirements/${reqId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar requisito');
+    }
+  }
+}
+
+// Compliance types
+export interface ComplianceDetail {
+  requirement: {
+    id: number;
+    category_name: string;
+    is_mandatory: boolean;
+    is_plant_specific: boolean;
+  };
+  status: 'valid' | 'expiring_soon' | 'expired' | 'missing';
+  document: { id: number; title: string; expiration_date?: string } | null;
+}
+
+export interface EmployeeCompliance {
+  employee: { id: number; name: string; lastname: string };
+  status: 'compliant' | 'partial' | 'non_compliant';
+  summary: { total: number; met: number; expiring: number; missing: number; expired: number };
+  details: ComplianceDetail[];
+}
+
+export interface PlantComplianceResult {
+  requirements: { id: number; category_name: string; is_mandatory: boolean; is_plant_specific: boolean }[];
+  employees: EmployeeCompliance[];
+}
+
+export interface ProjectTeamMember {
+  employee: { id: number; name: string; lastname: string };
+  hours: { regular: number; overtime_50: number; overtime_100: number; weighted_total: number };
+  entries: number;
+  first_date: string;
+  last_date: string;
+  compliance: { status: string; summary: { total: number; met: number; expiring: number; missing: number; expired: number } } | null;
+}
+
+export interface ProjectTeamResult {
+  project: Project;
+  team: ProjectTeamMember[];
+}
+
+export class ComplianceService {
+  static async getPlantCompliance(plantId: number): Promise<PlantComplianceResult> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/plants/${plantId}/compliance`);
+    if (!response.ok) throw new Error('Error al obtener habilitaciones');
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async getProjectTeam(projectId: number): Promise<ProjectTeamResult> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/projects/${projectId}/team`);
+    if (!response.ok) throw new Error('Error al obtener equipo del proyecto');
+    const data = await response.json();
+    return data.data;
+  }
+}
+
 export class CategoryService {
   static async getAll(): Promise<Category[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/categories`);
@@ -1351,6 +1525,10 @@ export interface EntityDocument {
   entity_name?: string;
   file_url?: string;
   file_name?: string;
+  document_category_id?: number;
+  target_plant_id?: number;
+  documentCategory?: { id: number; name: string; applies_to: string; is_plant_specific: boolean };
+  targetPlant?: { id: number; name: string };
   expiration_date?: string;
   notify_days_before: number;
   alert_status: 'pending' | 'warned' | 'expired_warned' | 'resolved';
@@ -1377,7 +1555,7 @@ export class EntityDocumentService {
     return (await response.json()).data || [];
   }
 
-  static async create(data: { title: string; entity_type: string; entity_id?: number; notes?: string; expiration_date?: string; notify_days_before?: number; is_renewable?: boolean }, file?: File | null): Promise<EntityDocument> {
+  static async create(data: { title: string; entity_type: string; entity_id?: number; notes?: string; expiration_date?: string; notify_days_before?: number; is_renewable?: boolean; document_category_id?: number; target_plant_id?: number }, file?: File | null): Promise<EntityDocument> {
     const formData = new FormData();
     formData.append('title', data.title);
     formData.append('entity_type', data.entity_type);
@@ -1386,6 +1564,8 @@ export class EntityDocumentService {
     if (data.expiration_date) formData.append('expiration_date', data.expiration_date);
     if (data.notify_days_before) formData.append('notify_days_before', data.notify_days_before.toString());
     if (data.is_renewable !== undefined) formData.append('is_renewable', data.is_renewable.toString());
+    if (data.document_category_id) formData.append('document_category_id', data.document_category_id.toString());
+    if (data.target_plant_id) formData.append('target_plant_id', data.target_plant_id.toString());
     if (file) formData.append('file', file);
 
     const token = TokenManager.getToken();

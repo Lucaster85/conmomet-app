@@ -4,14 +4,23 @@ import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Stack, LinearProgress,
-  Grid, Divider
+  Grid, Divider, Chip,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Refresh as RefreshIcon,
+  Refresh as RefreshIcon, Groups as TeamIcon,
 } from '@mui/icons-material';
-import { Project, ProjectService, Client, ClientService, Plant, PlantService, CreateProjectData } from '../../../utils/api';
+import {
+  Project, ProjectService, Client, ClientService, Plant, PlantService, CreateProjectData,
+  ComplianceService, ProjectTeamResult,
+} from '../../../utils/api';
+
+const COMPLIANCE_CHIP: Record<string, { label: string; color: 'success' | 'warning' | 'error' }> = {
+  compliant: { label: '🟢', color: 'success' },
+  partial: { label: '🟡', color: 'warning' },
+  non_compliant: { label: '🔴', color: 'error' },
+};
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Borrador',
@@ -32,6 +41,11 @@ export default function ProjectsPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; project: Project | null }>({ open: false, project: null });
+
+  // Team state
+  const [teamDialog, setTeamDialog] = useState<{ open: boolean; project: Project | null }>({ open: false, project: null });
+  const [teamData, setTeamData] = useState<ProjectTeamResult | null>(null);
+  const [loadingTeam, setLoadingTeam] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -167,6 +181,19 @@ export default function ProjectsPage() {
     );
   };
 
+  const handleOpenTeam = async (project: Project) => {
+    setTeamDialog({ open: true, project });
+    setLoadingTeam(true);
+    try {
+      const data = await ComplianceService.getProjectTeam(project.id);
+      setTeamData(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar equipo');
+    } finally {
+      setLoadingTeam(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -206,6 +233,7 @@ export default function ProjectsPage() {
                   </Box>
                   <Box>
                     <IconButton size="small" color="primary" onClick={() => handleOpenEdit(proj)}><EditIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="info" onClick={() => handleOpenTeam(proj)}><TeamIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, project: proj })}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
                 </Box>
@@ -259,6 +287,7 @@ export default function ProjectsPage() {
                     </TableCell>
                     <TableCell align="center">
                       <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(proj)}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="Equipo"><IconButton size="small" color="info" onClick={() => handleOpenTeam(proj)}><TeamIcon fontSize="small" /></IconButton></Tooltip>
                       <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, project: proj })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
                   </TableRow>
@@ -336,6 +365,72 @@ export default function ProjectsPage() {
         <DialogActions>
           <Button onClick={() => setDeleteDialog({ open: false, project: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Team Dialog */}
+      <Dialog open={teamDialog.open} onClose={() => setTeamDialog({ open: false, project: null })} maxWidth="md" fullWidth>
+        <DialogTitle>Equipo — {teamDialog.project?.name}</DialogTitle>
+        <DialogContent>
+          {loadingTeam ? (
+            <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+          ) : !teamData || teamData.team.length === 0 ? (
+            <Typography color="text.secondary" textAlign="center" py={3}>No hay empleados con horas registradas en este proyecto.</Typography>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'grey.50' }}>
+                    <TableCell><strong>Empleado</strong></TableCell>
+                    <TableCell align="right"><strong>Hs Regulares</strong></TableCell>
+                    <TableCell align="right"><strong>Hs 50%</strong></TableCell>
+                    <TableCell align="right"><strong>Hs 100%</strong></TableCell>
+                    <TableCell align="right"><strong>Total Ponderado</strong></TableCell>
+                    <TableCell align="center"><strong>Habilitación</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {teamData.team.map((m) => (
+                    <TableRow key={m.employee.id} hover>
+                      <TableCell>
+                        <Typography fontWeight="medium">{m.employee.lastname}, {m.employee.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">{m.entries} registros • {m.first_date} a {m.last_date}</Typography>
+                      </TableCell>
+                      <TableCell align="right">{m.hours.regular.toFixed(1)}</TableCell>
+                      <TableCell align="right">{m.hours.overtime_50.toFixed(1)}</TableCell>
+                      <TableCell align="right">{m.hours.overtime_100.toFixed(1)}</TableCell>
+                      <TableCell align="right"><Typography fontWeight="bold">{m.hours.weighted_total.toFixed(1)}</Typography></TableCell>
+                      <TableCell align="center">
+                        {m.compliance ? (
+                          <Tooltip title={`${m.compliance.summary.met}/${m.compliance.summary.total} requisitos`}>
+                            <Chip
+                              label={(COMPLIANCE_CHIP[m.compliance.status] || COMPLIANCE_CHIP.non_compliant).label}
+                              size="small"
+                              color={(COMPLIANCE_CHIP[m.compliance.status] || COMPLIANCE_CHIP.non_compliant).color}
+                              variant="outlined"
+                            />
+                          </Tooltip>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">—</Typography>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow sx={{ bgcolor: 'grey.50' }}>
+                    <TableCell><Typography fontWeight="bold">Total</Typography></TableCell>
+                    <TableCell align="right"><strong>{teamData.team.reduce((s, m) => s + m.hours.regular, 0).toFixed(1)}</strong></TableCell>
+                    <TableCell align="right"><strong>{teamData.team.reduce((s, m) => s + m.hours.overtime_50, 0).toFixed(1)}</strong></TableCell>
+                    <TableCell align="right"><strong>{teamData.team.reduce((s, m) => s + m.hours.overtime_100, 0).toFixed(1)}</strong></TableCell>
+                    <TableCell align="right"><Typography fontWeight="bold">{teamData.team.reduce((s, m) => s + m.hours.weighted_total, 0).toFixed(1)}</Typography></TableCell>
+                    <TableCell />
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTeamDialog({ open: false, project: null })}>Cerrar</Button>
         </DialogActions>
       </Dialog>
     </Box>

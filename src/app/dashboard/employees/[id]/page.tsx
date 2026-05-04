@@ -41,6 +41,7 @@ import {
   AttendanceService, Attendance, LeaveRequestService, LeaveRequest, LeaveBalance,
   EmployeeRateService, EmployeeRate, PayrollConceptService, PayrollConcept,
   CategoryService, Category,
+  DocumentCategoryService, DocumentCategory, PlantService, Plant,
 } from '@/utils/api';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
@@ -80,6 +81,11 @@ export default function EmployeeDetailPage() {
   const [editingDoc, setEditingDoc] = useState<EntityDocument | null>(null);
   const [form, setForm] = useState({ title: '', notes: '', expiration_date: '', notify_days_before: 15 });
   const [file, setFile] = useState<File | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [selectedPlantId, setSelectedPlantId] = useState<string>('');
+  const [docCategories, setDocCategories] = useState<DocumentCategory[]>([]);
+  const [allPlants, setAllPlants] = useState<Plant[]>([]);
+  const [docCategoriesLoaded, setDocCategoriesLoaded] = useState(false);
   
   // History State
   const [historyDocs, setHistoryDocs] = useState<EntityDocument[]>([]);
@@ -182,6 +188,8 @@ export default function EmployeeDetailPage() {
           expiration_date: hasExpiration && form.expiration_date ? form.expiration_date : undefined,
           notify_days_before: hasExpiration ? form.notify_days_before : undefined,
           is_renewable: isRenewable,
+          document_category_id: selectedCategoryId ? Number(selectedCategoryId) : undefined,
+          target_plant_id: selectedPlantId ? Number(selectedPlantId) : undefined,
         }, file);
         setSuccess('Documento guardado correctamente');
       }
@@ -192,6 +200,8 @@ export default function EmployeeDetailPage() {
       setFile(null);
       setHasExpiration(false);
       setIsRenewable(true);
+      setSelectedCategoryId('');
+      setSelectedPlantId('');
       loadData();
     } catch (err: unknown) {
       const e = err as Error;
@@ -274,8 +284,26 @@ export default function EmployeeDetailPage() {
     });
     setHasExpiration(!!doc.expiration_date);
     setIsRenewable(doc.is_renewable !== undefined ? doc.is_renewable : true);
+    setSelectedCategoryId(doc.document_category_id ? doc.document_category_id.toString() : '');
+    setSelectedPlantId(doc.target_plant_id ? doc.target_plant_id.toString() : '');
     setFile(null);
+    loadDocCategoriesIfNeeded();
     setUploadDialog(true);
+  };
+
+  const loadDocCategoriesIfNeeded = async () => {
+    if (docCategoriesLoaded) return;
+    try {
+      const [cats, plants] = await Promise.all([
+        DocumentCategoryService.getAll('employee'),
+        PlantService.getAll(),
+      ]);
+      setDocCategories(Array.isArray(cats) ? cats : []);
+      setAllPlants(Array.isArray(plants) ? plants : []);
+      setDocCategoriesLoaded(true);
+    } catch {
+      // Non-critical failure — selectors just won't show
+    }
   };
 
   const filteredDocuments = documents.filter(doc => showResolved ? true : doc.alert_status !== 'resolved');
@@ -561,6 +589,9 @@ export default function EmployeeDetailPage() {
               setHasExpiration(false);
               setIsRenewable(true);
               setFile(null);
+              setSelectedCategoryId('');
+              setSelectedPlantId('');
+              loadDocCategoriesIfNeeded();
               setUploadDialog(true);
             }}>
               Nuevo Documento
@@ -1190,6 +1221,37 @@ export default function EmployeeDetailPage() {
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField label="Título *" fullWidth value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej: Licencia de Conducir, Examen Médico..." />
             
+            {!editingDoc && (
+              <TextField label="Categoría de Documento" select fullWidth value={selectedCategoryId}
+                onChange={(e) => {
+                  setSelectedCategoryId(e.target.value);
+                  // Reset plant if the new category is not plant-specific
+                  const cat = docCategories.find(c => c.id === Number(e.target.value));
+                  if (!cat?.is_plant_specific) setSelectedPlantId('');
+                }}
+                SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
+                helperText="Opcional. Clasificar para el sistema de habilitaciones."
+                size="small"
+              >
+                <option value="">— Sin categoría —</option>
+                {docCategories.filter(c => c.applies_to === 'employee').map(c => (
+                  <option key={c.id} value={c.id}>{c.name}{c.is_plant_specific ? ' ⚙' : ''}</option>
+                ))}
+              </TextField>
+            )}
+
+            {!editingDoc && selectedCategoryId && docCategories.find(c => c.id === Number(selectedCategoryId))?.is_plant_specific && (
+              <TextField label="Planta Destino" select fullWidth value={selectedPlantId}
+                onChange={(e) => setSelectedPlantId(e.target.value)}
+                SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
+                helperText="Este documento aplica a una planta específica."
+                size="small"
+              >
+                <option value="">— Seleccionar planta —</option>
+                {allPlants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </TextField>
+            )}
+
             <FormControlLabel
               control={<Switch checked={hasExpiration} onChange={(e) => setHasExpiration(e.target.checked)} />}
               label="Este documento tiene fecha de vencimiento"

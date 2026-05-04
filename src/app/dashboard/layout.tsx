@@ -46,6 +46,7 @@ import {
   BeachAccess as BeachAccessIcon,
   CalendarMonth as CalendarIcon,
   Category as CategoryIcon,
+  FolderSpecial as FolderSpecialIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -109,6 +110,7 @@ const menuGroups: MenuGroupDef[] = [
     title: 'Configuración',
     items: [
       { text: 'Categorías (CCT)', icon: <CategoryIcon />, path: '/dashboard/categories', requiredPermission: 'categories_read' },
+      { text: 'Categorías de Documentos', icon: <FolderSpecialIcon />, path: '/dashboard/document-categories', requiredPermission: 'document_categories_read' },
       { text: 'Conceptos de Liquidación', icon: <CategoryIcon />, path: '/dashboard/payroll-concepts', requiredPermission: 'payroll_concepts_read' },
       { text: 'Feriados', icon: <CalendarIcon />, path: '/dashboard/holidays', requiredPermission: 'holidays_read' },
     ]
