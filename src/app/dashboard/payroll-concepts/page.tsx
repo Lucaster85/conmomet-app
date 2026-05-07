@@ -85,59 +85,108 @@ export default function PayrollConceptsPage() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-          Conceptos de Liquidación
-        </Typography>
+        <Box>
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
+            Conceptos de Liquidación
+          </Typography>
+          <Typography variant="body2" color="#64748B">
+            Administrá los conceptos para el cálculo de sueldos y jornales.
+          </Typography>
+        </Box>
         <Box display="flex" gap={1}>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()} size="small">Nuevo Concepto</Button>
+          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">
+            Actualizar
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()} size="small">
+            Nuevo Concepto
+          </Button>
         </Box>
       </Box>
 
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell><strong>Nombre</strong></TableCell>
-              <TableCell><strong>Código</strong></TableCell>
-              <TableCell><strong>Tipo</strong></TableCell>
-              <TableCell><strong>Orden</strong></TableCell>
-              <TableCell><strong>Estado</strong></TableCell>
-              <TableCell align="right"><strong>Acciones</strong></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {concepts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center">No hay conceptos cargados</TableCell>
+      {/* Mobile Cards */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {concepts.length === 0 ? (
+          <Typography color="text.secondary" textAlign="center" py={4}>No hay conceptos cargados</Typography>
+        ) : (
+          <Stack spacing={2}>
+            {concepts.map((c) => (
+              <Paper key={c.id} sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 4px rgb(0 0 0 / 0.05)', borderLeft: c.is_active ? '4px solid #10B981' : '4px solid #94A3B8' }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Box>
+                    <Typography fontWeight={600}>{c.name}</Typography>
+                    <Box display="flex" gap={1} alignItems="center" mt={0.5} flexWrap="wrap">
+                      <Chip label={c.code} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                      <Typography variant="caption" color="text.secondary">
+                        {c.calc_type === 'hourly' ? 'Por hora' : 'Monto fijo'} • Orden: {c.sort_order}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box>
+                    <IconButton size="small" color="primary" onClick={() => handleOpen(c)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleDelete(c.id)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              </Paper>
+            ))}
+          </Stack>
+        )}
+      </Box>
+
+      {/* Desktop Table */}
+      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                <TableCell><strong>Nombre</strong></TableCell>
+                <TableCell><strong>Código</strong></TableCell>
+                <TableCell><strong>Tipo</strong></TableCell>
+                <TableCell><strong>Orden</strong></TableCell>
+                <TableCell><strong>Estado</strong></TableCell>
+                <TableCell align="right"><strong>Acciones</strong></TableCell>
               </TableRow>
-            ) : (
-              concepts.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>{c.name}</TableCell>
-                  <TableCell><Chip label={c.code} size="small" variant="outlined" /></TableCell>
-                  <TableCell>{c.calc_type === 'hourly' ? 'Por hora' : 'Monto fijo'}</TableCell>
-                  <TableCell>{c.sort_order}</TableCell>
-                  <TableCell>
-                    <Chip label={c.is_active ? 'Activo' : 'Inactivo'} color={c.is_active ? 'success' : 'default'} size="small" />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Tooltip title="Editar">
-                      <IconButton size="small" onClick={() => handleOpen(c)}><EditIcon fontSize="small" /></IconButton>
-                    </Tooltip>
-                    <Tooltip title="Eliminar">
-                      <IconButton size="small" color="error" onClick={() => handleDelete(c.id)}><DeleteIcon fontSize="small" /></IconButton>
-                    </Tooltip>
+            </TableHead>
+            <TableBody>
+              {concepts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">No hay conceptos cargados</Typography>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ) : (
+                concepts.map((c) => (
+                  <TableRow key={c.id} hover>
+                    <TableCell>
+                      <Typography fontWeight={600}>{c.name}</Typography>
+                    </TableCell>
+                    <TableCell><Chip label={c.code} size="small" variant="outlined" /></TableCell>
+                    <TableCell>{c.calc_type === 'hourly' ? 'Por hora' : 'Monto fijo'}</TableCell>
+                    <TableCell>{c.sort_order}</TableCell>
+                    <TableCell>
+                      <Chip label={c.is_active ? 'Activo' : 'Inactivo'} color={c.is_active ? 'success' : 'default'} size="small" />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Editar">
+                        <IconButton size="small" color="primary" onClick={() => handleOpen(c)}><EditIcon fontSize="small" /></IconButton>
+                      </Tooltip>
+                      <Tooltip title="Eliminar">
+                        <IconButton size="small" color="error" onClick={() => handleDelete(c.id)}><DeleteIcon fontSize="small" /></IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editing ? 'Editar Concepto' : 'Nuevo Concepto'}</DialogTitle>

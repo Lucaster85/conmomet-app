@@ -599,6 +599,8 @@ export interface Category {
   id: number;
   name: string;
   guild_hourly_rate: number;
+  guild_id?: number;
+  guild?: Guild;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -620,7 +622,6 @@ export interface Employee {
   hourly_rate: number;
   pay_type: 'hourly' | 'monthly';
   monthly_salary?: number;
-  snr_amount?: number;
   user_id?: number;
   category_id?: number | null;
   notes?: string;
@@ -647,7 +648,6 @@ export interface CreateEmployeeData {
   hourly_rate: number;
   pay_type?: string;
   monthly_salary?: number;
-  snr_amount?: number;
   user_id?: number;
   category_id?: number | null;
   notes?: string;
@@ -1058,7 +1058,7 @@ export class CategoryService {
     return data.data || [];
   }
 
-  static async create(body: { name: string; guild_hourly_rate: number }): Promise<Category> {
+  static async create(body: { name: string; guild_hourly_rate: number; guild_id: number }): Promise<Category> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/categories`, {
       method: 'POST',
       body: JSON.stringify(body),
@@ -1071,7 +1071,7 @@ export class CategoryService {
     return data.data || data;
   }
 
-  static async update(id: number, body: { name?: string; guild_hourly_rate?: number }): Promise<Category> {
+  static async update(id: number, body: { name?: string; guild_hourly_rate?: number; guild_id?: number }): Promise<Category> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/categories/${id}`, {
       method: 'PUT',
       body: JSON.stringify(body),
@@ -1388,6 +1388,8 @@ export class PayrollService {
     if (!response.ok) throw new Error('Error al confirmar liquidación');
     return (await response.json()).data;
   }
+
+
 
   static async pay(id: number): Promise<PayrollEntry> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${id}/pay`, { method: 'PUT' });
@@ -1864,5 +1866,390 @@ export class EmployeeRateService {
   static async delete(id: number): Promise<void> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-rates/${id}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Error al eliminar tarifa');
+  }
+}
+// --- GUILDS ---
+export interface Guild {
+  id: number;
+  name: string;
+  code: string;
+  is_active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateGuildData {
+  name: string;
+  code: string;
+  is_active?: boolean;
+}
+
+export class GuildService {
+  static async getAll(): Promise<Guild[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/guilds`);
+    if (!response.ok) throw new Error('Error al obtener gremios');
+    return response.json();
+  }
+
+  static async getById(id: number): Promise<Guild> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/guilds/${id}`);
+    if (!response.ok) throw new Error('Error al obtener gremio');
+    return response.json();
+  }
+
+  static async create(data: CreateGuildData): Promise<Guild> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/guilds`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al crear gremio');
+    return response.json();
+  }
+
+  static async update(id: number, data: Partial<CreateGuildData>): Promise<Guild> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/guilds/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al actualizar gremio');
+    return response.json();
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/guilds/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Error al eliminar gremio');
+  }
+}
+
+// --- EMPLOYER COSTS ---
+export interface EmployerCostCategory {
+  id: number;
+  name: string;
+  code: string;
+  is_active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEmployerCostCategoryData {
+  name: string;
+  code: string;
+  is_active?: boolean;
+}
+
+export interface EmployerCost {
+  id: number;
+  category_id: number;
+  period_date: string; // YYYY-MM-DD
+  amount: number;
+  document_url?: string;
+  document_key?: string;
+  notes?: string;
+  created_by?: number;
+  updated_by?: number;
+  createdAt: string;
+  updatedAt: string;
+  category?: EmployerCostCategory;
+}
+
+export interface CreateEmployerCostData {
+  category_id: number;
+  period_date: string;
+  amount: number;
+  document_url?: string;
+  document_key?: string;
+  notes?: string;
+}
+
+export class EmployerCostCategoryService {
+  static async getAll(): Promise<EmployerCostCategory[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employer-cost-categories`);
+    if (!response.ok) throw new Error('Error al obtener categorías de costos');
+    return response.json();
+  }
+
+  static async create(data: CreateEmployerCostCategoryData): Promise<EmployerCostCategory> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employer-cost-categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al crear categoría de costo');
+    return response.json();
+  }
+
+  static async update(id: number, data: Partial<CreateEmployerCostCategoryData>): Promise<EmployerCostCategory> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employer-cost-categories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al actualizar categoría de costo');
+    return response.json();
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employer-cost-categories/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Error al eliminar categoría de costo');
+  }
+}
+
+export class EmployerCostService {
+  static async getAll(params?: { category_id?: number; start_date?: string; end_date?: string }): Promise<EmployerCost[]> {
+    let url = `${API_BASE_URL}/employer-costs`;
+    if (params) {
+      const query = new URLSearchParams();
+      if (params.category_id) query.append('category_id', params.category_id.toString());
+      if (params.start_date) query.append('start_date', params.start_date);
+      if (params.end_date) query.append('end_date', params.end_date);
+      url += `?${query.toString()}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener costos');
+    return response.json();
+  }
+
+  static async create(data: CreateEmployerCostData): Promise<EmployerCost> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employer-costs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al registrar costo');
+    return response.json();
+  }
+
+  static async update(id: number, data: Partial<CreateEmployerCostData>): Promise<EmployerCost> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employer-costs/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al actualizar costo');
+    return response.json();
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employer-costs/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Error al eliminar costo');
+  }
+}
+
+// --- LOANS ---
+export interface Loan {
+  id: number;
+  employee_id: number;
+  loan_date: string;
+  usd_amount: number;
+  usd_exchange_rate: number;
+  notes?: string;
+  status: 'active' | 'paid' | 'cancelled';
+  created_by?: number;
+  updated_by?: number;
+  createdAt: string;
+  updatedAt: string;
+  employee?: Employee;
+  payments?: LoanPayment[];
+}
+
+export interface LoanPayment {
+  id: number;
+  loan_id: number;
+  payment_date: string;
+  ars_amount: number;
+  usd_exchange_rate: number;
+  usd_amount_covered: number;
+  pay_period_id?: number;
+  notes?: string;
+  created_by?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateLoanData {
+  employee_id: number;
+  loan_date: string;
+  usd_amount: number;
+  usd_exchange_rate: number;
+  notes?: string;
+}
+
+export interface CreateLoanPaymentData {
+  loan_id: number;
+  payment_date: string;
+  ars_amount: number;
+  usd_exchange_rate: number;
+  usd_amount_covered: number;
+  pay_period_id?: number;
+  notes?: string;
+}
+
+export class LoanService {
+  static async getAll(params?: { status?: string; employee_id?: number }): Promise<Loan[]> {
+    let url = `${API_BASE_URL}/loans`;
+    if (params) {
+      const query = new URLSearchParams();
+      if (params.status) query.append('status', params.status);
+      if (params.employee_id) query.append('employee_id', params.employee_id.toString());
+      url += `?${query.toString()}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener préstamos');
+    return response.json();
+  }
+
+  static async getById(id: number): Promise<Loan> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${id}`);
+    if (!response.ok) throw new Error('Error al obtener préstamo');
+    return response.json();
+  }
+
+  static async create(data: CreateLoanData): Promise<Loan> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al crear préstamo');
+    return response.json();
+  }
+
+  static async addPayment(loanId: number, data: CreateLoanPaymentData): Promise<LoanPayment> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${loanId}/payments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al registrar pago');
+    return response.json();
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Error al eliminar préstamo');
+  }
+}
+
+// --- PAYROLL ADJUSTMENTS ---
+export interface PayrollAdjustment {
+  id: number;
+  pay_period_id: number;
+  employee_id: number;
+  type: 'bonus' | 'deduction' | 'retroactive' | 'other';
+  description: string;
+  amount: number;
+  is_taxable: boolean;
+  notes?: string;
+  created_by?: number;
+  updated_by?: number;
+  createdAt: string;
+  updatedAt: string;
+  employee?: Employee;
+}
+
+export interface CreatePayrollAdjustmentData {
+  pay_period_id: number;
+  employee_id: number;
+  type: 'bonus' | 'deduction' | 'retroactive' | 'other';
+  description: string;
+  amount: number;
+  is_taxable?: boolean;
+  notes?: string;
+}
+
+export class PayrollAdjustmentService {
+  static async getByPayPeriod(payPeriodId: number): Promise<PayrollAdjustment[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll-adjustments?pay_period_id=${payPeriodId}`);
+    if (!response.ok) throw new Error('Error al obtener ajustes');
+    return response.json();
+  }
+
+  static async create(data: CreatePayrollAdjustmentData): Promise<PayrollAdjustment> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll-adjustments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al crear ajuste');
+    return response.json();
+  }
+
+  static async update(id: number, data: Partial<CreatePayrollAdjustmentData>): Promise<PayrollAdjustment> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll-adjustments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al actualizar ajuste');
+    return response.json();
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll-adjustments/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Error al eliminar ajuste');
+  }
+}
+
+// --- RATE CHANGES (RETROACTIVES) ---
+export interface RateChange {
+  id: number;
+  guild_id: number;
+  concept_id?: number | null;
+  percentage: number;
+  applies_from_period: number;
+  applied_in_period: number;
+  status: 'pending' | 'applied' | 'cancelled' | 'confirmed';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  guild?: Guild;
+  concept?: PayrollConcept;
+  appliesFromPeriod?: PayPeriod;
+  appliedInPeriod?: PayPeriod;
+}
+
+export interface CreateRateChangeData {
+  guild_id: number;
+  concept_id?: number | null;
+  percentage: number;
+  applies_from_period: number;
+  applied_in_period: number;
+  notes?: string;
+}
+
+export class RateChangeService {
+  static async getByAppliedPeriod(periodId: number): Promise<RateChange[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/rate-changes?applied_in_period=${periodId}`);
+    if (!response.ok) throw new Error('Error al obtener retroactivos');
+    return response.json();
+  }
+
+  static async create(data: CreateRateChangeData): Promise<RateChange> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/rate-changes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al crear retroactivo');
+    return response.json();
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/rate-changes/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Error al eliminar retroactivo');
   }
 }

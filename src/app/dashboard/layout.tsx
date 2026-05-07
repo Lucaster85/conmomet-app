@@ -47,6 +47,9 @@ import {
   CalendarMonth as CalendarIcon,
   Category as CategoryIcon,
   FolderSpecial as FolderSpecialIcon,
+  Domain as DomainIcon,
+  AccountBalance as AccountBalanceIcon,
+  LocalAtm as LocalAtmIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -88,6 +91,8 @@ const menuGroups: MenuGroupDef[] = [
     items: [
       { text: 'Quincenas y Pagos', icon: <PaymentsIcon />, path: '/dashboard/pay-periods', requiredPermission: 'pay_periods_read' },
       { text: 'Adelantos', icon: <MoneyIcon />, path: '/dashboard/salary-advances', requiredPermission: 'salary_advances_read' },
+      { text: 'Préstamos en USD', icon: <LocalAtmIcon />, path: '/dashboard/loans', requiredPermission: null },
+      { text: 'Gastos Patronales', icon: <AccountBalanceIcon />, path: '/dashboard/employer-costs', requiredPermission: null },
     ]
   },
   {
@@ -109,6 +114,8 @@ const menuGroups: MenuGroupDef[] = [
   {
     title: 'Configuración',
     items: [
+      { text: 'Gremios (Sindicatos)', icon: <DomainIcon />, path: '/dashboard/guilds', requiredPermission: 'categories_read' },
+      { text: 'Categorías Gastos', icon: <CategoryIcon />, path: '/dashboard/employer-cost-categories', requiredPermission: null },
       { text: 'Categorías (CCT)', icon: <CategoryIcon />, path: '/dashboard/categories', requiredPermission: 'categories_read' },
       { text: 'Categorías de Documentos', icon: <FolderSpecialIcon />, path: '/dashboard/document-categories', requiredPermission: 'document_categories_read' },
       { text: 'Conceptos de Liquidación', icon: <CategoryIcon />, path: '/dashboard/payroll-concepts', requiredPermission: 'payroll_concepts_read' },

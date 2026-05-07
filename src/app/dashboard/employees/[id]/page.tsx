@@ -123,7 +123,7 @@ export default function EmployeeDetailPage() {
     pay_type: 'hourly',
     hourly_rate: 0,
     monthly_salary: 0,
-    snr_amount: 0,
+    
     category_id: null as number | null,
   });
   const [categories, setCategories] = useState<Category[]>([]);
@@ -955,17 +955,14 @@ export default function EmployeeDetailPage() {
                       </Box>
                     )}
                   </Grid>
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <Typography variant="caption" color="text.secondary">SNR (Global por quincena)</Typography>
-                    <Typography variant="body1" fontWeight="bold">${Number(employee?.snr_amount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                  </Grid>
+
                   <Grid size={{ xs: 12, md: 3 }} sx={{ textAlign: "right" }}>
                     <Button variant="outlined" size="small" onClick={async () => {
                       setBaseConfigForm({
                         pay_type: employee?.pay_type || 'hourly',
                         hourly_rate: Number(employee?.hourly_rate) || 0,
                         monthly_salary: Number(employee?.monthly_salary) || 0,
-                        snr_amount: Number(employee?.snr_amount) || 0,
+                        
                         category_id: employee?.category_id || null,
                       });
                       if (categories.length === 0) {
@@ -1159,19 +1156,18 @@ export default function EmployeeDetailPage() {
                   <CurrencyInput label="Arreglo Particular (valor hora)" fullWidth value={baseConfigForm.hourly_rate} onChange={(v) => setBaseConfigForm({ ...baseConfigForm, hourly_rate: v ?? 0 })} helperText="Valor hora acordado con el empleado (puede diferir del gremio)" />
                 )}
 
-                <CurrencyInput label="Monto SNR (Global por quincena)" fullWidth value={baseConfigForm.snr_amount} onChange={(v) => setBaseConfigForm({ ...baseConfigForm, snr_amount: v ?? 0 })} />
+                
 
-                {baseConfigForm.pay_type !== 'monthly' && (
-                  <Box>
+                <Box>
                     <TextField
-                      label="Categoría (CCT)"
+                      label="Categoría (CCT) *"
                       select
                       fullWidth
                       value={baseConfigForm.category_id ?? ''}
                       onChange={(e) => setBaseConfigForm({ ...baseConfigForm, category_id: e.target.value ? Number(e.target.value) : null })}
                       SelectProps={{ native: true }}
                       InputLabelProps={{ shrink: true }}
-                      helperText="Categoría del convenio colectivo de trabajo"
+                      helperText="Obligatorio. Determina los aumentos retroactivos y feriados"
                     >
                       <option value="">— Sin categoría —</option>
                       {categories.map(c => (
@@ -1187,7 +1183,6 @@ export default function EmployeeDetailPage() {
                       </Box>
                     )}
                   </Box>
-                )}
               </Stack>
             </DialogContent>
             <DialogActions>
@@ -1198,7 +1193,7 @@ export default function EmployeeDetailPage() {
                     pay_type: baseConfigForm.pay_type,
                     hourly_rate: baseConfigForm.pay_type === 'hourly' ? baseConfigForm.hourly_rate : 0,
                     monthly_salary: baseConfigForm.pay_type === 'monthly' ? baseConfigForm.monthly_salary : 0,
-                    snr_amount: baseConfigForm.snr_amount,
+                    
                     category_id: baseConfigForm.pay_type === 'hourly' ? baseConfigForm.category_id : null,
                   });
                   setSuccess('Configuración salarial base actualizada');

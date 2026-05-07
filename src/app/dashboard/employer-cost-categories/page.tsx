@@ -4,39 +4,33 @@ import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, Stack, TextField, InputAdornment,
+  Switch, FormControlLabel
 } from '@mui/material';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
   Refresh as RefreshIcon, Search as SearchIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '@/components/FeedbackModal';
-import CurrencyInput from '@/components/CurrencyInput';
-import { Category, CategoryService, Guild, GuildService } from '@/utils/api';
-import { Select, MenuItem, InputLabel, FormControl } from '@mui/material';
+import { EmployerCostCategory, EmployerCostCategoryService } from '@/utils/api';
 
-const emptyForm = { name: '', guild_hourly_rate: 0, guild_id: 0 };
+const emptyForm = { name: '', code: '', is_active: true };
 
-export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
+export default function EmployerCostCategorysPage() {
+  const [categories, setEmployerCostCategorys] = useState<EmployerCostCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
-  const [editing, setEditing] = useState<Category | null>(null);
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Category | null }>({ open: false, item: null });
+  const [editing, setEditing] = useState<EmployerCostCategory | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: EmployerCostCategory | null }>({ open: false, item: null });
   const [form, setForm] = useState(emptyForm);
-  const [guilds, setGuilds] = useState<Guild[]>([]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [catData, guildData] = await Promise.all([
-        CategoryService.getAll(),
-        GuildService.getAll()
-      ]);
-      setCategories(catData);
-      setGuilds(guildData.filter(g => g.is_active));
+      const data = await EmployerCostCategoryService.getAll();
+      setEmployerCostCategorys(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar categorías');
     } finally {
@@ -52,22 +46,23 @@ export default function CategoriesPage() {
     setOpenDialog(true);
   };
 
-  const handleOpenEdit = (item: Category) => {
+  const handleOpenEdit = (item: EmployerCostCategory) => {
     setEditing(item);
-    setForm({ name: item.name, guild_hourly_rate: item.guild_hourly_rate, guild_id: item.guild_id || 0 });
+    setForm({ name: item.name, code: item.code, is_active: item.is_active });
     setOpenDialog(true);
   };
 
   const handleSubmit = async () => {
     if (!form.name.trim()) return setError('El nombre es obligatorio');
-    if (!form.guild_hourly_rate || form.guild_hourly_rate <= 0) return setError('El valor hora gremio debe ser mayor a 0');
-    if (!form.guild_id) return setError('Debe seleccionar un gremio');
+    if (!form.code.trim()) return setError('El código interno es obligatorio');
+    
+    
     try {
       if (editing) {
-        await CategoryService.update(editing.id, form);
+        await EmployerCostCategoryService.update(editing.id, form);
         setSuccess('Categoría actualizada');
       } else {
-        await CategoryService.create(form);
+        await EmployerCostCategoryService.create(form);
         setSuccess('Categoría creada');
       }
       setOpenDialog(false);
@@ -80,7 +75,7 @@ export default function CategoriesPage() {
   const handleDelete = async () => {
     if (!deleteDialog.item) return;
     try {
-      await CategoryService.delete(deleteDialog.item.id);
+      await EmployerCostCategoryService.delete(deleteDialog.item.id);
       setDeleteDialog({ open: false, item: null });
       setSuccess('Categoría eliminada');
       loadData();
@@ -89,11 +84,8 @@ export default function CategoriesPage() {
     }
   };
 
-  const formatCurrency = (val: number) =>
-    `$${Number(val).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
-
-  const filtered = categories.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase())
+  const filtered = categories.filter(g =>
+    g.name.toLowerCase().includes(search.toLowerCase()) || g.code.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) {
@@ -113,10 +105,10 @@ export default function CategoriesPage() {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box>
           <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
-            Categorías
+            Categorías de Costos Patronales
           </Typography>
           <Typography variant="body2" color="#64748B">
-            Administrá las categorías laborales y su valor hora gremio (CCT)
+            Administrá las categorías de gastos patronales (F931, UOCRA, ART, etc.)
           </Typography>
         </Box>
         <Box display="flex" gap={1}>
@@ -131,7 +123,7 @@ export default function CategoriesPage() {
 
       {/* Search */}
       <TextField
-        placeholder="Buscar por nombre..."
+        placeholder="Buscar por nombre o código..."
         fullWidth size="small" sx={{ mb: 2 }}
         value={search} onChange={(e) => setSearch(e.target.value)}
         InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
@@ -143,21 +135,20 @@ export default function CategoriesPage() {
           <Typography color="text.secondary" textAlign="center" py={4}>No hay categorías</Typography>
         ) : (
           <Stack spacing={2}>
-            {filtered.map((cat) => (
-              <Paper key={cat.id} sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 4px rgb(0 0 0 / 0.05)' }}>
+            {filtered.map((category) => (
+              <Paper key={category.id} sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 4px rgb(0 0 0 / 0.05)', borderLeft: category.is_active ? '4px solid #10B981' : '4px solid #94A3B8' }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Box>
-                    <Typography fontWeight={600}>{cat.name}</Typography>
-                    <Typography variant="caption" color="text.secondary" display="block">{cat.guild?.name || 'Sin gremio'}</Typography>
-                    <Typography variant="body2" color="primary.main" fontWeight={600}>
-                      {formatCurrency(cat.guild_hourly_rate)} / hora (gremio)
+                    <Typography fontWeight={600}>{category.name}</Typography>
+                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                      Código: {category.code}
                     </Typography>
                   </Box>
                   <Box>
-                    <IconButton size="small" color="primary" onClick={() => handleOpenEdit(cat)}>
+                    <IconButton size="small" color="primary" onClick={() => handleOpenEdit(category)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: cat })}>
+                    <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: category })}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Box>
@@ -174,42 +165,49 @@ export default function CategoriesPage() {
           <Table>
             <TableHead>
               <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                <TableCell><strong>Categoría</strong></TableCell>
-                <TableCell><strong>Gremio</strong></TableCell>
-                <TableCell><strong>Valor Hora Gremio (CCT)</strong></TableCell>
+                <TableCell><strong>Nombre</strong></TableCell>
+                <TableCell><strong>Código</strong></TableCell>
+                <TableCell><strong>Estado</strong></TableCell>
                 <TableCell align="center"><strong>Acciones</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
                     <Typography variant="body2" color="text.secondary">No hay categorías</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((cat) => (
-                  <TableRow key={cat.id} hover>
+                filtered.map((category) => (
+                  <TableRow key={category.id} hover>
                     <TableCell>
-                      <Typography fontWeight={600}>{cat.name}</Typography>
+                      <Typography fontWeight={600}>{category.name}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">{cat.guild?.name || 'Sin gremio'}</Typography>
+                      <Typography variant="body2" color="text.secondary">{category.code}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography color="primary.main" fontWeight={600}>
-                        {formatCurrency(cat.guild_hourly_rate)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">por hora</Typography>
+                      <Box
+                        sx={{
+                          display: 'inline-block',
+                          px: 1, py: 0.5, borderRadius: 1,
+                          bgcolor: category.is_active ? '#DCFCE7' : '#F1F5F9',
+                          color: category.is_active ? '#166534' : '#475569',
+                          fontSize: '0.75rem', fontWeight: 600
+                        }}
+                      >
+                        {category.is_active ? 'Activo' : 'Inactivo'}
+                      </Box>
                     </TableCell>
                     <TableCell align="center">
                       <Tooltip title="Editar">
-                        <IconButton size="small" color="primary" onClick={() => handleOpenEdit(cat)}>
+                        <IconButton size="small" color="primary" onClick={() => handleOpenEdit(category)}>
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Eliminar">
-                        <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: cat })}>
+                        <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: category })}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -232,29 +230,27 @@ export default function CategoriesPage() {
               fullWidth
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Ej: Oficial, Medio Oficial, Ayudante"
+              placeholder="Ej: F931"
             />
-            <FormControl fullWidth>
-              <InputLabel>Gremio *</InputLabel>
-              <Select
-                value={form.guild_id || ''}
-                label="Gremio *"
-                onChange={(e) => setForm({ ...form, guild_id: Number(e.target.value) })}
-              >
-                {guilds.map((g) => (
-                  <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <CurrencyInput
-              label="Valor Hora Gremio (CCT) *"
+            <TextField
+              label="Código Interno *"
               fullWidth
-              value={form.guild_hourly_rate}
-              onChange={(val) => setForm({ ...form, guild_hourly_rate: val ?? 0 })}
+              value={form.code}
+              onChange={(e) => setForm({ ...form, code: e.target.value })}
+              placeholder="Ej: f931"
+              helperText="Identificador único (sin espacios)"
+              disabled={!!editing}
             />
-            <Typography variant="caption" color="text.secondary">
-              Este es el valor hora según el convenio colectivo de trabajo. Se usará para calcular feriados y como base de la liquidación.
-            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={form.is_active}
+                  onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                  color="primary"
+                />
+              }
+              label="Categoría Activa"
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -272,8 +268,8 @@ export default function CategoriesPage() {
           <Typography>
             ¿Eliminar la categoría <strong>{deleteDialog.item?.name}</strong>?
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Los empleados asignados a esta categoría quedarán sin categoría.
+          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+            No se podrá eliminar si hay categorías o configuraciones vinculadas a esta categoría.
           </Typography>
         </DialogContent>
         <DialogActions>

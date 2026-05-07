@@ -3,15 +3,16 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, TextField, Stack, Chip, Tooltip,
+  DialogActions, CircularProgress, Stack, Chip, Tooltip,
 } from '@mui/material';
 import FeedbackModal from '../../../../../components/FeedbackModal';
-import CurrencyInput from '../../../../../components/CurrencyInput';
 import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon, Payment as PaymentIcon, Visibility as ViewIcon, Print as PrintIcon } from '@mui/icons-material';
 import Divider from '@mui/material/Divider';
 import { PayrollEntry, PayrollService, PayPeriod } from '../../../../../utils/api';
 import { TokenManager } from '../../../../../utils/auth';
 import { useParams, useRouter } from 'next/navigation';
+import PayrollAdjustmentsModal from './PayrollAdjustmentsModal';
+import RateChangesModal from './RateChangesModal';
 
 export default function PayrollPage() {
   const params = useParams();
@@ -26,9 +27,10 @@ export default function PayrollPage() {
   
   const [openEdit, setOpenEdit] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PayrollEntry | null>(null);
-  const [form, setForm] = useState({ extra_payments: 0, extra_payments_notes: '', deductions: 0, deductions_notes: '' });
+  
 
   const [openDetail, setOpenDetail] = useState(false);
+  const [openRateChanges, setOpenRateChanges] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [detailEntry, setDetailEntry] = useState<any>(null);
 
@@ -82,18 +84,6 @@ export default function PayrollPage() {
     }
   };
 
-  const handleSaveEdit = async () => {
-    if (!editingEntry) return;
-    try {
-      await PayrollService.update(editingEntry.id, form);
-      setSuccess('Actualizado');
-      setOpenEdit(false);
-      loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar');
-    }
-  };
-
   const formatCurrency = (v: number) => `$${Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
   const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -117,7 +107,10 @@ export default function PayrollPage() {
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>
           {period?.status === 'open' && (
-            <Button variant="contained" color="secondary" startIcon={<CalcIcon />} onClick={handleGenerate} size="small">Generar Liquidación</Button>
+            <>
+              <Button variant="outlined" color="primary" onClick={() => setOpenRateChanges(true)} size="small">Gestión de Aumentos</Button>
+              <Button variant="contained" color="secondary" startIcon={<CalcIcon />} onClick={handleGenerate} size="small">Generar Liquidación</Button>
+            </>
           )}
         </Box>
       </Box>
@@ -125,9 +118,35 @@ export default function PayrollPage() {
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
+      {/* Period info banner */}
+      {period && (
+        <Paper sx={{ p: 2, mb: 2, bgcolor: period.status === 'paid' ? '#F0FDF4' : period.status === 'closed' ? '#FFF7ED' : '#F8FAFC', border: '1px solid', borderColor: period.status === 'paid' ? '#BBF7D0' : period.status === 'closed' ? '#FED7AA' : 'divider', borderRadius: 2 }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
+            <Box>
+              <Typography variant="h6" fontWeight={600}>{formatPeriodLabel(period)}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {period.start_date} — {period.end_date}
+              </Typography>
+            </Box>
+            <Box display="flex" alignItems="center" gap={1}>
+              <Chip
+                label={period.status === 'paid' ? 'Pagada' : period.status === 'closed' ? 'Cerrada' : 'Abierta'}
+                color={period.status === 'paid' ? 'success' : period.status === 'closed' ? 'warning' : 'info'}
+                size="small"
+              />
+              <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrint} sx={{ display: entries.length > 0 ? 'inline-flex' : 'none' }}>Imprimir</Button>
+            </Box>
+          </Box>
+        </Paper>
+      )}
+
       {entries.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography color="text.secondary" mb={2}>No se ha generado la liquidación para esta quincena aún.</Typography>
+          <Typography color="text.secondary" mb={2}>
+            {period?.status === 'open'
+              ? 'No se ha generado la liquidación para esta quincena aún.'
+              : 'Esta quincena no tiene liquidaciones generadas.'}
+          </Typography>
           {period?.status === 'open' && (
             <Button variant="contained" color="secondary" startIcon={<CalcIcon />} onClick={handleGenerate}>Generar Ahora</Button>
           )}
@@ -244,7 +263,6 @@ export default function PayrollPage() {
                         <>
                           <Tooltip title="Ajustes (Extras/Retenciones)"><IconButton size="small" color="primary" onClick={() => {
                             setEditingEntry(e as unknown as PayrollEntry);
-                            setForm({ extra_payments: e.extra_payments as number, extra_payments_notes: (e.extra_payments_notes as string) || '', deductions: e.deductions as number, deductions_notes: (e.deductions_notes as string) || '' });
                             setOpenEdit(true);
                           }}><EditIcon fontSize="small" /></IconButton></Tooltip>
                           <Tooltip title="Confirmar liquidación"><IconButton size="small" color="success" onClick={() => handleConfirm(e.id as number)}><ConfirmIcon fontSize="small" /></IconButton></Tooltip>
@@ -450,25 +468,18 @@ export default function PayrollPage() {
       </Dialog>
 
       {/* Edit Adjustments Dialog */}
-      <Dialog open={openEdit} onClose={() => setOpenEdit(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Ajustes Manuales - {editingEntry?.employee?.name} {editingEntry?.employee?.lastname}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <Box display="flex" gap={2}>
-              <CurrencyInput label="Pagos Extra" fullWidth value={form.extra_payments} onChange={(value) => setForm({ ...form, extra_payments: value ?? 0 })} />
-              <TextField label="Motivo (Pagos Extra)" fullWidth value={form.extra_payments_notes} onChange={(e) => setForm({ ...form, extra_payments_notes: e.target.value })} />
-            </Box>
-            <Box display="flex" gap={2}>
-              <CurrencyInput label="Deducciones" fullWidth value={form.deductions} onChange={(value) => setForm({ ...form, deductions: value ?? 0 })} />
-              <TextField label="Motivo (Deducciones)" fullWidth value={form.deductions_notes} onChange={(e) => setForm({ ...form, deductions_notes: e.target.value })} />
-            </Box>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenEdit(false)}>Cancelar</Button>
-          <Button onClick={handleSaveEdit} variant="contained">Guardar</Button>
-        </DialogActions>
-      </Dialog>
+      <PayrollAdjustmentsModal
+        open={openEdit}
+        onClose={() => { setOpenEdit(false); loadData(); }}
+        payPeriodId={payPeriodId}
+        employeeId={editingEntry?.employee?.id as number}
+        employeeName={editingEntry?.employee ? `${editingEntry.employee.lastname}, ${editingEntry.employee.name}` : ''}
+      />
+      <RateChangesModal
+        open={openRateChanges}
+        onClose={() => { setOpenRateChanges(false); loadData(); }}
+        payPeriodId={payPeriodId}
+      />
     </Box>
   );
 }
