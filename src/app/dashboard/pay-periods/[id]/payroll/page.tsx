@@ -281,7 +281,7 @@ export default function PayrollPage() {
       )}
 
       {/* Detail Dialog */}
-      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="sm" fullWidth>
+      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth>
         {detailEntry && (
           <>
             <DialogTitle className="no-print" sx={{ pb: 0 }}>
@@ -382,7 +382,11 @@ export default function PayrollPage() {
                         <TableBody>
                           {detailEntry.lines.map((line: { id: number, label: string, quantity: number, rate: number, subtotal: number }) => (
                             <TableRow key={line.id}>
-                              <TableCell><Typography variant="body2">{line.label}</Typography></TableCell>
+                              <TableCell sx={{ maxWidth: { xs: 150, sm: 400, md: 500 } }}>
+                                <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+                                  {line.label}
+                                </Typography>
+                              </TableCell>
                               <TableCell align="right"><Typography variant="body2">{Number(line.quantity).toFixed(1)}</Typography></TableCell>
                               <TableCell align="right"><Typography variant="body2">{formatCurrency(line.rate)}</Typography></TableCell>
                               <TableCell align="right"><Typography variant="body2">{formatCurrency(line.subtotal)}</Typography></TableCell>
@@ -411,14 +415,14 @@ export default function PayrollPage() {
                       )}
                     </>
                   )}
-                  {Number(detailEntry.extra_payments) > 0 && (
-                    <Box display="flex" justifyContent="space-between">
+                  {detailEntry.adjustments?.filter((a: { type: string; id: number; label: string; amount: number }) => a.type === 'bonus').map((a: { type: string; id: number; label: string; amount: number }) => (
+                    <Box display="flex" justifyContent="space-between" key={a.id}>
                       <Typography variant="body2" color="success.main">
-                        Pagos extra{detailEntry.extra_payments_notes ? ` (${detailEntry.extra_payments_notes})` : ''}
+                        Pagos extra ({a.label})
                       </Typography>
-                      <Typography variant="body2" color="success.main">+{formatCurrency(detailEntry.extra_payments)}</Typography>
+                      <Typography variant="body2" color="success.main">+{formatCurrency(a.amount)}</Typography>
                     </Box>
-                  )}
+                  ))}
                   <Divider />
                   <Box display="flex" justifyContent="space-between">
                     <Typography variant="body2" fontWeight={600}>Sueldo bruto</Typography>
@@ -437,15 +441,15 @@ export default function PayrollPage() {
                       <Typography variant="body2" color="error.main">-{formatCurrency(detailEntry.advances_deducted)}</Typography>
                     </Box>
                   )}
-                  {Number(detailEntry.deductions) > 0 && (
-                    <Box display="flex" justifyContent="space-between">
+                  {detailEntry.adjustments?.filter((a: { type: string; id: number; label: string; amount: number }) => a.type === 'deduction').map((a: { type: string; id: number; label: string; amount: number }) => (
+                    <Box display="flex" justifyContent="space-between" key={a.id}>
                       <Typography variant="body2" color="error.main">
-                        Retenciones{detailEntry.deductions_notes ? ` (${detailEntry.deductions_notes})` : ''}
+                        Retenciones ({a.label})
                       </Typography>
-                      <Typography variant="body2" color="error.main">-{formatCurrency(detailEntry.deductions)}</Typography>
+                      <Typography variant="body2" color="error.main">-{formatCurrency(a.amount)}</Typography>
                     </Box>
-                  )}
-                  {Number(detailEntry.advances_deducted) === 0 && Number(detailEntry.deductions) === 0 && (
+                  ))}
+                  {Number(detailEntry.advances_deducted) === 0 && (!detailEntry.adjustments || detailEntry.adjustments.filter((a: { type: string }) => a.type === 'deduction').length === 0) && (
                     <Typography variant="body2" color="text.secondary">Sin deducciones</Typography>
                   )}
                 </Stack>
@@ -471,7 +475,7 @@ export default function PayrollPage() {
       <PayrollAdjustmentsModal
         open={openEdit}
         onClose={() => { setOpenEdit(false); loadData(); }}
-        payPeriodId={payPeriodId}
+        payrollEntryId={editingEntry?.id as number}
         employeeId={editingEntry?.employee?.id as number}
         employeeName={editingEntry?.employee ? `${editingEntry.employee.lastname}, ${editingEntry.employee.name}` : ''}
       />

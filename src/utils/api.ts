@@ -1333,12 +1333,12 @@ export interface PayrollEntry {
   regular_amount: number;
   overtime_50_amount: number;
   overtime_100_amount: number;
-  extra_payments: number;
-  extra_payments_notes?: string;
   gross_amount: number;
-  deductions: number;
-  deductions_notes?: string;
   advances_deducted: number;
+  deductions?: number;
+  extra_payments_notes?: string;
+  deductions_notes?: string;
+  adjustments?: PayrollAdjustment[];
   net_amount: number;
   late_count: number;
   absent_count: number;
@@ -1944,10 +1944,10 @@ export interface CreateEmployerCostCategoryData {
 export interface EmployerCost {
   id: number;
   category_id: number;
-  period_date: string; // YYYY-MM-DD
+  month: number;
+  year: number;
   amount: number;
-  document_url?: string;
-  document_key?: string;
+  file_url?: string;
   notes?: string;
   created_by?: number;
   updated_by?: number;
@@ -1958,10 +1958,9 @@ export interface EmployerCost {
 
 export interface CreateEmployerCostData {
   category_id: number;
-  period_date: string;
+  month: number;
+  year: number;
   amount: number;
-  document_url?: string;
-  document_key?: string;
   notes?: string;
 }
 
@@ -2015,21 +2014,43 @@ export class EmployerCostService {
     return response.json();
   }
 
-  static async create(data: CreateEmployerCostData): Promise<EmployerCost> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employer-costs`, {
+  static async create(data: CreateEmployerCostData, file?: File | null): Promise<EmployerCost> {
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        formData.append(key, value.toString());
+      }
+    });
+    if (file) {
+      formData.append('file', file);
+    }
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/employer-costs`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
     });
     if (!response.ok) throw new Error('Error al registrar costo');
     return response.json();
   }
 
-  static async update(id: number, data: Partial<CreateEmployerCostData>): Promise<EmployerCost> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employer-costs/${id}`, {
+  static async update(id: number, data: Partial<CreateEmployerCostData>, file?: File | null): Promise<EmployerCost> {
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        formData.append(key, value.toString());
+      }
+    });
+    if (file) {
+      formData.append('file', file);
+    }
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/employer-costs/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
     });
     if (!response.ok) throw new Error('Error al actualizar costo');
     return response.json();
@@ -2047,11 +2068,13 @@ export class EmployerCostService {
 export interface Loan {
   id: number;
   employee_id: number;
-  loan_date: string;
-  usd_amount: number;
-  usd_exchange_rate: number;
+  start_date: string;
+  amount_usd: number;
+  exchange_rate_at_origin: number;
+  amount_ars_at_origin: number;
+  remaining_balance_usd: number;
   notes?: string;
-  status: 'active' | 'paid' | 'cancelled';
+  status: 'active' | 'completed' | 'cancelled';
   created_by?: number;
   updated_by?: number;
   createdAt: string;
@@ -2063,11 +2086,11 @@ export interface Loan {
 export interface LoanPayment {
   id: number;
   loan_id: number;
-  payment_date: string;
-  ars_amount: number;
-  usd_exchange_rate: number;
-  usd_amount_covered: number;
-  pay_period_id?: number;
+  date: string;
+  amount_ars: number;
+  exchange_rate: number;
+  amount_usd: number;
+  payroll_entry_id?: number;
   notes?: string;
   created_by?: number;
   createdAt: string;
@@ -2076,19 +2099,19 @@ export interface LoanPayment {
 
 export interface CreateLoanData {
   employee_id: number;
-  loan_date: string;
-  usd_amount: number;
-  usd_exchange_rate: number;
+  start_date: string;
+  amount_usd: number;
+  exchange_rate_at_origin: number;
   notes?: string;
 }
 
 export interface CreateLoanPaymentData {
   loan_id: number;
-  payment_date: string;
-  ars_amount: number;
-  usd_exchange_rate: number;
-  usd_amount_covered: number;
-  pay_period_id?: number;
+  date: string;
+  amount_ars: number;
+  exchange_rate: number;
+  amount_usd: number;
+  payroll_entry_id?: number;
   notes?: string;
 }
 
@@ -2123,7 +2146,7 @@ export class LoanService {
   }
 
   static async addPayment(loanId: number, data: CreateLoanPaymentData): Promise<LoanPayment> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${loanId}/payments`, {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loan-payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -2143,33 +2166,27 @@ export class LoanService {
 // --- PAYROLL ADJUSTMENTS ---
 export interface PayrollAdjustment {
   id: number;
-  pay_period_id: number;
-  employee_id: number;
-  type: 'bonus' | 'deduction' | 'retroactive' | 'other';
-  description: string;
+  payroll_entry_id: number;
+  type: 'bonus' | 'deduction';
+  label: string;
   amount: number;
-  is_taxable: boolean;
-  notes?: string;
+  is_auto: boolean;
   created_by?: number;
   updated_by?: number;
   createdAt: string;
   updatedAt: string;
-  employee?: Employee;
 }
 
 export interface CreatePayrollAdjustmentData {
-  pay_period_id: number;
-  employee_id: number;
-  type: 'bonus' | 'deduction' | 'retroactive' | 'other';
-  description: string;
+  payroll_entry_id: number;
+  type: 'bonus' | 'deduction';
+  label: string;
   amount: number;
-  is_taxable?: boolean;
-  notes?: string;
 }
 
 export class PayrollAdjustmentService {
-  static async getByPayPeriod(payPeriodId: number): Promise<PayrollAdjustment[]> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll-adjustments?pay_period_id=${payPeriodId}`);
+  static async getByPayrollEntry(payrollEntryId: number): Promise<PayrollAdjustment[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll-adjustments?payroll_entry_id=${payrollEntryId}`);
     if (!response.ok) throw new Error('Error al obtener ajustes');
     return response.json();
   }

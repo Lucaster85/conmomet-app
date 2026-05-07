@@ -91,7 +91,7 @@ const menuGroups: MenuGroupDef[] = [
     items: [
       { text: 'Quincenas y Pagos', icon: <PaymentsIcon />, path: '/dashboard/pay-periods', requiredPermission: 'pay_periods_read' },
       { text: 'Adelantos', icon: <MoneyIcon />, path: '/dashboard/salary-advances', requiredPermission: 'salary_advances_read' },
-      { text: 'Préstamos en USD', icon: <LocalAtmIcon />, path: '/dashboard/loans', requiredPermission: null },
+      { text: 'Préstamos', icon: <LocalAtmIcon />, path: '/dashboard/loans', requiredPermission: null },
       { text: 'Gastos Patronales', icon: <AccountBalanceIcon />, path: '/dashboard/employer-costs', requiredPermission: null },
     ]
   },

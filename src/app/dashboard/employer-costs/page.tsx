@@ -15,7 +15,7 @@ import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
 import { EmployerCost, EmployerCostCategory, EmployerCostService, EmployerCostCategoryService } from '@/utils/api';
 
-const emptyForm = { category_id: 0, period_date: '', amount: 0, notes: '', document_url: '', document_key: '' };
+const emptyForm = { category_id: 0, month: new Date().getMonth() + 1, year: new Date().getFullYear(), amount: 0, notes: '' };
 
 export default function EmployerCostsPage() {
   const [costs, setCosts] = useState<EmployerCost[]>([]);
@@ -28,6 +28,7 @@ export default function EmployerCostsPage() {
   const [editing, setEditing] = useState<EmployerCost | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: EmployerCost | null }>({ open: false, item: null });
   const [form, setForm] = useState(emptyForm);
+  const [file, setFile] = useState<File | null>(null);
 
   const loadData = async () => {
     try {
@@ -49,7 +50,8 @@ export default function EmployerCostsPage() {
 
   const handleOpenCreate = () => {
     setEditing(null);
-    setForm({ ...emptyForm, period_date: new Date().toISOString().slice(0, 7) + '-01' });
+    setForm(emptyForm);
+    setFile(null);
     setOpenDialog(true);
   };
 
@@ -57,26 +59,26 @@ export default function EmployerCostsPage() {
     setEditing(item);
     setForm({
       category_id: item.category_id,
-      period_date: item.period_date,
+      month: item.month,
+      year: item.year,
       amount: item.amount,
-      notes: item.notes || '',
-      document_url: item.document_url || '',
-      document_key: item.document_key || '',
+      notes: item.notes || ''
     });
+    setFile(null);
     setOpenDialog(true);
   };
 
   const handleSubmit = async () => {
     if (!form.category_id) return setError('La categoría es obligatoria');
-    if (!form.period_date) return setError('El período es obligatorio');
+    if (!form.month || !form.year) return setError('El período es obligatorio');
     if (!form.amount || form.amount <= 0) return setError('El monto debe ser mayor a 0');
     
     try {
       if (editing) {
-        await EmployerCostService.update(editing.id, form);
+        await EmployerCostService.update(editing.id, form, file);
         setSuccess('Costo patronal actualizado');
       } else {
-        await EmployerCostService.create(form);
+        await EmployerCostService.create(form, file);
         setSuccess('Costo patronal registrado');
       }
       setOpenDialog(false);
@@ -161,7 +163,7 @@ export default function EmployerCostsPage() {
                   <Box>
                     <Typography fontWeight={600}>{cost.category?.name || 'Desconocido'}</Typography>
                     <Typography variant="caption" color="text.secondary" display="block">
-                      Período: {new Date(cost.period_date).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}
+                      Período: {String(cost.month).padStart(2, '0')}/{cost.year}
                     </Typography>
                     <Typography variant="body2" color="error.main" fontWeight={600}>
                       {formatCurrency(cost.amount)}
@@ -207,7 +209,7 @@ export default function EmployerCostsPage() {
                   <TableRow key={cost.id} hover>
                     <TableCell>
                       <Typography fontWeight={600} color="text.secondary">
-                        {new Date(cost.period_date).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}
+                        {String(cost.month).padStart(2, '0')}/{cost.year}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -222,11 +224,11 @@ export default function EmployerCostsPage() {
                       <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }}>
                         {cost.notes || '-'}
                       </Typography>
-                      {cost.document_url && (
+                      {cost.file_url && (
                         <Button 
                           size="small" 
                           startIcon={<OpenInNewIcon fontSize="small" />} 
-                          href={cost.document_url} 
+                          href={cost.file_url} 
                           target="_blank"
                           sx={{ mt: 0.5, p: 0, minWidth: 'auto', textTransform: 'none' }}
                         >
@@ -276,8 +278,11 @@ export default function EmployerCostsPage() {
               label="Período (Mes/Año) *"
               type="month"
               fullWidth
-              value={form.period_date.slice(0, 7)}
-              onChange={(e) => setForm({ ...form, period_date: e.target.value + '-01' })}
+              value={`${form.year}-${String(form.month).padStart(2, '0')}`}
+              onChange={(e) => {
+                const [y, m] = e.target.value.split('-');
+                if (y && m) setForm({ ...form, year: parseInt(y), month: parseInt(m) });
+              }}
               InputLabelProps={{ shrink: true }}
             />
 
@@ -298,20 +303,46 @@ export default function EmployerCostsPage() {
               placeholder="Ej: Comprobante Nro..."
             />
 
-            <TextField
-              label="URL del Documento Adjunto"
-              fullWidth
-              value={form.document_url}
-              onChange={(e) => setForm({ ...form, document_url: e.target.value })}
-              placeholder="https://..."
-              helperText="Enlace externo o URL del comprobante de pago."
-              InputProps={{ startAdornment: <InputAdornment position="start"><AttachFileIcon /></InputAdornment> }}
-            />
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>
+                Adjuntar Comprobante (PDF o Imagen)
+              </Typography>
+              {editing?.file_url && !file && (
+                <Typography variant="body2" color="text.secondary" mb={1}>
+                  Ya existe un archivo subido. Subir uno nuevo lo reemplazará.
+                </Typography>
+              )}
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<AttachFileIcon />}
+                fullWidth
+                sx={{
+                  borderStyle: 'dashed',
+                  borderWidth: 2,
+                  py: 3,
+                  color: file ? 'success.main' : 'text.secondary',
+                  borderColor: file ? 'success.main' : 'divider'
+                }}
+              >
+                {file ? file.name : 'Haga clic para seleccionar o arrastre el archivo aquí'}
+                <input
+                  type="file"
+                  hidden
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setFile(e.target.files[0]);
+                    }
+                  }}
+                  accept="application/pdf,image/*"
+                />
+              </Button>
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">
+          <Button onClick={handleSubmit} variant="contained" disabled={loading}>
             {editing ? 'Guardar' : 'Registrar'}
           </Button>
         </DialogActions>

@@ -14,7 +14,7 @@ import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
 import { Loan, Employee, LoanService, EmployeeService } from '@/utils/api';
 
-const emptyForm = { employee_id: 0, loan_date: '', usd_amount: 0, usd_exchange_rate: 0, notes: '' };
+const emptyForm = { employee_id: 0, start_date: '', amount_usd: 0, exchange_rate_at_origin: 0, notes: '' };
 
 export default function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
@@ -48,25 +48,18 @@ export default function LoansPage() {
 
   const handleOpenCreate = () => {
     setEditing(null);
-    setForm({ ...emptyForm, loan_date: new Date().toISOString().slice(0, 10) });
+    setForm({ ...emptyForm, start_date: new Date().toISOString().slice(0, 10) });
     setOpenDialog(true);
   };
 
   const handleSubmit = async () => {
     if (!form.employee_id) return setError('El empleado es obligatorio');
-    if (!form.loan_date) return setError('La fecha es obligatoria');
-    if (!form.usd_amount || form.usd_amount <= 0) return setError('El monto USD debe ser mayor a 0');
-    if (!form.usd_exchange_rate || form.usd_exchange_rate <= 0) return setError('La cotización debe ser mayor a 0');
+    if (!form.start_date) return setError('La fecha es obligatoria');
+    if (!form.amount_usd || form.amount_usd <= 0) return setError('El monto USD debe ser mayor a 0');
+    if (!form.exchange_rate_at_origin || form.exchange_rate_at_origin <= 0) return setError('La cotización debe ser mayor a 0');
     
     try {
       if (editing) {
-        // We only allow editing notes on backend? Actually our service says we can update.
-        // Wait, LoanService.update is not defined in api.ts? 
-        // Oh, wait, in api.ts for LoanService I didn't add update(). I only added create, addPayment, delete.
-        // So we can't edit loans natively unless we implement update().
-        // For now let's just show an error or we can implement update.
-        // But let's assume we can't edit the core amounts once created, only notes.
-        // I will just remove the editing feature.
         setError('No se pueden editar préstamos. Elimine y vuelva a crear si hay un error.');
       } else {
         await LoanService.create(form);
@@ -118,7 +111,7 @@ export default function LoansPage() {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box>
           <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
-            Préstamos en USD
+            Préstamos
           </Typography>
           <Typography variant="body2" color="#64748B">
             Gestioná los adelantos o préstamos otorgados al personal con fijación en Dólares.
@@ -149,16 +142,18 @@ export default function LoansPage() {
             <TableRow sx={{ bgcolor: '#F8FAFC' }}>
               <TableCell><strong>Fecha</strong></TableCell>
               <TableCell><strong>Empleado</strong></TableCell>
-              <TableCell><strong>Monto Prestado</strong></TableCell>
-              <TableCell><strong>Equivalente ARS</strong></TableCell>
-              <TableCell><strong>Estado</strong></TableCell>
+              <TableCell align="right"><strong>Monto Dólares</strong></TableCell>
+              <TableCell align="right"><strong>Cotización</strong></TableCell>
+              <TableCell align="right"><strong>Monto Pesos Orig.</strong></TableCell>
+              <TableCell align="right"><strong>Saldo Pendiente</strong></TableCell>
+              <TableCell align="center"><strong>Estado</strong></TableCell>
               <TableCell align="center"><strong>Acciones</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                   <Typography variant="body2" color="text.secondary">No hay préstamos registrados</Typography>
                 </TableCell>
               </TableRow>
@@ -166,37 +161,38 @@ export default function LoansPage() {
               filtered.map((loan) => (
                 <TableRow key={loan.id} hover>
                   <TableCell>
-                    <Typography fontWeight={600} color="text.secondary">
-                      {new Date(loan.loan_date).toLocaleDateString('es-AR')}
-                    </Typography>
+                    {new Date(loan.start_date).toLocaleDateString('es-AR')}
                   </TableCell>
                   <TableCell>
-                    <Typography fontWeight={600}>{loan.employee ? `${loan.employee.lastname}, ${loan.employee.name}` : "Desconocido"}</Typography>
-                    <Typography variant="caption" color="text.secondary">{loan.notes}</Typography>
+                    {loan.employee && <Typography fontWeight={600}>{loan.employee.lastname}, {loan.employee.name}</Typography>}
+                    {loan.notes && <Typography variant="caption" color="text.secondary" display="block">{loan.notes}</Typography>}
                   </TableCell>
-                  <TableCell>
-                    <Typography fontWeight={700} color="error.main">
-                      USD {Number(loan.usd_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </Typography>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                    USD {Number(loan.amount_usd).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {formatCurrency(loan.usd_amount * loan.usd_exchange_rate)}
-                      <br/>(Cot: {formatCurrency(loan.usd_exchange_rate)})
-                    </Typography>
+                  <TableCell align="right">
+                    {formatCurrency(loan.exchange_rate_at_origin)}
                   </TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={loan.status === 'active' ? 'Activo' : loan.status === 'paid' ? 'Pagado' : 'Cancelado'} 
-                      color={loan.status === 'active' ? 'warning' : loan.status === 'paid' ? 'success' : 'default'}
+                  <TableCell align="right" sx={{ color: 'text.secondary' }}>
+                    {formatCurrency(loan.amount_usd * loan.exchange_rate_at_origin)}
+                  </TableCell>
+                  <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                    USD {Number(loan.remaining_balance_usd).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip
+                      label={loan.status === 'completed' ? 'Completado' : loan.status === 'cancelled' ? 'Cancelado' : 'Activo'}
+                      color={loan.status === 'completed' ? 'success' : loan.status === 'cancelled' ? 'default' : 'primary'}
                       size="small"
                     />
                   </TableCell>
                   <TableCell align="center">
-                    <Tooltip title="Eliminar">
-                      <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: loan })} disabled={loan.status !== 'active'}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                    <Tooltip title={loan.status === 'completed' ? "Préstamo completado" : "Eliminar"}>
+                      <span>
+                        <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: loan })} disabled={loan.status === 'completed'}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </span>
                     </Tooltip>
                   </TableCell>
                 </TableRow>
@@ -208,48 +204,53 @@ export default function LoansPage() {
 
       {/* Create Dialog */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Otorgar Nuevo Préstamo (Fijado en USD)</DialogTitle>
+        <DialogTitle>Otorgar Préstamo a Empleado</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <FormControl fullWidth>
+            <FormControl fullWidth size="small">
               <InputLabel>Empleado *</InputLabel>
               <Select
                 value={form.employee_id || ''}
                 label="Empleado *"
                 onChange={(e) => setForm({ ...form, employee_id: Number(e.target.value) })}
               >
-                {employees.map((emp) => (
-                  <MenuItem key={emp.id} value={emp.id}>{emp.lastname}, {emp.name}</MenuItem>
-                ))}
+                {employees.map(e => <MenuItem key={e.id} value={e.id}>{e.lastname}, {e.name}</MenuItem>)}
               </Select>
             </FormControl>
-
+            
             <TextField
-              label="Fecha de Otorgamiento *"
+              label="Fecha de Entrega *"
               type="date"
+              size="small"
               fullWidth
-              value={form.loan_date.slice(0, 10)}
-              onChange={(e) => setForm({ ...form, loan_date: e.target.value })}
               InputLabelProps={{ shrink: true }}
+              value={form.start_date.slice(0, 10)}
+              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
             />
 
-            <CurrencyInput
-              label="Monto Prestado (USD) *"
-              fullWidth
-              value={form.usd_amount}
-              onChange={(val) => setForm({ ...form, usd_amount: val ?? 0 })}
-            />
-            <CurrencyInput
-              label="Cotización Dólar del Día (ARS) *"
-              fullWidth
-              value={form.usd_exchange_rate}
-              onChange={(val) => setForm({ ...form, usd_exchange_rate: val ?? 0 })}
-            />
+            <Box display="flex" gap={2}>
+              <CurrencyInput
+                label="Monto Préstamo (USD) *"
+                value={form.amount_usd}
+                onChange={(val) => setForm({ ...form, amount_usd: val ?? 0 })}
+                fullWidth
+                size="small"
+                InputProps={{ startAdornment: <InputAdornment position="start">USD</InputAdornment> }}
+              />
+              <CurrencyInput
+                label="Cotización USD ($) *"
+                value={form.exchange_rate_at_origin}
+                onChange={(val) => setForm({ ...form, exchange_rate_at_origin: val ?? 0 })}
+                fullWidth
+                size="small"
+                InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+              />
+            </Box>
 
             <Box mt={1} p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
               <Typography variant="caption" color="text.secondary">Total entregado al empleado en Pesos (ARS)</Typography>
               <Typography variant="body2" fontWeight={700} color="primary.main">
-                {formatCurrency(form.usd_amount * form.usd_exchange_rate)}
+                {formatCurrency(form.amount_usd * form.exchange_rate_at_origin)}
               </Typography>
             </Box>
 
@@ -276,7 +277,7 @@ export default function LoansPage() {
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Eliminar el préstamo de <strong>{deleteDialog.item?.employee ? `${deleteDialog.item.employee.lastname}, ${deleteDialog.item.employee.name}` : ""}</strong> por <strong>USD {deleteDialog.item ? Number(deleteDialog.item.usd_amount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : ''}</strong>?
+            ¿Eliminar el préstamo de <strong>{deleteDialog.item?.employee ? `${deleteDialog.item.employee.lastname}, ${deleteDialog.item.employee.name}` : ""}</strong> por <strong>USD {deleteDialog.item ? Number(deleteDialog.item.amount_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }) : ''}</strong>?
           </Typography>
         </DialogContent>
         <DialogActions>

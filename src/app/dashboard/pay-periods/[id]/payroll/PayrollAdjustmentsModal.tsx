@@ -1,66 +1,97 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, CircularProgress, Select, InputLabel, FormControl
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, CircularProgress, Select, InputLabel, FormControl, Divider
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
-import { PayrollAdjustment, PayrollAdjustmentService, CreatePayrollAdjustmentData } from '../../../../../utils/api';
+import { PayrollAdjustment, PayrollAdjustmentService, CreatePayrollAdjustmentData, Loan, LoanService } from '../../../../../utils/api';
 import CurrencyInput from '../../../../../components/CurrencyInput';
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  payPeriodId: number;
+  payrollEntryId: number;
   employeeId: number;
   employeeName: string;
 }
 
-export default function PayrollAdjustmentsModal({ open, onClose, payPeriodId, employeeId, employeeName }: Props) {
+export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId, employeeId, employeeName }: Props) {
   const [adjustments, setAdjustments] = useState<PayrollAdjustment[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [form, setForm] = useState<Partial<CreatePayrollAdjustmentData>>({});
+  const [loanForm, setLoanForm] = useState({ loanId: '', amountUsd: 0, exchangeRate: 0 });
 
   const loadData = React.useCallback(async () => {
-    if (!payPeriodId || !employeeId) return;
+    if (!payrollEntryId) return;
     try {
       setLoading(true);
-      const data = await PayrollAdjustmentService.getByPayPeriod(payPeriodId);
-      setAdjustments(data.filter((a: PayrollAdjustment) => a.employee_id === employeeId));
+      const [adjData, loansData] = await Promise.all([
+        PayrollAdjustmentService.getByPayrollEntry(payrollEntryId),
+        LoanService.getAll({ status: 'active', employee_id: employeeId })
+      ]);
+      setAdjustments(adjData);
+      setLoans(loansData);
     } catch {
-      setError('Error al cargar ajustes');
+      setError('Error al cargar datos');
     } finally {
       setLoading(false);
     }
-  }, [payPeriodId, employeeId]);
+  }, [payrollEntryId, employeeId]);
 
   useEffect(() => {
     if (open) {
       loadData();
-      setForm({ type: 'bonus', amount: 0, description: '', is_taxable: true });
+      setForm({ type: 'bonus', amount: 0, label: '' });
+      setLoanForm({ loanId: '', amountUsd: 0, exchangeRate: 0 });
     }
-  }, [open, payPeriodId, employeeId, loadData]);
+  }, [open, payrollEntryId, loadData]);
 
   const handleAdd = async () => {
-    if (!form.description) return setError('La descripción es requerida');
+    if (!form.label) return setError('La descripción es requerida');
     if (!form.amount || form.amount <= 0) return setError('El monto debe ser mayor a cero');
     if (!form.type) return setError('El tipo es requerido');
 
     try {
       setLoading(true);
       await PayrollAdjustmentService.create({
-        pay_period_id: payPeriodId,
-        employee_id: employeeId,
-        type: form.type as 'bonus' | 'deduction' | 'retroactive' | 'other',
-        description: form.description,
-        amount: form.amount,
-        is_taxable: form.is_taxable,
-        notes: form.notes
+        payroll_entry_id: payrollEntryId,
+        type: form.type as 'bonus' | 'deduction',
+        label: form.label,
+        amount: form.amount
       });
-      setForm({ type: 'bonus', amount: 0, description: '', is_taxable: true });
+      setForm({ type: 'bonus', amount: 0, label: '' });
       await loadData();
     } catch {
       setError('Error al crear ajuste');
+      setLoading(false);
+    }
+  };
+
+  const handleAddLoanPayment = async () => {
+    if (!loanForm.loanId) return setError('Seleccione un préstamo');
+    if (!loanForm.amountUsd || loanForm.amountUsd <= 0) return setError('Monto USD inválido');
+    if (!loanForm.exchangeRate || loanForm.exchangeRate <= 0) return setError('Cotización inválida');
+
+    try {
+      setLoading(true);
+      await LoanService.addPayment(Number(loanForm.loanId), {
+        loan_id: Number(loanForm.loanId),
+        date: new Date().toISOString().split('T')[0],
+        amount_usd: loanForm.amountUsd,
+        amount_ars: loanForm.amountUsd * loanForm.exchangeRate,
+        exchange_rate: loanForm.exchangeRate,
+        payroll_entry_id: payrollEntryId
+      });
+      setLoanForm({ loanId: '', amountUsd: 0, exchangeRate: 0 });
+      await loadData();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Error al descontar préstamo');
+      } else {
+        setError('Error al descontar préstamo');
+      }
       setLoading(false);
     }
   };
@@ -82,18 +113,17 @@ export default function PayrollAdjustmentsModal({ open, onClose, payPeriodId, em
       <DialogContent>
         {error && <Typography color="error" variant="body2" mb={2}>{error}</Typography>}
 
-        <Box display="flex" gap={2} mb={3} alignItems="flex-start" mt={1}>
+        <Typography variant="subtitle2" mb={1} mt={1}>Agregar Premio o Retención manual</Typography>
+        <Box display="flex" gap={2} mb={3} alignItems="flex-start">
           <FormControl sx={{ minWidth: 150 }} size="small">
             <InputLabel>Tipo</InputLabel>
             <Select
               value={form.type || 'bonus'}
               label="Tipo"
-              onChange={(e) => setForm({ ...form, type: e.target.value as 'bonus' | 'deduction' | 'retroactive' | 'other' })}
+              onChange={(e) => setForm({ ...form, type: e.target.value as 'bonus' | 'deduction' })}
             >
               <MenuItem value="bonus">Premio / Extra</MenuItem>
               <MenuItem value="deduction">Descuento</MenuItem>
-              <MenuItem value="retroactive">Retroactivo</MenuItem>
-              <MenuItem value="other">Otro</MenuItem>
             </Select>
           </FormControl>
 
@@ -101,8 +131,8 @@ export default function PayrollAdjustmentsModal({ open, onClose, payPeriodId, em
             label="Descripción"
             size="small"
             fullWidth
-            value={form.description || ''}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            value={form.label || ''}
+            onChange={(e) => setForm({ ...form, label: e.target.value })}
             placeholder="Ej: Premio puntual, Viáticos"
           />
 
@@ -119,6 +149,50 @@ export default function PayrollAdjustmentsModal({ open, onClose, payPeriodId, em
           </Button>
         </Box>
 
+        {loans.length > 0 && (
+          <>
+            <Divider sx={{ my: 3 }} />
+            <Typography variant="subtitle2" mb={1} color="secondary">Descontar Cuota de Préstamo Activo</Typography>
+            <Box display="flex" gap={2} mb={3} alignItems="flex-start">
+              <FormControl sx={{ minWidth: 200 }} size="small">
+                <InputLabel>Préstamo</InputLabel>
+                <Select
+                  value={loanForm.loanId}
+                  label="Préstamo"
+                  onChange={(e) => setLoanForm({ ...loanForm, loanId: e.target.value })}
+                >
+                  {loans.map(l => (
+                    <MenuItem key={l.id} value={l.id.toString()}>
+                      {l.start_date.split('-').reverse().join('/')} - Restan USD {l.remaining_balance_usd}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <CurrencyInput
+                label="Monto a descontar (USD)"
+                value={loanForm.amountUsd}
+                onChange={(val: number | null) => setLoanForm({ ...loanForm, amountUsd: val ?? 0 })}
+                sx={{ width: 180 }}
+                size="small"
+              />
+
+              <CurrencyInput
+                label="Cotización USD/ARS"
+                value={loanForm.exchangeRate}
+                onChange={(val: number | null) => setLoanForm({ ...loanForm, exchangeRate: val ?? 0 })}
+                sx={{ width: 160 }}
+                size="small"
+              />
+
+              <Button variant="contained" color="secondary" onClick={handleAddLoanPayment} disabled={loading} startIcon={<AddIcon />}>
+                Descontar
+              </Button>
+            </Box>
+          </>
+        )}
+
+        <Divider sx={{ my: 3 }} />
         <Typography variant="subtitle2" mb={1}>Ajustes Registrados (impactarán al generar la liquidación)</Typography>
 
         {loading && adjustments.length === 0 ? (
@@ -141,14 +215,14 @@ export default function PayrollAdjustmentsModal({ open, onClose, payPeriodId, em
                   adjustments.map((a) => (
                     <TableRow key={a.id}>
                       <TableCell>
-                        {a.type === 'bonus' ? 'Premio/Extra' : a.type === 'deduction' ? 'Descuento' : a.type === 'retroactive' ? 'Retroactivo' : 'Otro'}
+                        {a.type === 'bonus' ? 'Premio/Extra' : 'Descuento'}
                       </TableCell>
-                      <TableCell>{a.description}</TableCell>
+                      <TableCell>{a.label}</TableCell>
                       <TableCell align="right" sx={{ color: a.type === 'deduction' ? 'error.main' : 'success.main' }}>
                         {a.type === 'deduction' ? '-' : '+'}${Number(a.amount).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell align="center">
-                        <IconButton size="small" color="error" onClick={() => handleDelete(a.id)}>
+                        <IconButton size="small" color="error" onClick={() => handleDelete(a.id)} disabled={a.is_auto}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </TableCell>
