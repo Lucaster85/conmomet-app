@@ -1057,14 +1057,20 @@ export default function EmployeeDetailPage() {
               )}
 
               {/* Preview: cómo se verían las extras */}
-              {empRates.filter(r => r.concept_id && employee?.pay_type !== 'monthly').length > 0 && (
+              {employee?.pay_type !== 'monthly' && (
                 <Paper sx={{ p: 2 }} variant="outlined">
                   <Typography variant="subtitle2" gutterBottom>Vista previa: Tarifas derivadas</Typography>
                   <Table size="small">
                     <TableBody>
-                      {empRates.filter(r => r.concept_id).map(r => (
+                      {/* Fila de la hora base del legajo */}
+                      <TableRow>
+                        <TableCell><strong>Hora Base (legajo)</strong></TableCell>
+                        <TableCell>Extras 50%: {'$' + (Number(employee?.hourly_rate) * 1.5).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell>Extras 100%: {'$' + (Number(employee?.hourly_rate) * 2.0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
+                      </TableRow>
+                      {empRates.map(r => (
                         <TableRow key={`preview-${r.id}`}>
-                          <TableCell>{r.concept?.name}</TableCell>
+                          <TableCell>{r.concept?.name || 'General'}</TableCell>
                           <TableCell>Extras 50%: {'$' + (Number(r.rate) * 1.5).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell>Extras 100%: {'$' + (Number(r.rate) * 2.0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
                         </TableRow>
