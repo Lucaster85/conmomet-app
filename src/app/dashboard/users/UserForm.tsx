@@ -61,6 +61,12 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
   const [success, setSuccess] = useState('');
 
   // Cargar roles y permisos al montar el componente
+  // TODO: [LOOKUP ENDPOINTS] Reemplazar RoleService.getAll() y PermissionService.getAll()
+  // por endpoints "lookup" livianos (GET /lookup/roles, GET /lookup/permissions) que solo
+  // requieran verifyToken (usuario autenticado) sin necesitar roles_read ni permissions_read.
+  // Esto permite que un "Administrador" con users_write pueda crear usuarios y asignar roles
+  // sin tener acceso al menú de gestión de Roles y Permisos.
+  // Ver: api_conmomet/routes/index.js (sección ROLE, comentario TODO LOOKUP ENDPOINTS)
   useEffect(() => {
     const loadData = async () => {
       try {
