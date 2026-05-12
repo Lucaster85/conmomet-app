@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Stack, Chip, Tooltip,
+  DialogActions, CircularProgress, Stack, Chip, Tooltip, Badge,
 } from '@mui/material';
 import FeedbackModal from '../../../../../components/FeedbackModal';
 import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon, Payment as PaymentIcon, Visibility as ViewIcon, Print as PrintIcon } from '@mui/icons-material';
@@ -261,10 +261,53 @@ export default function PayrollPage() {
                       </Tooltip>
                       {e.status === 'draft' && (
                         <>
-                          <Tooltip title="Ajustes (Extras/Retenciones)"><IconButton size="small" color="primary" onClick={() => {
-                            setEditingEntry(e as unknown as PayrollEntry);
-                            setOpenEdit(true);
-                          }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                          <Tooltip title="Ajustes (Extras/Retenciones)">
+                            <IconButton size="small" color="primary" onClick={() => {
+                              setEditingEntry(e as unknown as PayrollEntry);
+                              setOpenEdit(true);
+                            }}>
+                              {e.has_active_loan ? (
+                                <Badge
+                                  variant="dot"
+                                  sx={{
+                                    '& .MuiBadge-dot': {
+                                      bgcolor: '#ef4444',
+                                      width: 10,
+                                      height: 10,
+                                      borderRadius: '50%',
+                                      animation: 'pulse-loan 2s ease-in-out infinite',
+                                      '@keyframes pulse-loan': {
+                                        '0%, 100%': { transform: 'scale(1)', opacity: 1 },
+                                        '50%': { transform: 'scale(1.4)', opacity: 0.7 },
+                                      },
+                                    },
+                                  }}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </Badge>
+                              ) : (
+                                <EditIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </Tooltip>
+                          {e.has_active_loan && (
+                            <Tooltip title={`Préstamo activo: ${e.active_loans_count} préstamo(s) — Saldo: USD ${Number(e.total_remaining_usd).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`}>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: '#ef4444',
+                                  fontWeight: 700,
+                                  fontSize: '0.65rem',
+                                  cursor: 'default',
+                                  lineHeight: 1,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                💰
+                              </Typography>
+                            </Tooltip>
+                          )}
                           <Tooltip title="Confirmar liquidación"><IconButton size="small" color="success" onClick={() => handleConfirm(e.id as number)}><ConfirmIcon fontSize="small" /></IconButton></Tooltip>
                         </>
                       )}
