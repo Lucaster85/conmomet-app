@@ -320,7 +320,7 @@ export default function DashboardPage() {
               <Typography variant="subtitle2" gutterBottom>Nuevo archivo adjunto *</Typography>
               <Button variant="outlined" component="label" fullWidth color={file ? 'success' : 'primary'}>
                 {file ? file.name : "Seleccionar Archivo (Requerido)"}
-                <input type="file" hidden onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
               </Button>
             </Box>
           </Stack>
@@ -341,7 +341,7 @@ export default function DashboardPage() {
               <Typography variant="subtitle2" gutterBottom>Comprobante de Pago *</Typography>
               <Button variant="outlined" component="label" fullWidth color={file ? 'success' : 'primary'}>
                 {file ? file.name : "Seleccionar Archivo (Requerido)"}
-                <input type="file" hidden onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
               </Button>
             </Box>
           </Stack>

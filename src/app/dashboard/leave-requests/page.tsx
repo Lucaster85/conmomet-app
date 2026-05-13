@@ -400,10 +400,11 @@ export default function LeaveRequestsPage() {
               startIcon={<UploadIcon />}
               fullWidth
             >
-              {form.file ? form.file.name : 'Adjuntar Documento (Opcional)'}
+              {form.file ? form.file.name : 'Adjuntar Documento o Foto (Opcional)'}
               <input
                 type="file"
                 hidden
+                accept="image/*,.pdf"
                 onChange={(e) => setForm({ ...form, file: e.target.files?.[0] || null })}
               />
             </Button>
