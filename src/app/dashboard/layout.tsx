@@ -93,6 +93,7 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Adelantos', icon: <MoneyIcon />, path: '/dashboard/salary-advances', requiredPermission: 'salary_advances_read' },
       { text: 'Préstamos', icon: <LocalAtmIcon />, path: '/dashboard/loans', requiredPermission: 'loans_read' },
       { text: 'Gastos Patronales', icon: <AccountBalanceIcon />, path: '/dashboard/employer-costs', requiredPermission: 'employer_costs_read' },
+      { text: 'Resumen de Costos', icon: <AccountBalanceIcon />, path: '/dashboard/expense-summary', requiredPermission: 'expense_summary_read' },
     ]
   },
   {

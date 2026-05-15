@@ -2270,3 +2270,63 @@ export class RateChangeService {
     if (!response.ok) throw new Error('Error al eliminar retroactivo');
   }
 }
+
+// --- EXPENSE SUMMARY ---
+export interface ExpenseSummaryMonthly {
+  year: number;
+  month: number;
+  expenses: {
+    payroll_gross: {
+      label: string;
+      total: number;
+      detail: {
+        first_half: number;
+        second_half: number;
+        entry_count: number;
+      };
+    };
+    employer_costs: {
+      label: string;
+      total: number;
+      breakdown: { category: string; amount: number }[];
+    };
+  };
+  grand_total: number;
+  info: {
+    advances: {
+      label: string;
+      total: number;
+      count: number;
+      note: string;
+    };
+  };
+}
+
+export interface ExpenseSummaryAnnual {
+  year: number;
+  months: {
+    month: number;
+    payroll_gross: number;
+    employer_costs: number;
+    total: number;
+  }[];
+  annual_totals: {
+    payroll_gross: number;
+    employer_costs: number;
+    total: number;
+  };
+}
+
+export class ExpenseSummaryService {
+  static async getMonthly(year: number, month: number): Promise<ExpenseSummaryMonthly> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/expense-summary/monthly?year=${year}&month=${month}`);
+    if (!response.ok) throw new Error('Error al obtener el resumen mensual');
+    return response.json();
+  }
+
+  static async getAnnual(year: number): Promise<ExpenseSummaryAnnual> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/expense-summary/annual?year=${year}`);
+    if (!response.ok) throw new Error('Error al obtener el resumen anual');
+    return response.json();
+  }
+}
