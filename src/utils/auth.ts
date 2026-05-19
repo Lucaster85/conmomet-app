@@ -159,7 +159,12 @@ export function useAuth() {
     try {
 
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/login`, {
+      const apiBaseUrl =
+        (typeof window !== 'undefined' && (window as Window & { __ENV__?: { API_BASE_URL?: string } }).__ENV__?.API_BASE_URL) ||
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        'http://localhost:4000';
+
+      const response = await fetch(`${apiBaseUrl}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
