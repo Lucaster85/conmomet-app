@@ -3,7 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { Box, Container, Typography, CircularProgress } from '@mui/material';
 import CardSlider from '../CardSlider';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+const API_BASE_URL =
+  (typeof window !== 'undefined' && (window as { __ENV__?: { API_BASE_URL?: string } }).__ENV__?.API_BASE_URL) ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'http://localhost:4000';
 
 interface SliderMedia {
   id: number;

@@ -16,7 +16,10 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon, Send as SendIcon } from '@mui/icons-material';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+const API_BASE_URL =
+  (typeof window !== 'undefined' && (window as { __ENV__?: { API_BASE_URL?: string } }).__ENV__?.API_BASE_URL) ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'http://localhost:4000';
 
 interface ContactModalProps {
   open: boolean;

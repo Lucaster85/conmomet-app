@@ -7,6 +7,9 @@ import theme from './theme';
 
 import MuiXProvider from "./MuiXProvider";
 
+// Fuerza renderizado dinámico por request, para que process.env se lea en runtime
+export const dynamic = 'force-dynamic';
+
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
   subsets: ["latin"],
@@ -27,8 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const runtimeEnv = JSON.stringify({
-    API_BASE_URL: process.env.API_BASE_URL || '',
-    GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY || '',
+    API_BASE_URL: process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || '',
+    GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || '',
   }).replace(/</g, '\\u003c');
 
   return (

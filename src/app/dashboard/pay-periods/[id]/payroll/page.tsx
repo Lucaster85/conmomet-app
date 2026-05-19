@@ -37,7 +37,11 @@ export default function PayrollPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const res = await TokenManager.authenticatedFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/payroll/${payPeriodId}`);
+      const apiBase =
+        (typeof window !== 'undefined' && (window as { __ENV__?: { API_BASE_URL?: string } }).__ENV__?.API_BASE_URL) ||
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        'http://localhost:4000';
+      const res = await TokenManager.authenticatedFetch(`${apiBase}/payroll/${payPeriodId}`);
       if (!res.ok) throw new Error('Error al cargar');
       const json = await res.json();
       setEntries(json.data || []);
