@@ -16,7 +16,10 @@ declare global {
   }
 }
 
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
+// Lee de window.__ENV__ en runtime (Docker/Railway) o del build-time embed (dev local)
+const API_KEY =
+  (typeof window !== 'undefined' && window.__ENV__?.GOOGLE_PLACES_API_KEY) ||
+  process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
 
 function loadGooglePlacesAPI(): Promise<void> {
   return new Promise((resolve, reject) => {

@@ -1,11 +1,16 @@
 import { TokenManager } from './auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
-
-
-if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
-  console.warn('⚠️ NEXT_PUBLIC_API_BASE_URL no está definida, usando fallback:', API_BASE_URL);
+declare global {
+  interface Window {
+    __ENV__?: { API_BASE_URL?: string; GOOGLE_PLACES_API_KEY?: string };
+  }
 }
+
+// Lee de window.__ENV__ en runtime (Docker/Railway) o del build-time embed (dev local)
+const API_BASE_URL =
+  (typeof window !== 'undefined' && window.__ENV__?.API_BASE_URL) ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'http://localhost:4000';
 
 // Tipos para las entidades
 export interface User {

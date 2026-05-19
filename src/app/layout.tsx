@@ -26,11 +26,18 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const runtimeEnv = JSON.stringify({
+    API_BASE_URL: process.env.API_BASE_URL || '',
+    GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY || '',
+  }).replace(/</g, '\\u003c');
+
   return (
     <html lang="es-AR">
       <body
         className={`${plusJakartaSans.variable} antialiased`}
       >
+        {/* Runtime env vars — leídas en el servidor, disponibles en el cliente */}
+        <script dangerouslySetInnerHTML={{ __html: `window.__ENV__ = ${runtimeEnv};` }} />
         <ThemeProvider theme={theme}>
           <CssBaseline />
           <MuiXProvider>

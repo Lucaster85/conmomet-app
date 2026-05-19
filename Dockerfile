@@ -10,13 +10,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Variables NEXT_PUBLIC_* se embeben en build-time (es la única forma en Next.js)
-ARG NEXT_PUBLIC_API_BASE_URL
-ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
-
-ARG NEXT_PUBLIC_GOOGLE_PLACES_API_KEY
-ENV NEXT_PUBLIC_GOOGLE_PLACES_API_KEY=$NEXT_PUBLIC_GOOGLE_PLACES_API_KEY
-
 RUN npm run build
 
 # ── Production stage (imagen mínima) ──
