@@ -18,7 +18,7 @@ import {
 
 const COMPLIANCE_CHIP: Record<string, { label: string; color: 'success' | 'warning' | 'error' }> = {
   compliant: { label: '🟢', color: 'success' },
-  partial: { label: '🟡', color: 'warning' },
+  expiring: { label: '🟡', color: 'warning' },
   non_compliant: { label: '🔴', color: 'error' },
 };
 

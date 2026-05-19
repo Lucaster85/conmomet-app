@@ -162,6 +162,8 @@ export default function RolesPage() {
       setDeleteTarget(null);
       fetchData();
     } catch (err: unknown) {
+      setDeleteDialogOpen(false);
+      setDeleteTarget(null);
       setError(toErrorMsg(err));
     } finally {
       setDeleting(false);

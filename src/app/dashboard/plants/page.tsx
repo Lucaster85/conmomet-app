@@ -22,7 +22,7 @@ import {
 
 const STATUS_ICON: Record<string, { label: string; color: 'success' | 'warning' | 'error' }> = {
   compliant: { label: '🟢 Habilitado', color: 'success' },
-  partial: { label: '🟡 Parcial', color: 'warning' },
+  expiring: { label: '🟡 Por Vencer', color: 'warning' },
   non_compliant: { label: '🔴 No Habilitado', color: 'error' },
 };
 
@@ -417,7 +417,7 @@ export default function PlantsPage() {
               <Box display="flex" gap={1} mb={2} flexWrap="wrap">
                 <Chip label="Todos" variant={compFilter === 'all' ? 'filled' : 'outlined'} onClick={() => setCompFilter('all')} />
                 <Chip label="🟢 Habilitados" color="success" variant={compFilter === 'compliant' ? 'filled' : 'outlined'} onClick={() => setCompFilter('compliant')} />
-                <Chip label="🟡 Parcial" color="warning" variant={compFilter === 'partial' ? 'filled' : 'outlined'} onClick={() => setCompFilter('partial')} />
+                <Chip label="🟡 Por Vencer" color="warning" variant={compFilter === 'expiring' ? 'filled' : 'outlined'} onClick={() => setCompFilter('expiring')} />
                 <Chip label="🔴 No Habilitados" color="error" variant={compFilter === 'non_compliant' ? 'filled' : 'outlined'} onClick={() => setCompFilter('non_compliant')} />
               </Box>
               <Stack spacing={1}>
