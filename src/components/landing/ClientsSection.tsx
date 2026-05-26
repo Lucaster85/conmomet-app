@@ -9,14 +9,8 @@ interface Client {
 }
 
 const clients: Client[] = [
-  { name: 'Cargill', shortName: 'CAR' },
-  { name: 'Molinos Río de la Plata', shortName: 'MRP' },
-  { name: 'Arcor', shortName: 'ARC' },
   { name: 'Bunge', shortName: 'BUN' },
-  { name: 'Louis Dreyfus', shortName: 'LDC' },
-  { name: 'AGD', shortName: 'AGD' },
-  { name: 'Mastellone', shortName: 'MAS' },
-  { name: 'Nidera', shortName: 'NID' },
+  { name: 'Renova', shortName: 'RNV' }
 ];
 
 const VISIBLE = 4;
