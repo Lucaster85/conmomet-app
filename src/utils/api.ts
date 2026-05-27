@@ -2073,11 +2073,12 @@ export class EmployerCostService {
 export interface Loan {
   id: number;
   employee_id: number;
+  currency: 'USD' | 'ARS';
   start_date: string;
-  amount_usd: number;
-  exchange_rate_at_origin: number;
-  amount_ars_at_origin: number;
-  remaining_balance_usd: number;
+  amount: number;
+  exchange_rate_at_origin?: number | null;
+  amount_ars_at_origin?: number | null;
+  remaining_balance: number;
   notes?: string;
   status: 'active' | 'completed' | 'cancelled';
   created_by?: number;
@@ -2092,9 +2093,9 @@ export interface LoanPayment {
   id: number;
   loan_id: number;
   date: string;
-  amount_ars: number;
-  exchange_rate: number;
-  amount_usd: number;
+  amount: number;
+  exchange_rate?: number | null;
+  amount_ars?: number | null;
   payroll_entry_id?: number;
   notes?: string;
   created_by?: number;
@@ -2104,18 +2105,19 @@ export interface LoanPayment {
 
 export interface CreateLoanData {
   employee_id: number;
+  currency: 'USD' | 'ARS';
   start_date: string;
-  amount_usd: number;
-  exchange_rate_at_origin: number;
+  amount: number;
+  exchange_rate_at_origin?: number;
   notes?: string;
 }
 
 export interface CreateLoanPaymentData {
   loan_id: number;
   date: string;
-  amount_ars: number;
-  exchange_rate: number;
-  amount_usd: number;
+  amount: number;
+  exchange_rate?: number;
+  amount_ars?: number;
   payroll_entry_id?: number;
   notes?: string;
 }

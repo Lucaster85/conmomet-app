@@ -294,8 +294,13 @@ export default function PayrollPage() {
                               )}
                             </IconButton>
                           </Tooltip>
-                          {e.has_active_loan && (
-                            <Tooltip title={`Préstamo activo: ${e.active_loans_count} préstamo(s) — Saldo: USD ${Number(e.total_remaining_usd).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`}>
+                          {e.has_active_loan && (() => {
+                            const parts: string[] = [];
+                            if (Number(e.total_remaining_usd) > 0) parts.push(`USD ${Number(e.total_remaining_usd).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`);
+                            if (Number(e.total_remaining_ars) > 0) parts.push(`$${Number(e.total_remaining_ars).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`);
+                            const saldoText = parts.join(' + ');
+                            return (
+                            <Tooltip title={`Préstamo activo: ${e.active_loans_count} préstamo(s) — Saldo: ${saldoText}`}>
                               <Typography
                                 variant="caption"
                                 sx={{
@@ -311,7 +316,8 @@ export default function PayrollPage() {
                                 💰
                               </Typography>
                             </Tooltip>
-                          )}
+                            );
+                          })()}
                           <Tooltip title="Confirmar liquidación"><IconButton size="small" color="success" onClick={() => handleConfirm(e.id as number)}><ConfirmIcon fontSize="small" /></IconButton></Tooltip>
                         </>
                       )}

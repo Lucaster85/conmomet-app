@@ -21,7 +21,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
   const [error, setError] = useState('');
 
   const [form, setForm] = useState<Partial<CreatePayrollAdjustmentData>>({});
-  const [loanForm, setLoanForm] = useState({ loanId: '', amountUsd: 0, exchangeRate: 0 });
+  const [loanForm, setLoanForm] = useState({ loanId: '', amount: 0, exchangeRate: 0 });
 
   const loadData = React.useCallback(async () => {
     if (!payrollEntryId) return;
@@ -44,7 +44,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
     if (open) {
       loadData();
       setForm({ type: 'bonus', amount: 0, label: '' });
-      setLoanForm({ loanId: '', amountUsd: 0, exchangeRate: 0 });
+      setLoanForm({ loanId: '', amount: 0, exchangeRate: 0 });
     }
   }, [open, payrollEntryId, loadData]);
 
@@ -69,22 +69,32 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
     }
   };
 
+  // Get the selected loan to determine its currency
+  const selectedLoan = loans.find(l => l.id.toString() === loanForm.loanId);
+  const isUSDLoan = selectedLoan?.currency === 'USD';
+
   const handleAddLoanPayment = async () => {
     if (!loanForm.loanId) return setError('Seleccione un préstamo');
-    if (!loanForm.amountUsd || loanForm.amountUsd <= 0) return setError('Monto USD inválido');
-    if (!loanForm.exchangeRate || loanForm.exchangeRate <= 0) return setError('Cotización inválida');
+    if (!loanForm.amount || loanForm.amount <= 0) return setError('Monto inválido');
+    if (isUSDLoan && (!loanForm.exchangeRate || loanForm.exchangeRate <= 0)) return setError('Cotización inválida');
 
     try {
       setLoading(true);
-      await LoanService.addPayment(Number(loanForm.loanId), {
+
+      const paymentData: Parameters<typeof LoanService.addPayment>[1] = {
         loan_id: Number(loanForm.loanId),
         date: new Date().toISOString().split('T')[0],
-        amount_usd: loanForm.amountUsd,
-        amount_ars: loanForm.amountUsd * loanForm.exchangeRate,
-        exchange_rate: loanForm.exchangeRate,
+        amount: loanForm.amount,
         payroll_entry_id: payrollEntryId
-      });
-      setLoanForm({ loanId: '', amountUsd: 0, exchangeRate: 0 });
+      };
+
+      if (isUSDLoan) {
+        paymentData.exchange_rate = loanForm.exchangeRate;
+        paymentData.amount_ars = loanForm.amount * loanForm.exchangeRate;
+      }
+
+      await LoanService.addPayment(Number(loanForm.loanId), paymentData);
+      setLoanForm({ loanId: '', amount: 0, exchangeRate: 0 });
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -105,6 +115,14 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
       setError('Error al eliminar');
       setLoading(false);
     }
+  };
+
+  const formatLoanOption = (l: Loan) => {
+    const dateStr = l.start_date.split('-').reverse().join('/');
+    const balanceStr = l.currency === 'USD'
+      ? `USD ${Number(l.remaining_balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+      : `$${Number(l.remaining_balance).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+    return `${dateStr} - Restan ${balanceStr}`;
   };
 
   return (
@@ -159,31 +177,33 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
                 <Select
                   value={loanForm.loanId}
                   label="Préstamo"
-                  onChange={(e) => setLoanForm({ ...loanForm, loanId: e.target.value })}
+                  onChange={(e) => setLoanForm({ ...loanForm, loanId: e.target.value, amount: 0, exchangeRate: 0 })}
                 >
                   {loans.map(l => (
                     <MenuItem key={l.id} value={l.id.toString()}>
-                      {l.start_date.split('-').reverse().join('/')} - Restan USD {l.remaining_balance_usd}
+                      {formatLoanOption(l)}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
 
               <CurrencyInput
-                label="Monto a descontar (USD)"
-                value={loanForm.amountUsd}
-                onChange={(val: number | null) => setLoanForm({ ...loanForm, amountUsd: val ?? 0 })}
+                label={isUSDLoan ? 'Monto a descontar (USD)' : 'Monto a descontar ($)'}
+                value={loanForm.amount}
+                onChange={(val: number | null) => setLoanForm({ ...loanForm, amount: val ?? 0 })}
                 sx={{ width: 180 }}
                 size="small"
               />
 
-              <CurrencyInput
-                label="Cotización USD/ARS"
-                value={loanForm.exchangeRate}
-                onChange={(val: number | null) => setLoanForm({ ...loanForm, exchangeRate: val ?? 0 })}
-                sx={{ width: 160 }}
-                size="small"
-              />
+              {isUSDLoan && (
+                <CurrencyInput
+                  label="Cotización USD/ARS"
+                  value={loanForm.exchangeRate}
+                  onChange={(val: number | null) => setLoanForm({ ...loanForm, exchangeRate: val ?? 0 })}
+                  sx={{ width: 160 }}
+                  size="small"
+                />
+              )}
 
               <Button variant="contained" color="secondary" onClick={handleAddLoanPayment} disabled={loading} startIcon={<AddIcon />}>
                 Descontar
