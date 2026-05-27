@@ -3,12 +3,15 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, TextField, Stack, Chip
+  DialogActions, CircularProgress, TextField, Stack, Chip, Autocomplete
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import CurrencyInput from '../../../components/CurrencyInput';
-import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon, Refresh as RefreshIcon,
+  LocalAtm as CashIcon, AccountBalance as BankIcon
+} from '@mui/icons-material';
 import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService } from '../../../utils/api';
 
 export default function SalaryAdvancesPage() {
@@ -19,7 +22,13 @@ export default function SalaryAdvancesPage() {
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
 
-  const [form, setForm] = useState<{ employee_id: string; amount: number | null; date: string; notes: string }>({ employee_id: '', amount: null, date: new Date().toISOString().split('T')[0], notes: '' });
+  const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
+  const [form, setForm] = useState<{ amount: number | null; date: string; notes: string; payment_method: 'efectivo' | 'transferencia' }>({
+    amount: null,
+    date: new Date().toISOString().split('T')[0],
+    notes: '',
+    payment_method: 'transferencia'
+  });
 
   const loadData = async () => {
     try {
@@ -39,16 +48,31 @@ export default function SalaryAdvancesPage() {
 
   useEffect(() => { loadData(); }, []);
 
+  const handleOpenDialog = () => {
+    setSelectedEmployees([]);
+    setForm({
+      amount: null,
+      date: new Date().toISOString().split('T')[0],
+      notes: '',
+      payment_method: 'transferencia'
+    });
+    setOpenDialog(true);
+  };
+
   const handleSubmit = async () => {
-    if (!form.employee_id || !form.amount || !form.date) { setError('Campos obligatorios'); return; }
+    if (selectedEmployees.length === 0 || !form.amount || !form.date) {
+      setError('Campos obligatorios');
+      return;
+    }
     try {
       await SalaryAdvanceService.create({
-        employee_id: Number(form.employee_id),
+        employee_ids: selectedEmployees.map(e => e.id),
         amount: form.amount!,
         date: form.date,
+        payment_method: form.payment_method,
         notes: form.notes
       });
-      setSuccess('Adelanto registrado');
+      setSuccess(selectedEmployees.length > 1 ? 'Adelantos registrados en lote' : 'Adelanto registrado');
       setOpenDialog(false);
       loadData();
     } catch (err) {
@@ -59,6 +83,29 @@ export default function SalaryAdvancesPage() {
   const formatCurrency = (v: number) => `$${Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
   const formatDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-AR');
 
+  const renderPaymentMethodChip = (method: 'efectivo' | 'transferencia') => {
+    if (method === 'efectivo') {
+      return (
+        <Chip
+          label="Efectivo"
+          size="small"
+          color="warning"
+          variant="outlined"
+          icon={<CashIcon sx={{ fontSize: '0.875rem !important' }} />}
+        />
+      );
+    }
+    return (
+      <Chip
+        label="Transferencia"
+        size="small"
+        color="info"
+        variant="outlined"
+        icon={<BankIcon sx={{ fontSize: '0.875rem !important' }} />}
+      />
+    );
+  };
+
   if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
 
   return (
@@ -67,7 +114,7 @@ export default function SalaryAdvancesPage() {
         <Typography variant="h4" fontWeight="bold">Adelantos</Typography>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)} size="small">Registrar Adelanto</Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenDialog} size="small">Registrar Adelanto</Button>
         </Box>
       </Box>
 
@@ -82,8 +129,9 @@ export default function SalaryAdvancesPage() {
               <Typography variant="subtitle1" fontWeight="bold">{a.employee?.lastname}, {a.employee?.name}</Typography>
               <Typography variant="h6" color="error.main">{formatCurrency(a.amount)}</Typography>
               <Typography variant="body2">{formatDate(a.date)}</Typography>
-              {a.notes && <Typography variant="caption" color="text.secondary">{a.notes}</Typography>}
-              <Box mt={1}>
+              {a.notes && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>{a.notes}</Typography>}
+              <Box mt={1.5} display="flex" gap={1} flexWrap="wrap">
+                {renderPaymentMethodChip(a.payment_method)}
                 {a.pay_period_id ? <Chip label="Descontado" size="small" color="success" /> : <Chip label="Pendiente de descuento" size="small" color="warning" />}
               </Box>
             </Paper>
@@ -100,6 +148,7 @@ export default function SalaryAdvancesPage() {
                 <TableCell><strong>Fecha</strong></TableCell>
                 <TableCell><strong>Empleado</strong></TableCell>
                 <TableCell><strong>Monto</strong></TableCell>
+                <TableCell><strong>Método</strong></TableCell>
                 <TableCell><strong>Notas</strong></TableCell>
                 <TableCell><strong>Estado</strong></TableCell>
               </TableRow>
@@ -110,6 +159,7 @@ export default function SalaryAdvancesPage() {
                   <TableCell>{formatDate(a.date)}</TableCell>
                   <TableCell>{a.employee?.lastname}, {a.employee?.name}</TableCell>
                   <TableCell><Typography color="error.main" fontWeight="bold">{formatCurrency(a.amount)}</Typography></TableCell>
+                  <TableCell>{renderPaymentMethodChip(a.payment_method)}</TableCell>
                   <TableCell>{a.notes || '—'}</TableCell>
                   <TableCell>{a.pay_period_id ? <Chip label="Descontado" size="small" color="success" /> : <Chip label="Pendiente de descuento" size="small" color="warning" />}</TableCell>
                 </TableRow>
@@ -122,19 +172,43 @@ export default function SalaryAdvancesPage() {
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Registrar Adelanto</DialogTitle>
         <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="Empleado *" select fullWidth value={form.employee_id} onChange={(e) => setForm({ ...form, employee_id: e.target.value })} SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-              <option value="">Seleccionar empleado</option>
-              {employees.map(e => <option key={e.id} value={e.id}>{e.lastname}, {e.name}</option>)}
-            </TextField>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Autocomplete
+              multiple
+              options={employees}
+              getOptionLabel={(e) => `${e.lastname}, ${e.name}`}
+              value={selectedEmployees}
+              onChange={(_, val) => setSelectedEmployees(val)}
+              renderInput={(params) => <TextField {...params} label="Empleado(s) *" placeholder="Seleccionar..." />}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => {
+                  const { key, ...rest } = getTagProps({ index });
+                  return <Chip key={key} label={`${option.name} ${option.lastname}`} size="small" {...rest} />;
+                })
+              }
+            />
             <DateField label="Fecha *" fullWidth value={form.date} onChange={(val) => setForm({ ...form, date: val })} InputLabelProps={{ shrink: true }} />
             <CurrencyInput label="Monto *" fullWidth value={form.amount} onChange={(value) => setForm({ ...form, amount: value })} />
+            <TextField
+              label="Método de Pago *"
+              select
+              fullWidth
+              value={form.payment_method}
+              onChange={(e) => setForm({ ...form, payment_method: e.target.value as 'efectivo' | 'transferencia' })}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="transferencia">Transferencia bancaria</option>
+              <option value="efectivo">Efectivo</option>
+            </TextField>
             <TextField label="Notas" fullWidth multiline rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">Registrar</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={selectedEmployees.length === 0 || !form.amount || !form.date}>
+            Registrar {selectedEmployees.length > 1 ? `(${selectedEmployees.length})` : ''}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

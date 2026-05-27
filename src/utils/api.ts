@@ -1409,6 +1409,7 @@ export interface SalaryAdvance {
   employee_id: number;
   amount: number;
   date: string;
+  payment_method: 'efectivo' | 'transferencia';
   pay_period_id?: number;
   notes?: string;
   employee?: Employee;
@@ -1423,12 +1424,19 @@ export class SalaryAdvanceService {
     return (await response.json()).data || [];
   }
 
-  static async create(payload: { employee_id: number; amount: number; date: string; notes?: string }): Promise<SalaryAdvance> {
+  static async create(payload: {
+    employee_id?: number;
+    employee_ids?: number[];
+    amount: number;
+    date: string;
+    payment_method: 'efectivo' | 'transferencia';
+    notes?: string;
+  }): Promise<SalaryAdvance | SalaryAdvance[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error('Error al crear adelanto');
+    if (!response.ok) throw new Error('Error al crear adelanto(s)');
     return (await response.json()).data;
   }
 }
