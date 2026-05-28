@@ -144,8 +144,8 @@ export default function TimeEntriesPage() {
       // Build payloads depending on mode
       const payloads: CreateTimeEntryData[] = [];
 
-      if (entryMode === 'massive') {
-        if (!massiveBlock.check_in || !massiveBlock.check_out) { setError('Ingreso y egreso obligatorios en carga masiva'); return; }
+      if (entryMode === 'massive' || isMonthlySelected) {
+        if (!massiveBlock.check_in || !massiveBlock.check_out) { setError('Ingreso y egreso obligatorios'); return; }
         
         payloads.push({
           employee_ids: selectedEmployees.map(e => e.id),
@@ -312,9 +312,11 @@ export default function TimeEntriesPage() {
                             {entry.employee?.lastname}, {entry.employee?.name}
                             {entry.concept && <Chip label={entry.concept.name} size="small" color="primary" variant="outlined" sx={{ ml: 1, height: 20 }} />}
                           </Typography>
-                          <Typography variant="body2">
-                            🕐 {entry.check_in?.substring(0, 5)} → {entry.check_out?.substring(0, 5)} — <strong>{Number(entry.regular_hours).toFixed(1)}h</strong>
-                          </Typography>
+                          {entry.employee?.pay_type !== 'monthly' && (
+                            <Typography variant="body2">
+                              🕐 {entry.check_in?.substring(0, 5)} → {entry.check_out?.substring(0, 5)} — <strong>{Number(entry.regular_hours).toFixed(1)}h</strong>
+                            </Typography>
+                          )}
                           {(Number(entry.overtime_50_hours) > 0 || Number(entry.overtime_100_hours) > 0) && (
                             <Typography variant="body2" color="warning.main">
                               {Number(entry.overtime_50_hours) > 0 && `Extra 50%: ${Number(entry.overtime_50_hours).toFixed(1)}h `}

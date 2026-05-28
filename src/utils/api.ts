@@ -708,7 +708,7 @@ export interface TimeEntry {
   voided_by?: number;
   voided_at?: string;
   void_reason?: string;
-  employee?: { id: number; name: string; lastname: string; hourly_rate: number };
+  employee?: { id: number; name: string; lastname: string; hourly_rate: number; pay_type?: string };
   plant?: { id: number; name: string };
   project?: { id: number; name: string; code: string };
   registeredBy?: { id: number; name: string; lastname: string };
