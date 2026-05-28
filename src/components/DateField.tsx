@@ -15,7 +15,11 @@ export default function DateField({ value, onChange, label, fullWidth, size, ...
       format="DD/MM/YYYY"
       value={value ? dayjs(value) : null}
       onChange={(newDate) => {
-        onChange(newDate ? newDate.format('YYYY-MM-DD') : '');
+        if (newDate === null) {
+          onChange('');
+        } else if (newDate && newDate.isValid()) {
+          onChange(newDate.format('YYYY-MM-DD'));
+        }
       }}
       slotProps={{
         // @ts-expect-error Types for pickers text field are strictly incompatible with standard text field props

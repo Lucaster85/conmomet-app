@@ -26,6 +26,12 @@ const STATUS_ICON: Record<string, { label: string; color: 'success' | 'warning' 
   non_compliant: { label: '🔴 No Habilitado', color: 'error' },
 };
 
+const STATUS_SORT_ORDER: Record<string, number> = {
+  compliant: 0,
+  expiring: 1,
+  non_compliant: 2,
+};
+
 export default function PlantsPage() {
   const [plants, setPlants] = useState<Plant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -421,8 +427,17 @@ export default function PlantsPage() {
                 <Chip label="🔴 No Habilitados" color="error" variant={compFilter === 'non_compliant' ? 'filled' : 'outlined'} onClick={() => setCompFilter('non_compliant')} />
               </Box>
               <Stack spacing={1}>
-                {compData.employees
+                {[...compData.employees]
                   .filter(e => compFilter === 'all' || e.status === compFilter)
+                  .sort((a, b) => {
+                    const orderA = STATUS_SORT_ORDER[a.status] ?? 3;
+                    const orderB = STATUS_SORT_ORDER[b.status] ?? 3;
+                    if (orderA !== orderB) return orderA - orderB;
+                    
+                    const nameA = `${a.employee.lastname}, ${a.employee.name}`.toLowerCase();
+                    const nameB = `${b.employee.lastname}, ${b.employee.name}`.toLowerCase();
+                    return nameA.localeCompare(nameB);
+                  })
                   .map((emp) => {
                     const cfg = STATUS_ICON[emp.status] || STATUS_ICON.non_compliant;
                     const isExpanded = expandedEmp === emp.employee.id;

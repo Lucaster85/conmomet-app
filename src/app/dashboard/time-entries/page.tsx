@@ -5,6 +5,8 @@ import {
   Chip, Checkbox, FormControlLabel, Autocomplete, Dialog, DialogTitle,
   DialogContent, DialogActions, Divider, IconButton, Tooltip, Switch, Grid
 } from '@mui/material';
+import { TimeField } from '@mui/x-date-pickers/TimeField';
+import dayjs from 'dayjs';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import {
@@ -408,14 +410,32 @@ export default function TimeEntriesPage() {
                 ) : null}
                 <Grid container spacing={2} alignItems="center">
                   <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField label="Ingreso *" type="time" fullWidth value={massiveBlock.check_in}
-                      onChange={(e) => setMassiveBlock({ ...massiveBlock, check_in: e.target.value })} InputLabelProps={{ shrink: true }} 
-                      disabled={isMonthlySelected} />
+                    <TimeField
+                      label="Ingreso *"
+                      ampm={false}
+                      value={massiveBlock.check_in ? dayjs(`2026-01-01T${massiveBlock.check_in}`) : null}
+                      onChange={(val) => {
+                        if (val && val.isValid()) {
+                          setMassiveBlock({ ...massiveBlock, check_in: val.format('HH:mm') });
+                        }
+                      }}
+                      fullWidth
+                      disabled={isMonthlySelected}
+                    />
                   </Grid>
                   <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField label="Egreso *" type="time" fullWidth value={massiveBlock.check_out}
-                      onChange={(e) => setMassiveBlock({ ...massiveBlock, check_out: e.target.value })} InputLabelProps={{ shrink: true }} 
-                      disabled={isMonthlySelected} />
+                    <TimeField
+                      label="Egreso *"
+                      ampm={false}
+                      value={massiveBlock.check_out ? dayjs(`2026-01-01T${massiveBlock.check_out}`) : null}
+                      onChange={(val) => {
+                        if (val && val.isValid()) {
+                          setMassiveBlock({ ...massiveBlock, check_out: val.format('HH:mm') });
+                        }
+                      }}
+                      fullWidth
+                      disabled={isMonthlySelected}
+                    />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField label="Concepto (Opcional)" select fullWidth value={massiveBlock.concept_id}
@@ -475,20 +495,36 @@ export default function TimeEntriesPage() {
                       </Box>
                       <Grid container spacing={2}>
                         <Grid size={{ xs: 6, md: 2 }}>
-                          <TextField label="Ingreso *" type="time" fullWidth value={block.check_in}
-                            onChange={(e) => {
-                              const newBlocks = [...individualBlocks];
-                              newBlocks[index].check_in = e.target.value;
-                              setIndividualBlocks(newBlocks);
-                            }} InputLabelProps={{ shrink: true }} size="small" />
+                          <TimeField
+                            label="Ingreso *"
+                            ampm={false}
+                            value={block.check_in ? dayjs(`2026-01-01T${block.check_in}`) : null}
+                            onChange={(val) => {
+                              if (val && val.isValid()) {
+                                const newBlocks = [...individualBlocks];
+                                newBlocks[index].check_in = val.format('HH:mm');
+                                setIndividualBlocks(newBlocks);
+                              }
+                            }}
+                            fullWidth
+                            size="small"
+                          />
                         </Grid>
                         <Grid size={{ xs: 6, md: 2 }}>
-                          <TextField label="Egreso *" type="time" fullWidth value={block.check_out}
-                            onChange={(e) => {
-                              const newBlocks = [...individualBlocks];
-                              newBlocks[index].check_out = e.target.value;
-                              setIndividualBlocks(newBlocks);
-                            }} InputLabelProps={{ shrink: true }} size="small" />
+                          <TimeField
+                            label="Egreso *"
+                            ampm={false}
+                            value={block.check_out ? dayjs(`2026-01-01T${block.check_out}`) : null}
+                            onChange={(val) => {
+                              if (val && val.isValid()) {
+                                const newBlocks = [...individualBlocks];
+                                newBlocks[index].check_out = val.format('HH:mm');
+                                setIndividualBlocks(newBlocks);
+                              }
+                            }}
+                            fullWidth
+                            size="small"
+                          />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
                           <TextField label="Concepto" select fullWidth value={block.concept_id}
