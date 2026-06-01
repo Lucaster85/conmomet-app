@@ -26,6 +26,8 @@ import {
   Zoom,
   Chip,
   MenuItem,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -65,6 +67,9 @@ const STATUS_CONFIG = {
 } as const;
 
 export default function VehicleDocumentsDialog({ open, onClose, vehicle }: VehicleDocumentsDialogProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [documents, setDocuments] = useState<EntityDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -359,7 +364,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
                 />
 
                 {hasExpiration && (
-                  <Stack direction="row" spacing={2}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                     <TextField
                       label="Fecha de Vencimiento"
                       type="date"
@@ -515,107 +520,186 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
         {loading && documents.length === 0 ? (
           <Box display="flex" justifyContent="center" py={5}><CircularProgress /></Box>
         ) : (
-          <TableContainer component={Paper} elevation={1} sx={{ borderRadius: 2 }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ bgcolor: 'grey.50' }}>
-                  <TableCell><strong>Documento</strong></TableCell>
-                  <TableCell><strong>Vencimiento</strong></TableCell>
-                  <TableCell><strong>Estado</strong></TableCell>
-                  <TableCell align="center"><strong>Archivo</strong></TableCell>
-                  <TableCell align="center"><strong>Acciones</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredDocuments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                      <Typography variant="body2" color="text.secondary">No hay documentos registrados.</Typography>
-                    </TableCell>
+          !isMobile ? (
+            <TableContainer component={Paper} elevation={1} sx={{ borderRadius: 2 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'grey.50' }}>
+                    <TableCell><strong>Documento</strong></TableCell>
+                    <TableCell><strong>Vencimiento</strong></TableCell>
+                    <TableCell><strong>Estado</strong></TableCell>
+                    <TableCell align="center"><strong>Archivo</strong></TableCell>
+                    <TableCell align="center"><strong>Acciones</strong></TableCell>
                   </TableRow>
-                ) : (
-                  filteredDocuments.map((doc) => {
-                    const statusCfg = STATUS_CONFIG[doc.computed_status] || STATUS_CONFIG.permanent;
-                    const isCritical = doc.computed_status === 'expiring_soon' || doc.computed_status === 'expired';
-                    
-                    return (
-                      <TableRow key={doc.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="medium">{doc.title}</Typography>
-                          {doc.notes && <Typography variant="caption" color="text.secondary" display="block">{doc.notes}</Typography>}
-                        </TableCell>
-                        <TableCell>
-                          {doc.expiration_date ? new Date(doc.expiration_date + 'T00:00:00').toLocaleDateString('es-AR') : 'Permanente'}
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            icon={statusCfg.icon} 
-                            label={statusCfg.label} 
-                            color={statusCfg.color as any} 
-                            size="small" 
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell align="center">
-                          {doc.file_url ? (
-                            <Tooltip title="Ver Archivo">
-                              <IconButton size="small" color="info" onClick={() => window.open(doc.file_url, '_blank')}>
-                                <VisibilityIcon fontSize="inherit" />
-                              </IconButton>
-                            </Tooltip>
-                          ) : '—'}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Box display="flex" justifyContent="center" gap={0.5}>
-                            {isCritical && doc.is_renewable && (
-                              <Tooltip title="Renovar">
-                                <IconButton size="small" color="warning" onClick={() => {
-                                  setEditingDoc(doc);
-                                  setForm({ ...form, title: doc.title, notify_days_before: doc.notify_days_before || 15 });
-                                  setFile(null);
-                                  setRenewDialog(true);
-                                }}>
-                                  <RefreshIcon fontSize="inherit" />
+                </TableHead>
+                <TableBody>
+                  {filteredDocuments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                        <Typography variant="body2" color="text.secondary">No hay documentos registrados.</Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredDocuments.map((doc) => {
+                      const statusCfg = STATUS_CONFIG[doc.computed_status] || STATUS_CONFIG.permanent;
+                      const isCritical = doc.computed_status === 'expiring_soon' || doc.computed_status === 'expired';
+                      
+                      return (
+                        <TableRow key={doc.id} hover>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="medium">{doc.title}</Typography>
+                            {doc.notes && <Typography variant="caption" color="text.secondary" display="block">{doc.notes}</Typography>}
+                          </TableCell>
+                          <TableCell>
+                            {doc.expiration_date ? new Date(doc.expiration_date + 'T00:00:00').toLocaleDateString('es-AR') : 'Permanente'}
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              icon={statusCfg.icon} 
+                              label={statusCfg.label} 
+                              color={statusCfg.color as any} 
+                              size="small" 
+                              variant="outlined"
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            {doc.file_url ? (
+                              <Tooltip title="Ver Archivo">
+                                <IconButton size="small" color="info" onClick={() => window.open(doc.file_url, '_blank')}>
+                                  <VisibilityIcon fontSize="inherit" />
                                 </IconButton>
                               </Tooltip>
-                            )}
-                            {isCritical && !doc.is_renewable && (
-                              <Tooltip title="Resolver Comprobante">
-                                <IconButton size="small" color="success" onClick={() => {
-                                  setEditingDoc(doc);
-                                  setFile(null);
-                                  setResolveDialog(true);
-                                }}>
-                                  <PaymentIcon fontSize="inherit" />
+                            ) : '—'}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Box display="flex" justifyContent="center" gap={0.5}>
+                              {isCritical && doc.is_renewable && (
+                                <Tooltip title="Renovar">
+                                  <IconButton size="small" color="warning" onClick={() => {
+                                    setEditingDoc(doc);
+                                    setForm({ ...form, title: doc.title, notify_days_before: doc.notify_days_before || 15 });
+                                    setFile(null);
+                                    setRenewDialog(true);
+                                  }}>
+                                    <RefreshIcon fontSize="inherit" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {isCritical && !doc.is_renewable && (
+                                <Tooltip title="Resolver Comprobante">
+                                  <IconButton size="small" color="success" onClick={() => {
+                                    setEditingDoc(doc);
+                                    setFile(null);
+                                    setResolveDialog(true);
+                                  }}>
+                                    <PaymentIcon fontSize="inherit" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {doc.previous_record_id && (
+                                <Tooltip title="Ver Historial">
+                                  <IconButton size="small" color="info" onClick={() => handleOpenHistory(doc.id)}>
+                                    <HistoryIcon fontSize="inherit" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              <Tooltip title="Editar">
+                                <IconButton size="small" color="primary" onClick={() => handleOpenEdit(doc)}>
+                                  <EditIcon fontSize="inherit" />
                                 </IconButton>
                               </Tooltip>
-                            )}
-                            {doc.previous_record_id && (
-                              <Tooltip title="Ver Historial">
-                                <IconButton size="small" color="info" onClick={() => handleOpenHistory(doc.id)}>
-                                  <HistoryIcon fontSize="inherit" />
+                              <Tooltip title="Eliminar">
+                                <IconButton size="small" color="error" onClick={() => handleDelete(doc.id)}>
+                                  <DeleteIcon fontSize="inherit" />
                                 </IconButton>
                               </Tooltip>
-                            )}
-                            <Tooltip title="Editar">
-                              <IconButton size="small" color="primary" onClick={() => handleOpenEdit(doc)}>
-                                <EditIcon fontSize="inherit" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Eliminar">
-                              <IconButton size="small" color="error" onClick={() => handleDelete(doc.id)}>
-                                <DeleteIcon fontSize="inherit" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Box display="flex" flexDirection="column" gap={1.5}>
+              {filteredDocuments.length === 0 ? (
+                <Paper variant="outlined" sx={{ py: 3, textAlign: 'center', borderRadius: 2 }}>
+                  <Typography variant="body2" color="text.secondary">No hay documentos registrados.</Typography>
+                </Paper>
+              ) : (
+                filteredDocuments.map((doc) => {
+                  const statusCfg = STATUS_CONFIG[doc.computed_status] || STATUS_CONFIG.permanent;
+                  const isCritical = doc.computed_status === 'expiring_soon' || doc.computed_status === 'expired';
+                  
+                  return (
+                    <Paper key={doc.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight="bold">{doc.title}</Typography>
+                          {doc.notes && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>{doc.notes}</Typography>}
+                        </Box>
+                        <Chip 
+                          icon={statusCfg.icon} 
+                          label={statusCfg.label} 
+                          color={statusCfg.color as any} 
+                          size="small" 
+                          variant="outlined"
+                        />
+                      </Box>
+                      <Divider sx={{ my: 1 }} />
+                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" display="block">Vencimiento</Typography>
+                          <Typography variant="body2">
+                            {doc.expiration_date ? new Date(doc.expiration_date + 'T00:00:00').toLocaleDateString('es-AR') : 'Permanente'}
+                          </Typography>
+                        </Box>
+                        <Box display="flex" gap={0.5}>
+                          {doc.file_url && (
+                            <IconButton size="small" color="info" onClick={() => window.open(doc.file_url, '_blank')}>
+                              <VisibilityIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                          {isCritical && doc.is_renewable && (
+                            <IconButton size="small" color="warning" onClick={() => {
+                              setEditingDoc(doc);
+                              setForm({ ...form, title: doc.title, notify_days_before: doc.notify_days_before || 15 });
+                              setFile(null);
+                              setRenewDialog(true);
+                            }}>
+                              <RefreshIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                          {isCritical && !doc.is_renewable && (
+                            <IconButton size="small" color="success" onClick={() => {
+                              setEditingDoc(doc);
+                              setFile(null);
+                              setResolveDialog(true);
+                            }}>
+                              <PaymentIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                          {doc.previous_record_id && (
+                            <IconButton size="small" color="info" onClick={() => handleOpenHistory(doc.id)}>
+                              <HistoryIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                          <IconButton size="small" color="primary" onClick={() => handleOpenEdit(doc)}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" color="error" onClick={() => handleDelete(doc.id)}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </Box>
+                    </Paper>
+                  );
+                })
+              )}
+            </Box>
+          )
         )}
       </DialogContent>
 

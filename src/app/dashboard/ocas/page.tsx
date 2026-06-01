@@ -37,6 +37,7 @@ import {
   CardContent,
   Alert,
   useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -81,6 +82,7 @@ const STATUS_LABELS: Record<Oca['status'], string> = {
 
 export default function OcasPage() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Tab State: 0 = Horas Hombre (man_hours), 1 = Horas Grúa (crane_hours)
   const [tabValue, setTabValue] = useState(0);
@@ -684,31 +686,38 @@ export default function OcasPage() {
                   }}
                 >
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box display="flex" justifyContent="space-between" width="100%" alignItems="center" flexWrap="wrap" gap={1} pr={2}>
-                      <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
-                        <Typography variant="subtitle1" fontWeight="bold" sx={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}>
-                          {oca.number}
-                        </Typography>
-                        <Chip
-                          label={STATUS_LABELS[oca.status]}
-                          color={STATUS_COLORS[oca.status]}
-                          size="small"
-                        />
-                        <Typography variant="body2" color="text.secondary">
-                          📅 {new Date(oca.date).toLocaleDateString('es-AR')}
-                        </Typography>
-                        <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' } }} />
-                        <Typography variant="body2" fontWeight="medium">
-                          🏢 {oca.client?.razonSocial}
-                        </Typography>
-                        <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' } }} />
-                        <Typography variant="body2" color="primary.main">
-                          {oca.type === 'man_hours'
-                            ? `👤 Sup: ${oca.supervisor?.lastname || '—'}, ${oca.supervisor?.name || ''}`
-                            : `📁 Proy: ${oca.project?.code || '—'} - ${oca.project?.name || ''}`}
-                        </Typography>
+                    <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} justifyContent="space-between" width="100%" alignItems={{ xs: 'flex-start', md: 'center' }} gap={1.5} pr={2}>
+                      <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={{ xs: 1, md: 2 }} alignItems={{ xs: 'flex-start', md: 'center' }} width="100%">
+                        <Box display="flex" gap={1.5} alignItems="center" width={{ xs: '100%', md: 'auto' }}>
+                          <Typography variant="subtitle1" fontWeight="bold" sx={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}>
+                            {oca.number}
+                          </Typography>
+                          <Chip
+                            label={STATUS_LABELS[oca.status]}
+                            color={STATUS_COLORS[oca.status]}
+                            size="small"
+                          />
+                          <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ display: { xs: 'block', md: 'none' }, ml: 'auto' }}>
+                            {oca.lines?.length || 0} líns.
+                          </Typography>
+                        </Box>
+                        <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={{ xs: 0.5, md: 2 }} alignItems={{ xs: 'flex-start', md: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            📅 {new Date(oca.date).toLocaleDateString('es-AR')}
+                          </Typography>
+                          <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' } }} />
+                          <Typography variant="body2" fontWeight="medium">
+                            🏢 {oca.client?.razonSocial}
+                          </Typography>
+                          <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' } }} />
+                          <Typography variant="body2" color="primary.main">
+                            {oca.type === 'man_hours'
+                              ? `👤 Sup: ${oca.supervisor?.lastname || '—'}, ${oca.supervisor?.name || ''}`
+                              : `📁 Proy: ${oca.project?.code || '—'} - ${oca.project?.name || ''}`}
+                          </Typography>
+                        </Box>
                       </Box>
-                      <Typography variant="body2" fontWeight="bold" color="text.secondary">
+                      <Typography variant="body2" fontWeight="bold" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
                         {oca.lines?.length || 0} línea(s)
                       </Typography>
                     </Box>
@@ -716,7 +725,7 @@ export default function OcasPage() {
 
                   <AccordionDetails sx={{ borderTop: '1px solid', borderColor: 'divider', bgcolor: 'grey.50', p: 3 }}>
                     {/* Action Flow Panel */}
-                    <Box display="flex" justifyContent="space-between" mb={3} gap={1} flexWrap="wrap" alignItems="center">
+                    <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} justifyContent="space-between" mb={3} gap={2} alignItems={{ xs: 'stretch', md: 'center' }}>
                       <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
                         {oca.status === 'pendiente' && (
                           <Button
@@ -820,88 +829,176 @@ export default function OcasPage() {
                       Registros de Horas del Remito
                     </Typography>
 
-                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', mb: 2 }}>
-                      <Table size="small">
-                        <TableHead sx={{ bgcolor: 'grey.100' }}>
-                          <TableRow>
-                            {oca.type === 'man_hours' ? (
-                              <>
-                                <TableCell><strong>Empleado</strong></TableCell>
-                                <TableCell><strong>Fecha</strong></TableCell>
-                                <TableCell align="center"><strong>Horas Simples</strong></TableCell>
-                                <TableCell align="center"><strong>Extra 50%</strong></TableCell>
-                                <TableCell align="center"><strong>Extra 100%</strong></TableCell>
-                              </>
-                            ) : (
-                              <>
-                                <TableCell><strong>Equipo / Vehículo</strong></TableCell>
-                                <TableCell><strong>Fecha</strong></TableCell>
-                                <TableCell align="center"><strong>Horas Operación</strong></TableCell>
-                              </>
-                            )}
-                            <TableCell><strong>Tarea / Descripción</strong></TableCell>
-                            {oca.status === 'pendiente' && <TableCell align="center"><strong>Acciones</strong></TableCell>}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {oca.lines?.map((line) => {
-                            const totalCraneHours = Number(line.regular_hours) + Number(line.overtime_50_hours) + Number(line.overtime_100_hours);
-                            return (
-                              <TableRow key={line.id} hover>
-                                {oca.type === 'man_hours' ? (
-                                  <>
-                                    <TableCell>{line.employee?.lastname}, {line.employee?.name}</TableCell>
-                                    <TableCell>{new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
-                                    <TableCell align="center">{Number(line.regular_hours).toFixed(1)} h</TableCell>
-                                    <TableCell align="center">{Number(line.overtime_50_hours).toFixed(1)} h</TableCell>
-                                    <TableCell align="center">{Number(line.overtime_100_hours).toFixed(1)} h</TableCell>
-                                  </>
-                                ) : (
-                                  <>
-                                    <TableCell>
-                                      <Typography variant="body2" fontWeight="medium">
+                    {!isMobile ? (
+                      <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', mb: 2 }}>
+                        <Table size="small">
+                          <TableHead sx={{ bgcolor: 'grey.100' }}>
+                            <TableRow>
+                              {oca.type === 'man_hours' ? (
+                                <>
+                                  <TableCell><strong>Empleado</strong></TableCell>
+                                  <TableCell><strong>Fecha</strong></TableCell>
+                                  <TableCell align="center"><strong>Horas Simples</strong></TableCell>
+                                  <TableCell align="center"><strong>Extra 50%</strong></TableCell>
+                                  <TableCell align="center"><strong>Extra 100%</strong></TableCell>
+                                </>
+                              ) : (
+                                <>
+                                  <TableCell><strong>Equipo / Vehículo</strong></TableCell>
+                                  <TableCell><strong>Fecha</strong></TableCell>
+                                  <TableCell align="center"><strong>Horas Operación</strong></TableCell>
+                                </>
+                              )}
+                              <TableCell><strong>Tarea / Descripción</strong></TableCell>
+                              {oca.status === 'pendiente' && <TableCell align="center"><strong>Acciones</strong></TableCell>}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {oca.lines?.map((line) => {
+                              const totalCraneHours = Number(line.regular_hours) + Number(line.overtime_50_hours) + Number(line.overtime_100_hours);
+                              return (
+                                <TableRow key={line.id} hover>
+                                  {oca.type === 'man_hours' ? (
+                                    <>
+                                      <TableCell>{line.employee?.lastname}, {line.employee?.name}</TableCell>
+                                      <TableCell>{new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                                      <TableCell align="center">{Number(line.regular_hours).toFixed(1)} h</TableCell>
+                                      <TableCell align="center">{Number(line.overtime_50_hours).toFixed(1)} h</TableCell>
+                                      <TableCell align="center">{Number(line.overtime_100_hours).toFixed(1)} h</TableCell>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <TableCell>
+                                        <Typography variant="body2" fontWeight="medium">
+                                          {line.vehicle?.brand} {line.vehicle?.model}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ fontFamily: 'monospace' }} color="text.secondary">
+                                          Patente: {line.vehicle?.plate}
+                                        </Typography>
+                                      </TableCell>
+                                      <TableCell>{new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                                      <TableCell align="center">{totalCraneHours.toFixed(1)} h</TableCell>
+                                    </>
+                                  )}
+                                  <TableCell sx={{ minWidth: 250 }}>
+                                    {oca.status === 'pendiente' || oca.status === 'rechazado' ? (
+                                      <TextField
+                                        fullWidth
+                                        size="small"
+                                        placeholder="Detallar tarea realizada..."
+                                        value={modifiedLines[line.id] !== undefined ? modifiedLines[line.id] : (line.task || '')}
+                                        onChange={(e) => handleLineTaskChange(line.id, e.target.value)}
+                                      />
+                                    ) : (
+                                      line.task || '—'
+                                    )}
+                                  </TableCell>
+                                  {oca.status === 'pendiente' && (
+                                    <TableCell align="center">
+                                      <Tooltip title="Remover del Remito">
+                                        <IconButton
+                                          color="error"
+                                          size="small"
+                                          onClick={() => handleRemoveEntry(oca.id, line.time_entry_id || 0)}
+                                        >
+                                          <RemoveIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </TableCell>
+                                  )}
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    ) : (
+                      <Box display="flex" flexDirection="column" gap={1.5} sx={{ mb: 2 }}>
+                        {oca.lines?.map((line) => {
+                          const totalCraneHours = Number(line.regular_hours) + Number(line.overtime_50_hours) + Number(line.overtime_100_hours);
+                          return (
+                            <Paper key={line.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                              <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                                <Box>
+                                  {oca.type === 'man_hours' ? (
+                                    <>
+                                      <Typography variant="body2" fontWeight="bold">
+                                        {line.employee?.lastname}, {line.employee?.name}
+                                      </Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        📅 {new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}
+                                      </Typography>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Typography variant="body2" fontWeight="bold">
                                         {line.vehicle?.brand} {line.vehicle?.model}
                                       </Typography>
-                                      <Typography variant="caption" sx={{ fontFamily: 'monospace' }} color="text.secondary">
+                                      <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block' }} color="text.secondary">
                                         Patente: {line.vehicle?.plate}
                                       </Typography>
-                                    </TableCell>
-                                    <TableCell>{new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
-                                    <TableCell align="center">{totalCraneHours.toFixed(1)} h</TableCell>
-                                  </>
-                                )}
-                                <TableCell sx={{ minWidth: 250 }}>
-                                  {oca.status === 'pendiente' || oca.status === 'rechazado' ? (
-                                    <TextField
-                                      fullWidth
-                                      size="small"
-                                      placeholder="Detallar tarea realizada..."
-                                      value={modifiedLines[line.id] !== undefined ? modifiedLines[line.id] : (line.task || '')}
-                                      onChange={(e) => handleLineTaskChange(line.id, e.target.value)}
-                                    />
-                                  ) : (
-                                    line.task || '—'
+                                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                                        📅 {new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}
+                                      </Typography>
+                                    </>
                                   )}
-                                </TableCell>
-                              {oca.status === 'pendiente' && (
-                                <TableCell align="center">
-                                  <Tooltip title="Remover del Remito">
-                                    <IconButton
-                                      color="error"
-                                      size="small"
-                                      onClick={() => handleRemoveEntry(oca.id, line.time_entry_id || 0)}
-                                    >
-                                      <RemoveIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                </TableCell>
+                                </Box>
+                                {oca.status === 'pendiente' && (
+                                  <IconButton
+                                    color="error"
+                                    size="small"
+                                    onClick={() => handleRemoveEntry(oca.id, line.time_entry_id || 0)}
+                                    sx={{ p: 0.5 }}
+                                  >
+                                    <RemoveIcon fontSize="small" />
+                                  </IconButton>
+                                )}
+                              </Box>
+                              
+                              <Divider sx={{ my: 1 }} />
+                              
+                              {oca.type === 'man_hours' ? (
+                                <Grid container spacing={1} sx={{ mb: 1.5 }}>
+                                  <Grid size={{ xs: 4 }}>
+                                    <Typography variant="caption" color="text.secondary" display="block">Simples</Typography>
+                                    <Typography variant="body2" fontWeight="medium">{Number(line.regular_hours).toFixed(1)}h</Typography>
+                                  </Grid>
+                                  <Grid size={{ xs: 4 }}>
+                                    <Typography variant="caption" color="text.secondary" display="block">Extra 50%</Typography>
+                                    <Typography variant="body2" fontWeight="medium">{Number(line.overtime_50_hours).toFixed(1)}h</Typography>
+                                  </Grid>
+                                  <Grid size={{ xs: 4 }}>
+                                    <Typography variant="caption" color="text.secondary" display="block">Extra 100%</Typography>
+                                    <Typography variant="body2" fontWeight="medium">{Number(line.overtime_100_hours).toFixed(1)}h</Typography>
+                                  </Grid>
+                                </Grid>
+                              ) : (
+                                <Box sx={{ mb: 1.5 }}>
+                                  <Typography variant="caption" color="text.secondary" display="block">Horas Operación</Typography>
+                                  <Typography variant="body2" fontWeight="bold" color="primary.main">{totalCraneHours.toFixed(1)}h</Typography>
+                                </Box>
                               )}
-                            </TableRow>
+
+                              <Box>
+                                <Typography variant="caption" color="text.secondary" display="block">Tarea / Descripción</Typography>
+                                {oca.status === 'pendiente' || oca.status === 'rechazado' ? (
+                                  <TextField
+                                    fullWidth
+                                    size="small"
+                                    placeholder="Detallar tarea realizada..."
+                                    value={modifiedLines[line.id] !== undefined ? modifiedLines[line.id] : (line.task || '')}
+                                    onChange={(e) => handleLineTaskChange(line.id, e.target.value)}
+                                    sx={{ mt: 0.5 }}
+                                  />
+                                ) : (
+                                  <Typography variant="body2" sx={{ mt: 0.5 }}>{line.task || '—'}</Typography>
+                                )}
+                              </Box>
+                            </Paper>
                           );
                         })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                      </Box>
+                    )}
 
                     {/* Saving lines actions */}
                     {hasModifications && (
@@ -977,81 +1074,143 @@ export default function OcasPage() {
                       </Button>
                     </Box>
 
-                    <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 300, overflow: 'auto' }}>
-                      <Table size="small" stickyHeader>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell padding="checkbox">
-                              <Checkbox
-                                checked={selectedEntryIds.length === pendingEntries.length && pendingEntries.length > 0}
-                                indeterminate={selectedEntryIds.length > 0 && selectedEntryIds.length < pendingEntries.length}
-                                onChange={handleSelectAllEntries}
-                              />
-                            </TableCell>
-                            <TableCell><strong>Fecha</strong></TableCell>
-                            {typeKey === 'man_hours' ? (
-                              <>
-                                <TableCell><strong>Empleado</strong></TableCell>
-                                <TableCell><strong>Supervisor</strong></TableCell>
-                              </>
-                            ) : (
-                              <>
-                                <TableCell><strong>Proyecto</strong></TableCell>
-                                <TableCell><strong>Grúa / Vehículo</strong></TableCell>
-                              </>
-                            )}
-                            <TableCell align="center"><strong>Horas</strong></TableCell>
-                            <TableCell><strong>Concepto</strong></TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {pendingEntries.map((entry) => {
-                            const isSelected = selectedEntryIds.includes(entry.id);
-                            return (
-                              <TableRow
-                                key={entry.id}
-                                hover
-                                onClick={() => handleSelectEntry(entry.id)}
-                                role="checkbox"
-                                selected={isSelected}
-                                sx={{ cursor: 'pointer' }}
-                              >
-                                <TableCell padding="checkbox">
-                                  <Checkbox checked={isSelected} />
-                                </TableCell>
-                                <TableCell>{new Date(entry.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                    {!isMobile ? (
+                      <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 300, overflow: 'auto' }}>
+                        <Table size="small" stickyHeader>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell padding="checkbox">
+                                <Checkbox
+                                  checked={selectedEntryIds.length === pendingEntries.length && pendingEntries.length > 0}
+                                  indeterminate={selectedEntryIds.length > 0 && selectedEntryIds.length < pendingEntries.length}
+                                  onChange={handleSelectAllEntries}
+                                />
+                              </TableCell>
+                              <TableCell><strong>Fecha</strong></TableCell>
+                              {typeKey === 'man_hours' ? (
+                                <>
+                                  <TableCell><strong>Empleado</strong></TableCell>
+                                  <TableCell><strong>Supervisor</strong></TableCell>
+                                </>
+                              ) : (
+                                <>
+                                  <TableCell><strong>Proyecto</strong></TableCell>
+                                  <TableCell><strong>Grúa / Vehículo</strong></TableCell>
+                                </>
+                              )}
+                              <TableCell align="center"><strong>Horas</strong></TableCell>
+                              <TableCell><strong>Concepto</strong></TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {pendingEntries.map((entry) => {
+                              const isSelected = selectedEntryIds.includes(entry.id);
+                              return (
+                                <TableRow
+                                  key={entry.id}
+                                  hover
+                                  onClick={() => handleSelectEntry(entry.id)}
+                                  role="checkbox"
+                                  selected={isSelected}
+                                  sx={{ cursor: 'pointer' }}
+                                >
+                                  <TableCell padding="checkbox">
+                                    <Checkbox checked={isSelected} />
+                                  </TableCell>
+                                  <TableCell>{new Date(entry.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                                  {typeKey === 'man_hours' ? (
+                                    <>
+                                      <TableCell>{entry.employee?.lastname}, {entry.employee?.name}</TableCell>
+                                      <TableCell>
+                                        {entry.supervisor
+                                          ? `${entry.supervisor.lastname}, ${entry.supervisor.name}`
+                                          : '—'}
+                                      </TableCell>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <TableCell>{entry.project?.name}</TableCell>
+                                      <TableCell>
+                                        {entry.vehicle
+                                          ? `${entry.vehicle.brand} (${entry.vehicle.plate})`
+                                          : '—'}
+                                      </TableCell>
+                                    </>
+                                  )}
+                                  <TableCell align="center">
+                                    {typeKey === 'man_hours'
+                                      ? `${Number(entry.regular_hours).toFixed(1)}h`
+                                      : `${(Number(entry.regular_hours) + Number(entry.overtime_50_hours) + Number(entry.overtime_100_hours)).toFixed(1)}h`
+                                    }
+                                  </TableCell>
+                                  <TableCell>{entry.concept?.name}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    ) : (
+                      <Box display="flex" flexDirection="column" gap={1.5} sx={{ maxHeight: 300, overflow: 'auto', p: 0.5 }}>
+                        {pendingEntries.map((entry) => {
+                          const isSelected = selectedEntryIds.includes(entry.id);
+                          const displayHours = typeKey === 'man_hours'
+                            ? `${Number(entry.regular_hours).toFixed(1)}h`
+                            : `${(Number(entry.regular_hours) + Number(entry.overtime_50_hours) + Number(entry.overtime_100_hours)).toFixed(1)}h`;
+                          
+                          return (
+                            <Paper
+                              key={entry.id}
+                              variant="outlined"
+                              onClick={() => handleSelectEntry(entry.id)}
+                              sx={{
+                                p: 1.5,
+                                borderRadius: 2,
+                                cursor: 'pointer',
+                                borderColor: isSelected ? 'primary.main' : 'divider',
+                                bgcolor: isSelected ? 'action.selected' : 'background.paper',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 1
+                              }}
+                            >
+                              <Checkbox checked={isSelected} sx={{ p: 0, mt: 0.5 }} />
+                              <Box flex={1}>
+                                <Box display="flex" justifyContent="space-between" mb={0.5}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    📅 {new Date(entry.date + 'T12:00:00').toLocaleDateString('es-AR')}
+                                  </Typography>
+                                  <Chip label={displayHours} size="small" color="primary" variant="outlined" sx={{ height: 20, fontSize: '0.75rem' }} />
+                                </Box>
+                                
                                 {typeKey === 'man_hours' ? (
                                   <>
-                                    <TableCell>{entry.employee?.lastname}, {entry.employee?.name}</TableCell>
-                                    <TableCell>
-                                      {entry.supervisor
-                                        ? `${entry.supervisor.lastname}, ${entry.supervisor.name}`
-                                        : '—'}
-                                    </TableCell>
+                                    <Typography variant="body2" fontWeight="bold">
+                                      {entry.employee?.lastname}, {entry.employee?.name}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                      👤 Sup: {entry.supervisor ? `${entry.supervisor.lastname}, ${entry.supervisor.name}` : '—'}
+                                    </Typography>
                                   </>
                                 ) : (
                                   <>
-                                    <TableCell>{entry.project?.name}</TableCell>
-                                    <TableCell>
-                                      {entry.vehicle
-                                        ? `${entry.vehicle.brand} (${entry.vehicle.plate})`
-                                        : '—'}
-                                    </TableCell>
+                                    <Typography variant="body2" fontWeight="bold">
+                                      📁 Proy: {entry.project?.name}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                      🚜 Grúa: {entry.vehicle ? `${entry.vehicle.brand} (${entry.vehicle.plate})` : '—'}
+                                    </Typography>
                                   </>
                                 )}
-                                <TableCell align="center">
-                                  {typeKey === 'man_hours'
-                                    ? `${Number(entry.regular_hours).toFixed(1)}h`
-                                    : `${(Number(entry.regular_hours) + Number(entry.overtime_50_hours) + Number(entry.overtime_100_hours)).toFixed(1)}h`
-                                  }
-                                </TableCell>
-                                <TableCell>{entry.concept?.name}</TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                                <Typography variant="caption" color="text.secondary" display="block" sx={{ fontStyle: 'italic', mt: 0.5 }}>
+                                  Concepto: {entry.concept?.name || '—'}
+                                </Typography>
+                              </Box>
+                            </Paper>
+                          );
+                        })}
+                      </Box>
+                    )}
 
                     <Box mt={2}>
                       <TextField
@@ -1103,49 +1262,98 @@ export default function OcasPage() {
                 <Typography variant="body2" color="text.secondary">
                   Seleccione los registros de horas en planta compatibles para sumar a esta OCA.
                 </Typography>
-                <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 250 }}>
-                  <Table size="small" stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell padding="checkbox">
-                          <Checkbox
-                            checked={selectedEntryIds.length === pendingEntries.length && pendingEntries.length > 0}
-                            onChange={handleSelectAllEntries}
-                          />
-                        </TableCell>
-                        <TableCell><strong>Fecha</strong></TableCell>
-                        {typeKey === 'man_hours' ? (
-                          <TableCell><strong>Empleado</strong></TableCell>
-                        ) : (
-                          <TableCell><strong>Grúa / Vehículo</strong></TableCell>
-                        )}
-                        <TableCell align="center"><strong>Horas</strong></TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {pendingEntries.map((entry) => {
-                        const isSelected = selectedEntryIds.includes(entry.id);
-                        return (
-                          <TableRow key={entry.id} hover onClick={() => handleSelectEntry(entry.id)} sx={{ cursor: 'pointer' }}>
-                            <TableCell padding="checkbox"><Checkbox checked={isSelected} /></TableCell>
-                            <TableCell>{new Date(entry.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                {!isMobile ? (
+                  <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 250 }}>
+                    <Table size="small" stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={selectedEntryIds.length === pendingEntries.length && pendingEntries.length > 0}
+                              onChange={handleSelectAllEntries}
+                            />
+                          </TableCell>
+                          <TableCell><strong>Fecha</strong></TableCell>
+                          {typeKey === 'man_hours' ? (
+                            <TableCell><strong>Empleado</strong></TableCell>
+                          ) : (
+                            <TableCell><strong>Grúa / Vehículo</strong></TableCell>
+                          )}
+                          <TableCell align="center"><strong>Horas</strong></TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {pendingEntries.map((entry) => {
+                          const isSelected = selectedEntryIds.includes(entry.id);
+                          return (
+                            <TableRow key={entry.id} hover onClick={() => handleSelectEntry(entry.id)} sx={{ cursor: 'pointer' }}>
+                              <TableCell padding="checkbox"><Checkbox checked={isSelected} /></TableCell>
+                              <TableCell>{new Date(entry.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                              {typeKey === 'man_hours' ? (
+                                <TableCell>{entry.employee?.lastname}, {entry.employee?.name}</TableCell>
+                              ) : (
+                                <TableCell>{entry.vehicle?.brand} ({entry.vehicle?.plate})</TableCell>
+                              )}
+                              <TableCell align="center">
+                                {typeKey === 'man_hours'
+                                  ? `${Number(entry.regular_hours).toFixed(1)}h`
+                                  : `${(Number(entry.regular_hours) + Number(entry.overtime_50_hours) + Number(entry.overtime_100_hours)).toFixed(1)}h`
+                                }
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : (
+                  <Box display="flex" flexDirection="column" gap={1.5} sx={{ maxHeight: 250, overflow: 'auto', p: 0.5 }}>
+                    {pendingEntries.map((entry) => {
+                      const isSelected = selectedEntryIds.includes(entry.id);
+                      const displayHours = typeKey === 'man_hours'
+                        ? `${Number(entry.regular_hours).toFixed(1)}h`
+                        : `${(Number(entry.regular_hours) + Number(entry.overtime_50_hours) + Number(entry.overtime_100_hours)).toFixed(1)}h`;
+                      
+                      return (
+                        <Paper
+                          key={entry.id}
+                          variant="outlined"
+                          onClick={() => handleSelectEntry(entry.id)}
+                          sx={{
+                            p: 1.5,
+                            borderRadius: 2,
+                            cursor: 'pointer',
+                            borderColor: isSelected ? 'primary.main' : 'divider',
+                            bgcolor: isSelected ? 'action.selected' : 'background.paper',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 1
+                          }}
+                        >
+                          <Checkbox checked={isSelected} sx={{ p: 0, mt: 0.5 }} />
+                          <Box flex={1}>
+                            <Box display="flex" justifyContent="space-between" mb={0.5}>
+                              <Typography variant="caption" color="text.secondary">
+                                📅 {new Date(entry.date + 'T12:00:00').toLocaleDateString('es-AR')}
+                              </Typography>
+                              <Chip label={displayHours} size="small" color="primary" variant="outlined" sx={{ height: 20, fontSize: '0.75rem' }} />
+                            </Box>
+                            
                             {typeKey === 'man_hours' ? (
-                              <TableCell>{entry.employee?.lastname}, {entry.employee?.name}</TableCell>
+                              <Typography variant="body2" fontWeight="bold">
+                                {entry.employee?.lastname}, {entry.employee?.name}
+                              </Typography>
                             ) : (
-                              <TableCell>{entry.vehicle?.brand} ({entry.vehicle?.plate})</TableCell>
+                              <Typography variant="body2" fontWeight="bold">
+                                {entry.vehicle?.brand} ({entry.vehicle?.plate})
+                              </Typography>
                             )}
-                            <TableCell align="center">
-                              {typeKey === 'man_hours'
-                                ? `${Number(entry.regular_hours).toFixed(1)}h`
-                                : `${(Number(entry.regular_hours) + Number(entry.overtime_50_hours) + Number(entry.overtime_100_hours)).toFixed(1)}h`
-                              }
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                          </Box>
+                        </Paper>
+                      );
+                    })}
+                  </Box>
+                )}
               </Stack>
             )}
           </DialogContent>
