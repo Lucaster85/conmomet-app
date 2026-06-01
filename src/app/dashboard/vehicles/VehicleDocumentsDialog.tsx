@@ -23,7 +23,6 @@ import {
   Paper,
   Divider,
   Stack,
-  Zoom,
   Chip,
   MenuItem,
   useTheme,
@@ -41,8 +40,6 @@ import {
   Payment as PaymentIcon,
   History as HistoryIcon,
   CheckCircle as CheckCircleIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
 } from '@mui/icons-material';
 import {
   Vehicle,
@@ -260,7 +257,8 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
       const hist = await EntityDocumentService.getHistory(docId);
       setHistoryDocs(hist);
     } catch (err) {
-      setError('Error al obtener el historial de renovaciones.');
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'Error al obtener el historial de renovaciones.');
     } finally {
       setLoadingHistory(false);
     }
@@ -541,7 +539,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
                     </TableRow>
                   ) : (
                     filteredDocuments.map((doc) => {
-                      const statusCfg = STATUS_CONFIG[doc.computed_status] || STATUS_CONFIG.permanent;
+                      const statusCfg = STATUS_CONFIG[doc.computed_status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.permanent;
                       const isCritical = doc.computed_status === 'expiring_soon' || doc.computed_status === 'expired';
                       
                       return (
@@ -557,7 +555,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
                             <Chip 
                               icon={statusCfg.icon} 
                               label={statusCfg.label} 
-                              color={statusCfg.color as any} 
+                              color={statusCfg.color} 
                               size="small" 
                               variant="outlined"
                             />
@@ -630,7 +628,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
                 </Paper>
               ) : (
                 filteredDocuments.map((doc) => {
-                  const statusCfg = STATUS_CONFIG[doc.computed_status] || STATUS_CONFIG.permanent;
+                  const statusCfg = STATUS_CONFIG[doc.computed_status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.permanent;
                   const isCritical = doc.computed_status === 'expiring_soon' || doc.computed_status === 'expired';
                   
                   return (
@@ -643,7 +641,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
                         <Chip 
                           icon={statusCfg.icon} 
                           label={statusCfg.label} 
-                          color={statusCfg.color as any} 
+                          color={statusCfg.color} 
                           size="small" 
                           variant="outlined"
                         />

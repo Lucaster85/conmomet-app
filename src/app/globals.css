@@ -30,10 +30,15 @@ body {
   body > *:not(:has(.print-area)) {
     display: none !important;
   }
-  /* Hide dialog chrome */
+  /* Hide dialog chrome and main navigation layouts */
   .MuiBackdrop-root,
   .MuiDialogTitle-root,
   .MuiDialogActions-root,
+  .MuiAppBar-root,
+  .MuiDrawer-root,
+  header,
+  nav,
+  aside,
   .no-print {
     display: none !important;
   }

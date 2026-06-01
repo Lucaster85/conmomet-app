@@ -142,6 +142,7 @@ export default function ProjectsPage() {
         const sups = await ProjectService.getSupervisors(project.id);
         setSelectedSupervisorIds(sups.map(s => s.id));
       } catch (err) {
+        console.error('Error fetching supervisors:', err);
         setSelectedSupervisorIds([]);
       }
     }

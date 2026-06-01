@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -57,7 +57,7 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
   const [isActive, setIsActive] = useState(true);
 
   // Load supervisors
-  const loadSupervisors = async () => {
+  const loadSupervisors = useCallback(async () => {
     if (!client) return;
     try {
       setLoading(true);
@@ -70,14 +70,14 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
     } finally {
       setLoading(false);
     }
-  };
+  }, [client]);
 
   useEffect(() => {
     if (open && client) {
       loadSupervisors();
       resetForm();
     }
-  }, [open, client]);
+  }, [open, client, loadSupervisors]);
 
   const resetForm = () => {
     setIsFormOpen(false);

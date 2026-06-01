@@ -303,6 +303,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* App Bar */}
         <AppBar
           position="fixed"
+          className="no-print"
           sx={{
             width: { md: `calc(100% - ${drawerWidth}px)` },
             ml: { md: `${drawerWidth}px` },
@@ -399,6 +400,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Drawer */}
         <Box
           component="nav"
+          className="no-print"
           sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
         >
           {/* Mobile drawer */}

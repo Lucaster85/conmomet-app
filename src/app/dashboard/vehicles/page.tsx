@@ -307,7 +307,7 @@ export default function VehiclesPage() {
         /* Mobile View (Cards) */
         <Stack spacing={2}>
           {filteredVehicles.map((vehicle) => {
-            const typeConfig = VEHICLE_TYPES[vehicle.type] || VEHICLE_TYPES.other;
+            const typeConfig = VEHICLE_TYPES[vehicle.type as keyof typeof VEHICLE_TYPES] || VEHICLE_TYPES.other;
             return (
               <Card
                 key={vehicle.id}
@@ -326,7 +326,7 @@ export default function VehiclesPage() {
                   },
                 }}
               >
-                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
                     <Box>
                       <Typography variant="h6" fontWeight="bold">
@@ -336,7 +336,7 @@ export default function VehiclesPage() {
                         <Chip
                           icon={typeConfig.icon}
                           label={typeConfig.label}
-                          color={typeConfig.color as any}
+                          color={typeConfig.color}
                           size="small"
                           variant="outlined"
                         />
@@ -418,7 +418,7 @@ export default function VehiclesPage() {
             </TableHead>
             <TableBody>
               {filteredVehicles.map((vehicle) => {
-                const typeConfig = VEHICLE_TYPES[vehicle.type] || VEHICLE_TYPES.other;
+                const typeConfig = VEHICLE_TYPES[vehicle.type as keyof typeof VEHICLE_TYPES] || VEHICLE_TYPES.other;
                 return (
                   <TableRow key={vehicle.id} hover>
                     <TableCell>
@@ -435,6 +435,7 @@ export default function VehiclesPage() {
                           fontWeight: 'bold',
                           letterSpacing: '0.05em',
                           bgcolor: 'grey.100',
+                          color: 'grey.800',
                           border: '1px solid',
                           borderColor: 'grey.300',
                           borderRadius: 1,
@@ -446,7 +447,7 @@ export default function VehiclesPage() {
                       <Chip
                         icon={typeConfig.icon}
                         label={typeConfig.label}
-                        color={typeConfig.color as any}
+                        color={typeConfig.color}
                         size="small"
                         variant="outlined"
                       />
@@ -538,7 +539,7 @@ export default function VehiclesPage() {
                 required
                 fullWidth
                 value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value as any })}
+                onChange={(e) => setForm({ ...form, type: e.target.value as 'crane' | 'truck' | 'other' })}
               >
                 <MenuItem value="crane">Grúa / Vehículo Elevador</MenuItem>
                 <MenuItem value="truck">Camión / Transporte</MenuItem>
