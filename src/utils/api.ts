@@ -584,6 +584,7 @@ export interface Project {
   notes?: string;
   client?: { id: number; razonSocial: string };
   plant?: { id: number; name: string };
+  supervisors?: { id: number; name: string; lastname: string }[];
   createdAt: string;
 }
 
@@ -716,6 +717,13 @@ export interface TimeEntry {
   createdAt: string;
   concept_id?: number;
   concept?: PayrollConcept;
+  is_plant_hours?: boolean;
+  supervisor_id?: number;
+  vehicle_id?: number;
+  oca_id?: number;
+  supervisor?: { id: number; name: string; lastname: string };
+  vehicle?: { id: number; brand: string; model: string; plate: string; type: string };
+  oca?: { id: number; number: string; type: string; status: string };
 }
 
 export interface CreateTimeEntryData {
@@ -730,6 +738,9 @@ export interface CreateTimeEntryData {
   overtime_100_hours?: number;
   is_late?: boolean;
   notes?: string;
+  is_plant_hours?: boolean;
+  supervisor_id?: number;
+  vehicle_id?: number;
 }
 
 // Plant Service
@@ -878,6 +889,26 @@ export class ProjectService {
   static async delete(id: number): Promise<void> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/projects/${id}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Error al eliminar proyecto');
+  }
+
+  static async getSupervisors(id: number): Promise<ClientSupervisor[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/projects/${id}/supervisors`);
+    if (!response.ok) throw new Error('Error al obtener los supervisores del proyecto');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async syncSupervisors(id: number, supervisorIds: number[]): Promise<ClientSupervisor[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/projects/${id}/supervisors`, {
+      method: 'PUT',
+      body: JSON.stringify({ supervisor_ids: supervisorIds }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al sincronizar los supervisores del proyecto');
+    }
+    const data = await response.json();
+    return data.data || [];
   }
 }
 
@@ -1733,6 +1764,7 @@ export interface PayrollConcept {
   calc_type: 'hourly' | 'fixed';
   sort_order: number;
   is_active: boolean;
+  is_crane_hours?: boolean;
 }
 
 export interface EmployeeRate {
@@ -2345,3 +2377,345 @@ export class ExpenseSummaryService {
     return response.json();
   }
 }
+
+// ==================== VEHICLES, SUPERVISORS & OCAS MODULES ====================
+
+export interface ClientSupervisor {
+  id: number;
+  client_id: number;
+  name: string;
+  lastname: string;
+  email?: string;
+  phone?: string;
+  is_active: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateClientSupervisorData {
+  client_id: number;
+  name: string;
+  lastname: string;
+  email?: string;
+  phone?: string;
+  is_active?: boolean;
+}
+
+export interface Vehicle {
+  id: number;
+  brand?: string;
+  model?: string;
+  plate: string;
+  type: 'crane' | 'truck' | 'other';
+  is_active: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateVehicleData {
+  brand?: string;
+  model?: string;
+  plate: string;
+  type: 'crane' | 'truck' | 'other';
+  is_active?: boolean;
+}
+
+export interface OcaLine {
+  id: number;
+  oca_id: number;
+  time_entry_id?: number;
+  employee_id?: number;
+  project_id: number;
+  vehicle_id?: number;
+  date: string;
+  check_in?: string;
+  check_out?: string;
+  regular_hours: number;
+  overtime_50_hours: number;
+  overtime_100_hours: number;
+  type: 'man_hours' | 'crane_hours';
+  task?: string;
+  notes?: string;
+  employee?: { id: number; name: string; lastname: string };
+  vehicle?: { id: number; brand: string; model: string; plate: string; type: string };
+  project?: { id: number; name: string; code: string; plant?: { id: number; name: string } };
+}
+
+export interface OcaStatusLog {
+  id: number;
+  oca_id: number;
+  from_status?: string;
+  to_status: string;
+  changed_by: number;
+  changed_at: string;
+  notes?: string;
+  changedByUser?: { id: number; name: string; lastname: string };
+}
+
+export interface Oca {
+  id: number;
+  number: string;
+  type: 'man_hours' | 'crane_hours';
+  date: string;
+  client_id: number;
+  supervisor_id?: number;
+  project_id?: number;
+  status: 'pendiente' | 'presentado' | 'aprobado' | 'rechazado' | 'anulado';
+  source_oca_id?: number;
+  approved_img_url?: string;
+  approved_at?: string;
+  approved_by?: number;
+  rejected_at?: string;
+  rejected_by?: number;
+  rejection_reason?: string;
+  notes?: string;
+  client?: { id: number; razonSocial: string };
+  supervisor?: { id: number; name: string; lastname: string; email?: string; phone?: string };
+  project?: { id: number; name: string; code: string; plant_id?: number; plant?: { id: number; name: string; address?: string } };
+  lines?: OcaLine[];
+  logs?: OcaStatusLog[];
+}
+
+export class ClientSupervisorService {
+  static async getAll(clientId?: number): Promise<ClientSupervisor[]> {
+    let url = `${API_BASE_URL}/client-supervisors`;
+    if (clientId) {
+      url += `?client_id=${clientId}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener los supervisores del cliente');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getById(id: number): Promise<ClientSupervisor> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/client-supervisors/${id}`);
+    if (!response.ok) throw new Error('Error al obtener el supervisor');
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async create(supervisorData: CreateClientSupervisorData): Promise<ClientSupervisor> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/client-supervisors`, {
+      method: 'POST',
+      body: JSON.stringify(supervisorData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear el supervisor');
+    }
+    const data = await response.json();
+    return data.supervisor || data.data || data;
+  }
+
+  static async update(id: number, supervisorData: Partial<CreateClientSupervisorData>): Promise<ClientSupervisor> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/client-supervisors/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(supervisorData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar el supervisor');
+    }
+    return response.json();
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/client-supervisors/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar el supervisor');
+    }
+  }
+}
+
+export class VehicleService {
+  static async getAll(params?: { type?: string; is_active?: boolean }): Promise<Vehicle[]> {
+    let url = `${API_BASE_URL}/vehicles`;
+    const qs = new URLSearchParams();
+    if (params) {
+      if (params.type) qs.append('type', params.type);
+      if (params.is_active !== undefined) qs.append('is_active', params.is_active.toString());
+      if (qs.toString()) url += `?${qs.toString()}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener la flota de vehículos');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getById(id: number): Promise<Vehicle> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/vehicles/${id}`);
+    if (!response.ok) throw new Error('Error al obtener el vehículo');
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async create(vehicleData: CreateVehicleData): Promise<Vehicle> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/vehicles`, {
+      method: 'POST',
+      body: JSON.stringify(vehicleData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear el vehículo');
+    }
+    const data = await response.json();
+    return data.vehicle || data.data || data;
+  }
+
+  static async update(id: number, vehicleData: Partial<CreateVehicleData>): Promise<Vehicle> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/vehicles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(vehicleData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar el vehículo');
+    }
+    return response.json();
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/vehicles/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar el vehículo');
+    }
+  }
+}
+
+export class OcaService {
+  static async getAll(params?: { client_id?: number; supervisor_id?: number; project_id?: number; status?: string; type?: string }): Promise<Oca[]> {
+    let url = `${API_BASE_URL}/ocas`;
+    if (params) {
+      const qs = new URLSearchParams();
+      if (params.client_id) qs.append('client_id', params.client_id.toString());
+      if (params.supervisor_id) qs.append('supervisor_id', params.supervisor_id.toString());
+      if (params.project_id) qs.append('project_id', params.project_id.toString());
+      if (params.status) qs.append('status', params.status);
+      if (params.type) qs.append('type', params.type);
+      if (qs.toString()) url += `?${qs.toString()}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener los remitos / OCAs');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getPendingEntries(clientId: number, type: 'man_hours' | 'crane_hours'): Promise<TimeEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/pending-entries?client_id=${clientId}&type=${type}`);
+    if (!response.ok) throw new Error('Error al obtener registros de horas pendientes de remito');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async create(ocaData: { type: 'man_hours' | 'crane_hours'; client_id: number; time_entry_ids: number[]; notes?: string }): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas`, {
+      method: 'POST',
+      body: JSON.stringify(ocaData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al generar la OCA');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async present(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/present`, {
+      method: 'PUT',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al presentar la OCA');
+    }
+  }
+
+  static async approve(id: number, file?: File): Promise<void> {
+    const formData = new FormData();
+    if (file) {
+      formData.append('file', file);
+    }
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/approve`, {
+      method: 'PUT',
+      headers: {
+        // Dejar que fetch ponga el header Content-Type correcto para FormData
+        'Content-Type': 'SKIP_MULTIPART_HEADER',
+      },
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al aprobar la OCA');
+    }
+  }
+
+  static async reject(id: number, reason: string): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/reject`, {
+      method: 'PUT',
+      body: JSON.stringify({ rejection_reason: reason }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al rechazar la OCA');
+    }
+  }
+
+  static async correct(id: number): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/correct`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al corregir la OCA');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async updateLines(id: number, lines: Partial<OcaLine>[]): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/lines`, {
+      method: 'PUT',
+      body: JSON.stringify({ lines }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar las líneas de la OCA');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async addEntries(id: number, timeEntryIds: number[]): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/add-entries`, {
+      method: 'PUT',
+      body: JSON.stringify({ time_entry_ids: timeEntryIds }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al agregar registros a la OCA');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async removeEntries(id: number, timeEntryIds: number[]): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/remove-entries`, {
+      method: 'PUT',
+      body: JSON.stringify({ time_entry_ids: timeEntryIds }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al remover registros de la OCA');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+}
+

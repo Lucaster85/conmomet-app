@@ -17,7 +17,9 @@ import {
   Employee, EmployeeService, Plant, PlantService,
   Project, ProjectService,
   TimeEntry, TimeEntryService, CreateTimeEntryData,
-  PayrollConcept, PayrollConceptService
+  PayrollConcept, PayrollConceptService,
+  Vehicle, VehicleService,
+  ClientSupervisor, ClientSupervisorService
 } from '../../../utils/api';
 
 const STATUS_COLORS: Record<string, 'success' | 'error' | 'warning' | 'default'> = {
@@ -42,6 +44,9 @@ interface TimeBlock {
   plant_id: number | '';
   project_id: number | '';
   notes: string;
+  is_plant_hours?: boolean;
+  supervisor_id?: number | '';
+  vehicle_id?: number | '';
 }
 
 export default function TimeEntriesPage() {
@@ -50,6 +55,8 @@ export default function TimeEntriesPage() {
   const [plants, setPlants] = useState<Plant[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [concepts, setConcepts] = useState<PayrollConcept[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [supervisorsCache, setSupervisorsCache] = useState<Record<number, ClientSupervisor[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -71,33 +78,116 @@ export default function TimeEntriesPage() {
   
   // Masivo state
   const [massiveBlock, setMassiveBlock] = useState<TimeBlock>({
-    id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: ''
+    id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+    is_plant_hours: false, supervisor_id: '', vehicle_id: ''
   });
 
   // Individual state
   const [individualBlocks, setIndividualBlocks] = useState<TimeBlock[]>([{
-    id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: ''
+    id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+    is_plant_hours: false, supervisor_id: '', vehicle_id: ''
   }]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [emps, plts, projs, concs] = await Promise.all([
+      const [emps, plts, projs, concs, vehs] = await Promise.all([
         EmployeeService.getAll('active'),
         PlantService.getAll(),
         ProjectService.getAll({ status: 'active' }),
         PayrollConceptService.getAll(true), // active only
+        VehicleService.getAll({ is_active: true }), // active only
       ]);
       setEmployees(emps);
       setPlants(plts);
       setProjects(projs);
       setConcepts(concs);
+      setVehicles(vehs);
       await loadEntries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar datos');
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadSupervisorsForProject = async (projectId: number) => {
+    if (supervisorsCache[projectId]) return;
+    try {
+      const proj = projects.find(p => p.id === projectId);
+      if (!proj) return;
+
+      // Get project supervisors
+      let sups = await ProjectService.getSupervisors(projectId);
+
+      // Fallback: If no supervisors are assigned to this project, load all client supervisors
+      if ((!sups || sups.length === 0) && proj.client_id) {
+        sups = await ClientSupervisorService.getAll(proj.client_id);
+      }
+
+      setSupervisorsCache(prev => ({ ...prev, [projectId]: sups || [] }));
+    } catch (err) {
+      console.error('Error loading supervisors for project:', err);
+    }
+  };
+
+  const handleMassiveProjectChange = async (projId: number | '') => {
+    setMassiveBlock(prev => ({
+      ...prev,
+      project_id: projId,
+      supervisor_id: '',
+      is_plant_hours: false,
+    }));
+    if (projId) {
+      await loadSupervisorsForProject(projId);
+    }
+  };
+
+  const handleMassiveSupervisorChange = (supId: number | '') => {
+    setMassiveBlock(prev => ({
+      ...prev,
+      supervisor_id: supId,
+      is_plant_hours: supId ? prev.is_plant_hours : false,
+    }));
+  };
+
+  const handleMassiveConceptChange = (conceptId: number | '') => {
+    const isCrane = concepts.find(c => c.id === Number(conceptId))?.is_crane_hours;
+    setMassiveBlock(prev => ({
+      ...prev,
+      concept_id: conceptId,
+      vehicle_id: isCrane ? prev.vehicle_id : '',
+    }));
+  };
+
+  const handleIndividualProjectChange = async (index: number, projId: number | '') => {
+    const newBlocks = [...individualBlocks];
+    newBlocks[index].project_id = projId;
+    newBlocks[index].supervisor_id = '';
+    newBlocks[index].is_plant_hours = false;
+    setIndividualBlocks(newBlocks);
+    if (projId) {
+      await loadSupervisorsForProject(projId);
+    }
+  };
+
+  const handleIndividualSupervisorChange = (index: number, supId: number | '') => {
+    const newBlocks = [...individualBlocks];
+    newBlocks[index].supervisor_id = supId;
+    if (!supId) {
+      newBlocks[index].is_plant_hours = false;
+    }
+    setIndividualBlocks(newBlocks);
+  };
+
+  const handleIndividualConceptChange = (index: number, conceptId: number | '') => {
+    const newBlocks = [...individualBlocks];
+    newBlocks[index].concept_id = conceptId;
+    const isCrane = concepts.find(c => c.id === Number(conceptId))?.is_crane_hours;
+    if (!isCrane) {
+      newBlocks[index].vehicle_id = '';
+    }
+    setIndividualBlocks(newBlocks);
   };
 
   const loadEntries = async () => {
@@ -147,6 +237,12 @@ export default function TimeEntriesPage() {
       if (entryMode === 'massive' || isMonthlySelected) {
         if (!massiveBlock.check_in || !massiveBlock.check_out) { setError('Ingreso y egreso obligatorios'); return; }
         
+        const concept = concepts.find(c => c.id === Number(massiveBlock.concept_id));
+        if (concept?.is_crane_hours && !massiveBlock.vehicle_id) {
+          setError('Debe seleccionar la grúa asociada para registrar horas de grúa');
+          return;
+        }
+
         payloads.push({
           employee_ids: selectedEmployees.map(e => e.id),
           date: formDate,
@@ -159,6 +255,9 @@ export default function TimeEntriesPage() {
           notes: massiveBlock.notes,
           plant_id: massiveBlock.plant_id ? Number(massiveBlock.plant_id) : undefined,
           project_id: massiveBlock.project_id ? Number(massiveBlock.project_id) : undefined,
+          is_plant_hours: massiveBlock.is_plant_hours || false,
+          supervisor_id: massiveBlock.supervisor_id ? Number(massiveBlock.supervisor_id) : undefined,
+          vehicle_id: massiveBlock.vehicle_id ? Number(massiveBlock.vehicle_id) : undefined,
         });
       } else {
         // Individual blocks (only 1 employee allowed)
@@ -166,6 +265,13 @@ export default function TimeEntriesPage() {
         
         for (const block of individualBlocks) {
           if (!block.check_in || !block.check_out) { setError('Ingreso y egreso obligatorios en todos los bloques'); return; }
+          
+          const concept = concepts.find(c => c.id === Number(block.concept_id));
+          if (concept?.is_crane_hours && !block.vehicle_id) {
+            setError('Debe seleccionar la grúa asociada en todos los bloques que registren horas de grúa');
+            return;
+          }
+
           payloads.push({
             employee_ids: [selectedEmployees[0].id],
             date: formDate,
@@ -178,6 +284,9 @@ export default function TimeEntriesPage() {
             notes: block.notes,
             plant_id: block.plant_id ? Number(block.plant_id) : undefined,
             project_id: block.project_id ? Number(block.project_id) : undefined,
+            is_plant_hours: block.is_plant_hours || false,
+            supervisor_id: block.supervisor_id ? Number(block.supervisor_id) : undefined,
+            vehicle_id: block.vehicle_id ? Number(block.vehicle_id) : undefined,
           });
         }
       }
@@ -212,12 +321,21 @@ export default function TimeEntriesPage() {
     setSelectedEmployees([]);
     setFormDate(new Date().toISOString().split('T')[0]);
     setIsLate(false);
-    setMassiveBlock({ id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '' });
-    setIndividualBlocks([{ id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '' }]);
+    setMassiveBlock({
+      id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+      is_plant_hours: false, supervisor_id: '', vehicle_id: ''
+    });
+    setIndividualBlocks([{
+      id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+      is_plant_hours: false, supervisor_id: '', vehicle_id: ''
+    }]);
   };
 
   const addBlock = () => {
-    setIndividualBlocks([...individualBlocks, { id: Date.now().toString(), check_in: '13:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '' }]);
+    setIndividualBlocks([...individualBlocks, {
+      id: Date.now().toString(), check_in: '13:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+      is_plant_hours: false, supervisor_id: '', vehicle_id: ''
+    }]);
   };
 
   const removeBlock = (id: string) => {
@@ -311,6 +429,16 @@ export default function TimeEntriesPage() {
                           <Typography variant="subtitle2" fontWeight="bold">
                             {entry.employee?.lastname}, {entry.employee?.name}
                             {entry.concept && <Chip label={entry.concept.name} size="small" color="primary" variant="outlined" sx={{ ml: 1, height: 20 }} />}
+                            {entry.is_plant_hours && <Chip label="En Planta" size="small" color="success" variant="outlined" sx={{ ml: 0.5, height: 20 }} />}
+                            {entry.oca_id && (
+                              <Chip 
+                                label={`OCA #${entry.oca?.number || entry.oca_id}`} 
+                                size="small" 
+                                color="secondary" 
+                                variant="filled" 
+                                sx={{ ml: 0.5, height: 20 }} 
+                              />
+                            )}
                           </Typography>
                           {entry.employee?.pay_type !== 'monthly' && (
                             <Typography variant="body2">
@@ -323,7 +451,18 @@ export default function TimeEntriesPage() {
                               {Number(entry.overtime_100_hours) > 0 && `Extra 100%: ${Number(entry.overtime_100_hours).toFixed(1)}h`}
                             </Typography>
                           )}
-                          {entry.plant && <Typography variant="body2">🏭 {entry.plant.name}</Typography>}
+                          {entry.project && <Typography variant="body2">📁 Proyecto: {entry.project.code} - {entry.project.name}</Typography>}
+                          {entry.plant && <Typography variant="body2">🏭 Planta: {entry.plant.name}</Typography>}
+                          {entry.supervisor && (
+                            <Typography variant="body2" color="text.secondary">
+                              👤 Supervisor: {entry.supervisor.lastname}, {entry.supervisor.name}
+                            </Typography>
+                          )}
+                          {entry.vehicle && (
+                            <Typography variant="body2" color="text.secondary">
+                              🏗️ Grúa: {entry.vehicle.brand} {entry.vehicle.model} ({entry.vehicle.plate})
+                            </Typography>
+                          )}
                           {entry.is_late && <Chip label="Llegada tarde" size="small" color="warning" sx={{ mt: 0.5, mr: 0.5 }} />}
                           {entry.void_reason && <Typography variant="body2" color="error">Motivo: {entry.void_reason}</Typography>}
                           {entry.notes && <Typography variant="caption" color="text.secondary">{entry.notes}</Typography>}
@@ -336,8 +475,17 @@ export default function TimeEntriesPage() {
                             </Tooltip>
                           )}
                           {entry.status !== 'voided' && (
-                            <Tooltip title="Anular">
-                              <IconButton size="small" color="error" onClick={() => { setVoidDialog({ open: true, entry }); setVoidReason(''); }}><VoidIcon fontSize="small" /></IconButton>
+                            <Tooltip title={entry.oca_id ? "Asignado a OCA (No se puede anular)" : "Anular"}>
+                              <span>
+                                <IconButton 
+                                  size="small" 
+                                  color="error" 
+                                  disabled={!!entry.oca_id}
+                                  onClick={() => { setVoidDialog({ open: true, entry }); setVoidReason(''); }}
+                                >
+                                  <VoidIcon fontSize="small" />
+                                </IconButton>
+                              </span>
                             </Tooltip>
                           )}
                         </Box>
@@ -441,7 +589,7 @@ export default function TimeEntriesPage() {
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField label="Concepto (Opcional)" select fullWidth value={massiveBlock.concept_id}
-                      onChange={(e) => setMassiveBlock({ ...massiveBlock, concept_id: e.target.value ? Number(e.target.value) : '' })} 
+                      onChange={(e) => handleMassiveConceptChange(e.target.value ? Number(e.target.value) : '')} 
                       SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
                       disabled={isMonthlySelected}>
                       <option value="">— General —</option>
@@ -468,7 +616,7 @@ export default function TimeEntriesPage() {
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField label="Proyecto" select fullWidth value={massiveBlock.project_id}
-                      onChange={(e) => setMassiveBlock({ ...massiveBlock, project_id: e.target.value ? Number(e.target.value) : '' })} 
+                      onChange={(e) => handleMassiveProjectChange(e.target.value ? Number(e.target.value) : '')} 
                       SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
                       <option value="">— Ninguno —</option>
                       {projects
@@ -476,6 +624,57 @@ export default function TimeEntriesPage() {
                         .map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
                     </TextField>
                   </Grid>
+                  {massiveBlock.project_id && (
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <TextField
+                        label="Supervisor de Cliente"
+                        select
+                        fullWidth
+                        value={massiveBlock.supervisor_id}
+                        onChange={(e) => handleMassiveSupervisorChange(e.target.value ? Number(e.target.value) : '')}
+                        SelectProps={{ native: true }}
+                        InputLabelProps={{ shrink: true }}
+                      >
+                        <option value="">— Ninguno —</option>
+                        {(supervisorsCache[Number(massiveBlock.project_id)] || []).map(s => (
+                          <option key={s.id} value={s.id}>{s.lastname}, {s.name}</option>
+                        ))}
+                      </TextField>
+                    </Grid>
+                  )}
+                  {massiveBlock.project_id && (
+                    <Grid size={{ xs: 12, md: 6 }} display="flex" alignItems="center">
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={!!massiveBlock.is_plant_hours}
+                            disabled={!massiveBlock.supervisor_id}
+                            onChange={(e) => setMassiveBlock({ ...massiveBlock, is_plant_hours: e.target.checked })}
+                          />
+                        }
+                        label="Horas en Planta (para remito de supervisor)"
+                      />
+                    </Grid>
+                  )}
+                  {concepts.find(c => c.id === Number(massiveBlock.concept_id))?.is_crane_hours && (
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <TextField
+                        label="Grúa / Vehículo *"
+                        select
+                        required
+                        fullWidth
+                        value={massiveBlock.vehicle_id}
+                        onChange={(e) => setMassiveBlock({ ...massiveBlock, vehicle_id: e.target.value ? Number(e.target.value) : '' })}
+                        SelectProps={{ native: true }}
+                        InputLabelProps={{ shrink: true }}
+                      >
+                        <option value="">— Seleccionar Vehículo —</option>
+                        {vehicles.map(v => (
+                          <option key={v.id} value={v.id}>{v.brand} {v.model} ({v.plate})</option>
+                        ))}
+                      </TextField>
+                    </Grid>
+                  )}
                   <Grid size={{ xs: 12 }}>
                     <TextField label="Observaciones" fullWidth value={massiveBlock.notes}
                       onChange={(e) => setMassiveBlock({ ...massiveBlock, notes: e.target.value })} size="small" />
@@ -530,11 +729,8 @@ export default function TimeEntriesPage() {
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
                           <TextField label="Concepto" select fullWidth value={block.concept_id}
-                            onChange={(e) => {
-                              const newBlocks = [...individualBlocks];
-                              newBlocks[index].concept_id = e.target.value ? Number(e.target.value) : '';
-                              setIndividualBlocks(newBlocks);
-                            }} SelectProps={{ native: true }} InputLabelProps={{ shrink: true }} size="small">
+                            onChange={(e) => handleIndividualConceptChange(index, e.target.value ? Number(e.target.value) : '')} 
+                            SelectProps={{ native: true }} InputLabelProps={{ shrink: true }} size="small">
                             <option value="">— General —</option>
                             {concepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </TextField>
@@ -545,6 +741,8 @@ export default function TimeEntriesPage() {
                               const newBlocks = [...individualBlocks];
                               newBlocks[index].plant_id = e.target.value ? Number(e.target.value) : '';
                               newBlocks[index].project_id = ''; // Reset project when plant changes
+                              newBlocks[index].supervisor_id = '';
+                              newBlocks[index].is_plant_hours = false;
                               setIndividualBlocks(newBlocks);
                             }} SelectProps={{ native: true }} InputLabelProps={{ shrink: true }} size="small">
                             <option value="">— Ninguna —</option>
@@ -553,17 +751,75 @@ export default function TimeEntriesPage() {
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
                           <TextField label="Proyecto" select fullWidth value={block.project_id}
-                            onChange={(e) => {
-                              const newBlocks = [...individualBlocks];
-                              newBlocks[index].project_id = e.target.value ? Number(e.target.value) : '';
-                              setIndividualBlocks(newBlocks);
-                            }} SelectProps={{ native: true }} InputLabelProps={{ shrink: true }} size="small">
+                            onChange={(e) => handleIndividualProjectChange(index, e.target.value ? Number(e.target.value) : '')} 
+                            SelectProps={{ native: true }} InputLabelProps={{ shrink: true }} size="small">
                             <option value="">— Ninguno —</option>
                             {projects
                               .filter(p => !block.plant_id || p.plant_id === block.plant_id)
                               .map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
                           </TextField>
                         </Grid>
+                        {block.project_id && (
+                          <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                              label="Supervisor de Cliente"
+                              select
+                              fullWidth
+                              value={block.supervisor_id}
+                              onChange={(e) => handleIndividualSupervisorChange(index, e.target.value ? Number(e.target.value) : '')}
+                              SelectProps={{ native: true }}
+                              InputLabelProps={{ shrink: true }}
+                              size="small"
+                            >
+                              <option value="">— Ninguno —</option>
+                              {(supervisorsCache[Number(block.project_id)] || []).map(s => (
+                                <option key={s.id} value={s.id}>{s.lastname}, {s.name}</option>
+                              ))}
+                            </TextField>
+                          </Grid>
+                        )}
+                        {block.project_id && (
+                          <Grid size={{ xs: 12, md: 4 }} display="flex" alignItems="center">
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={!!block.is_plant_hours}
+                                  disabled={!block.supervisor_id}
+                                  onChange={(e) => {
+                                    const newBlocks = [...individualBlocks];
+                                    newBlocks[index].is_plant_hours = e.target.checked;
+                                    setIndividualBlocks(newBlocks);
+                                  }}
+                                />
+                              }
+                              label="En Planta"
+                            />
+                          </Grid>
+                        )}
+                        {concepts.find(c => c.id === Number(block.concept_id))?.is_crane_hours && (
+                          <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                              label="Grúa / Vehículo *"
+                              select
+                              required
+                              fullWidth
+                              value={block.vehicle_id}
+                              onChange={(e) => {
+                                const newBlocks = [...individualBlocks];
+                                newBlocks[index].vehicle_id = e.target.value ? Number(e.target.value) : '';
+                                setIndividualBlocks(newBlocks);
+                              }}
+                              SelectProps={{ native: true }}
+                              InputLabelProps={{ shrink: true }}
+                              size="small"
+                            >
+                              <option value="">— Seleccionar Vehículo —</option>
+                              {vehicles.map(v => (
+                                <option key={v.id} value={v.id}>{v.brand} {v.model} ({v.plate})</option>
+                              ))}
+                            </TextField>
+                          </Grid>
+                        )}
                         <Grid size={{ xs: 6, md: 2 }}>
                           <TextField label="Ext 50%" type="number" fullWidth value={block.overtime_50_hours}
                             onChange={(e) => {

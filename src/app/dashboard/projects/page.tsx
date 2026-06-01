@@ -13,7 +13,7 @@ import {
 } from '@mui/icons-material';
 import {
   Project, ProjectService, Client, ClientService, Plant, PlantService, CreateProjectData,
-  ComplianceService, ProjectTeamResult,
+  ComplianceService, ProjectTeamResult, ClientSupervisor, ClientSupervisorService,
 } from '../../../utils/api';
 
 const COMPLIANCE_CHIP: Record<string, { label: string; color: 'success' | 'warning' | 'error' }> = {
@@ -47,6 +47,11 @@ export default function ProjectsPage() {
   const [teamData, setTeamData] = useState<ProjectTeamResult | null>(null);
   const [loadingTeam, setLoadingTeam] = useState(false);
 
+  // Supervisors state
+  const [clientSupervisors, setClientSupervisors] = useState<ClientSupervisor[]>([]);
+  const [selectedSupervisorIds, setSelectedSupervisorIds] = useState<number[]>([]);
+  const [loadingSupervisors, setLoadingSupervisors] = useState(false);
+
   // Form state
   const [form, setForm] = useState({
     name: '',
@@ -77,6 +82,28 @@ export default function ProjectsPage() {
     }
   };
 
+  const loadClientSupervisors = async (clientId: number) => {
+    try {
+      setLoadingSupervisors(true);
+      const data = await ClientSupervisorService.getAll(clientId);
+      setClientSupervisors(data);
+    } catch (err) {
+      console.error('Error loading client supervisors:', err);
+      setClientSupervisors([]);
+    } finally {
+      setLoadingSupervisors(false);
+    }
+  };
+
+  useEffect(() => {
+    if (form.client_id) {
+      loadClientSupervisors(Number(form.client_id));
+    } else {
+      setClientSupervisors([]);
+      setSelectedSupervisorIds([]);
+    }
+  }, [form.client_id]);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -92,10 +119,11 @@ export default function ProjectsPage() {
       budgeted_hours: 0,
       status: 'active',
     });
+    setSelectedSupervisorIds([]);
     setOpenDialog(true);
   };
 
-  const handleOpenEdit = (project: Project) => {
+  const handleOpenEdit = async (project: Project) => {
     setEditingProject(project);
     setForm({
       name: project.name,
@@ -106,6 +134,17 @@ export default function ProjectsPage() {
       budgeted_hours: project.budgeted_hours || 0,
       status: project.status || 'active',
     });
+
+    if (project.supervisors) {
+      setSelectedSupervisorIds(project.supervisors.map(s => s.id));
+    } else {
+      try {
+        const sups = await ProjectService.getSupervisors(project.id);
+        setSelectedSupervisorIds(sups.map(s => s.id));
+      } catch (err) {
+        setSelectedSupervisorIds([]);
+      }
+    }
     setOpenDialog(true);
   };
 
@@ -128,11 +167,14 @@ export default function ProjectsPage() {
         payload.code = form.code.trim();
       }
 
+      let savedProject: Project;
       if (editingProject) {
-        await ProjectService.update(editingProject.id, payload);
+        savedProject = await ProjectService.update(editingProject.id, payload);
+        await ProjectService.syncSupervisors(editingProject.id, selectedSupervisorIds);
         setSuccess('Proyecto actualizado');
       } else {
-        await ProjectService.create(payload);
+        savedProject = await ProjectService.create(payload);
+        await ProjectService.syncSupervisors(savedProject.id, selectedSupervisorIds);
         setSuccess('Proyecto creado');
       }
       setOpenDialog(false);
@@ -227,6 +269,11 @@ export default function ProjectsPage() {
                   <Box>
                     <Typography variant="subtitle1" fontWeight="bold">[{proj.code}] {proj.name}</Typography>
                     <Typography variant="body2" color="text.secondary">{proj.client?.razonSocial}</Typography>
+                    {proj.supervisors && proj.supervisors.length > 0 && (
+                      <Typography variant="caption" color="primary.main" display="block" sx={{ mt: 0.5 }}>
+                        👥 {proj.supervisors.length} supervisor(es)
+                      </Typography>
+                    )}
                     <Typography variant="body2" color={proj.status === 'active' ? 'success.main' : 'text.secondary'} sx={{ mt: 0.5, fontWeight: 'medium' }}>
                       {STATUS_LABELS[proj.status]}
                     </Typography>
@@ -275,7 +322,12 @@ export default function ProjectsPage() {
                     <TableCell><Typography fontWeight="medium">{proj.name}</Typography></TableCell>
                     <TableCell>
                       <Typography variant="body2">{proj.client?.razonSocial}</Typography>
-                      {proj.plant && <Typography variant="caption" color="text.secondary">Planta: {proj.plant.name}</Typography>}
+                      {proj.plant && <Typography variant="caption" color="text.secondary" display="block">Planta: {proj.plant.name}</Typography>}
+                      {proj.supervisors && proj.supervisors.length > 0 && (
+                        <Typography variant="caption" color="primary.main" display="block" sx={{ mt: 0.5 }}>
+                          👥 {proj.supervisors.length} supervisor(es)
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" color={proj.status === 'active' ? 'success.main' : 'text.secondary'} fontWeight="medium">
@@ -345,6 +397,44 @@ export default function ProjectsPage() {
                 </TextField>
               </Grid>
             </Grid>
+
+            {/* Asignación de Supervisores */}
+            {form.client_id && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
+                  Supervisores Asignados ({selectedSupervisorIds.length})
+                </Typography>
+                {loadingSupervisors ? (
+                  <CircularProgress size={20} />
+                ) : clientSupervisors.length === 0 ? (
+                  <Typography variant="caption" color="text.secondary">
+                    No hay supervisores registrados para este cliente. Configúrelos en la sección Clientes.
+                  </Typography>
+                ) : (
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
+                    {clientSupervisors.map((supervisor) => {
+                      const isSelected = selectedSupervisorIds.includes(supervisor.id);
+                      return (
+                        <Chip
+                          key={supervisor.id}
+                          label={`${supervisor.lastname}, ${supervisor.name}`}
+                          color={isSelected ? "primary" : "default"}
+                          variant={isSelected ? "filled" : "outlined"}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedSupervisorIds(prev => prev.filter(id => id !== supervisor.id));
+                            } else {
+                              setSelectedSupervisorIds(prev => [...prev, supervisor.id]);
+                            }
+                          }}
+                          sx={{ cursor: 'pointer' }}
+                        />
+                      );
+                    })}
+                  </Stack>
+                )}
+              </Box>
+            )}
 
             <TextField label="Descripción" fullWidth multiline rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </Stack>

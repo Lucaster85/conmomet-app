@@ -50,6 +50,8 @@ import {
   Domain as DomainIcon,
   AccountBalance as AccountBalanceIcon,
   LocalAtm as LocalAtmIcon,
+  LocalShipping as LocalShippingIcon,
+  ReceiptLong as ReceiptLongIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -102,6 +104,8 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Clientes', icon: <Business />, path: '/dashboard/clients', requiredPermission: 'clients_read' },
       { text: 'Plantas', icon: <FactoryIcon />, path: '/dashboard/plants', requiredPermission: 'plants_read' },
       { text: 'Proyectos', icon: <AssignmentIcon />, path: '/dashboard/projects', requiredPermission: 'projects_read' },
+      { text: 'Remitos / OCAs', icon: <ReceiptLongIcon />, path: '/dashboard/ocas', requiredPermission: 'ocas_read' },
+      { text: 'Vehículos / Flota', icon: <LocalShippingIcon />, path: '/dashboard/vehicles', requiredPermission: 'vehicles_read' },
     ]
   },
   {

@@ -29,9 +29,11 @@ import {
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
   Search as SearchIcon,
+  SupervisorAccount as SupervisorAccountIcon,
 } from '@mui/icons-material';
 import { Client, ClientService } from '../../../utils/api';
 import ClientForm from './ClientForm';
+import ClientSupervisorsDialog from './ClientSupervisorsDialog';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -41,6 +43,10 @@ export default function ClientsPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{open: boolean, client: Client | null}>({
+    open: false,
+    client: null
+  });
+  const [supervisorsDialog, setSupervisorsDialog] = useState<{open: boolean, client: Client | null}>({
     open: false,
     client: null
   });
@@ -200,6 +206,9 @@ export default function ClientsPage() {
                     </Typography>
                   </Box>
                   <Box display="flex" flexDirection="column" gap={0.5}>
+                    <IconButton size="small" color="info" onClick={() => setSupervisorsDialog({ open: true, client })}>
+                      <SupervisorAccountIcon fontSize="small" />
+                    </IconButton>
                     <IconButton size="small" color="primary" onClick={() => handleOpenEdit(client)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
@@ -251,6 +260,15 @@ export default function ClientsPage() {
                     <TableCell>{formatDate(client.createdAt)}</TableCell>
                     <TableCell align="center">
                       <Box display="flex" justifyContent="center" gap={0.5}>
+                        <Tooltip title="Supervisores">
+                          <IconButton
+                            size="small"
+                            color="info"
+                            onClick={() => setSupervisorsDialog({ open: true, client })}
+                          >
+                            <SupervisorAccountIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Editar">
                           <IconButton size="small" color="primary" onClick={() => handleOpenEdit(client)}>
                             <EditIcon fontSize="small" />
@@ -322,6 +340,13 @@ export default function ClientsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Dialog para gestionar supervisores de un cliente */}
+      <ClientSupervisorsDialog
+        open={supervisorsDialog.open}
+        onClose={() => setSupervisorsDialog({ open: false, client: null })}
+        client={supervisorsDialog.client}
+      />
     </Box>
   );
 }
