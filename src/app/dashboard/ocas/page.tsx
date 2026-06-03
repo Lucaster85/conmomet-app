@@ -60,6 +60,11 @@ import {
   TimeEntry,
   Client,
   ClientService,
+  Employee,
+  EmployeeService,
+  Vehicle,
+  VehicleService,
+  OcaLine,
 } from '../../../utils/api';
 import FeedbackModal from '../../../components/FeedbackModal';
 
@@ -100,6 +105,7 @@ export default function OcasPage() {
   // Creation State
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [createClientId, setCreateClientId] = useState<number | ''>('');
+  const [filterSupervisorId, setFilterSupervisorId] = useState<number | ''>('');
   const [pendingEntries, setPendingEntries] = useState<TimeEntry[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
   const [selectedEntryIds, setSelectedEntryIds] = useState<number[]>([]);
@@ -125,16 +131,50 @@ export default function OcasPage() {
   // Print State
   const [printOca, setPrintOca] = useState<Oca | null>(null);
 
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+
+  // Manual Line Dialog State
+  const [openManualLineDialog, setOpenManualLineDialog] = useState(false);
+  const [manualLineOca, setManualLineOca] = useState<Oca | null>(null);
+  const [manualEmployeeId, setManualEmployeeId] = useState<number | ''>('');
+  const [manualVehicleId, setManualVehicleId] = useState<number | ''>('');
+  const [manualDate, setManualDate] = useState(new Date().toISOString().split('T')[0]);
+  const [manualCheckIn, setManualCheckIn] = useState('08:00');
+  const [manualCheckOut, setManualCheckOut] = useState('17:00');
+  const [manualRegularHours, setManualRegularHours] = useState<number>(9);
+  const [manualOvertime50, setManualOvertime50] = useState<number>(0);
+  const [manualOvertime100, setManualOvertime100] = useState<number>(0);
+  const [manualTask, setManualTask] = useState('');
+  const [manualNotes, setManualNotes] = useState('');
+
+  useEffect(() => {
+    if (manualCheckIn && manualCheckOut) {
+      const [inH, inM] = manualCheckIn.split(':').map(Number);
+      const [outH, outM] = manualCheckOut.split(':').map(Number);
+      const diff = (outH * 60 + outM) - (inH * 60 + inM);
+      if (diff > 0) {
+        setManualRegularHours(Math.round((diff / 60) * 100) / 100);
+      } else {
+        setManualRegularHours(0);
+      }
+    }
+  }, [manualCheckIn, manualCheckOut]);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [clis, list] = await Promise.all([
+      const [clis, list, emps, vehs] = await Promise.all([
         ClientService.getAll(),
         OcaService.getAll({ type: typeKey }),
+        EmployeeService.getAll('active'),
+        VehicleService.getAll({ is_active: true }),
       ]);
       setClients(clis);
       setOcas(list);
+      setEmployees(emps);
+      setVehicles(vehs);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar los remitos / OCAs');
     } finally {
@@ -152,6 +192,7 @@ export default function OcasPage() {
   const handleClientChangeForCreate = async (clientId: number | '') => {
     setCreateClientId(clientId);
     setSelectedEntryIds([]);
+    setFilterSupervisorId('');
     if (!clientId) {
       setPendingEntries([]);
       return;
@@ -176,11 +217,22 @@ export default function OcasPage() {
     );
   };
 
+  const visibleEntries = pendingEntries.filter(entry => {
+    if (typeKey === 'man_hours' && filterSupervisorId !== '') {
+      return entry.supervisor_id === filterSupervisorId;
+    }
+    return true;
+  });
+
+  const allVisibleSelected = visibleEntries.length > 0 && visibleEntries.every(e => selectedEntryIds.includes(e.id));
+
   const handleSelectAllEntries = () => {
-    if (selectedEntryIds.length === pendingEntries.length) {
-      setSelectedEntryIds([]);
+    if (allVisibleSelected) {
+      const visibleIds = visibleEntries.map(e => e.id);
+      setSelectedEntryIds(prev => prev.filter(id => !visibleIds.includes(id)));
     } else {
-      setSelectedEntryIds(pendingEntries.map(e => e.id));
+      const visibleIds = visibleEntries.map(e => e.id);
+      setSelectedEntryIds(prev => Array.from(new Set([...prev, ...visibleIds])));
     }
   };
 
@@ -341,17 +393,62 @@ export default function OcasPage() {
     }
   };
 
-  // Remove time entry from pending OCA
-  const handleRemoveEntry = async (ocaId: number, timeEntryId: number) => {
-    if (!window.confirm('¿Seguro que desea remover este registro de horas del remito? El registro volverá a quedar pendiente de facturación.')) return;
+  // Remove line from pending OCA (handles both manual and real entries)
+  const handleRemoveLine = async (ocaId: number, lineId: number) => {
+    if (!window.confirm('¿Seguro que desea remover este registro de horas del remito?')) return;
     try {
       setError('');
       setSuccess('');
-      await OcaService.removeEntries(ocaId, [timeEntryId]);
+      await OcaService.removeLine(ocaId, lineId);
       setSuccess('Registro de horas removido del remito');
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al remover registro');
+    }
+  };
+
+  const handleOpenAddManualLine = (oca: Oca) => {
+    setManualLineOca(oca);
+    setManualEmployeeId('');
+    setManualVehicleId('');
+    setManualDate(new Date().toISOString().split('T')[0]);
+    setManualCheckIn('08:00');
+    setManualCheckOut('17:00');
+    setManualRegularHours(9);
+    setManualOvertime50(0);
+    setManualOvertime100(0);
+    setManualTask('');
+    setManualNotes('');
+    setOpenManualLineDialog(true);
+  };
+
+  const handleManualLineSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualLineOca) return;
+
+    try {
+      setError('');
+      setSuccess('');
+      
+      const payload: Partial<OcaLine> = {
+        employee_id: manualEmployeeId ? Number(manualEmployeeId) : undefined,
+        vehicle_id: manualVehicleId ? Number(manualVehicleId) : undefined,
+        date: manualDate,
+        check_in: manualLineOca.type === 'man_hours' ? manualCheckIn : undefined,
+        check_out: manualLineOca.type === 'man_hours' ? manualCheckOut : undefined,
+        regular_hours: manualRegularHours,
+        overtime_50_hours: manualOvertime50,
+        overtime_100_hours: manualOvertime100,
+        task: manualTask,
+        notes: manualNotes,
+      };
+
+      await OcaService.addLine(manualLineOca.id, payload);
+      setSuccess('Línea manual agregada correctamente al remito');
+      setOpenManualLineDialog(false);
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al agregar línea');
     }
   };
 
@@ -779,15 +876,28 @@ export default function OcasPage() {
                         </Button>
                       </Stack>
                       {oca.status === 'pendiente' && (
-                        <Button
-                          variant="outlined"
-                          color="primary"
-                          startIcon={<AddIcon />}
-                          onClick={() => handleOpenAddEntries(oca)}
-                          size="small"
-                        >
-                          Agregar Horas Pendientes
-                        </Button>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<AddIcon />}
+                            onClick={() => handleOpenAddEntries(oca)}
+                            size="small"
+                          >
+                            Agregar Horas Pendientes
+                          </Button>
+                          {oca.source_oca_id && (
+                            <Button
+                              variant="outlined"
+                              color="secondary"
+                              startIcon={<AddIcon />}
+                              onClick={() => handleOpenAddManualLine(oca)}
+                              size="small"
+                            >
+                              Agregar Línea Manual
+                            </Button>
+                          )}
+                        </Stack>
                       )}
                     </Box>
 
@@ -897,7 +1007,7 @@ export default function OcasPage() {
                                         <IconButton
                                           color="error"
                                           size="small"
-                                          onClick={() => handleRemoveEntry(oca.id, line.time_entry_id || 0)}
+                                          onClick={() => handleRemoveLine(oca.id, line.id)}
                                         >
                                           <RemoveIcon fontSize="small" />
                                         </IconButton>
@@ -938,14 +1048,14 @@ export default function OcasPage() {
                                       <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
                                         📅 {new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}
                                       </Typography>
-                                    </>
+</>
                                   )}
                                 </Box>
                                 {oca.status === 'pendiente' && (
                                   <IconButton
                                     color="error"
                                     size="small"
-                                    onClick={() => handleRemoveEntry(oca.id, line.time_entry_id || 0)}
+                                    onClick={() => handleRemoveLine(oca.id, line.id)}
                                     sx={{ p: 0.5 }}
                                   >
                                     <RemoveIcon fontSize="small" />
@@ -1053,6 +1163,31 @@ export default function OcasPage() {
                   </Select>
                 </FormControl>
 
+                {createClientId && typeKey === 'man_hours' && pendingEntries.length > 0 && (
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Filtrar por Supervisor</InputLabel>
+                    <Select
+                      value={filterSupervisorId}
+                      label="Filtrar por Supervisor"
+                      onChange={(e) => {
+                        setFilterSupervisorId(e.target.value as number | '');
+                        setSelectedEntryIds([]);
+                      }}
+                    >
+                      <MenuItem value="">— Todos los Supervisores —</MenuItem>
+                      {Array.from(
+                        new Map(
+                          pendingEntries
+                            .filter(entry => entry.supervisor)
+                            .map(entry => [entry.supervisor!.id, entry.supervisor!])
+                        ).values()
+                      ).map(s => (
+                        <MenuItem key={s.id} value={s.id}>{s.lastname}, {s.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+
                 {loadingPending ? (
                   <Box display="flex" justifyContent="center" py={4}>
                     <CircularProgress />
@@ -1065,10 +1200,10 @@ export default function OcasPage() {
                   <Box>
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                       <Typography variant="subtitle2" fontWeight="bold">
-                        Seleccionar Horas ({selectedEntryIds.length} de {pendingEntries.length} seleccionadas)
+                        Seleccionar Horas ({selectedEntryIds.length} de {visibleEntries.length} visibles)
                       </Typography>
                       <Button size="small" onClick={handleSelectAllEntries}>
-                        {selectedEntryIds.length === pendingEntries.length ? 'Deseleccionar Todas' : 'Seleccionar Todas'}
+                        {allVisibleSelected ? 'Deseleccionar Todas' : 'Seleccionar Todas'}
                       </Button>
                     </Box>
 
@@ -1079,8 +1214,8 @@ export default function OcasPage() {
                             <TableRow>
                               <TableCell padding="checkbox">
                                 <Checkbox
-                                  checked={selectedEntryIds.length === pendingEntries.length && pendingEntries.length > 0}
-                                  indeterminate={selectedEntryIds.length > 0 && selectedEntryIds.length < pendingEntries.length}
+                                  checked={allVisibleSelected}
+                                  indeterminate={!allVisibleSelected && visibleEntries.some(e => selectedEntryIds.includes(e.id))}
                                   onChange={handleSelectAllEntries}
                                 />
                               </TableCell>
@@ -1101,7 +1236,7 @@ export default function OcasPage() {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {pendingEntries.map((entry) => {
+                            {visibleEntries.map((entry) => {
                               const isSelected = selectedEntryIds.includes(entry.id);
                               return (
                                 <TableRow
@@ -1150,7 +1285,7 @@ export default function OcasPage() {
                       </TableContainer>
                     ) : (
                       <Box display="flex" flexDirection="column" gap={1.5} sx={{ maxHeight: 300, overflow: 'auto', p: 0.5 }}>
-                        {pendingEntries.map((entry) => {
+                        {visibleEntries.map((entry) => {
                           const isSelected = selectedEntryIds.includes(entry.id);
                           const displayHours = typeKey === 'man_hours'
                             ? `${Number(entry.regular_hours).toFixed(1)}h`
@@ -1408,6 +1543,137 @@ export default function OcasPage() {
             <Button onClick={() => setApproveDialog({ open: false, ocaId: null })}>Cancelar</Button>
             <Button onClick={handleApprove} variant="contained" color="success">Aprobar Remito</Button>
           </DialogActions>
+        </Dialog>
+
+        {/* Add Manual Line Dialog */}
+        <Dialog open={openManualLineDialog} onClose={() => setOpenManualLineDialog(false)} maxWidth="sm" fullWidth>
+          <form onSubmit={handleManualLineSubmit}>
+            <DialogTitle>Agregar Línea Manual al Remito {manualLineOca?.number}</DialogTitle>
+            <DialogContent dividers>
+              <Stack spacing={2}>
+                {manualLineOca?.type === 'man_hours' ? (
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Empleado *</InputLabel>
+                    <Select
+                      value={manualEmployeeId}
+                      label="Empleado *"
+                      required
+                      onChange={(e) => setManualEmployeeId(e.target.value as number | '')}
+                    >
+                      <MenuItem value="">— Seleccionar Empleado —</MenuItem>
+                      {employees.map(e => (
+                        <MenuItem key={e.id} value={e.id}>{e.lastname}, {e.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                ) : (
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Vehículo / Grúa *</InputLabel>
+                    <Select
+                      value={manualVehicleId}
+                      label="Vehículo / Grúa *"
+                      required
+                      onChange={(e) => setManualVehicleId(e.target.value as number | '')}
+                    >
+                      <MenuItem value="">— Seleccionar Vehículo —</MenuItem>
+                      {vehicles.map(v => (
+                        <MenuItem key={v.id} value={v.id}>{v.brand} {v.model} ({v.plate})</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+
+                <TextField
+                  label="Fecha *"
+                  type="date"
+                  fullWidth
+                  size="small"
+                  required
+                  InputLabelProps={{ shrink: true }}
+                  value={manualDate}
+                  onChange={(e) => setManualDate(e.target.value)}
+                />
+
+                {manualLineOca?.type === 'man_hours' && (
+                  <Box display="flex" gap={2}>
+                    <TextField
+                      label="Entrada *"
+                      type="time"
+                      fullWidth
+                      size="small"
+                      required
+                      InputLabelProps={{ shrink: true }}
+                      value={manualCheckIn}
+                      onChange={(e) => setManualCheckIn(e.target.value)}
+                    />
+                    <TextField
+                      label="Salida *"
+                      type="time"
+                      fullWidth
+                      size="small"
+                      required
+                      InputLabelProps={{ shrink: true }}
+                      value={manualCheckOut}
+                      onChange={(e) => setManualCheckOut(e.target.value)}
+                    />
+                  </Box>
+                )}
+
+                <Box display="flex" gap={2}>
+                  <TextField
+                    label={manualLineOca?.type === 'man_hours' ? "Hs Regulares (Auto)" : "Horas Trabajadas *"}
+                    type="number"
+                    fullWidth
+                    size="small"
+                    required
+                    slotProps={{ htmlInput: { step: 0.1 } }}
+                    value={manualRegularHours}
+                    disabled={manualLineOca?.type === 'man_hours'}
+                    onChange={(e) => setManualRegularHours(Number(e.target.value))}
+                  />
+                  <TextField
+                    label="Extras 50%"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    slotProps={{ htmlInput: { step: 0.1 } }}
+                    value={manualOvertime50}
+                    onChange={(e) => setManualOvertime50(Number(e.target.value))}
+                  />
+                  <TextField
+                    label="Extras 100%"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    slotProps={{ htmlInput: { step: 0.1 } }}
+                    value={manualOvertime100}
+                    onChange={(e) => setManualOvertime100(Number(e.target.value))}
+                  />
+                </Box>
+
+                <TextField
+                  label="Tarea Realizada"
+                  fullWidth
+                  size="small"
+                  value={manualTask}
+                  onChange={(e) => setManualTask(e.target.value)}
+                />
+
+                <TextField
+                  label="Notas (Opcional)"
+                  fullWidth
+                  multiline
+                  rows={2}
+                  value={manualNotes}
+                  onChange={(e) => setManualNotes(e.target.value)}
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setOpenManualLineDialog(false)}>Cancelar</Button>
+              <Button type="submit" variant="contained">Agregar Línea</Button>
+            </DialogActions>
+          </form>
         </Dialog>
 
         {/* Feedback Alerts */}

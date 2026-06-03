@@ -45,6 +45,7 @@ interface TimeBlock {
   project_id: number | '';
   notes: string;
   is_plant_hours?: boolean;
+  generates_oca?: boolean;
   supervisor_id?: number | '';
   vehicle_id?: number | '';
 }
@@ -79,13 +80,13 @@ export default function TimeEntriesPage() {
   // Masivo state
   const [massiveBlock, setMassiveBlock] = useState<TimeBlock>({
     id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
-    is_plant_hours: false, supervisor_id: '', vehicle_id: ''
+    is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
   });
 
   // Individual state
   const [individualBlocks, setIndividualBlocks] = useState<TimeBlock[]>([{
     id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
-    is_plant_hours: false, supervisor_id: '', vehicle_id: ''
+    is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
   }]);
 
   const loadData = async () => {
@@ -137,6 +138,7 @@ export default function TimeEntriesPage() {
       project_id: projId,
       supervisor_id: '',
       is_plant_hours: false,
+      generates_oca: false,
     }));
     if (projId) {
       await loadSupervisorsForProject(projId);
@@ -148,6 +150,7 @@ export default function TimeEntriesPage() {
       ...prev,
       supervisor_id: supId,
       is_plant_hours: supId ? prev.is_plant_hours : false,
+      generates_oca: supId ? prev.generates_oca : false,
     }));
   };
 
@@ -165,6 +168,7 @@ export default function TimeEntriesPage() {
     newBlocks[index].project_id = projId;
     newBlocks[index].supervisor_id = '';
     newBlocks[index].is_plant_hours = false;
+    newBlocks[index].generates_oca = false;
     setIndividualBlocks(newBlocks);
     if (projId) {
       await loadSupervisorsForProject(projId);
@@ -176,6 +180,7 @@ export default function TimeEntriesPage() {
     newBlocks[index].supervisor_id = supId;
     if (!supId) {
       newBlocks[index].is_plant_hours = false;
+      newBlocks[index].generates_oca = false;
     }
     setIndividualBlocks(newBlocks);
   };
@@ -256,6 +261,7 @@ export default function TimeEntriesPage() {
           plant_id: massiveBlock.plant_id ? Number(massiveBlock.plant_id) : undefined,
           project_id: massiveBlock.project_id ? Number(massiveBlock.project_id) : undefined,
           is_plant_hours: massiveBlock.is_plant_hours || false,
+          generates_oca: massiveBlock.generates_oca || false,
           supervisor_id: massiveBlock.supervisor_id ? Number(massiveBlock.supervisor_id) : undefined,
           vehicle_id: massiveBlock.vehicle_id ? Number(massiveBlock.vehicle_id) : undefined,
         });
@@ -285,6 +291,7 @@ export default function TimeEntriesPage() {
             plant_id: block.plant_id ? Number(block.plant_id) : undefined,
             project_id: block.project_id ? Number(block.project_id) : undefined,
             is_plant_hours: block.is_plant_hours || false,
+            generates_oca: block.generates_oca || false,
             supervisor_id: block.supervisor_id ? Number(block.supervisor_id) : undefined,
             vehicle_id: block.vehicle_id ? Number(block.vehicle_id) : undefined,
           });
@@ -323,18 +330,18 @@ export default function TimeEntriesPage() {
     setIsLate(false);
     setMassiveBlock({
       id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
-      is_plant_hours: false, supervisor_id: '', vehicle_id: ''
+      is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
     });
     setIndividualBlocks([{
       id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
-      is_plant_hours: false, supervisor_id: '', vehicle_id: ''
+      is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
     }]);
   };
 
   const addBlock = () => {
     setIndividualBlocks([...individualBlocks, {
       id: Date.now().toString(), check_in: '13:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
-      is_plant_hours: false, supervisor_id: '', vehicle_id: ''
+      is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
     }]);
   };
 
@@ -429,7 +436,15 @@ export default function TimeEntriesPage() {
                           <Typography variant="subtitle2" fontWeight="bold">
                             {entry.employee?.lastname}, {entry.employee?.name}
                             {entry.concept && <Chip label={entry.concept.name} size="small" color="primary" variant="outlined" sx={{ ml: 1, height: 20 }} />}
-                            {entry.is_plant_hours && <Chip label="En Planta" size="small" color="success" variant="outlined" sx={{ ml: 0.5, height: 20 }} />}
+                            {entry.is_plant_hours && (
+                              <Chip
+                                label={entry.generates_oca ? "PEP OCA" : "PEP Regular"}
+                                size="small"
+                                color="success"
+                                variant="outlined"
+                                sx={{ ml: 0.5, height: 20 }}
+                              />
+                            )}
                             {entry.oca_id && (
                               <Chip 
                                 label={`OCA #${entry.oca?.number || entry.oca_id}`} 
@@ -643,16 +658,40 @@ export default function TimeEntriesPage() {
                     </Grid>
                   )}
                   {massiveBlock.project_id && (
-                    <Grid size={{ xs: 12, md: 6 }} display="flex" alignItems="center">
+                    <Grid size={{ xs: 12, md: 6 }} display="flex" gap={2} alignItems="center">
                       <FormControlLabel
                         control={
                           <Checkbox
-                            checked={!!massiveBlock.is_plant_hours}
+                            checked={!!massiveBlock.is_plant_hours && !!massiveBlock.generates_oca}
                             disabled={!massiveBlock.supervisor_id}
-                            onChange={(e) => setMassiveBlock({ ...massiveBlock, is_plant_hours: e.target.checked })}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setMassiveBlock({
+                                ...massiveBlock,
+                                is_plant_hours: checked,
+                                generates_oca: checked ? true : false
+                              });
+                            }}
                           />
                         }
-                        label="Horas en Planta (para remito de supervisor)"
+                        label="PEP OCA (genera remito)"
+                      />
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={!!massiveBlock.is_plant_hours && !massiveBlock.generates_oca}
+                            disabled={!massiveBlock.supervisor_id}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setMassiveBlock({
+                                ...massiveBlock,
+                                is_plant_hours: checked,
+                                generates_oca: false
+                              });
+                            }}
+                          />
+                        }
+                        label="PEP Regular (no genera remito)"
                       />
                     </Grid>
                   )}
@@ -779,20 +818,38 @@ export default function TimeEntriesPage() {
                           </Grid>
                         )}
                         {block.project_id && (
-                          <Grid size={{ xs: 12, md: 4 }} display="flex" alignItems="center">
+                          <Grid size={{ xs: 12, md: 4 }} display="flex" gap={1} alignItems="center">
                             <FormControlLabel
                               control={
                                 <Checkbox
-                                  checked={!!block.is_plant_hours}
+                                  checked={!!block.is_plant_hours && !!block.generates_oca}
                                   disabled={!block.supervisor_id}
                                   onChange={(e) => {
+                                    const checked = e.target.checked;
                                     const newBlocks = [...individualBlocks];
-                                    newBlocks[index].is_plant_hours = e.target.checked;
+                                    newBlocks[index].is_plant_hours = checked;
+                                    newBlocks[index].generates_oca = checked ? true : false;
                                     setIndividualBlocks(newBlocks);
                                   }}
                                 />
                               }
-                              label="En Planta"
+                              label="PEP OCA"
+                            />
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={!!block.is_plant_hours && !block.generates_oca}
+                                  disabled={!block.supervisor_id}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    const newBlocks = [...individualBlocks];
+                                    newBlocks[index].is_plant_hours = checked;
+                                    newBlocks[index].generates_oca = false;
+                                    setIndividualBlocks(newBlocks);
+                                  }}
+                                />
+                              }
+                              label="PEP Reg."
                             />
                           </Grid>
                         )}

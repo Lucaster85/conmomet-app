@@ -718,6 +718,7 @@ export interface TimeEntry {
   concept_id?: number;
   concept?: PayrollConcept;
   is_plant_hours?: boolean;
+  generates_oca?: boolean;
   supervisor_id?: number;
   vehicle_id?: number;
   oca_id?: number;
@@ -739,6 +740,7 @@ export interface CreateTimeEntryData {
   is_late?: boolean;
   notes?: string;
   is_plant_hours?: boolean;
+  generates_oca?: boolean;
   supervisor_id?: number;
   vehicle_id?: number;
 }
@@ -2713,6 +2715,31 @@ export class OcaService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Error al remover registros de la OCA');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async addLine(id: number, lineData: Partial<OcaLine>): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/lines`, {
+      method: 'POST',
+      body: JSON.stringify(lineData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al agregar línea manual a la OCA');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async removeLine(id: number, lineId: number): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/lines/${lineId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar la línea de la OCA');
     }
     const data = await response.json();
     return data.data || data;

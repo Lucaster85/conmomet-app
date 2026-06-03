@@ -8,7 +8,7 @@ import {
 import FeedbackModal from '../../../../../components/FeedbackModal';
 import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon, Payment as PaymentIcon, Visibility as ViewIcon, Print as PrintIcon } from '@mui/icons-material';
 import Divider from '@mui/material/Divider';
-import { PayrollEntry, PayrollService, PayPeriod } from '../../../../../utils/api';
+import { PayrollEntry, PayrollService, PayPeriod, PayrollLine, PayrollAdjustment } from '../../../../../utils/api';
 import { TokenManager } from '../../../../../utils/auth';
 import { useParams, useRouter } from 'next/navigation';
 import PayrollAdjustmentsModal from './PayrollAdjustmentsModal';
@@ -397,22 +397,52 @@ export default function PayrollPage() {
                       <Typography variant="body2" color="warning.main">• {detailEntry.late_count} llegada(s) tarde</Typography>
                     )}
                   </Box>
-                  <Box flex={1} minWidth={140}>
-                    <Typography variant="overline" color="text.secondary" fontWeight={600}>Horas trabajadas</Typography>
-                    <Stack spacing={0.25} mt={0.5}>
-                      {detailEntry.employee?.pay_type !== 'monthly' && (
-                        <Typography variant="body2">Total: <strong>{detailEntry.total_regular_hours}h</strong></Typography>
-                      )}
-                      {Number(detailEntry.total_overtime_50_hours) > 0 && (
-                        <Typography variant="body2">Extras 50%: <strong>{detailEntry.total_overtime_50_hours}h</strong></Typography>
-                      )}
-                      {Number(detailEntry.total_overtime_100_hours) > 0 && (
-                        <Typography variant="body2">Extras 100%: <strong>{detailEntry.total_overtime_100_hours}h</strong></Typography>
-                      )}
-                      {detailEntry.employee?.pay_type === 'monthly' && Number(detailEntry.total_overtime_50_hours) === 0 && Number(detailEntry.total_overtime_100_hours) === 0 && (
-                        <Typography variant="body2" color="text.secondary">Sin horas extras</Typography>
-                      )}
-                    </Stack>
+                  <Box flex={2} minWidth={280}>
+                    <Typography variant="overline" color="text.secondary" fontWeight={600}>Horas en Planta (PEP)</Typography>
+                    {detailEntry.pep_summary && detailEntry.pep_summary.total_pep_hours > 0 ? (
+                      <TableContainer component={Paper} variant="outlined" sx={{ mt: 0.5 }}>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow sx={{ bgcolor: 'grey.50' }}>
+                              <TableCell sx={{ py: 0.25, px: 1 }}><Typography variant="caption" fontWeight="bold">Concepto</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption" fontWeight="bold">Regular</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption" fontWeight="bold">50%</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption" fontWeight="bold">100%</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption" fontWeight="bold">Total</Typography></TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell sx={{ py: 0.25, px: 1 }}><Typography variant="body2" fontWeight="medium">PEP (Total)</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
+                                <Typography variant="body2">
+                                  {((detailEntry.pep_summary.pep_oca?.regular_hours || 0) + (detailEntry.pep_summary.pep_regular?.regular_hours || 0)).toFixed(1)}h
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
+                                <Typography variant="body2">
+                                  {((detailEntry.pep_summary.pep_oca?.overtime_50_hours || 0) + (detailEntry.pep_summary.pep_regular?.overtime_50_hours || 0)).toFixed(1)}h
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
+                                <Typography variant="body2">
+                                  {((detailEntry.pep_summary.pep_oca?.overtime_100_hours || 0) + (detailEntry.pep_summary.pep_regular?.overtime_100_hours || 0)).toFixed(1)}h
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
+                                <Typography variant="body2" fontWeight="bold">
+                                  {(detailEntry.pep_summary.total_pep_hours || 0).toFixed(1)}h
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
+                        Sin horas en planta (PEP) registradas en este período.
+                      </Typography>
+                    )}
                   </Box>
                 </Box>
 
@@ -421,66 +451,123 @@ export default function PayrollPage() {
                 {/* Desglose de haberes */}
                 <Typography variant="overline" color="text.secondary" fontWeight={600}>Desglose de haberes</Typography>
                 <Stack spacing={0.5} mt={1} mb={1}>
-                  {detailEntry.lines && detailEntry.lines.length > 0 ? (
-                    <>
-                      <Table size="small" sx={{ mb: 1, '& th, & td': { borderBottom: 'none', py: 0.5, px: 0 } }}>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell><Typography variant="caption" color="text.secondary">Concepto</Typography></TableCell>
-                            <TableCell align="right"><Typography variant="caption" color="text.secondary">Cant.</Typography></TableCell>
-                            <TableCell align="right"><Typography variant="caption" color="text.secondary">Tarifa</Typography></TableCell>
-                            <TableCell align="right"><Typography variant="caption" color="text.secondary">Subtotal</Typography></TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {detailEntry.lines.map((line: { id: number, label: string, quantity: number, rate: number, subtotal: number }) => (
-                            <TableRow key={line.id}>
-                              <TableCell sx={{ maxWidth: { xs: 150, sm: 400, md: 500 } }}>
-                                <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
-                                  {line.label}
-                                </Typography>
-                              </TableCell>
-                              <TableCell align="right"><Typography variant="body2">{Number(line.quantity).toFixed(1)}</Typography></TableCell>
-                              <TableCell align="right"><Typography variant="body2">{formatCurrency(line.rate)}</Typography></TableCell>
-                              <TableCell align="right"><Typography variant="body2">{formatCurrency(line.subtotal)}</Typography></TableCell>
-                            </TableRow>
+                  {(() => {
+                    const totalHours = detailEntry.lines
+                      ? (detailEntry.lines as PayrollLine[])
+                          .filter((l: PayrollLine) => ['regular', 'extras_50', 'extras_100', 'holiday'].includes(l.line_type))
+                          .reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity), 0)
+                      : (Number(detailEntry.total_regular_hours || 0) +
+                         Number(detailEntry.total_overtime_50_hours || 0) +
+                         Number(detailEntry.total_overtime_100_hours || 0));
+
+                    if (detailEntry.lines && detailEntry.lines.length > 0) {
+                      return (
+                        <TableContainer component={Paper} variant="outlined" sx={{ border: 'none', bgcolor: 'transparent' }}>
+                          <Table size="small" sx={{ mb: 1, '& th, & td': { borderBottom: 'none', py: 0.5, px: 0 } }}>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell><Typography variant="caption" color="text.secondary">Concepto</Typography></TableCell>
+                                <TableCell align="right"><Typography variant="caption" color="text.secondary">Cant.</Typography></TableCell>
+                                <TableCell align="right"><Typography variant="caption" color="text.secondary">Tarifa</Typography></TableCell>
+                                <TableCell align="right"><Typography variant="caption" color="text.secondary">Subtotal</Typography></TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {detailEntry.lines.map((line: { id: number, label: string, quantity: number, rate: number, subtotal: number }) => (
+                                <TableRow key={line.id}>
+                                  <TableCell sx={{ maxWidth: { xs: 150, sm: 400, md: 500 } }}>
+                                    <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+                                      {line.label}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="right"><Typography variant="body2">{Number(line.quantity).toFixed(1)}</Typography></TableCell>
+                                  <TableCell align="right"><Typography variant="body2">{formatCurrency(line.rate)}</Typography></TableCell>
+                                  <TableCell align="right"><Typography variant="body2">{formatCurrency(line.subtotal)}</Typography></TableCell>
+                                </TableRow>
+                              ))}
+
+                              {/* Bonus adjustments inside the table */}
+                              {(detailEntry.adjustments as PayrollAdjustment[])?.filter((a: PayrollAdjustment) => a.type === 'bonus').map((a: PayrollAdjustment) => (
+                                <TableRow key={a.id}>
+                                  <TableCell sx={{ maxWidth: { xs: 150, sm: 400, md: 500 } }}>
+                                    <Typography variant="body2" color="success.main" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+                                      Pagos extra ({a.label})
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="right"><Typography variant="body2" color="success.main">—</Typography></TableCell>
+                                  <TableCell align="right"><Typography variant="body2" color="success.main">—</Typography></TableCell>
+                                  <TableCell align="right"><Typography variant="body2" color="success.main">+{formatCurrency(a.amount)}</Typography></TableCell>
+                                </TableRow>
+                              ))}
+
+                              {/* Divider inside table */}
+                              <TableRow>
+                                <TableCell colSpan={4} sx={{ py: 0.5 }}>
+                                  <Divider />
+                                </TableCell>
+                              </TableRow>
+
+                              {/* Sueldo Bruto inside table */}
+                              <TableRow>
+                                <TableCell>
+                                  <Typography variant="body2" fontWeight={600}>Sueldo bruto</Typography>
+                                </TableCell>
+                                <TableCell align="right">
+                                  {detailEntry.employee?.pay_type !== 'monthly' && totalHours > 0 && (
+                                    <Typography variant="body2" fontWeight={600}>
+                                      {totalHours.toFixed(1)}h
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Typography variant="body2" fontWeight={600}>—</Typography>
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Typography variant="body2" fontWeight={600}>
+                                    {formatCurrency(detailEntry.gross_amount)}
+                                  </Typography>
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      );
+                    } else {
+                      return (
+                        <>
+                          <Box display="flex" justifyContent="space-between">
+                            <Typography variant="body2">{detailEntry.employee?.pay_type === 'monthly' ? 'Sueldo mensual' : `Horas regulares (${detailEntry.total_regular_hours}h)`}</Typography>
+                            <Typography variant="body2">{formatCurrency(detailEntry.regular_amount)}</Typography>
+                          </Box>
+                          {Number(detailEntry.overtime_50_amount) > 0 && (
+                            <Box display="flex" justifyContent="space-between">
+                              <Typography variant="body2">Horas extra 50% ({detailEntry.total_overtime_50_hours}h)</Typography>
+                              <Typography variant="body2">{formatCurrency(detailEntry.overtime_50_amount)}</Typography>
+                            </Box>
+                          )}
+                          {Number(detailEntry.overtime_100_amount) > 0 && (
+                            <Box display="flex" justifyContent="space-between">
+                              <Typography variant="body2">Horas extra 100% ({detailEntry.total_overtime_100_hours}h)</Typography>
+                              <Typography variant="body2">{formatCurrency(detailEntry.overtime_100_amount)}</Typography>
+                            </Box>
+                          )}
+                          {detailEntry.adjustments?.filter((a: { type: string; id: number; label: string; amount: number }) => a.type === 'bonus').map((a: { type: string; id: number; label: string; amount: number }) => (
+                            <Box display="flex" justifyContent="space-between" key={a.id}>
+                              <Typography variant="body2" color="success.main">
+                                Pagos extra ({a.label})
+                              </Typography>
+                              <Typography variant="body2" color="success.main">+{formatCurrency(a.amount)}</Typography>
+                            </Box>
                           ))}
-                        </TableBody>
-                      </Table>
-                    </>
-                  ) : (
-                    <>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="body2">{detailEntry.employee?.pay_type === 'monthly' ? 'Sueldo mensual' : `Horas regulares (${detailEntry.total_regular_hours}h)`}</Typography>
-                        <Typography variant="body2">{formatCurrency(detailEntry.regular_amount)}</Typography>
-                      </Box>
-                      {Number(detailEntry.overtime_50_amount) > 0 && (
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2">Horas extra 50% ({detailEntry.total_overtime_50_hours}h)</Typography>
-                          <Typography variant="body2">{formatCurrency(detailEntry.overtime_50_amount)}</Typography>
-                        </Box>
-                      )}
-                      {Number(detailEntry.overtime_100_amount) > 0 && (
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2">Horas extra 100% ({detailEntry.total_overtime_100_hours}h)</Typography>
-                          <Typography variant="body2">{formatCurrency(detailEntry.overtime_100_amount)}</Typography>
-                        </Box>
-                      )}
-                    </>
-                  )}
-                  {detailEntry.adjustments?.filter((a: { type: string; id: number; label: string; amount: number }) => a.type === 'bonus').map((a: { type: string; id: number; label: string; amount: number }) => (
-                    <Box display="flex" justifyContent="space-between" key={a.id}>
-                      <Typography variant="body2" color="success.main">
-                        Pagos extra ({a.label})
-                      </Typography>
-                      <Typography variant="body2" color="success.main">+{formatCurrency(a.amount)}</Typography>
-                    </Box>
-                  ))}
-                  <Divider />
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="body2" fontWeight={600}>Sueldo bruto</Typography>
-                    <Typography variant="body2" fontWeight={600}>{formatCurrency(detailEntry.gross_amount)}</Typography>
-                  </Box>
+                          <Divider />
+                          <Box display="flex" justifyContent="space-between">
+                            <Typography variant="body2" fontWeight={600}>Sueldo bruto</Typography>
+                            <Typography variant="body2" fontWeight={600}>{formatCurrency(detailEntry.gross_amount)}</Typography>
+                          </Box>
+                        </>
+                      );
+                    }
+                  })()}
                 </Stack>
 
                 <Divider sx={{ my: 1.5 }} />
