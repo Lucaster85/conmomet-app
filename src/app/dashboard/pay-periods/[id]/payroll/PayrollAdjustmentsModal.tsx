@@ -132,8 +132,8 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
         {error && <Typography color="error" variant="body2" mb={2}>{error}</Typography>}
 
         <Typography variant="subtitle2" mb={1} mt={1}>Agregar Premio o Retención manual</Typography>
-        <Box display="flex" gap={2} mb={3} alignItems="flex-start">
-          <FormControl sx={{ minWidth: 150 }} size="small">
+        <Box display="flex" gap={2} mb={3} alignItems="flex-start" flexWrap="wrap">
+          <FormControl sx={{ minWidth: 150, flexShrink: 0 }} size="small">
             <InputLabel>Tipo</InputLabel>
             <Select
               value={form.type || 'bonus'}
@@ -152,17 +152,24 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
             value={form.label || ''}
             onChange={(e) => setForm({ ...form, label: e.target.value })}
             placeholder="Ej: Premio puntual, Viáticos"
+            sx={{ flexGrow: 1, minWidth: 200 }}
           />
 
           <CurrencyInput
             label="Monto"
             value={form.amount || 0}
             onChange={(val: number | null) => setForm({ ...form, amount: val ?? 0 })}
-            sx={{ width: 150 }}
+            sx={{ width: 180, flexShrink: 0 }}
             size="small"
           />
 
-          <Button variant="contained" onClick={handleAdd} disabled={loading} startIcon={<AddIcon />}>
+          <Button 
+            variant="contained" 
+            onClick={handleAdd} 
+            disabled={loading} 
+            startIcon={<AddIcon />}
+            sx={{ flexShrink: 0, whiteSpace: 'nowrap', height: 40 }}
+          >
             Agregar
           </Button>
         </Box>
@@ -171,13 +178,13 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
           <>
             <Divider sx={{ my: 3 }} />
             <Typography variant="subtitle2" mb={1} color="secondary">Descontar Cuota de Préstamo Activo</Typography>
-            <Box display="flex" gap={2} mb={3} alignItems="flex-start">
-              <FormControl sx={{ minWidth: 200 }} size="small">
+            <Box display="flex" gap={2} mb={3} alignItems="flex-start" flexWrap="wrap">
+              <FormControl sx={{ minWidth: 200, flexShrink: 0 }} size="small">
                 <InputLabel>Préstamo</InputLabel>
                 <Select
                   value={loanForm.loanId}
                   label="Préstamo"
-                  onChange={(e) => setLoanForm({ ...loanForm, loanId: e.target.value, amount: 0, exchangeRate: 0 })}
+                  onChange={(e) => setLoanForm({ loanId: e.target.value, amount: 0, exchangeRate: 0 })}
                 >
                   {loans.map(l => (
                     <MenuItem key={l.id} value={l.id.toString()}>
@@ -191,7 +198,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
                 label={isUSDLoan ? 'Monto a descontar (USD)' : 'Monto a descontar ($)'}
                 value={loanForm.amount}
                 onChange={(val: number | null) => setLoanForm({ ...loanForm, amount: val ?? 0 })}
-                sx={{ width: 180 }}
+                sx={{ width: 200, flexShrink: 0 }}
                 size="small"
               />
 
@@ -200,12 +207,19 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
                   label="Cotización USD/ARS"
                   value={loanForm.exchangeRate}
                   onChange={(val: number | null) => setLoanForm({ ...loanForm, exchangeRate: val ?? 0 })}
-                  sx={{ width: 160 }}
+                  sx={{ width: 180, flexShrink: 0 }}
                   size="small"
                 />
               )}
 
-              <Button variant="contained" color="secondary" onClick={handleAddLoanPayment} disabled={loading} startIcon={<AddIcon />}>
+              <Button 
+                variant="contained" 
+                color="secondary" 
+                onClick={handleAddLoanPayment} 
+                disabled={loading} 
+                startIcon={<AddIcon />}
+                sx={{ flexShrink: 0, whiteSpace: 'nowrap', height: 40 }}
+              >
                 Descontar
               </Button>
             </Box>

@@ -99,6 +99,7 @@ export default function OcasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [confirmModal, setConfirmModal] = useState<{ message: string; action: () => void } | null>(null);
 
   // Filters State
   const [filterClient, setFilterClient] = useState<number | ''>('');
@@ -296,17 +297,21 @@ export default function OcasPage() {
   };
 
   // Billing states flows
-  const handlePresent = async (id: number) => {
-    if (!window.confirm('¿Confirmar que presentará este remito al supervisor/cliente?')) return;
-    try {
-      setError('');
-      setSuccess('');
-      await OcaService.present(id);
-      setSuccess('Remito marcado como Presentado');
-      loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al presentar el remito');
-    }
+  const handlePresent = (id: number) => {
+    setConfirmModal({
+      message: '¿Confirmar que presentará este remito al supervisor/cliente?',
+      action: async () => {
+        try {
+          setError('');
+          setSuccess('');
+          await OcaService.present(id);
+          setSuccess('Remito marcado como Presentado');
+          loadData();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Error al presentar el remito');
+        }
+      }
+    });
   };
 
   const handleOpenReject = (id: number) => {
@@ -350,17 +355,21 @@ export default function OcasPage() {
     }
   };
 
-  const handleCorrect = async (id: number) => {
-    if (!window.confirm('¿Generar un duplicado editable corregido para este remito rechazado?\nSe liberarán las horas del original y el nuevo quedará en estado Pendiente.')) return;
-    try {
-      setError('');
-      setSuccess('');
-      const corrected = await OcaService.correct(id);
-      setSuccess(`Nuevo remito duplicado editable generado: ${corrected.number}`);
-      loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al corregir el remito');
-    }
+  const handleCorrect = (id: number) => {
+    setConfirmModal({
+      message: '¿Generar un duplicado editable corregido para este remito rechazado?\nSe liberarán las horas del original y el nuevo quedará en estado Pendiente.',
+      action: async () => {
+        try {
+          setError('');
+          setSuccess('');
+          const corrected = await OcaService.correct(id);
+          setSuccess(`Nuevo remito duplicado editable generado: ${corrected.number}`);
+          loadData();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Error al corregir el remito');
+        }
+      }
+    });
   };
 
   // Line editing
@@ -398,17 +407,21 @@ export default function OcasPage() {
   };
 
   // Remove line from pending OCA (handles both manual and real entries)
-  const handleRemoveLine = async (ocaId: number, lineId: number) => {
-    if (!window.confirm('¿Seguro que desea remover este registro de horas del remito?')) return;
-    try {
-      setError('');
-      setSuccess('');
-      await OcaService.removeLine(ocaId, lineId);
-      setSuccess('Registro de horas removido del remito');
-      loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al remover registro');
-    }
+  const handleRemoveLine = (ocaId: number, lineId: number) => {
+    setConfirmModal({
+      message: '¿Seguro que desea remover este registro de horas del remito?',
+      action: async () => {
+        try {
+          setError('');
+          setSuccess('');
+          await OcaService.removeLine(ocaId, lineId);
+          setSuccess('Registro de horas removido del remito');
+          loadData();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Error al remover registro');
+        }
+      }
+    });
   };
 
   const handleOpenAddManualLine = async (oca: Oca) => {
@@ -1715,6 +1728,15 @@ export default function OcasPage() {
         {/* Feedback Alerts */}
         <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
         <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
+        <FeedbackModal
+          open={!!confirmModal}
+          onClose={() => setConfirmModal(null)}
+          message={confirmModal?.message || ''}
+          type="warning"
+          title="Confirmar acción"
+          onConfirm={confirmModal?.action}
+          confirmLabel="Confirmar"
+        />
       </Box>
     </Box>
   );
