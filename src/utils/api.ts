@@ -1174,7 +1174,7 @@ export class TimeEntryService {
     return data.data || data;
   }
 
-  static async void(id: number, reason: string): Promise<TimeEntry> {
+  static async void(id: number, reason?: string): Promise<TimeEntry> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/time-entries/${id}/void`, {
       method: 'PUT',
       body: JSON.stringify({ reason }),

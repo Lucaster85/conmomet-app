@@ -350,9 +350,9 @@ export default function TimeEntriesPage() {
   };
 
   const handleVoid = async () => {
-    if (!voidDialog.entry || !voidReason.trim()) { setError('Debe indicar el motivo'); return; }
+    if (!voidDialog.entry) return;
     try {
-      await TimeEntryService.void(voidDialog.entry.id, voidReason);
+      await TimeEntryService.void(voidDialog.entry.id, voidReason.trim() || undefined);
       setVoidDialog({ open: false, entry: null });
       setVoidReason('');
       setSuccess('Registro anulado');
@@ -935,7 +935,7 @@ export default function TimeEntriesPage() {
           <Typography sx={{ mb: 2 }}>
             Anular el registro de <strong>{voidDialog.entry?.employee?.name} {voidDialog.entry?.employee?.lastname}</strong> del {voidDialog.entry?.date}
           </Typography>
-          <TextField label="Motivo de anulación *" fullWidth multiline rows={2} value={voidReason} onChange={(e) => setVoidReason(e.target.value)} />
+          <TextField label="Motivo de anulación (Opcional)" fullWidth multiline rows={2} value={voidReason} onChange={(e) => setVoidReason(e.target.value)} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setVoidDialog({ open: false, entry: null })}>Cancelar</Button>
