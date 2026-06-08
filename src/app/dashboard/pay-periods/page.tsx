@@ -94,9 +94,12 @@ export default function PayPeriodsPage() {
     });
   };
 
+  const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
   const formatPeriod = (p: PayPeriod) => {
-    const typeLabel = p.type === 'first_half' ? '1ra Quincena' : '2da Quincena';
-    return `${typeLabel} - ${p.month}/${p.year}`;
+    const typeLabel = p.type === 'first_half' ? '1ra Q.' : '2da Q.';
+    const monthLabel = MONTHS[(p.month ?? 1) - 1] || 'Enero';
+    return `${typeLabel} - ${monthLabel} ${p.year}`;
   };
 
   const formatDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-AR');

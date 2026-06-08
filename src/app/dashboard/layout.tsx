@@ -26,10 +26,7 @@ import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   People as PeopleIcon,
-
-  Settings as SettingsIcon,
   Logout as LogoutIcon,
-  AccountCircle,
   Business,
   Article as ArticleIcon,
   Assignment as AssignmentIcon,
