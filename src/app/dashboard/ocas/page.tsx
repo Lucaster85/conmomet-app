@@ -65,6 +65,8 @@ import {
   Vehicle,
   VehicleService,
   OcaLine,
+  Project,
+  ProjectService,
 } from '../../../utils/api';
 import FeedbackModal from '../../../components/FeedbackModal';
 
@@ -147,6 +149,8 @@ export default function OcasPage() {
   const [manualOvertime100, setManualOvertime100] = useState<number>(0);
   const [manualTask, setManualTask] = useState('');
   const [manualNotes, setManualNotes] = useState('');
+  const [manualProjectId, setManualProjectId] = useState<number | ''>('');
+  const [supervisorProjects, setSupervisorProjects] = useState<Project[]>([]);
 
   useEffect(() => {
     if (manualCheckIn && manualCheckOut) {
@@ -407,7 +411,7 @@ export default function OcasPage() {
     }
   };
 
-  const handleOpenAddManualLine = (oca: Oca) => {
+  const handleOpenAddManualLine = async (oca: Oca) => {
     setManualLineOca(oca);
     setManualEmployeeId('');
     setManualVehicleId('');
@@ -419,6 +423,22 @@ export default function OcasPage() {
     setManualOvertime100(0);
     setManualTask('');
     setManualNotes('');
+    setManualProjectId('');
+    setSupervisorProjects([]);
+
+    if (oca.type === 'man_hours') {
+      try {
+        const allProjects = await ProjectService.getAll({ client_id: oca.client_id });
+        const filteredProjects = allProjects.filter(p =>
+          p.supervisors?.some(s => s.id === oca.supervisor_id)
+        );
+        setSupervisorProjects(filteredProjects);
+      } catch (err) {
+        console.error('Error al cargar proyectos del supervisor:', err);
+        setError('Error al cargar proyectos del supervisor');
+      }
+    }
+
     setOpenManualLineDialog(true);
   };
 
@@ -432,6 +452,7 @@ export default function OcasPage() {
       
       const payload: Partial<OcaLine> = {
         employee_id: manualEmployeeId ? Number(manualEmployeeId) : undefined,
+        project_id: manualLineOca.type === 'man_hours' && manualProjectId ? Number(manualProjectId) : undefined,
         vehicle_id: manualVehicleId ? Number(manualVehicleId) : undefined,
         date: manualDate,
         check_in: manualLineOca.type === 'man_hours' ? manualCheckIn : undefined,
@@ -886,17 +907,15 @@ export default function OcasPage() {
                           >
                             Agregar Horas Pendientes
                           </Button>
-                          {oca.source_oca_id && (
-                            <Button
-                              variant="outlined"
-                              color="secondary"
-                              startIcon={<AddIcon />}
-                              onClick={() => handleOpenAddManualLine(oca)}
-                              size="small"
-                            >
-                              Agregar Línea Manual
-                            </Button>
-                          )}
+                          <Button
+                            variant="outlined"
+                            color="secondary"
+                            startIcon={<AddIcon />}
+                            onClick={() => handleOpenAddManualLine(oca)}
+                            size="small"
+                          >
+                            Agregar Línea Manual
+                          </Button>
                         </Stack>
                       )}
                     </Box>
@@ -1552,20 +1571,37 @@ export default function OcasPage() {
             <DialogContent dividers>
               <Stack spacing={2}>
                 {manualLineOca?.type === 'man_hours' ? (
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Empleado *</InputLabel>
-                    <Select
-                      value={manualEmployeeId}
-                      label="Empleado *"
-                      required
-                      onChange={(e) => setManualEmployeeId(e.target.value as number | '')}
-                    >
-                      <MenuItem value="">— Seleccionar Empleado —</MenuItem>
-                      {employees.map(e => (
-                        <MenuItem key={e.id} value={e.id}>{e.lastname}, {e.name}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Empleado *</InputLabel>
+                      <Select
+                        value={manualEmployeeId}
+                        label="Empleado *"
+                        required
+                        onChange={(e) => setManualEmployeeId(e.target.value as number | '')}
+                      >
+                        <MenuItem value="">— Seleccionar Empleado —</MenuItem>
+                        {employees.map(e => (
+                          <MenuItem key={e.id} value={e.id}>{e.lastname}, {e.name}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Proyecto *</InputLabel>
+                      <Select
+                        value={manualProjectId}
+                        label="Proyecto *"
+                        required
+                        onChange={(e) => setManualProjectId(e.target.value as number | '')}
+                      >
+                        <MenuItem value="">— Seleccionar Proyecto —</MenuItem>
+                        {supervisorProjects.map(p => (
+                          <MenuItem key={p.id} value={p.id}>[{p.code}] {p.name}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </>
                 ) : (
                   <FormControl fullWidth size="small">
                     <InputLabel>Vehículo / Grúa *</InputLabel>
