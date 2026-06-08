@@ -141,16 +141,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    'Personal': false,
-    'Contabilidad': false,
-    'Gestión de Clientes': false,
-    'Gestión de Usuarios': false,
-    'Web': false,
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initialState: Record<string, boolean> = {};
+    menuGroups.forEach((g) => {
+      if (g.title) {
+        initialState[g.title] = false;
+      }
+    });
+    return initialState;
   });
 
   const handleGroupToggle = (title: string) => {
-    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+    setOpenGroups((prev) => {
+      const nextState: Record<string, boolean> = {};
+      menuGroups.forEach((g) => {
+        if (g.title) {
+          nextState[g.title] = g.title === title ? !prev[g.title] : false;
+        }
+      });
+      return nextState;
+    });
   };
 
   // Redirección si no tiene acceso al dashboard
