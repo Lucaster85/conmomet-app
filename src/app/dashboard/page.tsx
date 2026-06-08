@@ -26,6 +26,7 @@ import { EntityDocumentService, EntityDocument } from '../../utils/api';
 import FeedbackModal from '../../components/FeedbackModal';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import DateField from '../../components/DateField';
+import { ClockIcon } from '@mui/x-date-pickers';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -283,6 +284,9 @@ export default function DashboardPage() {
             Accesos Rápidos
           </Typography>
           <Stack spacing={2}>
+            <Button variant="outlined" startIcon={<ClockIcon />} onClick={() => router.push('/dashboard/time-entries')}>
+              Carga de Horas
+            </Button>
             <Button variant="outlined" startIcon={<AssignmentIcon />} onClick={() => router.push('/dashboard/employees')}>
               Gestión de Personal
             </Button>

@@ -378,12 +378,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           open={Boolean(anchorEl)}
           onClose={handleProfileMenuClose}
         >
-          <MenuItem onClick={handleProfileMenuClose}>
+          {/* <MenuItem onClick={handleProfileMenuClose}>
             <ListItemIcon>
               <AccountCircle fontSize="small" />
             </ListItemIcon>
             <ListItemText>Mi Perfil</ListItemText>
-          </MenuItem>
+          </MenuItem> */}
           {user?.employee_id && (
             <MenuItem onClick={() => { handleProfileMenuClose(); router.push('/portal'); }}>
               <ListItemIcon>
@@ -392,12 +392,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <ListItemText>Mi Portal</ListItemText>
             </MenuItem>
           )}
-          <MenuItem onClick={handleProfileMenuClose}>
+          {/* <MenuItem onClick={handleProfileMenuClose}>
             <ListItemIcon>
-              <SettingsIcon fontSize="small" />
+            <SettingsIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Configuración</ListItemText>
-          </MenuItem>
+            </MenuItem> */}
           <Divider />
           <MenuItem onClick={handleLogout}>
             <ListItemIcon>
