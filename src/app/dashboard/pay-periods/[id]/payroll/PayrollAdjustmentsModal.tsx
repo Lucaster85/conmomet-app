@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, CircularProgress, Select, InputLabel, FormControl, Divider
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, CircularProgress, Select, InputLabel, FormControl, Divider, useTheme, useMediaQuery
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import { PayrollAdjustment, PayrollAdjustmentService, CreatePayrollAdjustmentData, Loan, LoanService } from '../../../../../utils/api';
@@ -15,6 +15,9 @@ interface Props {
 }
 
 export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId, employeeId, employeeName }: Props) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [adjustments, setAdjustments] = useState<PayrollAdjustment[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(false);
@@ -126,14 +129,14 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth fullScreen={isMobile}>
       <DialogTitle>Ajustes Manuales - {employeeName}</DialogTitle>
       <DialogContent>
         {error && <Typography color="error" variant="body2" mb={2}>{error}</Typography>}
 
         <Typography variant="subtitle2" mb={1} mt={1}>Agregar Premio o Retención manual</Typography>
         <Box display="flex" gap={2} mb={3} alignItems="flex-start" flexWrap="wrap">
-          <FormControl sx={{ minWidth: 150, flexShrink: 0 }} size="small">
+          <FormControl sx={{ minWidth: 150, width: isMobile ? '100%' : 'auto', flexShrink: 0 }} size="small">
             <InputLabel>Tipo</InputLabel>
             <Select
               value={form.type || 'bonus'}
@@ -152,14 +155,14 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
             value={form.label || ''}
             onChange={(e) => setForm({ ...form, label: e.target.value })}
             placeholder="Ej: Premio puntual, Viáticos"
-            sx={{ flexGrow: 1, minWidth: 200 }}
+            sx={{ flexGrow: 1, minWidth: 200, width: isMobile ? '100%' : 'auto' }}
           />
 
           <CurrencyInput
             label="Monto"
             value={form.amount || 0}
             onChange={(val: number | null) => setForm({ ...form, amount: val ?? 0 })}
-            sx={{ width: 180, flexShrink: 0 }}
+            sx={{ width: isMobile ? '100%' : 180, flexShrink: 0 }}
             size="small"
           />
 
@@ -168,7 +171,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
             onClick={handleAdd} 
             disabled={loading} 
             startIcon={<AddIcon />}
-            sx={{ flexShrink: 0, whiteSpace: 'nowrap', height: 40 }}
+            sx={{ flexShrink: 0, whiteSpace: 'nowrap', height: 40, width: isMobile ? '100%' : 'auto' }}
           >
             Agregar
           </Button>
@@ -179,7 +182,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
             <Divider sx={{ my: 3 }} />
             <Typography variant="subtitle2" mb={1} color="secondary">Descontar Cuota de Préstamo Activo</Typography>
             <Box display="flex" gap={2} mb={3} alignItems="flex-start" flexWrap="wrap">
-              <FormControl sx={{ minWidth: 200, flexShrink: 0 }} size="small">
+              <FormControl sx={{ minWidth: 200, width: isMobile ? '100%' : 'auto', flexShrink: 0 }} size="small">
                 <InputLabel>Préstamo</InputLabel>
                 <Select
                   value={loanForm.loanId}
@@ -198,7 +201,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
                 label={isUSDLoan ? 'Monto a descontar (USD)' : 'Monto a descontar ($)'}
                 value={loanForm.amount}
                 onChange={(val: number | null) => setLoanForm({ ...loanForm, amount: val ?? 0 })}
-                sx={{ width: 200, flexShrink: 0 }}
+                sx={{ width: isMobile ? '100%' : 200, flexShrink: 0 }}
                 size="small"
               />
 
@@ -207,7 +210,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
                   label="Cotización USD/ARS"
                   value={loanForm.exchangeRate}
                   onChange={(val: number | null) => setLoanForm({ ...loanForm, exchangeRate: val ?? 0 })}
-                  sx={{ width: 180, flexShrink: 0 }}
+                  sx={{ width: isMobile ? '100%' : 180, flexShrink: 0 }}
                   size="small"
                 />
               )}
@@ -218,7 +221,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
                 onClick={handleAddLoanPayment} 
                 disabled={loading} 
                 startIcon={<AddIcon />}
-                sx={{ flexShrink: 0, whiteSpace: 'nowrap', height: 40 }}
+                sx={{ flexShrink: 0, whiteSpace: 'nowrap', height: 40, width: isMobile ? '100%' : 'auto' }}
               >
                 Descontar
               </Button>

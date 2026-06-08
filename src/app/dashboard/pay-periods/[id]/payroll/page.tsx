@@ -4,6 +4,7 @@ import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Stack, Chip, Tooltip, Badge,
+  Card, CardContent, Grid, useTheme, useMediaQuery,
 } from '@mui/material';
 import FeedbackModal from '../../../../../components/FeedbackModal';
 import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon, Payment as PaymentIcon, Visibility as ViewIcon, Print as PrintIcon } from '@mui/icons-material';
@@ -18,6 +19,9 @@ export default function PayrollPage() {
   const params = useParams();
   const router = useRouter();
   const payPeriodId = Number(params.id);
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [entries, setEntries] = useState<PayrollEntry[]>([]);
   const [period, setPeriod] = useState<PayPeriod | null>(null);
@@ -155,7 +159,148 @@ export default function PayrollPage() {
             <Button variant="contained" color="secondary" startIcon={<CalcIcon />} onClick={handleGenerate}>Generar Ahora</Button>
           )}
         </Paper>
+      ) : isMobile ? (
+        /* Mobile View (Cards) */
+        <Stack spacing={2} className="no-print">
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {entries.map((e: any) => (
+            <Card 
+              key={e.id} 
+              sx={{ 
+                borderRadius: 2, 
+                position: 'relative', 
+                borderLeft: '5px solid', 
+                borderLeftColor: e.status === 'paid' ? 'info.main' : e.status === 'confirmed' ? 'success.main' : 'warning.main',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+              }}
+            >
+              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                  <Box>
+                    <Typography variant="body1" fontWeight="bold">{(e.employee as Record<string, string>)?.lastname}, {(e.employee as Record<string, string>)?.name}</Typography>
+                    <Box display="flex" alignItems="center" gap={0.5} mt={0.5}>
+                      <Typography variant="caption" color="text.secondary">DNI: {(e.employee as Record<string, string>)?.dni}</Typography>
+                      <Chip 
+                        label={(e.employee as Record<string, string>)?.pay_type === 'monthly' ? 'Mensual' : 'Jornalizado'}
+                        size="small"
+                        variant="outlined"
+                        color={(e.employee as Record<string, string>)?.pay_type === 'monthly' ? 'primary' : 'default'}
+                        sx={{ fontSize: '0.65rem', height: 20 }}
+                      />
+                    </Box>
+                  </Box>
+                  <Chip
+                    label={e.status === 'draft' ? 'Borrador' : e.status === 'confirmed' ? 'Confirmado' : 'Pagado'}
+                    size="small"
+                    color={e.status === 'paid' ? 'info' : e.status === 'confirmed' ? 'success' : 'warning'}
+                  />
+                </Box>
+
+                <Box display="flex" gap={0.5} mb={2} flexWrap="wrap">
+                  {e.perfect_attendance ? (
+                    <Chip label="✓ Perfecto" size="small" color="success" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                  ) : (
+                    <>
+                      {Number(e.absent_unjustified) > 0 && <Chip label={`${e.absent_unjustified} injust.`} size="small" color="error" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                      {Number(e.absent_justified) > 0 && <Chip label={`${e.absent_justified} just.`} size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                      {Number(e.medical_leave_count) > 0 && <Chip label={`${e.medical_leave_count} lic. méd.`} size="small" color="info" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                      {Number(e.vacation_count) > 0 && <Chip label={`${e.vacation_count} vac.`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                    </>
+                  )}
+                  {Number(e.late_count) > 0 && (
+                    <Chip label={`${e.late_count} tardanzas`} size="small" color="warning" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                  )}
+                </Box>
+
+                <Divider sx={{ my: 1.5 }} />
+
+                <Grid container spacing={1.5}>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" display="block">Base</Typography>
+                    <Typography variant="body2" fontWeight="medium">
+                      {(e.employee as Record<string, string>)?.pay_type === 'monthly' ? 'Mensual' : `${e.total_regular_hours || 0}h`}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">{formatCurrency(e.regular_amount)}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" display="block">Hs Extras</Typography>
+                    <Typography variant="body2" fontWeight="medium">
+                      {Number(e.total_overtime_50_hours || 0) + Number(e.total_overtime_100_hours || 0)}h
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">{formatCurrency(Number(e.overtime_50_amount || 0) + Number(e.overtime_100_amount || 0))}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" display="block">Sueldo Bruto</Typography>
+                    <Typography variant="body2" fontWeight="bold">{formatCurrency(e.gross_amount)}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" display="block">Adelantos</Typography>
+                    <Typography variant="body2" color="error.main" fontWeight="medium">-{formatCurrency(e.advances_deducted)}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" display="block">Otros / Ret.</Typography>
+                    <Typography variant="body2" fontWeight="medium">
+                      {Number(e.extra_payments) > 0 && `+${formatCurrency(e.extra_payments)} `}
+                      {Number(e.deductions) > 0 && `-${formatCurrency(e.deductions)}`}
+                      {Number(e.extra_payments) === 0 && Number(e.deductions) === 0 && '—'}
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" display="block">Sueldo Neto</Typography>
+                    <Typography variant="body2" fontWeight="bold" color="success.dark">{formatCurrency(e.net_amount)}</Typography>
+                  </Grid>
+                </Grid>
+
+                <Divider sx={{ my: 1.5 }} />
+
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Box display="flex" alignItems="center" gap={0.5}>
+                    {e.has_active_loan && (
+                      <Chip label="💰 Préstamo Activo" size="small" color="error" variant="outlined" sx={{ fontSize: '0.65rem', height: 20 }} />
+                    )}
+                  </Box>
+                  <Box display="flex" gap={0.5}>
+                    <Tooltip title="Ver detalle">
+                      <IconButton size="small" onClick={() => { setDetailEntry(e); setOpenDetail(true); }}>
+                        <ViewIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    {e.status === 'draft' && (
+                      <>
+                        <Tooltip title="Ajustes">
+                          <IconButton 
+                            size="small" 
+                            color="primary" 
+                            onClick={() => {
+                              setEditingEntry(e as unknown as PayrollEntry);
+                              setOpenEdit(true);
+                            }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Confirmar">
+                          <IconButton size="small" color="success" onClick={() => handleConfirm(e.id as number)}>
+                            <ConfirmIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </>
+                    )}
+                    {e.status === 'confirmed' && (
+                      <Tooltip title="Pagar">
+                        <IconButton size="small" color="info" onClick={() => handlePayItem(e.id as number)}>
+                          <PaymentIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
       ) : (
+        /* Vista Desktop (Tabla) */
         <TableContainer component={Paper}>
           <Table size="small">
             <TableHead>
@@ -334,7 +479,7 @@ export default function PayrollPage() {
       )}
 
       {/* Detail Dialog */}
-      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth>
+      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         {detailEntry && (
           <>
             <DialogTitle className="no-print" sx={{ pb: 0 }}>
