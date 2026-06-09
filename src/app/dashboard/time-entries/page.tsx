@@ -585,8 +585,8 @@ export default function TimeEntriesPage() {
                           )}
                           {(Number(entry.overtime_50_hours) > 0 || Number(entry.overtime_100_hours) > 0) && (
                             <Typography variant="body2" color="warning.main">
-                              {Number(entry.overtime_50_hours) > 0 && `Extra 50%: ${Number(entry.overtime_50_hours).toFixed(1)}h `}
-                              {Number(entry.overtime_100_hours) > 0 && `Extra 100%: ${Number(entry.overtime_100_hours).toFixed(1)}h`}
+                              {Number(entry.overtime_50_hours) > 0 && `Recargo 50%: ${Number(entry.overtime_50_hours).toFixed(1)}h `}
+                              {Number(entry.overtime_100_hours) > 0 && `Recargo 100%: ${Number(entry.overtime_100_hours).toFixed(1)}h`}
                             </Typography>
                           )}
                           {entry.project && <Typography variant="body2">📁 Proyecto: {entry.project.code} - {entry.project.name}</Typography>}
@@ -735,12 +735,12 @@ export default function TimeEntriesPage() {
                     </TextField>
                   </Grid>
                   <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField label="Extras 50%" type="number" fullWidth value={massiveBlock.overtime_50_hours}
+                    <TextField label="Recargo 50%" type="number" fullWidth value={massiveBlock.overtime_50_hours}
                       onChange={(e) => setMassiveBlock({ ...massiveBlock, overtime_50_hours: Number(e.target.value) })}
                       inputProps={{ min: 0, step: 0.5 }} />
                   </Grid>
                   <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField label="Extras 100%" type="number" fullWidth value={massiveBlock.overtime_100_hours}
+                    <TextField label="Recargo 100%" type="number" fullWidth value={massiveBlock.overtime_100_hours}
                       onChange={(e) => setMassiveBlock({ ...massiveBlock, overtime_100_hours: Number(e.target.value) })}
                       inputProps={{ min: 0, step: 0.5 }} />
                   </Grid>
@@ -1001,7 +1001,7 @@ export default function TimeEntriesPage() {
                           </Grid>
                         )}
                         <Grid size={{ xs: 6, md: 2 }}>
-                          <TextField label="Ext 50%" type="number" fullWidth value={block.overtime_50_hours}
+                          <TextField label="Rec 50%" type="number" fullWidth value={block.overtime_50_hours}
                             onChange={(e) => {
                               const newBlocks = [...individualBlocks];
                               newBlocks[index].overtime_50_hours = Number(e.target.value);
@@ -1009,7 +1009,7 @@ export default function TimeEntriesPage() {
                             }} inputProps={{ min: 0, step: 0.5 }} size="small" />
                         </Grid>
                         <Grid size={{ xs: 6, md: 2 }}>
-                          <TextField label="Ext 100%" type="number" fullWidth value={block.overtime_100_hours}
+                          <TextField label="Rec 100%" type="number" fullWidth value={block.overtime_100_hours}
                             onChange={(e) => {
                               const newBlocks = [...individualBlocks];
                               newBlocks[index].overtime_100_hours = Number(e.target.value);

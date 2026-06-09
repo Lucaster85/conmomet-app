@@ -110,7 +110,7 @@ export default function PortalTimeEntries() {
                   <Typography variant="body2" fontWeight={500}>{entry.regular_hours}</Typography>
                 </Box>
                 <Box display="flex" justifyContent="space-between" mb={1}>
-                  <Typography variant="body2" color="text.secondary">Horas Extras:</Typography>
+                  <Typography variant="body2" color="text.secondary">Horas con Recargo:</Typography>
                   <Typography variant="body2" fontWeight={500}>
                     {Number(entry.overtime_50_hours || 0) + Number(entry.overtime_100_hours || 0)}
                   </Typography>
@@ -130,7 +130,7 @@ export default function PortalTimeEntries() {
                 <Typography variant="body2" fontWeight={600} color="primary.main">{totalNormal}</Typography>
               </Box>
               <Box display="flex" justifyContent="space-between">
-                <Typography variant="body2">Extras:</Typography>
+                <Typography variant="body2">Con Recargo:</Typography>
                 <Typography variant="body2" fontWeight={600} color="primary.main">{totalExtra}</Typography>
               </Box>
             </Card>
@@ -147,7 +147,7 @@ export default function PortalTimeEntries() {
                 <TableRow>
                   <TableCell>Fecha</TableCell>
                   <TableCell>Horas Normales</TableCell>
-                  <TableCell>Horas Extras</TableCell>
+                  <TableCell>Horas con Recargo</TableCell>
                   <TableCell>Observaciones</TableCell>
                 </TableRow>
               </TableHead>
