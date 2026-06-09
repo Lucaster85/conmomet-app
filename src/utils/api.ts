@@ -1360,6 +1360,19 @@ export class PayPeriodService {
 }
 
 // Payroll Service
+export interface PepSummaryDetail {
+  regular_hours: number;
+  overtime_50_hours: number;
+  overtime_100_hours: number;
+  total: number;
+}
+
+export interface PepSummary {
+  pep_oca?: PepSummaryDetail;
+  pep_regular?: PepSummaryDetail;
+  total_pep_hours?: number;
+}
+
 export interface PayrollEntry {
   id: number;
   pay_period_id: number;
@@ -1389,6 +1402,7 @@ export interface PayrollEntry {
     status: string;
   };
   lines?: PayrollLine[];
+  pep_summary?: PepSummary;
 }
 
 export class PayrollService {

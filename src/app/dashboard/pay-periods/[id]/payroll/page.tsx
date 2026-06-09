@@ -9,6 +9,7 @@ import {
 import FeedbackModal from '../../../../../components/FeedbackModal';
 import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon, Payment as PaymentIcon, Visibility as ViewIcon, Print as PrintIcon } from '@mui/icons-material';
 import Divider from '@mui/material/Divider';
+import { TableChart as ExcelIcon } from '@mui/icons-material';
 import { PayrollEntry, PayrollService, PayPeriod, PayrollLine, PayrollAdjustment } from '../../../../../utils/api';
 import { TokenManager } from '../../../../../utils/auth';
 import { useParams, useRouter } from 'next/navigation';
@@ -103,11 +104,153 @@ export default function PayrollPage() {
 
   const handlePrint = () => window.print();
 
+  const handleExportHours = async () => {
+    if (!period || entries.length === 0) return;
+
+    try {
+      const XLSX = await import('xlsx');
+      
+      const half = period.type === 'first_half' ? '1ª Quincena' : '2ª Quincena';
+      const monthName = MONTHS[(period.month ?? 1) - 1];
+      const periodLabel = `${half} de ${monthName} ${period.year}`;
+
+      // Calculate totals
+      let totalReg = 0;
+      let total50 = 0;
+      let total100 = 0;
+      let totalHs = 0;
+      let totalOcaReg = 0;
+      let totalOca50 = 0;
+      let totalOca100 = 0;
+      let totalOcaTotal = 0;
+      let totalRegReg = 0;
+      let totalReg50 = 0;
+      let totalReg100 = 0;
+      let totalRegTotal = 0;
+      let totalPepTotal = 0;
+
+      entries.forEach(e => {
+        const reg = Number(e.total_regular_hours || 0);
+        const ot50 = Number(e.total_overtime_50_hours || 0);
+        const ot100 = Number(e.total_overtime_100_hours || 0);
+        
+        const ocaReg = Number(e.pep_summary?.pep_oca?.regular_hours || 0);
+        const oca50 = Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0);
+        const oca100 = Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0);
+        const ocaTot = Number(e.pep_summary?.pep_oca?.total || 0);
+
+        const rrReg = Number(e.pep_summary?.pep_regular?.regular_hours || 0);
+        const rr50 = Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0);
+        const rr100 = Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0);
+        const rrTot = Number(e.pep_summary?.pep_regular?.total || 0);
+
+        const pepTot = Number(e.pep_summary?.total_pep_hours || 0);
+
+        totalReg += reg;
+        total50 += ot50;
+        total100 += ot100;
+        totalHs += (reg + ot50 + ot100);
+        totalOcaReg += ocaReg;
+        totalOca50 += oca50;
+        totalOca100 += oca100;
+        totalOcaTotal += ocaTot;
+        totalRegReg += rrReg;
+        totalReg50 += rr50;
+        totalReg100 += rr100;
+        totalRegTotal += rrTot;
+        totalPepTotal += pepTot;
+      });
+
+      const formattedStartDate = period.start_date ? period.start_date.split('-').reverse().join('/') : '';
+      const formattedEndDate = period.end_date ? period.end_date.split('-').reverse().join('/') : '';
+
+      const rows = [
+        [`Reporte de Horas — ${periodLabel}`],
+        [`Período: ${formattedStartDate} al ${formattedEndDate}`],
+        [''],
+        [
+          'Empleado', 'DNI', 'Tipo',
+          'Hs Regulares', 'Hs Extra 50%', 'Hs Extra 100%', 'Total Hs',
+          'PEP OCA Reg', 'PEP OCA 50%', 'PEP OCA 100%', 'PEP OCA Total',
+          'PEP Reg Reg', 'PEP Reg 50%', 'PEP Reg 100%', 'PEP Reg Total',
+          'PEP Total'
+        ],
+        ...entries.map(e => [
+          `${e.employee?.lastname}, ${e.employee?.name}`,
+          e.employee?.dni || '',
+          e.employee?.pay_type === 'monthly' ? 'Mensualizado' : 'Jornalizado',
+          Number(e.total_regular_hours || 0),
+          Number(e.total_overtime_50_hours || 0),
+          Number(e.total_overtime_100_hours || 0),
+          Number(e.total_regular_hours || 0) + Number(e.total_overtime_50_hours || 0) + Number(e.total_overtime_100_hours || 0),
+          // PEP OCA
+          Number(e.pep_summary?.pep_oca?.regular_hours || 0),
+          Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0),
+          Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0),
+          Number(e.pep_summary?.pep_oca?.total || 0),
+          // PEP Regular
+          Number(e.pep_summary?.pep_regular?.regular_hours || 0),
+          Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0),
+          Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0),
+          Number(e.pep_summary?.pep_regular?.total || 0),
+          // PEP Total
+          Number(e.pep_summary?.total_pep_hours || 0),
+        ]),
+        [
+          'TOTALES',
+          '',
+          '',
+          totalReg,
+          total50,
+          total100,
+          totalHs,
+          totalOcaReg,
+          totalOca50,
+          totalOca100,
+          totalOcaTotal,
+          totalRegReg,
+          totalReg50,
+          totalReg100,
+          totalRegTotal,
+          totalPepTotal
+        ]
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [
+        { wch: 30 }, // Empleado
+        { wch: 12 }, // DNI
+        { wch: 15 }, // Tipo
+        { wch: 13 }, // Hs Regulares
+        { wch: 13 }, // Hs Extra 50%
+        { wch: 13 }, // Hs Extra 100%
+        { wch: 10 }, // Total Hs
+        { wch: 13 }, // PEP OCA Reg
+        { wch: 13 }, // PEP OCA 50%
+        { wch: 13 }, // PEP OCA 100%
+        { wch: 13 }, // PEP OCA Total
+        { wch: 13 }, // PEP Reg Reg
+        { wch: 13 }, // PEP Reg 50%
+        { wch: 13 }, // PEP Reg 100%
+        { wch: 13 }, // PEP Reg Total
+        { wch: 10 }  // PEP Total
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Horas');
+      
+      const qNum = period.type === 'first_half' ? '1' : '2';
+      XLSX.writeFile(wb, `Horas_Q${qNum}_${monthName}_${period.year}.xlsx`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al exportar a Excel');
+    }
+  };
+
   if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
+    <Box className={!openDetail && !openEdit && !openRateChanges ? "print-area" : ""}>
+      <Box className="no-print" display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box display="flex" alignItems="center" gap={1}>
           <IconButton onClick={() => router.push('/dashboard/pay-periods')}><BackIcon /></IconButton>
           <Typography variant="h4" fontWeight="bold">Liquidación</Typography>
@@ -142,7 +285,18 @@ export default function PayrollPage() {
                 color={period.status === 'paid' ? 'success' : period.status === 'closed' ? 'warning' : 'info'}
                 size="small"
               />
-              <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrint} sx={{ display: entries.length > 0 ? 'inline-flex' : 'none' }}>Imprimir</Button>
+              <Box className="no-print" display="flex" gap={1}>
+                <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrint} sx={{ display: entries.length > 0 ? 'inline-flex' : 'none' }}>Imprimir</Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<ExcelIcon sx={{ color: '#217346' }} />}
+                  onClick={handleExportHours}
+                  sx={{ display: entries.length > 0 ? 'inline-flex' : 'none' }}
+                >
+                  Exportar Horas
+                </Button>
+              </Box>
             </Box>
           </Box>
         </Paper>
@@ -314,7 +468,7 @@ export default function PayrollPage() {
                 <TableCell align="right"><strong>Otros / Ret.</strong></TableCell>
                 <TableCell align="right"><strong>Sueldo Neto</strong></TableCell>
                 <TableCell align="center"><strong>Estado</strong></TableCell>
-                <TableCell align="center"><strong>Acciones</strong></TableCell>
+                <TableCell align="center" className="no-print"><strong>Acciones</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -401,7 +555,7 @@ export default function PayrollPage() {
                       color={e.status === 'paid' ? 'info' : e.status === 'confirmed' ? 'success' : 'warning'}
                     />
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell align="center" className="no-print">
                     <Box display="flex" justifyContent="center">
                       <Tooltip title="Ver detalle">
                         <IconButton size="small" onClick={() => { setDetailEntry(e); setOpenDetail(true); }}>
