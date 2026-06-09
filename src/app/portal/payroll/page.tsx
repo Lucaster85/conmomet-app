@@ -11,7 +11,7 @@ import {
   Chip,
   Divider,
 } from '@mui/material';
-import { SelfService, PayrollEntry } from '@/utils/api';
+import { SelfService, PayrollEntry, PayrollAdjustment } from '@/utils/api';
 import dayjs from 'dayjs';
 
 export default function PortalPayroll() {
@@ -93,7 +93,9 @@ export default function PortalPayroll() {
                     <Grid size={{ xs: 6 }}>
                       <Typography variant="caption" color="text.secondary">Otras Deducciones</Typography>
                       <Typography variant="body2" color="error.main" fontWeight={500}>
-                        $ {Number(payroll.deductions || 0).toLocaleString()}
+                        $ {Number((payroll.adjustments || [])
+                          .filter((a: PayrollAdjustment) => a.type === 'deduction')
+                          .reduce((sum: number, a: PayrollAdjustment) => sum + Number(a.amount), 0)).toLocaleString()}
                       </Typography>
                     </Grid>
                   </Grid>

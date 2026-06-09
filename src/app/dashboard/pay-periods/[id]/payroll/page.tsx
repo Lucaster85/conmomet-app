@@ -392,12 +392,25 @@ export default function PayrollPage() {
                     <Typography variant="body2" color="error.main" fontWeight="medium">-{formatCurrency(e.advances_deducted)}</Typography>
                   </Grid>
                   <Grid size={{ xs: 6 }}>
-                    <Typography variant="caption" color="text.secondary" display="block">Otros / Ret.</Typography>
-                    <Typography variant="body2" fontWeight="medium">
-                      {Number(e.extra_payments) > 0 && `+${formatCurrency(e.extra_payments)} `}
-                      {Number(e.deductions) > 0 && `-${formatCurrency(e.deductions)}`}
-                      {Number(e.extra_payments) === 0 && Number(e.deductions) === 0 && '—'}
-                    </Typography>
+                    {(() => {
+                      const extraPayments = (e.adjustments || [])
+                        .filter((a: PayrollAdjustment) => a.type === 'bonus')
+                        .reduce((sum: number, a: PayrollAdjustment) => sum + Number(a.amount), 0);
+                      const deductions = (e.adjustments || [])
+                        .filter((a: PayrollAdjustment) => a.type === 'deduction')
+                        .reduce((sum: number, a: PayrollAdjustment) => sum + Number(a.amount), 0);
+
+                      return (
+                        <>
+                          <Typography variant="caption" color="text.secondary" display="block">Otros / Ret.</Typography>
+                          <Typography variant="body2" fontWeight="medium">
+                            {extraPayments > 0 && `+${formatCurrency(extraPayments)} `}
+                            {deductions > 0 && `-${formatCurrency(deductions)}`}
+                            {extraPayments === 0 && deductions === 0 && '—'}
+                          </Typography>
+                        </>
+                      );
+                    })()}
                   </Grid>
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary" display="block">Sueldo Neto</Typography>
@@ -460,12 +473,13 @@ export default function PayrollPage() {
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.50' }}>
                 <TableCell><strong>Empleado</strong></TableCell>
-                <TableCell align="center"><strong>Presentismo</strong></TableCell>
+                <TableCell align="center" sx={{ maxWidth: '120px' }}><strong>Presentismo</strong></TableCell>
                 <TableCell align="right"><strong>Base</strong></TableCell>
                 <TableCell align="right"><strong>Hs Extras</strong></TableCell>
                 <TableCell align="right"><strong>Sueldo Bruto</strong></TableCell>
                 <TableCell align="right"><strong>Adelantos</strong></TableCell>
-                <TableCell align="right"><strong>Otros / Ret.</strong></TableCell>
+                <TableCell align="right"><strong>Otros Haberes</strong></TableCell>
+                <TableCell align="right"><strong>Retenciones</strong></TableCell>
                 <TableCell align="right"><strong>Sueldo Neto</strong></TableCell>
                 <TableCell align="center"><strong>Estado</strong></TableCell>
                 <TableCell align="center" className="no-print"><strong>Acciones</strong></TableCell>
@@ -488,7 +502,7 @@ export default function PayrollPage() {
                       />
                     </Box>
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell align="center" sx={{ maxWidth: '120px' }}>
                     {e.perfect_attendance ? (
                       <Chip label="✓ Perfecto" size="small" color="success" variant="outlined" />
                     ) : (
@@ -540,11 +554,33 @@ export default function PayrollPage() {
                   <TableCell align="right">
                     <Typography variant="body2" color="error">-{formatCurrency(e.advances_deducted as number)}</Typography>
                   </TableCell>
-                  <TableCell align="right">
-                    {Number(e.extra_payments) > 0 && <Typography variant="caption" color="success.main" display="block">+{formatCurrency(e.extra_payments as number)}</Typography>}
-                    {Number(e.deductions) > 0 && <Typography variant="caption" color="error.main" display="block">-{formatCurrency(e.deductions as number)}</Typography>}
-                    {Number(e.extra_payments) === 0 && Number(e.deductions) === 0 && '—'}
-                  </TableCell>
+                  {(() => {
+                    const extraPayments = (e.adjustments || [])
+                      .filter((a: PayrollAdjustment) => a.type === 'bonus')
+                      .reduce((sum: number, a: PayrollAdjustment) => sum + Number(a.amount), 0);
+                    const deductions = (e.adjustments || [])
+                      .filter((a: PayrollAdjustment) => a.type === 'deduction')
+                      .reduce((sum: number, a: PayrollAdjustment) => sum + Number(a.amount), 0);
+                    
+                    return (
+                      <>
+                        <TableCell align="right">
+                          {extraPayments > 0 ? (
+                            <Typography variant="body2" color="success.main" fontWeight="medium">
+                              +{formatCurrency(extraPayments)}
+                            </Typography>
+                          ) : '—'}
+                        </TableCell>
+                        <TableCell align="right">
+                          {deductions > 0 ? (
+                            <Typography variant="body2" color="error.main" fontWeight="medium">
+                              -{formatCurrency(deductions)}
+                            </Typography>
+                          ) : '—'}
+                        </TableCell>
+                      </>
+                    );
+                  })()}
                   <TableCell align="right" sx={{ bgcolor: 'success.50' }}>
                     <Typography fontWeight="bold" color="success.dark">{formatCurrency(e.net_amount as number)}</Typography>
                   </TableCell>
