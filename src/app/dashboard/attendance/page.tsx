@@ -4,12 +4,13 @@ import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Stack,
-  Chip, Link
+  Chip, Link, Grid, useTheme, useMediaQuery
 } from '@mui/material';
+import dayjs from 'dayjs';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
   Add as AddIcon, Edit as EditIcon,
-  Refresh as RefreshIcon, FilterList as FilterIcon,
+  Refresh as RefreshIcon,
   AttachFile as AttachFileIcon, OpenInNew as OpenIcon
 } from '@mui/icons-material';
 import DateField from '../../../components/DateField';
@@ -23,6 +24,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: 'error' | 'warning' 
 };
 
 export default function AttendancePage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,8 +37,79 @@ export default function AttendancePage() {
 
   // Filters
   const [filterEmployee, setFilterEmployee] = useState<number | ''>('');
-  const [filterDateFrom, setFilterDateFrom] = useState('');
-  const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterPreset, setFilterPreset] = useState('this_fortnight');
+  const [filterDateFrom, setFilterDateFrom] = useState(() => {
+    const today = dayjs();
+    return today.date() <= 15 
+      ? today.startOf('month').format('YYYY-MM-DD')
+      : today.date(16).format('YYYY-MM-DD');
+  });
+  const [filterDateTo, setFilterDateTo] = useState(() => {
+    const today = dayjs();
+    return today.date() <= 15 
+      ? today.date(15).format('YYYY-MM-DD')
+      : today.endOf('month').format('YYYY-MM-DD');
+  });
+
+  const getPresetDates = (preset: string) => {
+    const today = dayjs();
+    let from = '';
+    let to = '';
+
+    switch (preset) {
+      case 'this_fortnight': {
+        if (today.date() <= 15) {
+          from = today.startOf('month').format('YYYY-MM-DD');
+          to = today.date(15).format('YYYY-MM-DD');
+        } else {
+          from = today.date(16).format('YYYY-MM-DD');
+          to = today.endOf('month').format('YYYY-MM-DD');
+        }
+        break;
+      }
+      case 'last_fortnight': {
+        const lastFortnight = today.date() <= 15 
+          ? today.subtract(1, 'month')
+          : today;
+        
+        if (today.date() <= 15) {
+          from = lastFortnight.date(16).format('YYYY-MM-DD');
+          to = lastFortnight.endOf('month').format('YYYY-MM-DD');
+        } else {
+          from = today.startOf('month').format('YYYY-MM-DD');
+          to = today.date(15).format('YYYY-MM-DD');
+        }
+        break;
+      }
+      case 'this_month': {
+        from = today.startOf('month').format('YYYY-MM-DD');
+        to = today.endOf('month').format('YYYY-MM-DD');
+        break;
+      }
+      case 'last_month': {
+        const lastMonth = today.subtract(1, 'month');
+        from = lastMonth.startOf('month').format('YYYY-MM-DD');
+        to = lastMonth.endOf('month').format('YYYY-MM-DD');
+        break;
+      }
+      case 'all':
+      default: {
+        from = '';
+        to = '';
+        break;
+      }
+    }
+    return { from, to };
+  };
+
+  const handlePresetChange = (preset: string) => {
+    setFilterPreset(preset);
+    if (preset !== 'custom') {
+      const { from, to } = getPresetDates(preset);
+      setFilterDateFrom(from);
+      setFilterDateTo(to);
+    }
+  };
 
   // Form
   const [form, setForm] = useState({ employee_id: '', date: '', status: 'absent', notes: '' });
@@ -141,17 +216,70 @@ export default function AttendancePage() {
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
+      {/* Filters */}
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
-          <FilterIcon color="action" />
-          <TextField label="Empleado" select size="small" value={filterEmployee} onChange={(e) => setFilterEmployee(e.target.value ? Number(e.target.value) : '')}
-            sx={{ minWidth: 200 }} SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-            <option value="">Todos</option>
-            {employees.map(e => <option key={e.id} value={e.id}>{e.lastname}, {e.name}</option>)}
-          </TextField>
-          <DateField label="Desde" size="small" value={filterDateFrom} onChange={(val) => setFilterDateFrom(val)} InputLabelProps={{ shrink: true }} />
-          <DateField label="Hasta" size="small" value={filterDateTo} onChange={(val) => setFilterDateTo(val)} InputLabelProps={{ shrink: true }} />
-        </Box>
+        <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 12, md: filterPreset === 'custom' ? 3 : 6 }}>
+            <TextField
+              label="Empleado"
+              select
+              size="small"
+              fullWidth
+              value={filterEmployee}
+              onChange={(e) => setFilterEmployee(e.target.value ? Number(e.target.value) : '')}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="">Todos los empleados</option>
+              {employees.map(e => <option key={e.id} value={e.id}>{e.lastname}, {e.name}</option>)}
+            </TextField>
+          </Grid>
+          
+          <Grid size={{ xs: 12, md: filterPreset === 'custom' ? 3 : 6 }}>
+            <TextField
+              label="Período"
+              select
+              size="small"
+              fullWidth
+              value={filterPreset}
+              onChange={(e) => handlePresetChange(e.target.value)}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="this_fortnight">Esta Quincena</option>
+              <option value="last_fortnight">Quincena Anterior</option>
+              <option value="this_month">Este Mes</option>
+              <option value="last_month">Mes Anterior</option>
+              <option value="all">Ver Todos (Sin filtro de fecha)</option>
+              <option value="custom">Rango Personalizado</option>
+            </TextField>
+          </Grid>
+
+          {filterPreset === 'custom' && (
+            <>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <DateField
+                  label="Desde"
+                  size="small"
+                  fullWidth
+                  value={filterDateFrom}
+                  onChange={(val) => setFilterDateFrom(val)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <DateField
+                  label="Hasta"
+                  size="small"
+                  fullWidth
+                  value={filterDateTo}
+                  onChange={(val) => setFilterDateTo(val)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+            </>
+          )}
+        </Grid>
       </Paper>
 
       {/* Mobile view */}
@@ -226,7 +354,7 @@ export default function AttendancePage() {
         </TableContainer>
       </Box>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>{editingAttendance ? 'Editar Registro' : 'Registrar Ausencia'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
