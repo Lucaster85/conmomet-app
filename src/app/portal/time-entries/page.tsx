@@ -107,7 +107,9 @@ export default function PortalTimeEntries() {
                 </Box>
                 <Box display="flex" justifyContent="space-between" mb={0.5}>
                   <Typography variant="body2" color="text.secondary">Horas Normales:</Typography>
-                  <Typography variant="body2" fontWeight={500}>{entry.regular_hours}</Typography>
+                  <Typography variant="body2" fontWeight={500}>
+                    {(Number(entry.regular_hours) - Number(entry.overtime_50_hours || 0) - Number(entry.overtime_100_hours || 0)).toFixed(1)}
+                  </Typography>
                 </Box>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography variant="body2" color="text.secondary">Horas con Recargo:</Typography>
@@ -175,7 +177,9 @@ export default function PortalTimeEntries() {
                     {entries.map((entry) => (
                       <TableRow key={entry.id} hover>
                         <TableCell sx={{ fontWeight: 500 }}>{dayjs(entry.date).format('DD/MM/YYYY')}</TableCell>
-                        <TableCell>{entry.regular_hours}</TableCell>
+                        <TableCell>
+                          {(Number(entry.regular_hours) - Number(entry.overtime_50_hours || 0) - Number(entry.overtime_100_hours || 0)).toFixed(1)}
+                        </TableCell>
                         <TableCell>{Number(entry.overtime_50_hours || 0) + Number(entry.overtime_100_hours || 0)}</TableCell>
                         <TableCell>{entry.notes || '-'}</TableCell>
                       </TableRow>

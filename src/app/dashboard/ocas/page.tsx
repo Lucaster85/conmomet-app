@@ -611,7 +611,7 @@ export default function OcasPage() {
                               <TableCell sx={{ color: 'black' }}>{line.employee?.lastname}, {line.employee?.name}</TableCell>
                               <TableCell sx={{ color: 'black' }}>{new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
                               <TableCell sx={{ color: 'black' }}>{line.check_in?.substring(0, 5) || '—'} a {line.check_out?.substring(0, 5) || '—'}</TableCell>
-                              <TableCell align="center" sx={{ color: 'black' }}>{Number(line.regular_hours).toFixed(1)}</TableCell>
+                              <TableCell align="center" sx={{ color: 'black' }}>{(Number(line.regular_hours) - Number(line.overtime_50_hours || 0) - Number(line.overtime_100_hours || 0)).toFixed(1)}</TableCell>
                               <TableCell align="center" sx={{ color: 'black' }}>{Number(line.overtime_50_hours).toFixed(1)}</TableCell>
                               <TableCell align="center" sx={{ color: 'black' }}>{Number(line.overtime_100_hours).toFixed(1)}</TableCell>
                               <TableCell sx={{ color: 'black' }}>{modifiedLines[line.id] !== undefined ? modifiedLines[line.id] : (line.task || '—')}</TableCell>
@@ -643,7 +643,7 @@ export default function OcasPage() {
                         <Typography variant="body1" sx={{ color: 'black' }}><strong>Cliente:</strong> {printOca.client?.razonSocial}</Typography>
                         <Typography variant="body1" sx={{ color: 'black' }}><strong>Dirección Planta / Obra:</strong> {printOca.project?.plant?.address || '—'}</Typography>
                         <Typography variant="body1" sx={{ color: 'black' }}><strong>Detalle Servicio (Proyecto):</strong> {printOca.project?.name || '—'}</Typography>
-                        <Typography variant="body1" sx={{ color: 'black' }}><strong>Cantidad de Horas Totales:</strong> {printOca.lines?.reduce((acc, l) => acc + Number(l.regular_hours) + Number(l.overtime_50_hours) + Number(l.overtime_100_hours), 0).toFixed(1)} hs</Typography>
+                        <Typography variant="body1" sx={{ color: 'black' }}><strong>Cantidad de Horas Totales:</strong> {printOca.lines?.reduce((acc, l) => acc + Number(l.regular_hours), 0).toFixed(1)} hs</Typography>
                         <Typography variant="body1" sx={{ color: 'black' }}><strong>Fecha Emisión:</strong> {new Date(printOca.date).toLocaleDateString('es-AR')}</Typography>
                       </Stack>
                     </Card>
@@ -663,7 +663,7 @@ export default function OcasPage() {
                         </TableHead>
                         <TableBody>
                           {printOca.lines?.map((line) => {
-                            const totalLineHours = Number(line.regular_hours) + Number(line.overtime_50_hours) + Number(line.overtime_100_hours);
+                            const totalLineHours = Number(line.regular_hours);
                             return (
                               <TableRow key={line.id} sx={{ borderBottom: '1px solid grey' }}>
                                 <TableCell sx={{ color: 'black' }}>{new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
@@ -995,14 +995,14 @@ export default function OcasPage() {
                           </TableHead>
                           <TableBody>
                             {oca.lines?.map((line) => {
-                              const totalCraneHours = Number(line.regular_hours) + Number(line.overtime_50_hours) + Number(line.overtime_100_hours);
+                              const totalCraneHours = Number(line.regular_hours);
                               return (
                                 <TableRow key={line.id} hover>
                                   {oca.type === 'man_hours' ? (
                                     <>
                                       <TableCell>{line.employee?.lastname}, {line.employee?.name}</TableCell>
                                       <TableCell>{new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
-                                      <TableCell align="center">{Number(line.regular_hours).toFixed(1)} h</TableCell>
+                                      <TableCell align="center">{(Number(line.regular_hours) - Number(line.overtime_50_hours || 0) - Number(line.overtime_100_hours || 0)).toFixed(1)} h</TableCell>
                                       <TableCell align="center">{Number(line.overtime_50_hours).toFixed(1)} h</TableCell>
                                       <TableCell align="center">{Number(line.overtime_100_hours).toFixed(1)} h</TableCell>
                                     </>
@@ -1055,7 +1055,7 @@ export default function OcasPage() {
                     ) : (
                       <Box display="flex" flexDirection="column" gap={1.5} sx={{ mb: 2 }}>
                         {oca.lines?.map((line) => {
-                          const totalCraneHours = Number(line.regular_hours) + Number(line.overtime_50_hours) + Number(line.overtime_100_hours);
+                          const totalCraneHours = Number(line.regular_hours);
                           return (
                             <Paper key={line.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                               <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
@@ -1101,7 +1101,7 @@ export default function OcasPage() {
                                 <Grid container spacing={1} sx={{ mb: 1.5 }}>
                                   <Grid size={{ xs: 4 }}>
                                     <Typography variant="caption" color="text.secondary" display="block">Simples</Typography>
-                                    <Typography variant="body2" fontWeight="medium">{Number(line.regular_hours).toFixed(1)}h</Typography>
+                                    <Typography variant="body2" fontWeight="medium">{(Number(line.regular_hours) - Number(line.overtime_50_hours || 0) - Number(line.overtime_100_hours || 0)).toFixed(1)}h</Typography>
                                   </Grid>
                                   <Grid size={{ xs: 4 }}>
                                     <Typography variant="caption" color="text.secondary" display="block">Extra 50%</Typography>
@@ -1303,10 +1303,7 @@ export default function OcasPage() {
                                     </>
                                   )}
                                   <TableCell align="center">
-                                    {typeKey === 'man_hours'
-                                      ? `${Number(entry.regular_hours).toFixed(1)}h`
-                                      : `${(Number(entry.regular_hours) + Number(entry.overtime_50_hours) + Number(entry.overtime_100_hours)).toFixed(1)}h`
-                                    }
+                                    {`${Number(entry.regular_hours).toFixed(1)}h`}
                                   </TableCell>
                                   <TableCell>{entry.concept?.name}</TableCell>
                                 </TableRow>
@@ -1319,9 +1316,7 @@ export default function OcasPage() {
                       <Box display="flex" flexDirection="column" gap={1.5} sx={{ maxHeight: 300, overflow: 'auto', p: 0.5 }}>
                         {visibleEntries.map((entry) => {
                           const isSelected = selectedEntryIds.includes(entry.id);
-                          const displayHours = typeKey === 'man_hours'
-                            ? `${Number(entry.regular_hours).toFixed(1)}h`
-                            : `${(Number(entry.regular_hours) + Number(entry.overtime_50_hours) + Number(entry.overtime_100_hours)).toFixed(1)}h`;
+                          const displayHours = `${Number(entry.regular_hours).toFixed(1)}h`;
                           
                           return (
                             <Paper
@@ -1460,10 +1455,7 @@ export default function OcasPage() {
                                 <TableCell>{entry.vehicle?.brand} ({entry.vehicle?.plate})</TableCell>
                               )}
                               <TableCell align="center">
-                                {typeKey === 'man_hours'
-                                  ? `${Number(entry.regular_hours).toFixed(1)}h`
-                                  : `${(Number(entry.regular_hours) + Number(entry.overtime_50_hours) + Number(entry.overtime_100_hours)).toFixed(1)}h`
-                                }
+                                {`${Number(entry.regular_hours).toFixed(1)}h`}
                               </TableCell>
                             </TableRow>
                           );
@@ -1475,9 +1467,7 @@ export default function OcasPage() {
                   <Box display="flex" flexDirection="column" gap={1.5} sx={{ maxHeight: 250, overflow: 'auto', p: 0.5 }}>
                     {pendingEntries.map((entry) => {
                       const isSelected = selectedEntryIds.includes(entry.id);
-                      const displayHours = typeKey === 'man_hours'
-                        ? `${Number(entry.regular_hours).toFixed(1)}h`
-                        : `${(Number(entry.regular_hours) + Number(entry.overtime_50_hours) + Number(entry.overtime_100_hours)).toFixed(1)}h`;
+                      const displayHours = `${Number(entry.regular_hours).toFixed(1)}h`;
                       
                       return (
                         <Paper

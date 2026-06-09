@@ -130,16 +130,26 @@ export default function PayrollPage() {
       let totalPepTotal = 0;
 
       entries.forEach(e => {
-        const reg = Number(e.total_regular_hours || 0);
+        const isMonthly = e.employee?.pay_type === 'monthly';
+        const rawReg = Number(e.total_regular_hours || 0);
         const ot50 = Number(e.total_overtime_50_hours || 0);
         const ot100 = Number(e.total_overtime_100_hours || 0);
+
+        // Net simple/regular hours
+        const reg = isMonthly ? rawReg : rawReg - ot50 - ot100;
         
-        const ocaReg = Number(e.pep_summary?.pep_oca?.regular_hours || 0);
+        // PEP OCA net simple/regular hours
+        const ocaReg = isMonthly
+          ? Number(e.pep_summary?.pep_oca?.regular_hours || 0)
+          : Number(e.pep_summary?.pep_oca?.regular_hours || 0) - Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0) - Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0);
         const oca50 = Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0);
         const oca100 = Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0);
         const ocaTot = Number(e.pep_summary?.pep_oca?.total || 0);
 
-        const rrReg = Number(e.pep_summary?.pep_regular?.regular_hours || 0);
+        // PEP Regular net simple/regular hours
+        const rrReg = isMonthly
+          ? Number(e.pep_summary?.pep_regular?.regular_hours || 0)
+          : Number(e.pep_summary?.pep_regular?.regular_hours || 0) - Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0) - Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0);
         const rr50 = Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0);
         const rr100 = Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0);
         const rrTot = Number(e.pep_summary?.pep_regular?.total || 0);
@@ -149,7 +159,8 @@ export default function PayrollPage() {
         totalReg += reg;
         total50 += ot50;
         total100 += ot100;
-        totalHs += (reg + ot50 + ot100);
+        const totalEmployeeHours = isMonthly ? ot50 + ot100 : rawReg;
+        totalHs += totalEmployeeHours;
         totalOcaReg += ocaReg;
         totalOca50 += oca50;
         totalOca100 += oca100;
@@ -175,27 +186,44 @@ export default function PayrollPage() {
           'PEP Reg Reg', 'PEP Reg 50%', 'PEP Reg 100%', 'PEP Reg Total',
           'PEP Total'
         ],
-        ...entries.map(e => [
-          `${e.employee?.lastname}, ${e.employee?.name}`,
-          e.employee?.dni || '',
-          e.employee?.pay_type === 'monthly' ? 'Mensualizado' : 'Jornalizado',
-          Number(e.total_regular_hours || 0),
-          Number(e.total_overtime_50_hours || 0),
-          Number(e.total_overtime_100_hours || 0),
-          Number(e.total_regular_hours || 0) + Number(e.total_overtime_50_hours || 0) + Number(e.total_overtime_100_hours || 0),
-          // PEP OCA
-          Number(e.pep_summary?.pep_oca?.regular_hours || 0),
-          Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0),
-          Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0),
-          Number(e.pep_summary?.pep_oca?.total || 0),
-          // PEP Regular
-          Number(e.pep_summary?.pep_regular?.regular_hours || 0),
-          Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0),
-          Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0),
-          Number(e.pep_summary?.pep_regular?.total || 0),
-          // PEP Total
-          Number(e.pep_summary?.total_pep_hours || 0),
-        ]),
+        ...entries.map(e => {
+          const isMonthly = e.employee?.pay_type === 'monthly';
+          const rawReg = Number(e.total_regular_hours || 0);
+          const ot50 = Number(e.total_overtime_50_hours || 0);
+          const ot100 = Number(e.total_overtime_100_hours || 0);
+          const rowReg = isMonthly ? rawReg : rawReg - ot50 - ot100;
+          const rowTotal = isMonthly ? ot50 + ot100 : rawReg;
+
+          const ocaReg = isMonthly
+            ? Number(e.pep_summary?.pep_oca?.regular_hours || 0)
+            : Number(e.pep_summary?.pep_oca?.regular_hours || 0) - Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0) - Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0);
+          
+          const rrReg = isMonthly
+            ? Number(e.pep_summary?.pep_regular?.regular_hours || 0)
+            : Number(e.pep_summary?.pep_regular?.regular_hours || 0) - Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0) - Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0);
+
+          return [
+            `${e.employee?.lastname}, ${e.employee?.name}`,
+            e.employee?.dni || '',
+            isMonthly ? 'Mensualizado' : 'Jornalizado',
+            rowReg,
+            ot50,
+            ot100,
+            rowTotal,
+            // PEP OCA
+            ocaReg,
+            Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0),
+            Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0),
+            Number(e.pep_summary?.pep_oca?.total || 0),
+            // PEP Regular
+            rrReg,
+            Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0),
+            Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0),
+            Number(e.pep_summary?.pep_regular?.total || 0),
+            // PEP Total
+            Number(e.pep_summary?.total_pep_hours || 0),
+          ];
+        }),
         [
           'TOTALES',
           '',
@@ -372,7 +400,9 @@ export default function PayrollPage() {
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary" display="block">Base</Typography>
                     <Typography variant="body2" fontWeight="medium">
-                      {(e.employee as Record<string, string>)?.pay_type === 'monthly' ? 'Mensual' : `${e.total_regular_hours || 0}h`}
+                      {(e.employee as Record<string, string>)?.pay_type === 'monthly'
+                        ? 'Mensual'
+                        : `${parseFloat((Number(e.total_regular_hours || 0) - Number(e.total_overtime_50_hours || 0) - Number(e.total_overtime_100_hours || 0)).toFixed(2))}h`}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" display="block">{formatCurrency(e.regular_amount)}</Typography>
                   </Grid>
@@ -393,9 +423,13 @@ export default function PayrollPage() {
                   </Grid>
                   <Grid size={{ xs: 6 }}>
                     {(() => {
-                      const extraPayments = (e.adjustments || [])
+                      const extraPaymentsFromAdjustments = (e.adjustments || [])
                         .filter((a: PayrollAdjustment) => a.type === 'bonus')
                         .reduce((sum: number, a: PayrollAdjustment) => sum + Number(a.amount), 0);
+                      const extraPaymentsFromLines = (e.lines || [])
+                        .filter((l: PayrollLine) => !['regular', 'fixed', 'extras_50', 'extras_100'].includes(l.line_type))
+                        .reduce((sum: number, l: PayrollLine) => sum + Number(l.subtotal), 0);
+                      const extraPayments = extraPaymentsFromAdjustments + extraPaymentsFromLines;
                       const deductions = (e.adjustments || [])
                         .filter((a: PayrollAdjustment) => a.type === 'deduction')
                         .reduce((sum: number, a: PayrollAdjustment) => sum + Number(a.amount), 0);
@@ -541,7 +575,9 @@ export default function PayrollPage() {
                       </>
                     ) : (
                       <>
-                        <Typography variant="body2">{e.total_regular_hours as number}h</Typography>
+                        <Typography variant="body2">
+                          {parseFloat((Number(e.total_regular_hours || 0) - Number(e.total_overtime_50_hours || 0) - Number(e.total_overtime_100_hours || 0)).toFixed(2))}h
+                        </Typography>
                         <Typography variant="caption" color="text.secondary">{formatCurrency(e.regular_amount as number)}</Typography>
                       </>
                     )}
@@ -555,9 +591,13 @@ export default function PayrollPage() {
                     <Typography variant="body2" color="error">-{formatCurrency(e.advances_deducted as number)}</Typography>
                   </TableCell>
                   {(() => {
-                    const extraPayments = (e.adjustments || [])
+                    const extraPaymentsFromAdjustments = (e.adjustments || [])
                       .filter((a: PayrollAdjustment) => a.type === 'bonus')
                       .reduce((sum: number, a: PayrollAdjustment) => sum + Number(a.amount), 0);
+                    const extraPaymentsFromLines = (e.lines || [])
+                      .filter((l: PayrollLine) => !['regular', 'fixed', 'extras_50', 'extras_100'].includes(l.line_type))
+                      .reduce((sum: number, l: PayrollLine) => sum + Number(l.subtotal), 0);
+                    const extraPayments = extraPaymentsFromAdjustments + extraPaymentsFromLines;
                     const deductions = (e.adjustments || [])
                       .filter((a: PayrollAdjustment) => a.type === 'deduction')
                       .reduce((sum: number, a: PayrollAdjustment) => sum + Number(a.amount), 0);
@@ -747,29 +787,42 @@ export default function PayrollPage() {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            <TableRow>
-                              <TableCell sx={{ py: 0.25, px: 1 }}><Typography variant="body2" fontWeight="medium">PEP (Total)</Typography></TableCell>
-                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
-                                <Typography variant="body2">
-                                  {((detailEntry.pep_summary.pep_oca?.regular_hours || 0) + (detailEntry.pep_summary.pep_regular?.regular_hours || 0)).toFixed(1)}h
-                                </Typography>
-                              </TableCell>
-                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
-                                <Typography variant="body2">
-                                  {((detailEntry.pep_summary.pep_oca?.overtime_50_hours || 0) + (detailEntry.pep_summary.pep_regular?.overtime_50_hours || 0)).toFixed(1)}h
-                                </Typography>
-                              </TableCell>
-                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
-                                <Typography variant="body2">
-                                  {((detailEntry.pep_summary.pep_oca?.overtime_100_hours || 0) + (detailEntry.pep_summary.pep_regular?.overtime_100_hours || 0)).toFixed(1)}h
-                                </Typography>
-                              </TableCell>
-                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
-                                <Typography variant="body2" fontWeight="bold">
-                                  {(detailEntry.pep_summary.total_pep_hours || 0).toFixed(1)}h
-                                </Typography>
-                              </TableCell>
-                            </TableRow>
+                            {(() => {
+                              const isMonthly = detailEntry.employee?.pay_type === 'monthly';
+                              
+                              const ocaReg = Number(detailEntry.pep_summary.pep_oca?.regular_hours || 0);
+                              const oca50 = Number(detailEntry.pep_summary.pep_oca?.overtime_50_hours || 0);
+                              const oca100 = Number(detailEntry.pep_summary.pep_oca?.overtime_100_hours || 0);
+                              const pepOcaSimples = isMonthly ? ocaReg : ocaReg - oca50 - oca100;
+
+                              const regReg = Number(detailEntry.pep_summary.pep_regular?.regular_hours || 0);
+                              const reg50 = Number(detailEntry.pep_summary.pep_regular?.overtime_50_hours || 0);
+                              const reg100 = Number(detailEntry.pep_summary.pep_regular?.overtime_100_hours || 0);
+                              const pepRegSimples = isMonthly ? regReg : regReg - reg50 - reg100;
+
+                              const totalSimples = pepOcaSimples + pepRegSimples;
+                              const total50 = oca50 + reg50;
+                              const total100 = oca100 + reg100;
+                              const totalPep = isMonthly ? total50 + total100 : ocaReg + regReg;
+
+                              return (
+                                <TableRow>
+                                  <TableCell sx={{ py: 0.25, px: 1 }}><Typography variant="body2" fontWeight="medium">PEP (Total)</Typography></TableCell>
+                                  <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
+                                    <Typography variant="body2">{totalSimples.toFixed(1)}h</Typography>
+                                  </TableCell>
+                                  <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
+                                    <Typography variant="body2">{total50.toFixed(1)}h</Typography>
+                                  </TableCell>
+                                  <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
+                                    <Typography variant="body2">{total100.toFixed(1)}h</Typography>
+                                  </TableCell>
+                                  <TableCell align="right" sx={{ py: 0.25, px: 1 }}>
+                                    <Typography variant="body2" fontWeight="bold">{totalPep.toFixed(1)}h</Typography>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })()}
                           </TableBody>
                         </Table>
                       </TableContainer>
@@ -787,13 +840,20 @@ export default function PayrollPage() {
                 <Typography variant="overline" color="text.secondary" fontWeight={600}>Desglose de haberes</Typography>
                 <Stack spacing={0.5} mt={1} mb={1}>
                   {(() => {
+                    const isMonthly = detailEntry.employee?.pay_type === 'monthly';
                     const totalHours = detailEntry.lines
                       ? (detailEntry.lines as PayrollLine[])
-                          .filter((l: PayrollLine) => ['regular', 'extras_50', 'extras_100', 'holiday'].includes(l.line_type))
+                          .filter((l: PayrollLine) => {
+                            if (isMonthly) {
+                              return ['extras_50', 'extras_100'].includes(l.line_type);
+                            } else {
+                              return ['regular', 'holiday'].includes(l.line_type);
+                            }
+                          })
                           .reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity), 0)
-                      : (Number(detailEntry.total_regular_hours || 0) +
-                         Number(detailEntry.total_overtime_50_hours || 0) +
-                         Number(detailEntry.total_overtime_100_hours || 0));
+                      : (isMonthly
+                          ? Number(detailEntry.total_overtime_50_hours || 0) + Number(detailEntry.total_overtime_100_hours || 0)
+                          : Number(detailEntry.total_regular_hours || 0));
 
                     if (detailEntry.lines && detailEntry.lines.length > 0) {
                       return (
@@ -848,11 +908,7 @@ export default function PayrollPage() {
                                   <Typography variant="body2" fontWeight={600}>Sueldo bruto</Typography>
                                 </TableCell>
                                 <TableCell align="right">
-                                  {detailEntry.employee?.pay_type !== 'monthly' && totalHours > 0 && (
-                                    <Typography variant="body2" fontWeight={600}>
-                                      {totalHours.toFixed(1)}h
-                                    </Typography>
-                                  )}
+                                  <Typography variant="body2" fontWeight={600}>—</Typography>
                                 </TableCell>
                                 <TableCell align="right">
                                   <Typography variant="body2" fontWeight={600}>—</Typography>
@@ -871,7 +927,11 @@ export default function PayrollPage() {
                       return (
                         <>
                           <Box display="flex" justifyContent="space-between">
-                            <Typography variant="body2">{detailEntry.employee?.pay_type === 'monthly' ? 'Sueldo mensual' : `Horas regulares (${detailEntry.total_regular_hours}h)`}</Typography>
+                            <Typography variant="body2">
+                              {detailEntry.employee?.pay_type === 'monthly'
+                                ? 'Sueldo mensual'
+                                : `Horas regulares (${parseFloat((Number(detailEntry.total_regular_hours || 0) - Number(detailEntry.total_overtime_50_hours || 0) - Number(detailEntry.total_overtime_100_hours || 0)).toFixed(2))}h)`}
+                            </Typography>
                             <Typography variant="body2">{formatCurrency(detailEntry.regular_amount)}</Typography>
                           </Box>
                           {Number(detailEntry.overtime_50_amount) > 0 && (
