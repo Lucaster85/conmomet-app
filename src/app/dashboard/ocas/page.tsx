@@ -53,6 +53,7 @@ import {
   HelpOutline as HelpIcon,
   ChevronRight as ChevronRightIcon,
   Close as CloseIcon,
+  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import {
   Oca,
@@ -857,6 +858,30 @@ export default function OcasPage() {
                             color={STATUS_COLORS[oca.status]}
                             size="small"
                           />
+                          {oca.sourceOca && (
+                            <Chip
+                              label={`Corrige a ${oca.sourceOca.number}`}
+                              color="warning"
+                              variant="outlined"
+                              size="small"
+                              sx={{ borderStyle: 'dashed', fontWeight: 'bold' }}
+                            />
+                          )}
+                          {oca.status === 'aprobado' && oca.approved_img_url && (
+                            <Tooltip title="Ver Comprobante Firmado">
+                              <IconButton
+                                size="small"
+                                color="success"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(oca.approved_img_url, '_blank');
+                                }}
+                                sx={{ p: 0.5 }}
+                              >
+                                <VisibilityIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
                           <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ display: { xs: 'block', md: 'none' }, ml: 'auto' }}>
                             {oca.lines?.length || 0} líns.
                           </Typography>
@@ -931,6 +956,17 @@ export default function OcasPage() {
                             Corregir y Duplicar
                           </Button>
                         )}
+                        {oca.status === 'aprobado' && oca.approved_img_url && (
+                          <Button
+                            variant="contained"
+                            color="success"
+                            startIcon={<VisibilityIcon />}
+                            onClick={() => window.open(oca.approved_img_url, '_blank')}
+                            size="small"
+                          >
+                            Ver Comprobante
+                          </Button>
+                        )}
                         <Button
                           variant="outlined"
                           startIcon={<PrintIcon />}
@@ -974,7 +1010,7 @@ export default function OcasPage() {
                     {oca.status === 'aprobado' && (
                       <Alert severity="success" sx={{ mb: 3 }}>
                         <strong>Aprobado y Firmado</strong>
-                        {oca.approved_img_url && (
+                        {oca.approved_img_url ? (
                           <Box mt={1}>
                             <Button
                               variant="outlined"
@@ -985,13 +1021,46 @@ export default function OcasPage() {
                               Ver Comprobante Digital
                             </Button>
                           </Box>
+                        ) : (
+                          <Box mt={1.5} display="flex" alignItems="center" gap={1.5}>
+                            <Typography variant="body2" color="text.secondary">
+                              No se registró copia del remito firmado.
+                            </Typography>
+                            <Button
+                              variant="outlined"
+                              component="label"
+                              color="primary"
+                              size="small"
+                              startIcon={<UploadIcon />}
+                            >
+                              Cargar Remito Firmado
+                              <input
+                                type="file"
+                                hidden
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    try {
+                                      setError('');
+                                      setSuccess('');
+                                      await OcaService.approve(oca.id, file);
+                                      setSuccess('Remito firmado cargado correctamente');
+                                      loadData();
+                                    } catch (err) {
+                                      setError(err instanceof Error ? err.message : 'Error al cargar el remito');
+                                    }
+                                  }
+                                }}
+                              />
+                            </Button>
+                          </Box>
                         )}
                       </Alert>
                     )}
 
-                    {oca.source_oca_id && (
+                    {(oca.sourceOca || oca.source_oca_id) && (
                       <Alert severity="info" icon={<ChevronRightIcon />} sx={{ mb: 3 }}>
-                        Este remito fue corregido a partir del remito rechazado original.
+                        Este remito es una corrección del remito rechazado original {oca.sourceOca ? <strong>{oca.sourceOca.number}</strong> : ''}.
                       </Alert>
                     )}
 

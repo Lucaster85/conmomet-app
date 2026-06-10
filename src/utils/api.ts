@@ -2478,6 +2478,7 @@ export interface Oca {
   project_id?: number;
   status: 'pendiente' | 'presentado' | 'aprobado' | 'rechazado' | 'anulado';
   source_oca_id?: number;
+  sourceOca?: { id: number; number: string };
   approved_img_url?: string;
   approved_at?: string;
   approved_by?: number;

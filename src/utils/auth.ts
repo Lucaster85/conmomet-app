@@ -99,12 +99,15 @@ export class TokenManager {
     };
   }
 
-  // Hacer request autenticado
   static async authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
     const headers = {
       ...this.getAuthHeaders(),
       ...options.headers,
-    };
+    } as Record<string, string>;
+
+    if (headers['Content-Type'] === 'SKIP_MULTIPART_HEADER') {
+      delete headers['Content-Type'];
+    }
 
     const response = await fetch(url, {
       ...options,
