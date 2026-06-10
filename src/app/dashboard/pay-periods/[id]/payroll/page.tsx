@@ -841,6 +841,70 @@ export default function PayrollPage() {
                 <Stack spacing={0.5} mt={1} mb={1}>
                   {(() => {
                     if (detailEntry.lines && detailEntry.lines.length > 0) {
+                      const isMonthly = detailEntry.employee?.pay_type === 'monthly';
+                      
+                      let displayLines = detailEntry.lines;
+                      if (!isMonthly) {
+                        const extrasMap: Record<string, { ot50: number; ot100: number }> = {};
+                        detailEntry.lines.forEach((l: PayrollLine) => {
+                          if (l.line_type === 'extras_50' || l.line_type === 'extras_100') {
+                            const cid = String(l.concept_id || 'null');
+                            if (!extrasMap[cid]) {
+                              extrasMap[cid] = { ot50: 0, ot100: 0 };
+                            }
+                            if (l.line_type === 'extras_50') {
+                              extrasMap[cid].ot50 += Number(l.quantity || 0);
+                            } else {
+                              extrasMap[cid].ot100 += Number(l.quantity || 0);
+                            }
+                          }
+                        });
+
+                        displayLines = detailEntry.lines.map((l: PayrollLine) => {
+                          const cid = String(l.concept_id || 'null');
+                          if (l.line_type === 'regular') {
+                            const extras = extrasMap[cid] || { ot50: 0, ot100: 0 };
+                            const totalOt = extras.ot50 + extras.ot100;
+                            if (totalOt > 0) {
+                              const newQty = Math.max(0, Number(l.quantity || 0) - totalOt);
+                              const rate = Number(l.rate || 0);
+                              return {
+                                ...l,
+                                quantity: newQty,
+                                subtotal: newQty * rate
+                              };
+                            }
+                          } else if (l.line_type === 'extras_50') {
+                            const baseRate = Number(l.rate || 0) * 2;
+                            const fullRate = baseRate * 1.5;
+                            const qty = Number(l.quantity || 0);
+                            return {
+                              ...l,
+                              label: l.label.replace('Recargo 50%', 'Horas Extra 50%'),
+                              rate: fullRate,
+                              subtotal: qty * fullRate
+                            };
+                          } else if (l.line_type === 'extras_100') {
+                            const baseRate = Number(l.rate || 0);
+                            const fullRate = baseRate * 2.0;
+                            const qty = Number(l.quantity || 0);
+                            return {
+                              ...l,
+                              label: l.label.replace('Recargo 100%', 'Horas Extra 100%'),
+                              rate: fullRate,
+                              subtotal: qty * fullRate
+                            };
+                          }
+                          return l;
+                        });
+                      }
+
+                      const totalHours = isMonthly
+                        ? 0
+                        : displayLines
+                            .filter((l: PayrollLine) => ['regular', 'extras_50', 'extras_100', 'holiday', 'medical_leave', 'justified'].includes(l.line_type))
+                            .reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0);
+
                       return (
                         <TableContainer component={Paper} variant="outlined" sx={{ border: 'none', bgcolor: 'transparent' }}>
                           <Table size="small" sx={{ mb: 1, '& th, & td': { borderBottom: 'none', py: 0.5, px: 0 } }}>
@@ -853,7 +917,7 @@ export default function PayrollPage() {
                               </TableRow>
                             </TableHead>
                             <TableBody>
-                              {detailEntry.lines.map((line: { id: number, label: string, quantity: number, rate: number, subtotal: number }) => (
+                              {displayLines.map((line: { id: number, label: string, quantity: number, rate: number, subtotal: number }) => (
                                 <TableRow key={line.id}>
                                   <TableCell sx={{ maxWidth: { xs: 150, sm: 400, md: 500 } }}>
                                     <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
@@ -893,7 +957,9 @@ export default function PayrollPage() {
                                   <Typography variant="body2" fontWeight={600}>Sueldo bruto</Typography>
                                 </TableCell>
                                 <TableCell align="right">
-                                  <Typography variant="body2" fontWeight={600}>—</Typography>
+                                  <Typography variant="body2" fontWeight={600}>
+                                    {isMonthly ? '—' : Number(totalHours).toFixed(1)}
+                                  </Typography>
                                 </TableCell>
                                 <TableCell align="right">
                                   <Typography variant="body2" fontWeight={600}>—</Typography>
