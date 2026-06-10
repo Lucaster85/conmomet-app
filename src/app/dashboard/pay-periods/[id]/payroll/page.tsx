@@ -114,64 +114,6 @@ export default function PayrollPage() {
       const monthName = MONTHS[(period.month ?? 1) - 1];
       const periodLabel = `${half} de ${monthName} ${period.year}`;
 
-      // Calculate totals
-      let totalReg = 0;
-      let total50 = 0;
-      let total100 = 0;
-      let totalHs = 0;
-      let totalOcaReg = 0;
-      let totalOca50 = 0;
-      let totalOca100 = 0;
-      let totalOcaTotal = 0;
-      let totalRegReg = 0;
-      let totalReg50 = 0;
-      let totalReg100 = 0;
-      let totalRegTotal = 0;
-      let totalPepTotal = 0;
-
-      entries.forEach(e => {
-        const isMonthly = e.employee?.pay_type === 'monthly';
-        const rawReg = Number(e.total_regular_hours || 0);
-        const ot50 = Number(e.total_overtime_50_hours || 0);
-        const ot100 = Number(e.total_overtime_100_hours || 0);
-
-        // Net simple/regular hours
-        const reg = isMonthly ? rawReg : rawReg - ot50 - ot100;
-        
-        // PEP OCA net simple/regular hours
-        const ocaReg = isMonthly
-          ? Number(e.pep_summary?.pep_oca?.regular_hours || 0)
-          : Number(e.pep_summary?.pep_oca?.regular_hours || 0) - Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0) - Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0);
-        const oca50 = Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0);
-        const oca100 = Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0);
-        const ocaTot = Number(e.pep_summary?.pep_oca?.total || 0);
-
-        // PEP Regular net simple/regular hours
-        const rrReg = isMonthly
-          ? Number(e.pep_summary?.pep_regular?.regular_hours || 0)
-          : Number(e.pep_summary?.pep_regular?.regular_hours || 0) - Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0) - Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0);
-        const rr50 = Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0);
-        const rr100 = Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0);
-        const rrTot = Number(e.pep_summary?.pep_regular?.total || 0);
-
-        const pepTot = Number(e.pep_summary?.total_pep_hours || 0);
-
-        totalReg += reg;
-        total50 += ot50;
-        total100 += ot100;
-        const totalEmployeeHours = isMonthly ? ot50 + ot100 : rawReg;
-        totalHs += totalEmployeeHours;
-        totalOcaReg += ocaReg;
-        totalOca50 += oca50;
-        totalOca100 += oca100;
-        totalOcaTotal += ocaTot;
-        totalRegReg += rrReg;
-        totalReg50 += rr50;
-        totalReg100 += rr100;
-        totalRegTotal += rrTot;
-        totalPepTotal += pepTot;
-      });
-
       const formattedStartDate = period.start_date ? period.start_date.split('-').reverse().join('/') : '';
       const formattedEndDate = period.end_date ? period.end_date.split('-').reverse().join('/') : '';
 
@@ -180,88 +122,91 @@ export default function PayrollPage() {
         [`Período: ${formattedStartDate} al ${formattedEndDate}`],
         [''],
         [
-          'Empleado', 'DNI', 'Tipo',
-          'Hs Regulares', 'Hs Extra 50%', 'Hs Extra 100%', 'Total Hs',
-          'PEP OCA Reg', 'PEP OCA 50%', 'PEP OCA 100%', 'PEP OCA Total',
-          'PEP Reg Reg', 'PEP Reg 50%', 'PEP Reg 100%', 'PEP Reg Total',
-          'PEP Total'
+          'Empleado',
+          'Hs Regulares', 'Hs Extra 50%', 'Hs Extra 100%', 'Hs Especial', 'Hs Licencia/enfermedad', 'Hs Vacaciones',
+          'Hs PEP', 'Hs PEP 50%', 'Hs PEP 100%'
         ],
         ...entries.map(e => {
           const isMonthly = e.employee?.pay_type === 'monthly';
           const rawReg = Number(e.total_regular_hours || 0);
           const ot50 = Number(e.total_overtime_50_hours || 0);
           const ot100 = Number(e.total_overtime_100_hours || 0);
-          const rowReg = isMonthly ? rawReg : rawReg - ot50 - ot100;
-          const rowTotal = isMonthly ? ot50 + ot100 : rawReg;
 
+          // Net simple/regular hours
+          const baseRegRaw = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'regular' && l.concept_id === null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
+          const baseOt50 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_50' && l.concept_id === null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
+          const baseOt100 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_100' && l.concept_id === null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
+
+          const rowReg = isMonthly ? rawReg : Math.max(0, baseRegRaw - baseOt50 - baseOt100);
+          const rowOt50 = ot50;
+          const rowOt100 = ot100;
+
+          // Hs Especial: regular hours under a differentiated rate concept (concept_id !== null)
+          const diffRegRaw = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'regular' && l.concept_id !== null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
+          const diffOt50 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_50' && l.concept_id !== null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
+          const diffOt100 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_100' && l.concept_id !== null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
+          const rowEspecial = isMonthly ? 0 : Math.max(0, diffRegRaw - diffOt50 - diffOt100);
+
+          // Hs Licencia/enfermedad: medical_leave + justified absences + holidays (both worked and non-worked)
+          const rowLicencia = e.lines
+            ? e.lines
+                .filter((l: PayrollLine) => l.line_type === 'medical_leave' || l.line_type === 'justified' || l.line_type === 'holiday')
+                .reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0)
+            : 0;
+
+          // Hs Vacaciones: vacation (quantity in days, so we multiply by 8 to get hours)
+          const rowVacaciones = e.lines
+            ? e.lines
+                .filter((l: PayrollLine) => l.line_type === 'vacation')
+                .reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0) * 8, 0)
+            : 0;
+
+          // PEP OCA net simple/regular hours
           const ocaReg = isMonthly
             ? Number(e.pep_summary?.pep_oca?.regular_hours || 0)
             : Number(e.pep_summary?.pep_oca?.regular_hours || 0) - Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0) - Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0);
-          
+          const oca50 = Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0);
+          const oca100 = Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0);
+
+          // PEP Regular net simple/regular hours
           const rrReg = isMonthly
             ? Number(e.pep_summary?.pep_regular?.regular_hours || 0)
             : Number(e.pep_summary?.pep_regular?.regular_hours || 0) - Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0) - Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0);
+          const rr50 = Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0);
+          const rr100 = Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0);
+
+          // Combined PEP Columns
+          const pepReg = ocaReg + rrReg;
+          const pep50 = oca50 + rr50;
+          const pep100 = oca100 + rr100;
 
           return [
             `${e.employee?.lastname}, ${e.employee?.name}`,
-            e.employee?.dni || '',
-            isMonthly ? 'Mensualizado' : 'Jornalizado',
             rowReg,
-            ot50,
-            ot100,
-            rowTotal,
-            // PEP OCA
-            ocaReg,
-            Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0),
-            Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0),
-            Number(e.pep_summary?.pep_oca?.total || 0),
-            // PEP Regular
-            rrReg,
-            Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0),
-            Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0),
-            Number(e.pep_summary?.pep_regular?.total || 0),
-            // PEP Total
-            Number(e.pep_summary?.total_pep_hours || 0),
+            rowOt50,
+            rowOt100,
+            rowEspecial,
+            rowLicencia,
+            rowVacaciones,
+            pepReg,
+            pep50,
+            pep100
           ];
-        }),
-        [
-          'TOTALES',
-          '',
-          '',
-          totalReg,
-          total50,
-          total100,
-          totalHs,
-          totalOcaReg,
-          totalOca50,
-          totalOca100,
-          totalOcaTotal,
-          totalRegReg,
-          totalReg50,
-          totalReg100,
-          totalRegTotal,
-          totalPepTotal
-        ]
+        })
       ];
 
       const ws = XLSX.utils.aoa_to_sheet(rows);
       ws['!cols'] = [
         { wch: 30 }, // Empleado
-        { wch: 12 }, // DNI
-        { wch: 15 }, // Tipo
         { wch: 13 }, // Hs Regulares
         { wch: 13 }, // Hs Extra 50%
         { wch: 13 }, // Hs Extra 100%
-        { wch: 10 }, // Total Hs
-        { wch: 13 }, // PEP OCA Reg
-        { wch: 13 }, // PEP OCA 50%
-        { wch: 13 }, // PEP OCA 100%
-        { wch: 13 }, // PEP OCA Total
-        { wch: 13 }, // PEP Reg Reg
-        { wch: 13 }, // PEP Reg 50%
-        { wch: 13 }, // PEP Reg 100%
-        { wch: 13 }, // PEP Reg Total
-        { wch: 10 }  // PEP Total
+        { wch: 13 }, // Hs Especial
+        { wch: 22 }, // Hs Licencia/enfermedad
+        { wch: 15 }, // Hs Vacaciones
+        { wch: 10 }, // Hs PEP
+        { wch: 12 }, // Hs PEP 50%
+        { wch: 12 }  // Hs PEP 100%
       ];
 
       const wb = XLSX.utils.book_new();
