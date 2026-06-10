@@ -840,21 +840,6 @@ export default function PayrollPage() {
                 <Typography variant="overline" color="text.secondary" fontWeight={600}>Desglose de haberes</Typography>
                 <Stack spacing={0.5} mt={1} mb={1}>
                   {(() => {
-                    const isMonthly = detailEntry.employee?.pay_type === 'monthly';
-                    const totalHours = detailEntry.lines
-                      ? (detailEntry.lines as PayrollLine[])
-                          .filter((l: PayrollLine) => {
-                            if (isMonthly) {
-                              return ['extras_50', 'extras_100'].includes(l.line_type);
-                            } else {
-                              return ['regular', 'holiday'].includes(l.line_type);
-                            }
-                          })
-                          .reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity), 0)
-                      : (isMonthly
-                          ? Number(detailEntry.total_overtime_50_hours || 0) + Number(detailEntry.total_overtime_100_hours || 0)
-                          : Number(detailEntry.total_regular_hours || 0));
-
                     if (detailEntry.lines && detailEntry.lines.length > 0) {
                       return (
                         <TableContainer component={Paper} variant="outlined" sx={{ border: 'none', bgcolor: 'transparent' }}>
