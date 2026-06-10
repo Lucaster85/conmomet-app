@@ -110,6 +110,7 @@ export default function OcasPage() {
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [createClientId, setCreateClientId] = useState<number | ''>('');
   const [filterSupervisorId, setFilterSupervisorId] = useState<number | ''>('');
+  const [filterProjectId, setFilterProjectId] = useState<number | ''>('');
   const [pendingEntries, setPendingEntries] = useState<TimeEntry[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
   const [selectedEntryIds, setSelectedEntryIds] = useState<number[]>([]);
@@ -199,6 +200,8 @@ export default function OcasPage() {
     setCreateClientId(clientId);
     setSelectedEntryIds([]);
     setFilterSupervisorId('');
+    setFilterSupervisorId('');
+    setFilterProjectId('');
     if (!clientId) {
       setPendingEntries([]);
       return;
@@ -224,8 +227,14 @@ export default function OcasPage() {
   };
 
   const visibleEntries = pendingEntries.filter(entry => {
-    if (typeKey === 'man_hours' && filterSupervisorId !== '') {
-      return entry.supervisor_id === filterSupervisorId;
+    if (typeKey === 'man_hours') {
+      if (filterSupervisorId !== '') {
+        return entry.supervisor_id === filterSupervisorId;
+      }
+    } else if (typeKey === 'crane_hours') {
+      const matchesSupervisor = filterSupervisorId === '' || entry.supervisor_id === filterSupervisorId;
+      const matchesProject = filterProjectId === '' || entry.project_id === filterProjectId;
+      return matchesSupervisor && matchesProject;
     }
     return true;
   });
@@ -491,6 +500,8 @@ export default function OcasPage() {
   const handleOpenAddEntries = async (oca: Oca) => {
     setAddEntriesOca(oca);
     setSelectedEntryIds([]);
+    setFilterSupervisorId('');
+    setFilterProjectId('');
     try {
       setLoadingPending(true);
       setError('');
@@ -749,6 +760,8 @@ export default function OcasPage() {
               setCreateClientId('');
               setPendingEntries([]);
               setSelectedEntryIds([]);
+              setFilterSupervisorId('');
+              setFilterProjectId('');
               setOpenCreateDialog(true);
             }}
             sx={{ borderRadius: 2, px: 3 }}
@@ -1330,29 +1343,58 @@ export default function OcasPage() {
                   </Select>
                 </FormControl>
 
-                {createClientId && typeKey === 'man_hours' && pendingEntries.length > 0 && (
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Filtrar por Supervisor</InputLabel>
-                    <Select
-                      value={filterSupervisorId}
-                      label="Filtrar por Supervisor"
-                      onChange={(e) => {
-                        setFilterSupervisorId(e.target.value as number | '');
-                        setSelectedEntryIds([]);
-                      }}
-                    >
-                      <MenuItem value="">— Todos los Supervisores —</MenuItem>
-                      {Array.from(
-                        new Map(
-                          pendingEntries
-                            .filter(entry => entry.supervisor)
-                            .map(entry => [entry.supervisor!.id, entry.supervisor!])
-                        ).values()
-                      ).map(s => (
-                        <MenuItem key={s.id} value={s.id}>{s.lastname}, {s.name}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                {createClientId && pendingEntries.length > 0 && (
+                  <Stack spacing={2}>
+                    {/* Supervisor Filter (visible for both man_hours and crane_hours) */}
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Filtrar por Supervisor</InputLabel>
+                      <Select
+                        value={filterSupervisorId}
+                        label="Filtrar por Supervisor"
+                        onChange={(e) => {
+                          setFilterSupervisorId(e.target.value as number | '');
+                          setSelectedEntryIds([]);
+                        }}
+                      >
+                        <MenuItem value="">— Todos los Supervisores —</MenuItem>
+                        {Array.from(
+                          new Map(
+                            pendingEntries
+                              .filter(entry => entry.supervisor)
+                              .map(entry => [entry.supervisor!.id, entry.supervisor!])
+                          ).values()
+                        ).map(s => (
+                          <MenuItem key={s.id} value={s.id}>{s.lastname}, {s.name}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    {/* Project Filter (only for crane_hours) */}
+                    {typeKey === 'crane_hours' && (
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Filtrar por Proyecto</InputLabel>
+                        <Select
+                          value={filterProjectId}
+                          label="Filtrar por Proyecto"
+                          onChange={(e) => {
+                            setFilterProjectId(e.target.value as number | '');
+                            setSelectedEntryIds([]);
+                          }}
+                        >
+                          <MenuItem value="">— Todos los Proyectos —</MenuItem>
+                          {Array.from(
+                            new Map(
+                              pendingEntries
+                                .filter(entry => entry.project)
+                                .map(entry => [entry.project!.id, entry.project!])
+                            ).values()
+                          ).map(p => (
+                            <MenuItem key={p.id} value={p.id}>[{p.code}] {p.name}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  </Stack>
                 )}
 
                 {loadingPending ? (
@@ -1429,7 +1471,12 @@ export default function OcasPage() {
                                     </>
                                   ) : (
                                     <>
-                                      <TableCell>{entry.project?.name}</TableCell>
+                                      <TableCell>
+                                        <Typography variant="body2">{entry.project?.name}</Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block">
+                                          👤 Sup: {entry.supervisor ? `${entry.supervisor.lastname}, ${entry.supervisor.name}` : '—'}
+                                        </Typography>
+                                      </TableCell>
                                       <TableCell>
                                         {entry.vehicle
                                           ? `${entry.vehicle.brand} (${entry.vehicle.plate})`
@@ -1495,6 +1542,9 @@ export default function OcasPage() {
                                     <Typography variant="caption" color="text.secondary" display="block">
                                       🚜 Grúa: {entry.vehicle ? `${entry.vehicle.brand} (${entry.vehicle.plate})` : '—'}
                                     </Typography>
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                      👤 Sup: {entry.supervisor ? `${entry.supervisor.lastname}, ${entry.supervisor.name}` : '—'}
+                                    </Typography>
                                   </>
                                 )}
                                 <Typography variant="caption" color="text.secondary" display="block" sx={{ fontStyle: 'italic', mt: 0.5 }}>
@@ -1554,9 +1604,68 @@ export default function OcasPage() {
               <Alert severity="info">No se encontraron más horas compatibles pendientes de facturación para este cliente/supervisor.</Alert>
             ) : (
               <Stack spacing={2}>
-                <Typography variant="body2" color="text.secondary">
-                  Seleccione los registros de horas en planta compatibles para sumar a esta OCA.
-                </Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" color="text.secondary">
+                    Seleccionadas {selectedEntryIds.length} de {visibleEntries.length} visibles
+                  </Typography>
+                  <Button size="small" onClick={handleSelectAllEntries} sx={{ textTransform: 'none' }}>
+                    {allVisibleSelected ? 'Deseleccionar Todas' : 'Seleccionar Todas'}
+                  </Button>
+                </Box>
+                
+                {/* Add Entries Dialog Supervisor Filter for crane_hours */}
+                {typeKey === 'crane_hours' && pendingEntries.length > 0 && (
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Filtrar por Supervisor</InputLabel>
+                    <Select
+                      value={filterSupervisorId}
+                      label="Filtrar por Supervisor"
+                      onChange={(e) => {
+                        setFilterSupervisorId(e.target.value as number | '');
+                        setSelectedEntryIds([]);
+                      }}
+                    >
+                      <MenuItem value="">— Todos los Supervisores —</MenuItem>
+                      {Array.from(
+                        new Map(
+                          pendingEntries
+                            .filter(entry => entry.supervisor)
+                            .map(entry => [entry.supervisor!.id, entry.supervisor!])
+                        ).values()
+                      ).map(s => (
+                        <MenuItem key={s.id} value={s.id}>{s.lastname}, {s.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+
+                {/* Add Entries Dialog Project Filter for crane_hours */}
+                {typeKey === 'crane_hours' && pendingEntries.length > 0 && (
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Filtrar por Proyecto</InputLabel>
+                    <Select
+                      value={filterProjectId}
+                      label="Filtrar por Proyecto"
+                      onChange={(e) => {
+                        setFilterProjectId(e.target.value as number | '');
+                        setSelectedEntryIds([]);
+                      }}
+                    >
+                      <MenuItem value="">— Todos los Proyectos —</MenuItem>
+                      {Array.from(
+                        new Map(
+                          pendingEntries
+                            .filter(entry => entry.project)
+                            .map(entry => [entry.project!.id, entry.project!])
+                        ).values()
+                      ).map(p => (
+                        <MenuItem key={p.id} value={p.id}>[{p.code}] {p.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+
+
                 {!isMobile ? (
                   <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 250 }}>
                     <Table size="small" stickyHeader>
@@ -1564,7 +1673,8 @@ export default function OcasPage() {
                         <TableRow>
                           <TableCell padding="checkbox">
                             <Checkbox
-                              checked={selectedEntryIds.length === pendingEntries.length && pendingEntries.length > 0}
+                              checked={allVisibleSelected}
+                              indeterminate={!allVisibleSelected && visibleEntries.some(e => selectedEntryIds.includes(e.id))}
                               onChange={handleSelectAllEntries}
                             />
                           </TableCell>
@@ -1578,7 +1688,7 @@ export default function OcasPage() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {pendingEntries.map((entry) => {
+                        {visibleEntries.map((entry) => {
                           const isSelected = selectedEntryIds.includes(entry.id);
                           return (
                             <TableRow key={entry.id} hover onClick={() => handleSelectEntry(entry.id)} sx={{ cursor: 'pointer' }}>
@@ -1587,7 +1697,12 @@ export default function OcasPage() {
                               {typeKey === 'man_hours' ? (
                                 <TableCell>{entry.employee?.lastname}, {entry.employee?.name}</TableCell>
                               ) : (
-                                <TableCell>{entry.vehicle?.brand} ({entry.vehicle?.plate})</TableCell>
+                                <TableCell>
+                                  <Typography variant="body2">{entry.vehicle?.brand} ({entry.vehicle?.plate})</Typography>
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    👤 Sup: {entry.supervisor ? `${entry.supervisor.lastname}, ${entry.supervisor.name}` : '—'}
+                                  </Typography>
+                                </TableCell>
                               )}
                               <TableCell align="center">
                                 {`${Number(entry.regular_hours).toFixed(1)}h`}
@@ -1600,7 +1715,7 @@ export default function OcasPage() {
                   </TableContainer>
                 ) : (
                   <Box display="flex" flexDirection="column" gap={1.5} sx={{ maxHeight: 250, overflow: 'auto', p: 0.5 }}>
-                    {pendingEntries.map((entry) => {
+                    {visibleEntries.map((entry) => {
                       const isSelected = selectedEntryIds.includes(entry.id);
                       const displayHours = `${Number(entry.regular_hours).toFixed(1)}h`;
                       
@@ -1634,9 +1749,14 @@ export default function OcasPage() {
                                 {entry.employee?.lastname}, {entry.employee?.name}
                               </Typography>
                             ) : (
-                              <Typography variant="body2" fontWeight="bold">
-                                {entry.vehicle?.brand} ({entry.vehicle?.plate})
-                              </Typography>
+                              <>
+                                <Typography variant="body2" fontWeight="bold">
+                                  {entry.vehicle?.brand} ({entry.vehicle?.plate})
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  👤 Sup: {entry.supervisor ? `${entry.supervisor.lastname}, ${entry.supervisor.name}` : '—'}
+                                </Typography>
+                              </>
                             )}
                           </Box>
                         </Paper>
