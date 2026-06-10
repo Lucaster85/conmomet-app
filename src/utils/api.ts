@@ -1801,7 +1801,7 @@ export interface PayrollLine {
   quantity: number;
   rate: number;
   subtotal: number;
-  line_type: 'regular' | 'extras_50' | 'extras_100' | 'holiday' | 'fixed' | 'retroactive';
+  line_type: 'regular' | 'extras_50' | 'extras_100' | 'holiday' | 'fixed' | 'retroactive' | 'vacation' | 'medical_leave';
   source_period_id: number | null;
   concept?: PayrollConcept;
 }
