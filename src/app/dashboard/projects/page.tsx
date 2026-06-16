@@ -9,7 +9,7 @@ import {
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Refresh as RefreshIcon, Groups as TeamIcon,
+  Refresh as RefreshIcon, Groups as TeamIcon, CheckCircle as CompleteIcon,
 } from '@mui/icons-material';
 import {
   Project, ProjectService, Client, ClientService, Plant, PlantService, CreateProjectData,
@@ -41,6 +41,7 @@ export default function ProjectsPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; project: Project | null }>({ open: false, project: null });
+  const [completeDialog, setCompleteDialog] = useState<{ open: boolean; project: Project | null }>({ open: false, project: null });
 
   // Team state
   const [teamDialog, setTeamDialog] = useState<{ open: boolean; project: Project | null }>({ open: false, project: null });
@@ -72,7 +73,17 @@ export default function ProjectsPage() {
         ClientService.getAll(),
         PlantService.getAll(),
       ]);
-      setProjects(Array.isArray(projs) ? projs : []);
+      
+      const rawProjects = Array.isArray(projs) ? projs : [];
+      const sortedProjects = [...rawProjects].sort((a, b) => {
+        const aFinished = a.status === 'completed' || a.status === 'cancelled';
+        const bFinished = b.status === 'completed' || b.status === 'cancelled';
+        if (aFinished && !bFinished) return 1;
+        if (!aFinished && bFinished) return -1;
+        return 0;
+      });
+
+      setProjects(sortedProjects);
       setClients(Array.isArray(clis) ? clis : []);
       setPlants(Array.isArray(plts) ? plts : []);
     } catch (err) {
@@ -197,6 +208,18 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleComplete = async () => {
+    if (!completeDialog.project) return;
+    try {
+      await ProjectService.update(completeDialog.project.id, { status: 'completed' });
+      setCompleteDialog({ open: false, project: null });
+      setSuccess('Proyecto finalizado');
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al finalizar el proyecto');
+    }
+  };
+
   // Helper para la barra de progreso
   const renderProgress = (consumed: number, budgeted: number) => {
     if (!budgeted || budgeted <= 0) return <Typography variant="body2">{consumed} hs</Typography>;
@@ -282,6 +305,7 @@ export default function ProjectsPage() {
                   <Box>
                     <IconButton size="small" color="primary" onClick={() => handleOpenEdit(proj)}><EditIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="info" onClick={() => handleOpenTeam(proj)}><TeamIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="success" onClick={() => setCompleteDialog({ open: true, project: proj })} disabled={proj.status === 'completed' || proj.status === 'cancelled'}><CompleteIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, project: proj })}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
                 </Box>
@@ -341,6 +365,13 @@ export default function ProjectsPage() {
                     <TableCell align="center">
                       <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(proj)}><EditIcon fontSize="small" /></IconButton></Tooltip>
                       <Tooltip title="Equipo"><IconButton size="small" color="info" onClick={() => handleOpenTeam(proj)}><TeamIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="Finalizar Proyecto">
+                        <span>
+                          <IconButton size="small" color="success" onClick={() => setCompleteDialog({ open: true, project: proj })} disabled={proj.status === 'completed' || proj.status === 'cancelled'}>
+                            <CompleteIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                       <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, project: proj })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
                   </TableRow>
@@ -456,6 +487,19 @@ export default function ProjectsPage() {
         <DialogActions>
           <Button onClick={() => setDeleteDialog({ open: false, project: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm Complete Dialog */}
+      <Dialog open={completeDialog.open} onClose={() => setCompleteDialog({ open: false, project: null })}>
+        <DialogTitle>Confirmar Finalización</DialogTitle>
+        <DialogContent>
+          <Typography>¿Está seguro de que desea finalizar el proyecto <strong>{completeDialog.project?.name}</strong>?</Typography>
+          <Typography variant="body2" color="text.secondary" mt={1}>Una vez finalizado, no se podrán registrar más horas en él.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCompleteDialog({ open: false, project: null })}>Cancelar</Button>
+          <Button onClick={handleComplete} color="success" variant="contained">Finalizar</Button>
         </DialogActions>
       </Dialog>
 
