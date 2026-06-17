@@ -2631,7 +2631,7 @@ export class OcaService {
     return data.data || [];
   }
 
-  static async create(ocaData: { type: 'man_hours' | 'crane_hours'; client_id: number; time_entry_ids: number[]; notes?: string }): Promise<Oca> {
+  static async create(ocaData: { type: 'man_hours' | 'crane_hours'; client_id: number; time_entry_ids: number[]; notes?: string; project_id?: number; supervisor_id?: number }): Promise<Oca> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas`, {
       method: 'POST',
       body: JSON.stringify(ocaData),

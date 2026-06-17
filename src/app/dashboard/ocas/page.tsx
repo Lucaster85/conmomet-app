@@ -68,6 +68,8 @@ import {
   OcaLine,
   Project,
   ProjectService,
+  ClientSupervisor,
+  ClientSupervisorService,
 } from '../../../utils/api';
 import FeedbackModal from '../../../components/FeedbackModal';
 
@@ -112,6 +114,8 @@ export default function OcasPage() {
   const [filterSupervisorId, setFilterSupervisorId] = useState<number | ''>('');
   const [filterProjectId, setFilterProjectId] = useState<number | ''>('');
   const [pendingEntries, setPendingEntries] = useState<TimeEntry[]>([]);
+  const [clientProjects, setClientProjects] = useState<Project[]>([]);
+  const [clientSupervisors, setClientSupervisors] = useState<ClientSupervisor[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
   const [selectedEntryIds, setSelectedEntryIds] = useState<number[]>([]);
   const [notes, setNotes] = useState('');
@@ -200,8 +204,9 @@ export default function OcasPage() {
     setCreateClientId(clientId);
     setSelectedEntryIds([]);
     setFilterSupervisorId('');
-    setFilterSupervisorId('');
     setFilterProjectId('');
+    setClientProjects([]);
+    setClientSupervisors([]);
     if (!clientId) {
       setPendingEntries([]);
       return;
@@ -210,11 +215,33 @@ export default function OcasPage() {
     try {
       setLoadingPending(true);
       setError('');
-      const data = await OcaService.getPendingEntries(clientId, typeKey);
-      setPendingEntries(data);
+      if (typeKey === 'crane_hours') {
+        const [entries, projectsList, supervisorsList] = await Promise.all([
+          OcaService.getPendingEntries(clientId, typeKey).catch((err) => {
+            console.error('Error fetching pending entries:', err);
+            return [];
+          }),
+          ProjectService.getAll({ client_id: clientId }).catch((err) => {
+            console.error('Error fetching projects:', err);
+            return [];
+          }),
+          ClientSupervisorService.getAll(clientId).catch((err) => {
+            console.error('Error fetching supervisors:', err);
+            return [];
+          })
+        ]);
+        setPendingEntries(entries);
+        setClientProjects(projectsList);
+        setClientSupervisors(supervisorsList);
+      } else {
+        const entries = await OcaService.getPendingEntries(clientId, typeKey);
+        setPendingEntries(entries);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar horas pendientes');
+      setError(err instanceof Error ? err.message : 'Error al cargar datos del cliente');
       setPendingEntries([]);
+      setClientProjects([]);
+      setClientSupervisors([]);
     } finally {
       setLoadingPending(false);
     }
@@ -257,32 +284,38 @@ export default function OcasPage() {
       setError('Debe seleccionar un cliente');
       return;
     }
-    if (selectedEntryIds.length === 0) {
-      setError('Debe seleccionar al menos un registro de horas');
-      return;
+
+    const hasEntries = selectedEntryIds.length > 0;
+    if (!hasEntries) {
+      if (typeKey === 'man_hours') {
+        setError('Debe seleccionar al menos un registro de horas');
+        return;
+      }
     }
 
     // Dynamic Grouping Constraints check
-    const selectedEntries = pendingEntries.filter(e => selectedEntryIds.includes(e.id));
-    if (typeKey === 'man_hours') {
-      // Group by supervisor constraint (no mixed supervisors)
-      const supervisorIds = selectedEntries.map(e => e.supervisor_id);
-      const uniqueSupervisors = Array.from(new Set(supervisorIds));
-      if (uniqueSupervisors.length > 1) {
-        setError('Las OCAs de Horas Hombre deben agruparse por un único Supervisor. Hay varios seleccionados.');
-        return;
-      }
-      if (uniqueSupervisors[0] === undefined || uniqueSupervisors[0] === null) {
-        setError('Los registros seleccionados deben tener un supervisor asignado.');
-        return;
-      }
-    } else {
-      // Group by project constraint (no mixed projects)
-      const projectIds = selectedEntries.map(e => e.project_id);
-      const uniqueProjects = Array.from(new Set(projectIds));
-      if (uniqueProjects.length > 1) {
-        setError('Las OCAs de Grúas deben agruparse por un único Proyecto. Hay varios seleccionados.');
-        return;
+    if (hasEntries) {
+      const selectedEntries = pendingEntries.filter(e => selectedEntryIds.includes(e.id));
+      if (typeKey === 'man_hours') {
+        // Group by supervisor constraint (no mixed supervisors)
+        const supervisorIds = selectedEntries.map(e => e.supervisor_id);
+        const uniqueSupervisors = Array.from(new Set(supervisorIds));
+        if (uniqueSupervisors.length > 1) {
+          setError('Las OCAs de Horas Hombre deben agruparse por un único Supervisor. Hay varios seleccionados.');
+          return;
+        }
+        if (uniqueSupervisors[0] === undefined || uniqueSupervisors[0] === null) {
+          setError('Los registros seleccionados deben tener un supervisor asignado.');
+          return;
+        }
+      } else {
+        // Group by project constraint (no mixed projects)
+        const projectIds = selectedEntries.map(e => e.project_id);
+        const uniqueProjects = Array.from(new Set(projectIds));
+        if (uniqueProjects.length > 1) {
+          setError('Las OCAs de Grúas deben agruparse por un único Proyecto. Hay varios seleccionados.');
+          return;
+        }
       }
     }
 
@@ -294,11 +327,17 @@ export default function OcasPage() {
         client_id: Number(createClientId),
         time_entry_ids: selectedEntryIds,
         notes: notes.trim() || undefined,
+        project_id: filterProjectId ? Number(filterProjectId) : undefined,
+        supervisor_id: filterSupervisorId ? Number(filterSupervisorId) : undefined,
       });
       setSuccess(`Remito / OCA ${newOca.number} generado correctamente`);
       setOpenCreateDialog(false);
       setCreateClientId('');
       setSelectedEntryIds([]);
+      setFilterSupervisorId('');
+      setFilterProjectId('');
+      setClientProjects([]);
+      setClientSupervisors([]);
       setNotes('');
       loadData();
     } catch (err) {
@@ -449,17 +488,19 @@ export default function OcasPage() {
     setManualProjectId('');
     setSupervisorProjects([]);
 
-    if (oca.type === 'man_hours') {
-      try {
-        const allProjects = await ProjectService.getAll({ client_id: oca.client_id });
+    try {
+      const allProjects = await ProjectService.getAll({ client_id: oca.client_id });
+      if (oca.type === 'man_hours') {
         const filteredProjects = allProjects.filter(p =>
           p.supervisors?.some(s => s.id === oca.supervisor_id)
         );
         setSupervisorProjects(filteredProjects);
-      } catch (err) {
-        console.error('Error al cargar proyectos del supervisor:', err);
-        setError('Error al cargar proyectos del supervisor');
+      } else {
+        setSupervisorProjects(allProjects);
       }
+    } catch (err) {
+      console.error('Error al cargar proyectos:', err);
+      setError('Error al cargar proyectos');
     }
 
     setOpenManualLineDialog(true);
@@ -475,7 +516,7 @@ export default function OcasPage() {
       
       const payload: Partial<OcaLine> = {
         employee_id: manualEmployeeId ? Number(manualEmployeeId) : undefined,
-        project_id: manualLineOca.type === 'man_hours' && manualProjectId ? Number(manualProjectId) : undefined,
+        project_id: manualProjectId ? Number(manualProjectId) : undefined,
         vehicle_id: manualVehicleId ? Number(manualVehicleId) : undefined,
         date: manualDate,
         check_in: manualLineOca.type === 'man_hours' ? manualCheckIn : undefined,
@@ -882,17 +923,38 @@ export default function OcasPage() {
                           )}
                           {oca.status === 'aprobado' && oca.approved_img_url && (
                             <Tooltip title="Ver Comprobante Firmado">
-                              <IconButton
-                                size="small"
-                                color="success"
+                              <Box
+                                component="span"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   window.open(oca.approved_img_url, '_blank');
                                 }}
-                                sx={{ p: 0.5 }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    window.open(oca.approved_img_url, '_blank');
+                                  }
+                                }}
+                                role="button"
+                                tabIndex={0}
+                                sx={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  color: 'success.main',
+                                  borderRadius: '50%',
+                                  p: 0.5,
+                                  '&:hover': {
+                                    backgroundColor: 'success.light',
+                                    opacity: 0.8,
+                                  },
+                                  outline: 'none',
+                                }}
                               >
                                 <VisibilityIcon fontSize="small" />
-                              </IconButton>
+                              </Box>
                             </Tooltip>
                           )}
                           <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ display: { xs: 'block', md: 'none' }, ml: 'auto' }}>
@@ -1343,52 +1405,51 @@ export default function OcasPage() {
                   </Select>
                 </FormControl>
 
-                {createClientId && pendingEntries.length > 0 && (
+                {createClientId && (typeKey === 'crane_hours' || pendingEntries.length > 0) && (
                   <Stack spacing={2}>
                     {/* Supervisor Filter (visible for both man_hours and crane_hours) */}
                     <FormControl fullWidth size="small">
-                      <InputLabel>Filtrar por Supervisor</InputLabel>
+                      <InputLabel>{typeKey === 'crane_hours' ? 'Seleccionar Supervisor' : 'Filtrar por Supervisor'}</InputLabel>
                       <Select
                         value={filterSupervisorId}
-                        label="Filtrar por Supervisor"
+                        label={typeKey === 'crane_hours' ? 'Seleccionar Supervisor' : 'Filtrar por Supervisor'}
                         onChange={(e) => {
-                          setFilterSupervisorId(e.target.value as number | '');
+                          setFilterSupervisorId((e.target.value as unknown) === '' ? '' : Number(e.target.value));
                           setSelectedEntryIds([]);
                         }}
                       >
-                        <MenuItem value="">— Todos los Supervisores —</MenuItem>
-                        {Array.from(
-                          new Map(
-                            pendingEntries
-                              .filter(entry => entry.supervisor)
-                              .map(entry => [entry.supervisor!.id, entry.supervisor!])
-                          ).values()
-                        ).map(s => (
-                          <MenuItem key={s.id} value={s.id}>{s.lastname}, {s.name}</MenuItem>
-                        ))}
+                        <MenuItem value="">{typeKey === 'crane_hours' ? '— Ninguno —' : '— Todos los Supervisores —'}</MenuItem>
+                        {typeKey === 'crane_hours'
+                          ? clientSupervisors.map(s => (
+                              <MenuItem key={s.id} value={s.id}>{s.lastname}, {s.name}</MenuItem>
+                            ))
+                          : Array.from(
+                              new Map(
+                                pendingEntries
+                                  .filter(entry => entry.supervisor)
+                                  .map(entry => [entry.supervisor!.id, entry.supervisor!])
+                              ).values()
+                            ).map(s => (
+                              <MenuItem key={s.id} value={s.id}>{s.lastname}, {s.name}</MenuItem>
+                            ))
+                        }
                       </Select>
                     </FormControl>
 
                     {/* Project Filter (only for crane_hours) */}
                     {typeKey === 'crane_hours' && (
                       <FormControl fullWidth size="small">
-                        <InputLabel>Filtrar por Proyecto</InputLabel>
+                        <InputLabel>Seleccionar Proyecto</InputLabel>
                         <Select
                           value={filterProjectId}
-                          label="Filtrar por Proyecto"
+                          label="Seleccionar Proyecto"
                           onChange={(e) => {
-                            setFilterProjectId(e.target.value as number | '');
+                            setFilterProjectId((e.target.value as unknown) === '' ? '' : Number(e.target.value));
                             setSelectedEntryIds([]);
                           }}
                         >
-                          <MenuItem value="">— Todos los Proyectos —</MenuItem>
-                          {Array.from(
-                            new Map(
-                              pendingEntries
-                                .filter(entry => entry.project)
-                                .map(entry => [entry.project!.id, entry.project!])
-                            ).values()
-                          ).map(p => (
+                          <MenuItem value="">— Todos los Proyectos / Ninguno —</MenuItem>
+                          {clientProjects.map(p => (
                             <MenuItem key={p.id} value={p.id}>[{p.code}] {p.name}</MenuItem>
                           ))}
                         </Select>
@@ -1401,160 +1462,170 @@ export default function OcasPage() {
                   <Box display="flex" justifyContent="center" py={4}>
                     <CircularProgress />
                   </Box>
-                ) : createClientId && pendingEntries.length === 0 ? (
+                ) : createClientId && pendingEntries.length === 0 && typeKey === 'man_hours' ? (
                   <Alert severity="info">
                     No se encontraron horas en planta aprobadas y pendientes de remito para el cliente seleccionado en esta pestaña.
                   </Alert>
                 ) : createClientId ? (
                   <Box>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                      <Typography variant="subtitle2" fontWeight="bold">
-                        Seleccionar Horas ({selectedEntryIds.length} de {visibleEntries.length} visibles)
-                      </Typography>
-                      <Button size="small" onClick={handleSelectAllEntries}>
-                        {allVisibleSelected ? 'Deseleccionar Todas' : 'Seleccionar Todas'}
-                      </Button>
-                    </Box>
+                    {typeKey === 'crane_hours' && pendingEntries.length === 0 && (
+                      <Alert severity="info" sx={{ mb: 2 }}>
+                        No se encontraron horas de grúa/equipos aprobadas y pendientes de remito para el cliente seleccionado. El remito se generará sin horas asociadas.
+                      </Alert>
+                    )}
 
-                    {!isMobile ? (
-                      <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 300, overflow: 'auto' }}>
-                        <Table size="small" stickyHeader>
-                          <TableHead>
-                            <TableRow>
-                              <TableCell padding="checkbox">
-                                <Checkbox
-                                  checked={allVisibleSelected}
-                                  indeterminate={!allVisibleSelected && visibleEntries.some(e => selectedEntryIds.includes(e.id))}
-                                  onChange={handleSelectAllEntries}
-                                />
-                              </TableCell>
-                              <TableCell><strong>Fecha</strong></TableCell>
-                              {typeKey === 'man_hours' ? (
-                                <>
-                                  <TableCell><strong>Empleado</strong></TableCell>
-                                  <TableCell><strong>Supervisor</strong></TableCell>
-                                </>
-                              ) : (
-                                <>
-                                  <TableCell><strong>Proyecto</strong></TableCell>
-                                  <TableCell><strong>Grúa / Vehículo</strong></TableCell>
-                                </>
-                              )}
-                              <TableCell align="center"><strong>Horas</strong></TableCell>
-                              <TableCell><strong>Concepto</strong></TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {visibleEntries.map((entry) => {
-                              const isSelected = selectedEntryIds.includes(entry.id);
-                              return (
-                                <TableRow
-                                  key={entry.id}
-                                  hover
-                                  onClick={() => handleSelectEntry(entry.id)}
-                                  role="checkbox"
-                                  selected={isSelected}
-                                  sx={{ cursor: 'pointer' }}
-                                >
+                    {pendingEntries.length > 0 && (
+                      <>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                          <Typography variant="subtitle2" fontWeight="bold">
+                            Seleccionar Horas ({selectedEntryIds.length} de {visibleEntries.length} visibles)
+                          </Typography>
+                          <Button size="small" onClick={handleSelectAllEntries}>
+                            {allVisibleSelected ? 'Deseleccionar Todas' : 'Seleccionar Todas'}
+                          </Button>
+                        </Box>
+
+                        {!isMobile ? (
+                          <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 300, overflow: 'auto' }}>
+                            <Table size="small" stickyHeader>
+                              <TableHead>
+                                <TableRow>
                                   <TableCell padding="checkbox">
-                                    <Checkbox checked={isSelected} />
+                                    <Checkbox
+                                      checked={allVisibleSelected}
+                                      indeterminate={!allVisibleSelected && visibleEntries.some(e => selectedEntryIds.includes(e.id))}
+                                      onChange={handleSelectAllEntries}
+                                    />
                                   </TableCell>
-                                  <TableCell>{new Date(entry.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                                  <TableCell><strong>Fecha</strong></TableCell>
                                   {typeKey === 'man_hours' ? (
                                     <>
-                                      <TableCell>{entry.employee?.lastname}, {entry.employee?.name}</TableCell>
-                                      <TableCell>
-                                        {entry.supervisor
-                                          ? `${entry.supervisor.lastname}, ${entry.supervisor.name}`
-                                          : '—'}
-                                      </TableCell>
+                                      <TableCell><strong>Empleado</strong></TableCell>
+                                      <TableCell><strong>Supervisor</strong></TableCell>
                                     </>
                                   ) : (
                                     <>
-                                      <TableCell>
-                                        <Typography variant="body2">{entry.project?.name}</Typography>
+                                      <TableCell><strong>Proyecto</strong></TableCell>
+                                      <TableCell><strong>Grúa / Vehículo</strong></TableCell>
+                                    </>
+                                  )}
+                                  <TableCell align="center"><strong>Horas</strong></TableCell>
+                                  <TableCell><strong>Concepto</strong></TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {visibleEntries.map((entry) => {
+                                  const isSelected = selectedEntryIds.includes(entry.id);
+                                  return (
+                                    <TableRow
+                                      key={entry.id}
+                                      hover
+                                      onClick={() => handleSelectEntry(entry.id)}
+                                      role="checkbox"
+                                      selected={isSelected}
+                                      sx={{ cursor: 'pointer' }}
+                                    >
+                                      <TableCell padding="checkbox">
+                                        <Checkbox checked={isSelected} />
+                                      </TableCell>
+                                      <TableCell>{new Date(entry.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                                      {typeKey === 'man_hours' ? (
+                                        <>
+                                          <TableCell>{entry.employee?.lastname}, {entry.employee?.name}</TableCell>
+                                          <TableCell>
+                                            {entry.supervisor
+                                              ? `${entry.supervisor.lastname}, ${entry.supervisor.name}`
+                                              : '—'}
+                                          </TableCell>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <TableCell>
+                                            <Typography variant="body2">{entry.project?.name}</Typography>
+                                            <Typography variant="caption" color="text.secondary" display="block">
+                                              👤 Sup: {entry.supervisor ? `${entry.supervisor.lastname}, ${entry.supervisor.name}` : '—'}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell>
+                                            {entry.vehicle
+                                              ? `${entry.vehicle.brand} (${entry.vehicle.plate})`
+                                              : '—'}
+                                          </TableCell>
+                                        </>
+                                      )}
+                                      <TableCell align="center">
+                                        {`${Number(entry.regular_hours).toFixed(1)}h`}
+                                      </TableCell>
+                                      <TableCell>{entry.concept?.name}</TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        ) : (
+                          <Box display="flex" flexDirection="column" gap={1.5} sx={{ maxHeight: 300, overflow: 'auto', p: 0.5 }}>
+                            {visibleEntries.map((entry) => {
+                              const isSelected = selectedEntryIds.includes(entry.id);
+                              const displayHours = `${Number(entry.regular_hours).toFixed(1)}h`;
+                              
+                              return (
+                                <Paper
+                                  key={entry.id}
+                                  variant="outlined"
+                                  onClick={() => handleSelectEntry(entry.id)}
+                                  sx={{
+                                    p: 1.5,
+                                    borderRadius: 2,
+                                    cursor: 'pointer',
+                                    borderColor: isSelected ? 'primary.main' : 'divider',
+                                    bgcolor: isSelected ? 'action.selected' : 'background.paper',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: 1
+                                  }}
+                                >
+                                  <Checkbox checked={isSelected} sx={{ p: 0, mt: 0.5 }} />
+                                  <Box flex={1}>
+                                    <Box display="flex" justifyContent="space-between" mb={0.5}>
+                                      <Typography variant="caption" color="text.secondary">
+                                        📅 {new Date(entry.date + 'T12:00:00').toLocaleDateString('es-AR')}
+                                      </Typography>
+                                      <Chip label={displayHours} size="small" color="primary" variant="outlined" sx={{ height: 20, fontSize: '0.75rem' }} />
+                                    </Box>
+                                    
+                                    {typeKey === 'man_hours' ? (
+                                      <>
+                                        <Typography variant="body2" fontWeight="bold">
+                                          {entry.employee?.lastname}, {entry.employee?.name}
+                                        </Typography>
                                         <Typography variant="caption" color="text.secondary" display="block">
                                           👤 Sup: {entry.supervisor ? `${entry.supervisor.lastname}, ${entry.supervisor.name}` : '—'}
                                         </Typography>
-                                      </TableCell>
-                                      <TableCell>
-                                        {entry.vehicle
-                                          ? `${entry.vehicle.brand} (${entry.vehicle.plate})`
-                                          : '—'}
-                                      </TableCell>
-                                    </>
-                                  )}
-                                  <TableCell align="center">
-                                    {`${Number(entry.regular_hours).toFixed(1)}h`}
-                                  </TableCell>
-                                  <TableCell>{entry.concept?.name}</TableCell>
-                                </TableRow>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Typography variant="body2" fontWeight="bold">
+                                          📁 Proy: {entry.project?.name}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block">
+                                          🚜 Grúa: {entry.vehicle ? `${entry.vehicle.brand} (${entry.vehicle.plate})` : '—'}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block">
+                                          👤 Sup: {entry.supervisor ? `${entry.supervisor.lastname}, ${entry.supervisor.name}` : '—'}
+                                        </Typography>
+                                      </>
+                                    )}
+                                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontStyle: 'italic', mt: 0.5 }}>
+                                      Concepto: {entry.concept?.name || '—'}
+                                    </Typography>
+                                  </Box>
+                                </Paper>
                               );
                             })}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    ) : (
-                      <Box display="flex" flexDirection="column" gap={1.5} sx={{ maxHeight: 300, overflow: 'auto', p: 0.5 }}>
-                        {visibleEntries.map((entry) => {
-                          const isSelected = selectedEntryIds.includes(entry.id);
-                          const displayHours = `${Number(entry.regular_hours).toFixed(1)}h`;
-                          
-                          return (
-                            <Paper
-                              key={entry.id}
-                              variant="outlined"
-                              onClick={() => handleSelectEntry(entry.id)}
-                              sx={{
-                                p: 1.5,
-                                borderRadius: 2,
-                                cursor: 'pointer',
-                                borderColor: isSelected ? 'primary.main' : 'divider',
-                                bgcolor: isSelected ? 'action.selected' : 'background.paper',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: 1
-                              }}
-                            >
-                              <Checkbox checked={isSelected} sx={{ p: 0, mt: 0.5 }} />
-                              <Box flex={1}>
-                                <Box display="flex" justifyContent="space-between" mb={0.5}>
-                                  <Typography variant="caption" color="text.secondary">
-                                    📅 {new Date(entry.date + 'T12:00:00').toLocaleDateString('es-AR')}
-                                  </Typography>
-                                  <Chip label={displayHours} size="small" color="primary" variant="outlined" sx={{ height: 20, fontSize: '0.75rem' }} />
-                                </Box>
-                                
-                                {typeKey === 'man_hours' ? (
-                                  <>
-                                    <Typography variant="body2" fontWeight="bold">
-                                      {entry.employee?.lastname}, {entry.employee?.name}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary" display="block">
-                                      👤 Sup: {entry.supervisor ? `${entry.supervisor.lastname}, ${entry.supervisor.name}` : '—'}
-                                    </Typography>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Typography variant="body2" fontWeight="bold">
-                                      📁 Proy: {entry.project?.name}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary" display="block">
-                                      🚜 Grúa: {entry.vehicle ? `${entry.vehicle.brand} (${entry.vehicle.plate})` : '—'}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary" display="block">
-                                      👤 Sup: {entry.supervisor ? `${entry.supervisor.lastname}, ${entry.supervisor.name}` : '—'}
-                                    </Typography>
-                                  </>
-                                )}
-                                <Typography variant="caption" color="text.secondary" display="block" sx={{ fontStyle: 'italic', mt: 0.5 }}>
-                                  Concepto: {entry.concept?.name || '—'}
-                                </Typography>
-                              </Box>
-                            </Paper>
-                          );
-                        })}
-                      </Box>
+                          </Box>
+                        )}
+                      </>
                     )}
 
                     <Box mt={2}>
@@ -1586,7 +1657,11 @@ export default function OcasPage() {
               <Button
                 type="submit"
                 variant="contained"
-                disabled={selectedEntryIds.length === 0}
+                disabled={
+                  typeKey === 'man_hours'
+                    ? selectedEntryIds.length === 0
+                    : !createClientId
+                }
               >
                 Generar OCA
               </Button>
@@ -1621,7 +1696,7 @@ export default function OcasPage() {
                       value={filterSupervisorId}
                       label="Filtrar por Supervisor"
                       onChange={(e) => {
-                        setFilterSupervisorId(e.target.value as number | '');
+                        setFilterSupervisorId((e.target.value as unknown) === '' ? '' : Number(e.target.value));
                         setSelectedEntryIds([]);
                       }}
                     >
@@ -1647,7 +1722,7 @@ export default function OcasPage() {
                       value={filterProjectId}
                       label="Filtrar por Proyecto"
                       onChange={(e) => {
-                        setFilterProjectId(e.target.value as number | '');
+                        setFilterProjectId((e.target.value as unknown) === '' ? '' : Number(e.target.value));
                         setSelectedEntryIds([]);
                       }}
                     >
@@ -1829,37 +1904,20 @@ export default function OcasPage() {
             <DialogContent dividers>
               <Stack spacing={2}>
                 {manualLineOca?.type === 'man_hours' ? (
-                  <>
-                    <FormControl fullWidth size="small">
-                      <InputLabel>Empleado *</InputLabel>
-                      <Select
-                        value={manualEmployeeId}
-                        label="Empleado *"
-                        required
-                        onChange={(e) => setManualEmployeeId(e.target.value as number | '')}
-                      >
-                        <MenuItem value="">— Seleccionar Empleado —</MenuItem>
-                        {employees.map(e => (
-                          <MenuItem key={e.id} value={e.id}>{e.lastname}, {e.name}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-
-                    <FormControl fullWidth size="small">
-                      <InputLabel>Proyecto *</InputLabel>
-                      <Select
-                        value={manualProjectId}
-                        label="Proyecto *"
-                        required
-                        onChange={(e) => setManualProjectId(e.target.value as number | '')}
-                      >
-                        <MenuItem value="">— Seleccionar Proyecto —</MenuItem>
-                        {supervisorProjects.map(p => (
-                          <MenuItem key={p.id} value={p.id}>[{p.code}] {p.name}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Empleado *</InputLabel>
+                    <Select
+                      value={manualEmployeeId}
+                      label="Empleado *"
+                      required
+                      onChange={(e) => setManualEmployeeId(e.target.value as number | '')}
+                    >
+                      <MenuItem value="">— Seleccionar Empleado —</MenuItem>
+                      {employees.map(e => (
+                        <MenuItem key={e.id} value={e.id}>{e.lastname}, {e.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 ) : (
                   <FormControl fullWidth size="small">
                     <InputLabel>Vehículo / Grúa *</InputLabel>
@@ -1876,6 +1934,21 @@ export default function OcasPage() {
                     </Select>
                   </FormControl>
                 )}
+
+                <FormControl fullWidth size="small">
+                  <InputLabel>Proyecto *</InputLabel>
+                  <Select
+                    value={manualProjectId}
+                    label="Proyecto *"
+                    required
+                    onChange={(e) => setManualProjectId((e.target.value as unknown) === '' ? '' : Number(e.target.value))}
+                  >
+                    <MenuItem value="">— Seleccionar Proyecto —</MenuItem>
+                    {supervisorProjects.map(p => (
+                      <MenuItem key={p.id} value={p.id}>[{p.code}] {p.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
 
                 <TextField
                   label="Fecha *"
