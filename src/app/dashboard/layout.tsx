@@ -231,8 +231,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     .filter(group => group.items.length > 0);
 
   const drawer = (
-    <Box>
-      <Toolbar sx={{ bgcolor: 'white', borderBottom: '1px solid', borderColor: 'divider', minHeight: { xs: 56, sm: 64 }, justifyContent: 'center' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+        <Toolbar sx={{ bgcolor: 'white', borderBottom: '1px solid', borderColor: 'divider', minHeight: { xs: 56, sm: 64 }, justifyContent: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', py: 1 }}>
           <Image
             src="/img/logos/logo-conmomet-ROJO.png"
@@ -301,6 +302,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </React.Fragment>
         ))}
       </List>
+      </Box>
+      <Box sx={{ p: 2, textAlign: 'center', borderTop: '1px solid', borderColor: 'divider' }}>
+        <Typography variant="caption" color="text.disabled">
+          v {process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}
+        </Typography>
+      </Box>
     </Box>
   );
 
