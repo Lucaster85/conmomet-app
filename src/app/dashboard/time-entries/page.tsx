@@ -5,7 +5,6 @@ import {
   Chip, Checkbox, FormControlLabel, Autocomplete, Dialog, DialogTitle,
   DialogContent, DialogActions, Divider, IconButton, Tooltip, Switch, Grid
 } from '@mui/material';
-import { TimeField } from '@mui/x-date-pickers/TimeField';
 import dayjs from 'dayjs';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
@@ -19,7 +18,8 @@ import {
   TimeEntry, TimeEntryService, CreateTimeEntryData,
   PayrollConcept, PayrollConceptService,
   Vehicle, VehicleService,
-  ClientSupervisor, ClientSupervisorService
+  ClientSupervisor, ClientSupervisorService,
+  PayPeriod, PayPeriodService
 } from '../../../utils/api';
 
 const STATUS_COLORS: Record<string, 'success' | 'error' | 'warning' | 'default'> = {
@@ -57,6 +57,7 @@ export default function TimeEntriesPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [concepts, setConcepts] = useState<PayrollConcept[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [payPeriods, setPayPeriods] = useState<PayPeriod[]>([]);
   const [supervisorsCache, setSupervisorsCache] = useState<Record<number, ClientSupervisor[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -163,24 +164,31 @@ export default function TimeEntriesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [emps, plts, projs, concs, vehs] = await Promise.all([
+      const [emps, plts, projs, concs, vehs, periods] = await Promise.all([
         EmployeeService.getAll('active'),
         PlantService.getAll(),
         ProjectService.getAll({ status: 'active' }),
         PayrollConceptService.getAll(true), // active only
         VehicleService.getAll({ is_active: true }), // active only
+        PayPeriodService.getAll(),
       ]);
       setEmployees(emps);
       setPlants(plts);
       setProjects(projs);
       setConcepts(concs);
       setVehicles(vehs);
+      setPayPeriods(periods);
       await loadEntries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar datos');
     } finally {
       setLoading(false);
     }
+  };
+
+  const isPeriodClosedOrPaid = (dateStr: string) => {
+    const period = payPeriods.find(p => dateStr >= p.start_date && dateStr <= p.end_date);
+    return period ? (period.status === 'closed' || period.status === 'paid') : false;
   };
 
   const loadSupervisorsForProject = async (projectId: number) => {
@@ -421,12 +429,59 @@ export default function TimeEntriesPage() {
   };
 
   const handleVoid = async () => {
-    if (!voidDialog.entry) return;
+    const entryToCopy = voidDialog.entry;
+    if (!entryToCopy) return;
     try {
-      await TimeEntryService.void(voidDialog.entry.id, voidReason.trim() || undefined);
+      await TimeEntryService.void(entryToCopy.id, voidReason.trim() || undefined);
+      
+      // Find the corresponding employee
+      let emp = employees.find(e => e.id === entryToCopy.employee_id);
+      
+      // If the employee is not in the active list (e.g. inactive or recently deleted),
+      // temporarily add it so the Autocomplete component works and displays it.
+      if (!emp && entryToCopy.employee) {
+        emp = entryToCopy.employee as unknown as Employee;
+        setEmployees(prev => [...prev, emp!]);
+      }
+      
+      // Preload data into creation form
+      setEntryMode('individual');
+      setFormDate(entryToCopy.date);
+      setIsLate(entryToCopy.is_late || false);
+      
+      if (emp) {
+        setSelectedEmployees([emp]);
+      } else {
+        setSelectedEmployees([]);
+      }
+      
+      if (entryToCopy.project_id) {
+        loadSupervisorsForProject(entryToCopy.project_id);
+      }
+
+      setIndividualBlocks([{
+        id: Date.now().toString(),
+        check_in: entryToCopy.check_in ? entryToCopy.check_in.substring(0, 5) : '08:00',
+        check_out: entryToCopy.check_out ? entryToCopy.check_out.substring(0, 5) : '17:00',
+        concept_id: entryToCopy.concept_id ?? '',
+        overtime_50_hours: entryToCopy.overtime_50_hours || 0,
+        overtime_100_hours: entryToCopy.overtime_100_hours || 0,
+        plant_id: entryToCopy.plant_id ?? '',
+        project_id: entryToCopy.project_id ?? '',
+        notes: entryToCopy.notes || '',
+        is_plant_hours: entryToCopy.is_plant_hours || false,
+        generates_oca: entryToCopy.generates_oca || false,
+        supervisor_id: entryToCopy.supervisor_id ?? '',
+        vehicle_id: entryToCopy.vehicle_id ?? ''
+      }]);
+
       setVoidDialog({ open: false, entry: null });
       setVoidReason('');
-      setSuccess('Registro anulado');
+      setSuccess('Registro anulado. Cargando plantilla para corrección...');
+      
+      // Open the creation modal pre-filled with this data
+      setOpenCreateDialog(true);
+      
       loadEntries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al anular');
@@ -613,12 +668,12 @@ export default function TimeEntriesPage() {
                             </Tooltip>
                           )}
                           {entry.status !== 'voided' && (
-                            <Tooltip title={entry.oca_id ? "Asignado a OCA (No se puede anular)" : "Anular"}>
+                            <Tooltip title={entry.oca_id ? "Asignado a OCA (No se puede anular)" : isPeriodClosedOrPaid(entry.date) ? "Quincena cerrada o pagada (No se puede anular)" : "Anular"}>
                               <span>
                                 <IconButton 
                                   size="small" 
                                   color="error" 
-                                  disabled={!!entry.oca_id}
+                                  disabled={!!entry.oca_id || isPeriodClosedOrPaid(entry.date)}
                                   onClick={() => { setVoidDialog({ open: true, entry }); setVoidReason(''); }}
                                 >
                                   <VoidIcon fontSize="small" />
@@ -698,30 +753,24 @@ export default function TimeEntriesPage() {
                 ) : null}
                 <Grid container spacing={2} alignItems="center">
                   <Grid size={{ xs: 12, md: 3 }}>
-                    <TimeField
+                    <TextField
                       label="Ingreso *"
-                      ampm={false}
-                      value={massiveBlock.check_in ? dayjs(`2026-01-01T${massiveBlock.check_in}`) : null}
-                      onChange={(val) => {
-                        if (val && val.isValid()) {
-                          setMassiveBlock({ ...massiveBlock, check_in: val.format('HH:mm') });
-                        }
-                      }}
+                      type="time"
                       fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      value={massiveBlock.check_in || ''}
+                      onChange={(e) => setMassiveBlock({ ...massiveBlock, check_in: e.target.value })}
                       disabled={isMonthlySelected}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 3 }}>
-                    <TimeField
+                    <TextField
                       label="Egreso *"
-                      ampm={false}
-                      value={massiveBlock.check_out ? dayjs(`2026-01-01T${massiveBlock.check_out}`) : null}
-                      onChange={(val) => {
-                        if (val && val.isValid()) {
-                          setMassiveBlock({ ...massiveBlock, check_out: val.format('HH:mm') });
-                        }
-                      }}
+                      type="time"
                       fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      value={massiveBlock.check_out || ''}
+                      onChange={(e) => setMassiveBlock({ ...massiveBlock, check_out: e.target.value })}
                       disabled={isMonthlySelected}
                     />
                   </Grid>
@@ -858,35 +907,33 @@ export default function TimeEntriesPage() {
                       </Box>
                       <Grid container spacing={2}>
                         <Grid size={{ xs: 6, md: 2 }}>
-                          <TimeField
+                          <TextField
                             label="Ingreso *"
-                            ampm={false}
-                            value={block.check_in ? dayjs(`2026-01-01T${block.check_in}`) : null}
-                            onChange={(val) => {
-                              if (val && val.isValid()) {
-                                const newBlocks = [...individualBlocks];
-                                newBlocks[index].check_in = val.format('HH:mm');
-                                setIndividualBlocks(newBlocks);
-                              }
-                            }}
+                            type="time"
                             fullWidth
                             size="small"
+                            InputLabelProps={{ shrink: true }}
+                            value={block.check_in || ''}
+                            onChange={(e) => {
+                              const newBlocks = [...individualBlocks];
+                              newBlocks[index].check_in = e.target.value;
+                              setIndividualBlocks(newBlocks);
+                            }}
                           />
                         </Grid>
                         <Grid size={{ xs: 6, md: 2 }}>
-                          <TimeField
+                          <TextField
                             label="Egreso *"
-                            ampm={false}
-                            value={block.check_out ? dayjs(`2026-01-01T${block.check_out}`) : null}
-                            onChange={(val) => {
-                              if (val && val.isValid()) {
-                                const newBlocks = [...individualBlocks];
-                                newBlocks[index].check_out = val.format('HH:mm');
-                                setIndividualBlocks(newBlocks);
-                              }
-                            }}
+                            type="time"
                             fullWidth
                             size="small"
+                            InputLabelProps={{ shrink: true }}
+                            value={block.check_out || ''}
+                            onChange={(e) => {
+                              const newBlocks = [...individualBlocks];
+                              newBlocks[index].check_out = e.target.value;
+                              setIndividualBlocks(newBlocks);
+                            }}
                           />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
