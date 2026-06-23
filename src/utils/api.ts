@@ -1089,8 +1089,13 @@ export class ComplianceService {
 }
 
 export class CategoryService {
-  static async getAll(): Promise<Category[]> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/categories`);
+  static async getAll(filters?: { guild_id?: number }): Promise<Category[]> {
+    const params = new URLSearchParams();
+    if (filters?.guild_id) {
+      params.append('guild_id', filters.guild_id.toString());
+    }
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/categories${queryString}`);
     if (!response.ok) throw new Error('Error al obtener categorías');
     const data = await response.json();
     return data.data || [];
@@ -1983,6 +1988,19 @@ export class GuildService {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Error al eliminar gremio');
+  }
+
+  static async applyIncrease(id: number, body: { percentage: number; categoryIds: number[]; notes?: string }): Promise<{ message: string; summary: unknown }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/guilds/${id}/apply-increase`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al aplicar aumento');
+    }
+    return response.json();
   }
 }
 

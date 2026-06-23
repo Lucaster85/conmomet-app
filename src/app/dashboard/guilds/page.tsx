@@ -12,6 +12,7 @@ import {
 } from '@mui/icons-material';
 import FeedbackModal from '@/components/FeedbackModal';
 import { Guild, GuildService } from '@/utils/api';
+import ApplyIncreaseModal from './ApplyIncreaseModal';
 
 const emptyForm = { name: '', code: '', is_active: true };
 
@@ -24,6 +25,7 @@ export default function GuildsPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editing, setEditing] = useState<Guild | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Guild | null }>({ open: false, item: null });
+  const [increaseDialog, setIncreaseDialog] = useState<{ open: boolean; item: Guild | null }>({ open: false, item: null });
   const [form, setForm] = useState(emptyForm);
 
   const loadData = async () => {
@@ -152,6 +154,17 @@ export default function GuildsPage() {
                     </IconButton>
                   </Box>
                 </Box>
+                {guild.is_active && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    fullWidth
+                    sx={{ mt: 1.5, textTransform: 'none' }}
+                    onClick={() => setIncreaseDialog({ open: true, item: guild })}
+                  >
+                    Aplicar aumento
+                  </Button>
+                )}
               </Paper>
             ))}
           </Stack>
@@ -200,6 +213,16 @@ export default function GuildsPage() {
                       </Box>
                     </TableCell>
                     <TableCell align="center">
+                      {guild.is_active && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          sx={{ mr: 1, textTransform: 'none' }}
+                          onClick={() => setIncreaseDialog({ open: true, item: guild })}
+                        >
+                          Aplicar aumento
+                        </Button>
+                      )}
                       <Tooltip title="Editar">
                         <IconButton size="small" color="primary" onClick={() => handleOpenEdit(guild)}>
                           <EditIcon fontSize="small" />
@@ -274,6 +297,16 @@ export default function GuildsPage() {
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
       </Dialog>
+
+      <ApplyIncreaseModal
+        open={increaseDialog.open}
+        guild={increaseDialog.item}
+        onClose={() => setIncreaseDialog({ open: false, item: null })}
+        onSuccess={(msg) => {
+          setSuccess(msg);
+          loadData();
+        }}
+      />
     </Box>
   );
 }

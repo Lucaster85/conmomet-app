@@ -50,7 +50,7 @@ export default function PayrollPage() {
       if (!res.ok) throw new Error('Error al cargar');
       const json = await res.json();
       const data = json.data || [];
-      data.sort((a: any, b: any) => {
+      data.sort((a: { employee?: { lastname: string; name: string } }, b: { employee?: { lastname: string; name: string } }) => {
         const aEmp = a.employee || { lastname: '', name: '' };
         const bEmp = b.employee || { lastname: '', name: '' };
         const lastNameCompare = (aEmp.lastname || '').localeCompare(bEmp.lastname || '', 'es', { sensitivity: 'base' });
