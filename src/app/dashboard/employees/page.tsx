@@ -51,7 +51,22 @@ export default function EmployeesPage() {
       setLoading(true);
       setError('');
       const data = await EmployeeService.getAll();
-      setEmployees(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) {
+        const sorted = [...data].sort((a, b) => {
+          const aInactive = a.status === 'inactive';
+          const bInactive = b.status === 'inactive';
+          if (aInactive && !bInactive) return 1;
+          if (!aInactive && bInactive) return -1;
+          
+          const lastNameCompare = (a.lastname || '').localeCompare(b.lastname || '', 'es', { sensitivity: 'base' });
+          if (lastNameCompare !== 0) return lastNameCompare;
+          
+          return (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' });
+        });
+        setEmployees(sorted);
+      } else {
+        setEmployees([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar empleados');
     } finally {

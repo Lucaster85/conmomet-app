@@ -49,7 +49,15 @@ export default function PayrollPage() {
       const res = await TokenManager.authenticatedFetch(`${apiBase}/payroll/${payPeriodId}`);
       if (!res.ok) throw new Error('Error al cargar');
       const json = await res.json();
-      setEntries(json.data || []);
+      const data = json.data || [];
+      data.sort((a: any, b: any) => {
+        const aEmp = a.employee || { lastname: '', name: '' };
+        const bEmp = b.employee || { lastname: '', name: '' };
+        const lastNameCompare = (aEmp.lastname || '').localeCompare(bEmp.lastname || '', 'es', { sensitivity: 'base' });
+        if (lastNameCompare !== 0) return lastNameCompare;
+        return (aEmp.name || '').localeCompare(bEmp.name || '', 'es', { sensitivity: 'base' });
+      });
+      setEntries(data);
       setPeriod(json.period || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar');
