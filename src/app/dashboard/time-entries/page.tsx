@@ -6,6 +6,7 @@ import {
   DialogContent, DialogActions, Divider, IconButton, Tooltip, Switch, Grid
 } from '@mui/material';
 import dayjs from 'dayjs';
+import { TimeField } from '@mui/x-date-pickers/TimeField';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import {
@@ -36,8 +37,8 @@ const STATUS_LABELS: Record<string, string> = {
 // Types for block creation
 interface TimeBlock {
   id: string;
-  check_in: string;
-  check_out: string;
+  check_in: dayjs.Dayjs | null | string;
+  check_out: dayjs.Dayjs | null | string;
   concept_id: number | '';
   overtime_50_hours: number;
   overtime_100_hours: number;
@@ -151,13 +152,13 @@ export default function TimeEntriesPage() {
   
   // Masivo state
   const [massiveBlock, setMassiveBlock] = useState<TimeBlock>({
-    id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+    id: 'massive', check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
     is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
   });
 
   // Individual state
   const [individualBlocks, setIndividualBlocks] = useState<TimeBlock[]>([{
-    id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+    id: Date.now().toString(), check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
     is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
   }]);
 
@@ -292,11 +293,20 @@ export default function TimeEntriesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (!loading) loadEntries(); }, [filterEmployee, filterDateFrom, filterDateTo]);
 
-  const calculateHours = (inTime: string, outTime: string) => {
+  const formatTime = (timeVal: dayjs.Dayjs | null | string | undefined) => {
+    if (!timeVal) return '';
+    if (dayjs.isDayjs(timeVal)) {
+      return timeVal.isValid() ? timeVal.format('HH:mm') : '';
+    }
+    return String(timeVal);
+  };
+
+  const calculateHours = (inTime: dayjs.Dayjs | null | string | undefined, outTime: dayjs.Dayjs | null | string | undefined) => {
     if (!inTime || !outTime) return 0;
-    const [inH, inM] = inTime.split(':').map(Number);
-    const [outH, outM] = outTime.split(':').map(Number);
-    const hours = (outH * 60 + outM - inH * 60 - inM) / 60;
+    const tIn = dayjs.isDayjs(inTime) ? inTime : dayjs(`2026-01-01T${inTime}`);
+    const tOut = dayjs.isDayjs(outTime) ? outTime : dayjs(`2026-01-01T${outTime}`);
+    if (!tIn.isValid() || !tOut.isValid()) return 0;
+    const hours = tOut.diff(tIn, 'minute') / 60;
     return Math.max(0, Math.round(hours * 100) / 100);
   };
 
@@ -319,7 +329,9 @@ export default function TimeEntriesPage() {
       const payloads: CreateTimeEntryData[] = [];
 
       if (entryMode === 'massive' || isMonthlySelected) {
-        if (!massiveBlock.check_in || !massiveBlock.check_out) { setError('Ingreso y egreso obligatorios'); return; }
+        const formattedIn = formatTime(massiveBlock.check_in);
+        const formattedOut = formatTime(massiveBlock.check_out);
+        if (!formattedIn || !formattedOut) { setError('Ingreso y egreso obligatorios'); return; }
         
         const concept = concepts.find(c => c.id === Number(massiveBlock.concept_id));
         if (concept?.is_crane_hours && !massiveBlock.vehicle_id) {
@@ -330,8 +342,8 @@ export default function TimeEntriesPage() {
         payloads.push({
           employee_ids: selectedEmployees.map(e => e.id),
           date: formDate,
-          check_in: massiveBlock.check_in,
-          check_out: massiveBlock.check_out,
+          check_in: formattedIn,
+          check_out: formattedOut,
           concept_id: massiveBlock.concept_id ? Number(massiveBlock.concept_id) : undefined,
           overtime_50_hours: massiveBlock.overtime_50_hours || 0,
           overtime_100_hours: massiveBlock.overtime_100_hours || 0,
@@ -349,7 +361,9 @@ export default function TimeEntriesPage() {
         if (selectedEmployees.length !== 1) { setError('El modo bloques es para un solo empleado a la vez'); return; }
         
         for (const block of individualBlocks) {
-          if (!block.check_in || !block.check_out) { setError('Ingreso y egreso obligatorios en todos los bloques'); return; }
+          const formattedIn = formatTime(block.check_in);
+          const formattedOut = formatTime(block.check_out);
+          if (!formattedIn || !formattedOut) { setError('Ingreso y egreso obligatorios en todos los bloques'); return; }
           
           const concept = concepts.find(c => c.id === Number(block.concept_id));
           if (concept?.is_crane_hours && !block.vehicle_id) {
@@ -360,8 +374,8 @@ export default function TimeEntriesPage() {
           payloads.push({
             employee_ids: [selectedEmployees[0].id],
             date: formDate,
-            check_in: block.check_in,
-            check_out: block.check_out,
+            check_in: formattedIn,
+            check_out: formattedOut,
             concept_id: block.concept_id ? Number(block.concept_id) : undefined,
             overtime_50_hours: block.overtime_50_hours || 0,
             overtime_100_hours: block.overtime_100_hours || 0,
@@ -408,18 +422,18 @@ export default function TimeEntriesPage() {
     setFormDate(new Date().toISOString().split('T')[0]);
     setIsLate(false);
     setMassiveBlock({
-      id: 'massive', check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+      id: 'massive', check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
       is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
     });
     setIndividualBlocks([{
-      id: Date.now().toString(), check_in: '08:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+      id: Date.now().toString(), check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
       is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
     }]);
   };
 
   const addBlock = () => {
     setIndividualBlocks([...individualBlocks, {
-      id: Date.now().toString(), check_in: '13:00', check_out: '17:00', concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+      id: Date.now().toString(), check_in: dayjs('2026-01-01T13:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
       is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
     }]);
   };
@@ -461,8 +475,8 @@ export default function TimeEntriesPage() {
 
       setIndividualBlocks([{
         id: Date.now().toString(),
-        check_in: entryToCopy.check_in ? entryToCopy.check_in.substring(0, 5) : '08:00',
-        check_out: entryToCopy.check_out ? entryToCopy.check_out.substring(0, 5) : '17:00',
+        check_in: entryToCopy.check_in ? dayjs(`2026-01-01T${entryToCopy.check_in}`) : dayjs('2026-01-01T08:00'),
+        check_out: entryToCopy.check_out ? dayjs(`2026-01-01T${entryToCopy.check_out}`) : dayjs('2026-01-01T17:00'),
         concept_id: entryToCopy.concept_id ?? '',
         overtime_50_hours: entryToCopy.overtime_50_hours || 0,
         overtime_100_hours: entryToCopy.overtime_100_hours || 0,
@@ -480,7 +494,10 @@ export default function TimeEntriesPage() {
       setSuccess('Registro anulado. Cargando plantilla para corrección...');
       
       // Open the creation modal pre-filled with this data
-      setOpenCreateDialog(true);
+      // Delay opening to prevent MUI FocusTrap collision from the closing void dialog
+      setTimeout(() => {
+        setOpenCreateDialog(true);
+      }, 150);
       
       loadEntries();
     } catch (err) {
@@ -753,24 +770,26 @@ export default function TimeEntriesPage() {
                 ) : null}
                 <Grid container spacing={2} alignItems="center">
                   <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField
+                    <TimeField
                       label="Ingreso *"
-                      type="time"
+                      ampm={false}
+                      value={massiveBlock.check_in ? (dayjs.isDayjs(massiveBlock.check_in) ? massiveBlock.check_in : dayjs(`2026-01-01T${massiveBlock.check_in}`)) : null}
+                      onChange={(val) => {
+                        setMassiveBlock({ ...massiveBlock, check_in: val });
+                      }}
                       fullWidth
-                      InputLabelProps={{ shrink: true }}
-                      value={massiveBlock.check_in || ''}
-                      onChange={(e) => setMassiveBlock({ ...massiveBlock, check_in: e.target.value })}
                       disabled={isMonthlySelected}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField
+                    <TimeField
                       label="Egreso *"
-                      type="time"
+                      ampm={false}
+                      value={massiveBlock.check_out ? (dayjs.isDayjs(massiveBlock.check_out) ? massiveBlock.check_out : dayjs(`2026-01-01T${massiveBlock.check_out}`)) : null}
+                      onChange={(val) => {
+                        setMassiveBlock({ ...massiveBlock, check_out: val });
+                      }}
                       fullWidth
-                      InputLabelProps={{ shrink: true }}
-                      value={massiveBlock.check_out || ''}
-                      onChange={(e) => setMassiveBlock({ ...massiveBlock, check_out: e.target.value })}
                       disabled={isMonthlySelected}
                     />
                   </Grid>
@@ -907,33 +926,31 @@ export default function TimeEntriesPage() {
                       </Box>
                       <Grid container spacing={2}>
                         <Grid size={{ xs: 6, md: 2 }}>
-                          <TextField
+                          <TimeField
                             label="Ingreso *"
-                            type="time"
-                            fullWidth
-                            size="small"
-                            InputLabelProps={{ shrink: true }}
-                            value={block.check_in || ''}
-                            onChange={(e) => {
+                            ampm={false}
+                            value={block.check_in ? (dayjs.isDayjs(block.check_in) ? block.check_in : dayjs(`2026-01-01T${block.check_in}`)) : null}
+                            onChange={(val) => {
                               const newBlocks = [...individualBlocks];
-                              newBlocks[index].check_in = e.target.value;
+                              newBlocks[index].check_in = val;
                               setIndividualBlocks(newBlocks);
                             }}
+                            fullWidth
+                            size="small"
                           />
                         </Grid>
                         <Grid size={{ xs: 6, md: 2 }}>
-                          <TextField
+                          <TimeField
                             label="Egreso *"
-                            type="time"
-                            fullWidth
-                            size="small"
-                            InputLabelProps={{ shrink: true }}
-                            value={block.check_out || ''}
-                            onChange={(e) => {
+                            ampm={false}
+                            value={block.check_out ? (dayjs.isDayjs(block.check_out) ? block.check_out : dayjs(`2026-01-01T${block.check_out}`)) : null}
+                            onChange={(val) => {
                               const newBlocks = [...individualBlocks];
-                              newBlocks[index].check_out = e.target.value;
+                              newBlocks[index].check_out = val;
                               setIndividualBlocks(newBlocks);
                             }}
+                            fullWidth
+                            size="small"
                           />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -1099,7 +1116,7 @@ export default function TimeEntriesPage() {
       </Dialog>
 
       {/* Void Dialog */}
-      <Dialog open={voidDialog.open} onClose={() => setVoidDialog({ open: false, entry: null })} maxWidth="sm" fullWidth>
+      <Dialog open={voidDialog.open} onClose={() => setVoidDialog({ open: false, entry: null })} disableRestoreFocus maxWidth="sm" fullWidth>
         <DialogTitle>Anular Registro</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>
