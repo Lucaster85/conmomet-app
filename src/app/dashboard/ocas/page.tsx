@@ -54,6 +54,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Close as CloseIcon,
   Visibility as VisibilityIcon,
+  Block as AnnulIcon,
 } from '@mui/icons-material';
 import {
   Oca,
@@ -125,6 +126,8 @@ export default function OcasPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [approveDialog, setApproveDialog] = useState<{ open: boolean; ocaId: number | null }>({ open: false, ocaId: null });
   const [signedFile, setSignedFile] = useState<File | null>(null);
+  const [annulDialog, setAnnulDialog] = useState<{ open: boolean; ocaId: number | null }>({ open: false, ocaId: null });
+  const [annulReason, setAnnulReason] = useState('');
 
   // Expanded Accordion state
   const [expandedOcaId, setExpandedOcaId] = useState<number | null>(null);
@@ -401,6 +404,25 @@ export default function OcasPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al aprobar el remito');
+    }
+  };
+
+  const handleOpenAnnul = (id: number) => {
+    setAnnulReason('');
+    setAnnulDialog({ open: true, ocaId: id });
+  };
+
+  const handleAnnul = async () => {
+    if (!annulDialog.ocaId) return;
+    try {
+      setError('');
+      setSuccess('');
+      await OcaService.annul(annulDialog.ocaId, annulReason.trim() || undefined);
+      setSuccess('Remito anulado correctamente');
+      setAnnulDialog({ open: false, ocaId: null });
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al anular el remito');
     }
   };
 
@@ -1019,6 +1041,17 @@ export default function OcasPage() {
                               Rechazar Remito
                             </Button>
                           </>
+                        )}
+                        {(oca.status === 'pendiente' || oca.status === 'presentado') && (
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<AnnulIcon />}
+                            onClick={() => handleOpenAnnul(oca.id)}
+                            size="small"
+                          >
+                            Anular OCA
+                          </Button>
                         )}
                         {oca.status === 'rechazado' && (
                           <Button
@@ -1894,6 +1927,31 @@ export default function OcasPage() {
           <DialogActions>
             <Button onClick={() => setApproveDialog({ open: false, ocaId: null })}>Cancelar</Button>
             <Button onClick={handleApprove} variant="contained" color="success">Aprobar Remito</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Annul Dialog */}
+        <Dialog open={annulDialog.open} onClose={() => setAnnulDialog({ open: false, ocaId: null })} maxWidth="xs" fullWidth>
+          <DialogTitle>Anular Remito / OCA</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2}>
+              <Typography variant="body2" color="error.main" fontWeight="medium">
+                Esta acción es irreversible y liberará todas las horas asociadas a este remito para que puedan asignarse a un nuevo remito.
+              </Typography>
+              <TextField
+                label="Motivo de la Anulación"
+                fullWidth
+                multiline
+                rows={3}
+                value={annulReason}
+                onChange={(e) => setAnnulReason(e.target.value)}
+                placeholder="Opcional..."
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAnnulDialog({ open: false, ocaId: null })}>Cancelar</Button>
+            <Button onClick={handleAnnul} variant="contained" color="error">Anular Remito</Button>
           </DialogActions>
         </Dialog>
 

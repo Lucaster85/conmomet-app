@@ -2714,6 +2714,17 @@ export class OcaService {
     return data.data || data;
   }
 
+  static async annul(id: number, reason?: string): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/annul`, {
+      method: 'PUT',
+      body: JSON.stringify({ reason }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al anular la OCA');
+    }
+  }
+
   static async updateLines(id: number, lines: Partial<OcaLine>[]): Promise<Oca> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/lines`, {
       method: 'PUT',
