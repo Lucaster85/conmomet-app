@@ -5,7 +5,7 @@ import {
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Stack,
   Chip, InputAdornment, Divider, MenuItem, Select, FormControl, InputLabel,
-  FormHelperText
+  FormHelperText, Switch, FormControlLabel
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
@@ -35,6 +35,7 @@ export default function EmployeesPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
@@ -50,23 +51,8 @@ export default function EmployeesPage() {
     try {
       setLoading(true);
       setError('');
-      const data = await EmployeeService.getAll();
-      if (Array.isArray(data)) {
-        const sorted = [...data].sort((a, b) => {
-          const aInactive = a.status === 'inactive';
-          const bInactive = b.status === 'inactive';
-          if (aInactive && !bInactive) return 1;
-          if (!aInactive && bInactive) return -1;
-          
-          const lastNameCompare = (a.lastname || '').localeCompare(b.lastname || '', 'es', { sensitivity: 'base' });
-          if (lastNameCompare !== 0) return lastNameCompare;
-          
-          return (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' });
-        });
-        setEmployees(sorted);
-      } else {
-        setEmployees([]);
-      }
+      const data = await EmployeeService.getAll(undefined, showInactive);
+      setEmployees(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar empleados');
     } finally {
@@ -92,7 +78,10 @@ export default function EmployeesPage() {
     }
   };
 
-  useEffect(() => { loadEmployees(); loadUsers(); loadCategories(); }, []);;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadEmployees(); loadUsers(); loadCategories(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!loading) loadEmployees(); }, [showInactive]);
 
   // Usuarios que NO están vinculados a otro empleado (excepto el que estamos editando)
   const availableUsers = users.filter(u => {
@@ -208,12 +197,26 @@ export default function EmployeesPage() {
       </Box>
 
       {/* Search */}
-      <TextField
-        placeholder="Buscar por nombre, apellido o DNI..."
-        fullWidth size="small" sx={{ mb: 2 }}
-        value={search} onChange={(e) => setSearch(e.target.value)}
-        InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-      />
+      <Box display="flex" alignItems="center" gap={2} sx={{ mb: 2 }}>
+        <TextField
+          placeholder="Buscar por nombre, apellido o DNI..."
+          fullWidth size="small"
+          value={search} onChange={(e) => setSearch(e.target.value)}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              size="small"
+              color="error"
+            />
+          }
+          label={<Typography variant="body2" color={showInactive ? 'error' : 'text.secondary'} noWrap>Ver inactivos</Typography>}
+          sx={{ flexShrink: 0 }}
+        />
+      </Box>
 
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />

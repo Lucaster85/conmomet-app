@@ -793,8 +793,11 @@ export class PlantService {
 
 // Employee Service
 export class EmployeeService {
-  static async getAll(status?: string): Promise<Employee[]> {
-    const url = status ? `${API_BASE_URL}/employees?status=${status}` : `${API_BASE_URL}/employees`;
+  static async getAll(status?: string, include_inactive?: boolean): Promise<Employee[]> {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (include_inactive) params.append('include_inactive', 'true');
+    const url = params.toString() ? `${API_BASE_URL}/employees?${params}` : `${API_BASE_URL}/employees`;
     const response = await TokenManager.authenticatedFetch(url);
     if (!response.ok) throw new Error('Error al obtener empleados');
     const data = await response.json();
