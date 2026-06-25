@@ -1140,7 +1140,7 @@ export class CategoryService {
 
 // TimeEntry Service
 export class TimeEntryService {
-  static async getAll(filters?: { employee_id?: number; plant_id?: number; date_from?: string; date_to?: string; status?: string }): Promise<TimeEntry[]> {
+  static async getAll(filters?: { employee_id?: number; plant_id?: number; date_from?: string; date_to?: string; status?: string; include_voided?: boolean }): Promise<TimeEntry[]> {
     const params = new URLSearchParams();
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {

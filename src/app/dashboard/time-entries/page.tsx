@@ -71,6 +71,7 @@ export default function TimeEntriesPage() {
   // Filters
   const [filterEmployee, setFilterEmployee] = useState<number | ''>('');
   const [filterPreset, setFilterPreset] = useState('this_fortnight');
+  const [showVoided, setShowVoided] = useState(false);
   const [filterDateFrom, setFilterDateFrom] = useState(() => {
     const today = dayjs();
     return today.date() <= 15 
@@ -277,10 +278,11 @@ export default function TimeEntriesPage() {
 
   const loadEntries = async () => {
     try {
-      const filters: Record<string, string | number> = {};
+      const filters: Record<string, string | number | boolean> = {};
       if (filterEmployee) filters.employee_id = filterEmployee;
       if (filterDateFrom) filters.date_from = filterDateFrom;
       if (filterDateTo) filters.date_to = filterDateTo;
+      if (showVoided) filters.include_voided = true;
       const data = await TimeEntryService.getAll(filters as never);
       setEntries(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -291,7 +293,7 @@ export default function TimeEntriesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadData(); }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!loading) loadEntries(); }, [filterEmployee, filterDateFrom, filterDateTo]);
+  useEffect(() => { if (!loading) loadEntries(); }, [filterEmployee, filterDateFrom, filterDateTo, showVoided]);
 
   const formatTime = (timeVal: dayjs.Dayjs | null | string | undefined) => {
     if (!timeVal) return '';
@@ -605,6 +607,20 @@ export default function TimeEntriesPage() {
               </Grid>
             </>
           )}
+
+          <Grid size={{ xs: 12 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={showVoided}
+                  onChange={(e) => setShowVoided(e.target.checked)}
+                  size="small"
+                  color="error"
+                />
+              }
+              label={<Typography variant="body2" color={showVoided ? 'error' : 'text.secondary'}>Ver anuladas</Typography>}
+            />
+          </Grid>
         </Grid>
       </Paper>
 
