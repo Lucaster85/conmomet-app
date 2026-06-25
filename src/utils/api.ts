@@ -2625,7 +2625,7 @@ export class VehicleService {
 }
 
 export class OcaService {
-  static async getAll(params?: { client_id?: number; supervisor_id?: number; project_id?: number; status?: string; type?: string }): Promise<Oca[]> {
+  static async getAll(params?: { client_id?: number; supervisor_id?: number; project_id?: number; status?: string; type?: string; include_anuladas?: boolean }): Promise<Oca[]> {
     let url = `${API_BASE_URL}/ocas`;
     if (params) {
       const qs = new URLSearchParams();
@@ -2634,6 +2634,7 @@ export class OcaService {
       if (params.project_id) qs.append('project_id', params.project_id.toString());
       if (params.status) qs.append('status', params.status);
       if (params.type) qs.append('type', params.type);
+      if (params.include_anuladas) qs.append('include_anuladas', 'true');
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);

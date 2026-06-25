@@ -38,6 +38,8 @@ import {
   Alert,
   useTheme,
   useMediaQuery,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -108,6 +110,7 @@ export default function OcasPage() {
   // Filters State
   const [filterClient, setFilterClient] = useState<number | ''>('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [showAnuladas, setShowAnuladas] = useState(false);
 
   // Creation State
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
@@ -181,7 +184,7 @@ export default function OcasPage() {
       setError('');
       const [clis, list, emps, vehs] = await Promise.all([
         ClientService.getAll(),
-        OcaService.getAll({ type: typeKey }),
+        OcaService.getAll({ type: typeKey, include_anuladas: showAnuladas }),
         EmployeeService.getAll('active'),
         VehicleService.getAll({ is_active: true }),
       ]);
@@ -194,7 +197,7 @@ export default function OcasPage() {
     } finally {
       setLoading(false);
     }
-  }, [typeKey]);
+  }, [typeKey, showAnuladas]);
 
   useEffect(() => {
     loadData();
@@ -875,15 +878,25 @@ export default function OcasPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }} display="flex" justifyContent="flex-end">
+              <Grid size={{ xs: 12, sm: 4 }} display="flex" alignItems="center" gap={2} justifyContent="flex-end">
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={showAnuladas}
+                      onChange={(e) => setShowAnuladas(e.target.checked)}
+                      size="small"
+                      color="error"
+                    />
+                  }
+                  label={<Typography variant="body2" color={showAnuladas ? 'error' : 'text.secondary'}>Ver anuladas</Typography>}
+                />
                 <Button
                   variant="outlined"
                   onClick={loadData}
                   startIcon={<RefreshIcon />}
-                  fullWidth
                   sx={{ borderRadius: 2 }}
                 >
-                  Actualizar Listado
+                  Actualizar
                 </Button>
               </Grid>
             </Grid>
