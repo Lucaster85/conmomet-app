@@ -16,6 +16,14 @@ import { useParams, useRouter } from 'next/navigation';
 import PayrollAdjustmentsModal from './PayrollAdjustmentsModal';
 import RateChangesModal from './RateChangesModal';
 
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+const formatPeriodLabel = (p: PayPeriod) => {
+  const half = p.type === 'first_half' ? '1ª Quincena' : '2ª Quincena';
+  const month = MONTHS[(p.month ?? 1) - 1];
+  return `${half} de ${month} ${p.year}`;
+};
+
 export default function PayrollPage() {
   const params = useParams();
   const router = useRouter();
@@ -38,6 +46,32 @@ export default function PayrollPage() {
   const [openRateChanges, setOpenRateChanges] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [detailEntry, setDetailEntry] = useState<any>(null);
+  const [isPrintingAll, setIsPrintingAll] = useState(false);
+
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      setIsPrintingAll(false);
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
+
+  const handlePrintAll = () => {
+    const originalTitle = document.title;
+    if (period) {
+      const qNum = period.type === 'first_half' ? '1Quincena' : '2Quincena';
+      const monthName = MONTHS[(period.month ?? 1) - 1];
+      document.title = `jornales_${qNum}_${monthName}_${period.year}`;
+    }
+    setIsPrintingAll(true);
+    setTimeout(() => {
+      window.print();
+      document.title = originalTitle;
+      setIsPrintingAll(false);
+    }, 300);
+  };
 
   const loadData = async () => {
     try {
@@ -103,14 +137,18 @@ export default function PayrollPage() {
 
   const formatCurrency = (v: number) => `$${Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
-  const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const formatPeriodLabel = (p: PayPeriod) => {
-    const half = p.type === 'first_half' ? '1ª Quincena' : '2ª Quincena';
-    const month = MONTHS[(p.month ?? 1) - 1];
-    return `${half} de ${month} ${p.year}`;
+  const handlePrint = () => {
+    const originalTitle = document.title;
+    if (period) {
+      const qNum = period.type === 'first_half' ? '1Quincena' : '2Quincena';
+      const monthName = MONTHS[(period.month ?? 1) - 1];
+      document.title = `listado_jornales_${qNum}_${monthName}_${period.year}`;
+    }
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 300);
   };
-
-  const handlePrint = () => window.print();
 
   const handleExportHours = async () => {
     if (!period || entries.length === 0) return;
@@ -230,7 +268,7 @@ export default function PayrollPage() {
   if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
 
   return (
-    <Box className={!openDetail && !openEdit && !openRateChanges ? "print-area" : ""}>
+    <Box className={!openDetail && !openEdit && !openRateChanges && !isPrintingAll ? "print-area" : ""}>
       <Box className="no-print" display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box display="flex" alignItems="center" gap={1}>
           <IconButton onClick={() => router.push('/dashboard/pay-periods')}><BackIcon /></IconButton>
@@ -252,7 +290,7 @@ export default function PayrollPage() {
 
       {/* Period info banner */}
       {period && (
-        <Paper sx={{ p: 2, mb: 2, bgcolor: period.status === 'paid' ? '#F0FDF4' : period.status === 'closed' ? '#FFF7ED' : '#F8FAFC', border: '1px solid', borderColor: period.status === 'paid' ? '#BBF7D0' : period.status === 'closed' ? '#FED7AA' : 'divider', borderRadius: 2 }}>
+        <Paper className={isPrintingAll ? "no-print" : ""} sx={{ p: 2, mb: 2, bgcolor: period.status === 'paid' ? '#F0FDF4' : period.status === 'closed' ? '#FFF7ED' : '#F8FAFC', border: '1px solid', borderColor: period.status === 'paid' ? '#BBF7D0' : period.status === 'closed' ? '#FED7AA' : 'divider', borderRadius: 2 }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
             <Box>
               <Typography variant="h6" fontWeight={600}>{formatPeriodLabel(period)}</Typography>
@@ -268,6 +306,7 @@ export default function PayrollPage() {
               />
               <Box className="no-print" display="flex" gap={1}>
                 <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrint} sx={{ display: entries.length > 0 ? 'inline-flex' : 'none' }}>Imprimir</Button>
+                <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrintAll} sx={{ display: entries.length > 0 ? 'inline-flex' : 'none' }}>Imprimir Detalles</Button>
                 <Button
                   variant="outlined"
                   size="small"
@@ -283,8 +322,9 @@ export default function PayrollPage() {
         </Paper>
       )}
 
-      {entries.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
+      <Box className={isPrintingAll ? "no-print" : ""}>
+        {entries.length === 0 ? (
+          <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary" mb={2}>
             {period?.status === 'open'
               ? 'No se ha generado la liquidación para esta quincena aún.'
@@ -659,7 +699,8 @@ export default function PayrollPage() {
             </TableBody>
           </Table>
         </TableContainer>
-      )}
+        )}
+      </Box>
 
       {/* Detail Dialog */}
       <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
@@ -1023,6 +1064,334 @@ export default function PayrollPage() {
         onClose={() => { setOpenRateChanges(false); loadData(); }}
         payPeriodId={payPeriodId}
       />
+
+      {isPrintingAll && (
+        <Box 
+          className="print-area" 
+          sx={{ 
+            display: 'none', 
+            '@media print': { 
+              display: 'block' 
+            } 
+          }}
+        >
+          {entries.map((entry) => (
+            <Box 
+              key={entry.id} 
+              sx={{ 
+                breakInside: 'avoid',
+                pageBreakInside: 'avoid',
+                borderBottom: '2px dotted #999',
+                pb: 2,
+                mb: 3,
+                '&:last-child': {
+                  borderBottom: 'none',
+                  pb: 0,
+                  mb: 0,
+                }
+              }}
+            >
+              {/* Línea 1: Nombre, DNI, Puesto, Jornalizado/Mensualizado */}
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                <Typography variant="body2" fontWeight={700}>
+                  {entry.employee?.lastname}, {entry.employee?.name}
+                </Typography>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Typography variant="caption" color="text.secondary">DNI: {entry.employee?.dni}</Typography>
+                  <Typography variant="caption" color="text.secondary">·</Typography>
+                  <Typography variant="caption" color="text.secondary">{entry.employee?.position || 'Sin cargo'}</Typography>
+                  <Typography variant="caption" color="text.secondary">·</Typography>
+                  <Chip
+                    label={entry.employee?.pay_type === 'monthly' ? 'Mensual' : 'Jornalizado'}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontSize: '0.65rem', height: 18 }}
+                  />
+                </Box>
+              </Box>
+
+              {/* Línea 2: Quincena y Fecha */}
+              {period && (
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="caption" fontWeight={600}>
+                    {formatPeriodLabel(period)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Período: {period.start_date.split('-').reverse().join('/')} — {period.end_date.split('-').reverse().join('/')}
+                  </Typography>
+                </Box>
+              )}
+
+              <Divider sx={{ my: 0.75 }} />
+
+              {/* Horas en Planta (PEP) - sin Asistencia */}
+              {entry.pep_summary && Number(entry.pep_summary.total_pep_hours || 0) > 0 && (
+                <Box mb={1}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={0.5}>
+                    Horas en Planta (PEP)
+                  </Typography>
+                  <TableContainer component={Paper} variant="outlined" sx={{ mb: 1, borderRadius: 1 }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: 'grey.50' }}>
+                          <TableCell sx={{ py: 0.25, px: 1 }}><Typography variant="caption" fontWeight="bold">Concepto</Typography></TableCell>
+                          <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption" fontWeight="bold">Regular</Typography></TableCell>
+                          <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption" fontWeight="bold">50%</Typography></TableCell>
+                          <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption" fontWeight="bold">100%</Typography></TableCell>
+                          <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption" fontWeight="bold">Total</Typography></TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {(() => {
+                          const isMonthly = entry.employee?.pay_type === 'monthly';
+                          
+                          const ocaReg = Number(entry.pep_summary.pep_oca?.regular_hours || 0);
+                          const oca50 = Number(entry.pep_summary.pep_oca?.overtime_50_hours || 0);
+                          const oca100 = Number(entry.pep_summary.pep_oca?.overtime_100_hours || 0);
+                          const pepOcaSimples = isMonthly ? ocaReg : ocaReg - oca50 - oca100;
+
+                          const regReg = Number(entry.pep_summary.pep_regular?.regular_hours || 0);
+                          const reg50 = Number(entry.pep_summary.pep_regular?.overtime_50_hours || 0);
+                          const reg100 = Number(entry.pep_summary.pep_regular?.overtime_100_hours || 0);
+                          const pepRegSimples = isMonthly ? regReg : regReg - reg50 - reg100;
+
+                          const totalSimples = pepOcaSimples + pepRegSimples;
+                          const total50 = oca50 + reg50;
+                          const total100 = oca100 + reg100;
+                          const totalPep = isMonthly ? total50 + total100 : ocaReg + regReg;
+
+                          return (
+                            <TableRow>
+                              <TableCell sx={{ py: 0.25, px: 1 }}><Typography variant="caption">PEP (Total)</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption">{totalSimples.toFixed(1)}h</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption">{total50.toFixed(1)}h</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption">{total100.toFixed(1)}h</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.25, px: 1 }}><Typography variant="caption" fontWeight="bold">{totalPep.toFixed(1)}h</Typography></TableCell>
+                            </TableRow>
+                          );
+                        })()}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              )}
+
+              {/* Desglose de haberes */}
+              <Box mb={1}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={0.25}>
+                  Desglose de Haberes
+                </Typography>
+                {(() => {
+                  if (entry.lines && entry.lines.length > 0) {
+                    const isMonthly = entry.employee?.pay_type === 'monthly';
+                    
+                    let displayLines = entry.lines;
+                    if (!isMonthly) {
+                      const extrasMap: Record<string, { ot50: number; ot100: number }> = {};
+                      entry.lines.forEach((l: PayrollLine) => {
+                        if (l.line_type === 'extras_50' || l.line_type === 'extras_100') {
+                          const cid = String(l.concept_id || 'null');
+                          if (!extrasMap[cid]) {
+                            extrasMap[cid] = { ot50: 0, ot100: 0 };
+                          }
+                          if (l.line_type === 'extras_50') {
+                            extrasMap[cid].ot50 += Number(l.quantity || 0);
+                          } else {
+                            extrasMap[cid].ot100 += Number(l.quantity || 0);
+                          }
+                        }
+                      });
+
+                      displayLines = entry.lines.map((l: PayrollLine) => {
+                        const cid = String(l.concept_id || 'null');
+                        if (l.line_type === 'regular') {
+                          const extras = extrasMap[cid] || { ot50: 0, ot100: 0 };
+                          const totalOt = extras.ot50 + extras.ot100;
+                          if (totalOt > 0) {
+                            const newQty = Math.max(0, Number(l.quantity || 0) - totalOt);
+                            const rate = Number(l.rate || 0);
+                            return {
+                              ...l,
+                              quantity: newQty,
+                              subtotal: newQty * rate
+                            };
+                          }
+                        } else if (l.line_type === 'extras_50') {
+                          const baseRate = Number(l.rate || 0) * 2;
+                          const fullRate = baseRate * 1.5;
+                          const qty = Number(l.quantity || 0);
+                          return {
+                            ...l,
+                            label: l.label.replace('Recargo 50%', 'Horas Extra 50%'),
+                            rate: fullRate,
+                            subtotal: qty * fullRate
+                          };
+                        } else if (l.line_type === 'extras_100') {
+                          const baseRate = Number(l.rate || 0);
+                          const fullRate = baseRate * 2.0;
+                          const qty = Number(l.quantity || 0);
+                          return {
+                            ...l,
+                            label: l.label.replace('Recargo 100%', 'Horas Extra 100%'),
+                            rate: fullRate,
+                            subtotal: qty * fullRate
+                          };
+                        }
+                        return l;
+                      });
+                    }
+
+                    const totalHours = isMonthly
+                      ? 0
+                      : displayLines
+                          .filter((l: PayrollLine) => ['regular', 'extras_50', 'extras_100', 'holiday', 'medical_leave', 'justified'].includes(l.line_type))
+                          .reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0);
+
+                    return (
+                      <TableContainer component={Paper} variant="outlined" sx={{ border: 'none', bgcolor: 'transparent' }}>
+                        <Table size="small" sx={{ mb: 0.5, '& th, & td': { borderBottom: 'none', py: 0.25, px: 0 } }}>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ py: 0.1, px: 0 }}><Typography variant="caption" color="text.secondary">Concepto</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.1, px: 0 }}><Typography variant="caption" color="text.secondary">Cant.</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.1, px: 0 }}><Typography variant="caption" color="text.secondary">Tarifa</Typography></TableCell>
+                              <TableCell align="right" sx={{ py: 0.1, px: 0 }}><Typography variant="caption" color="text.secondary">Subtotal</Typography></TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {displayLines.map((line: { id: number, label: string, quantity: number, rate: number, subtotal: number }) => (
+                              <TableRow key={line.id}>
+                                <TableCell sx={{ py: 0.1, px: 0, maxWidth: 400 }}>
+                                  <Typography variant="caption" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+                                    {line.label}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align="right" sx={{ py: 0.1, px: 0 }}><Typography variant="caption">{Number(line.quantity).toFixed(1)}</Typography></TableCell>
+                                <TableCell align="right" sx={{ py: 0.1, px: 0 }}><Typography variant="caption">{formatCurrency(line.rate)}</Typography></TableCell>
+                                <TableCell align="right" sx={{ py: 0.1, px: 0 }}><Typography variant="caption">{formatCurrency(line.subtotal)}</Typography></TableCell>
+                              </TableRow>
+                            ))}
+
+                            {(entry.adjustments as PayrollAdjustment[])?.filter((a: PayrollAdjustment) => a.type === 'bonus').map((a: PayrollAdjustment) => (
+                              <TableRow key={a.id}>
+                                <TableCell sx={{ py: 0.1, px: 0, maxWidth: 400 }}>
+                                  <Typography variant="caption" color="success.main" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+                                    Pagos extra ({a.label})
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align="right" sx={{ py: 0.1, px: 0 }}><Typography variant="caption" color="success.main">—</Typography></TableCell>
+                                <TableCell align="right" sx={{ py: 0.1, px: 0 }}><Typography variant="caption" color="success.main">—</Typography></TableCell>
+                                <TableCell align="right" sx={{ py: 0.1, px: 0 }}><Typography variant="caption" color="success.main">+{formatCurrency(a.amount)}</Typography></TableCell>
+                              </TableRow>
+                            ))}
+
+                            <TableRow>
+                              <TableCell colSpan={4} sx={{ py: 0.25 }}>
+                                <Divider />
+                              </TableCell>
+                            </TableRow>
+
+                            <TableRow>
+                              <TableCell sx={{ py: 0.1, px: 0 }}>
+                                <Typography variant="caption" fontWeight={600}>Sueldo bruto</Typography>
+                              </TableCell>
+                              <TableCell align="right" sx={{ py: 0.1, px: 0 }}>
+                                <Typography variant="caption" fontWeight={600}>
+                                  {isMonthly ? '—' : Number(totalHours).toFixed(1)}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right" sx={{ py: 0.1, px: 0 }}>
+                                <Typography variant="caption" fontWeight={600}>—</Typography>
+                              </TableCell>
+                              <TableCell align="right" sx={{ py: 0.1, px: 0 }}>
+                                <Typography variant="caption" fontWeight={600}>
+                                  {formatCurrency(entry.gross_amount)}
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    );
+                  } else {
+                    return (
+                      <Stack spacing={0.1} mb={0.5}>
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="caption">
+                            {entry.employee?.pay_type === 'monthly'
+                              ? 'Sueldo mensual'
+                              : `Horas regulares (${parseFloat((Number(entry.total_regular_hours || 0) - Number(entry.total_overtime_50_hours || 0) - Number(entry.total_overtime_100_hours || 0)).toFixed(2))}h)`}
+                          </Typography>
+                          <Typography variant="caption">{formatCurrency(entry.regular_amount)}</Typography>
+                        </Box>
+                        {Number(entry.overtime_50_amount) > 0 && (
+                          <Box display="flex" justifyContent="space-between">
+                            <Typography variant="caption">Horas extra 50% ({entry.total_overtime_50_hours}h)</Typography>
+                            <Typography variant="caption">{formatCurrency(entry.overtime_50_amount)}</Typography>
+                          </Box>
+                        )}
+                        {Number(entry.overtime_100_amount) > 0 && (
+                          <Box display="flex" justifyContent="space-between">
+                            <Typography variant="caption">Horas extra 100% ({entry.total_overtime_100_hours}h)</Typography>
+                            <Typography variant="caption">{formatCurrency(entry.overtime_100_amount)}</Typography>
+                          </Box>
+                        )}
+                        {entry.adjustments?.filter((a: PayrollAdjustment) => a.type === 'bonus').map((a: PayrollAdjustment) => (
+                          <Box display="flex" justifyContent="space-between" key={a.id}>
+                            <Typography variant="caption" color="success.main">
+                              Pagos extra ({a.label})
+                            </Typography>
+                            <Typography variant="caption" color="success.main">+{formatCurrency(a.amount)}</Typography>
+                          </Box>
+                        ))}
+                        <Divider />
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="caption" fontWeight={600}>Sueldo bruto</Typography>
+                          <Typography variant="caption" fontWeight={600}>{formatCurrency(entry.gross_amount)}</Typography>
+                        </Box>
+                      </Stack>
+                    );
+                  }
+                })()}
+              </Box>
+
+              {/* Deducciones */}
+              <Box mb={1}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={0.25}>
+                  Deducciones
+                </Typography>
+                <Stack spacing={0.1}>
+                  {Number(entry.advances_deducted) > 0 && (
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="caption" color="error.main">Adelantos</Typography>
+                      <Typography variant="caption" color="error.main">-{formatCurrency(entry.advances_deducted)}</Typography>
+                    </Box>
+                  )}
+                  {entry.adjustments?.filter((a: PayrollAdjustment) => a.type === 'deduction').map((a: PayrollAdjustment) => (
+                    <Box display="flex" justifyContent="space-between" key={a.id}>
+                      <Typography variant="caption" color="error.main">
+                        Retenciones ({a.label})
+                      </Typography>
+                      <Typography variant="caption" color="error.main">-{formatCurrency(a.amount)}</Typography>
+                    </Box>
+                  ))}
+                  {Number(entry.advances_deducted) === 0 && (!entry.adjustments || entry.adjustments.filter((a: PayrollAdjustment) => a.type === 'deduction').length === 0) && (
+                    <Typography variant="caption" color="text.secondary">Sin deducciones</Typography>
+                  )}
+                </Stack>
+              </Box>
+
+              <Divider sx={{ my: 0.75 }} />
+
+              {/* Neto */}
+              <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ bgcolor: 'success.50', borderRadius: 1, px: 1, py: 0.25 }}>
+                <Typography variant="caption" fontWeight={700}>Neto a cobrar</Typography>
+                <Typography variant="caption" fontWeight={700} color="success.dark">{formatCurrency(entry.net_amount)}</Typography>
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      )}
     </Box>
   );
 }
