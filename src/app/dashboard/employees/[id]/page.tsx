@@ -989,7 +989,7 @@ export default function EmployeeDetailPage() {
               </Box>
 
               {employee?.pay_type === 'monthly' ? (
-                <Alert severity="info">Empleado mensualizado: aquí puedes configurar la tarifa de extras. La hora de gremio para licencia médica se toma de la Categoría (CCT) asignada en "Editar Base".</Alert>
+                <Alert severity="info">Empleado mensualizado: aquí puedes configurar la tarifa de extras. La hora de gremio para licencia médica se toma de la Categoría (CCT) asignada en &quot;Editar Base&quot;.</Alert>
               ) : (
                 <Alert severity="info">Empleado jornalizado: configurar tarifa por hora para cada tipo de trabajo (ej: Horas Grúa) y su tarifa de gremio (feriados).</Alert>
               )}
