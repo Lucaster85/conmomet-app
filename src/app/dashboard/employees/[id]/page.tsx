@@ -946,7 +946,7 @@ export default function EmployeeDetailPage() {
                     <Typography variant="caption" color="text.secondary">{employee?.pay_type === 'monthly' ? 'Sueldo Base' : 'Valor Hora Base'}</Typography>
                     <Typography variant="body1" fontWeight="bold">${Number(employee?.pay_type === 'monthly' ? employee?.monthly_salary : employee?.hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
                     {/* Valor hora CCT si corresponde */}
-                    {employee?.pay_type !== 'monthly' && employee?.category && employee.category.guild_hourly_rate && (
+                    {employee?.category && employee.category.guild_hourly_rate && (
                       <Box mt={1}>
                         <Typography variant="caption" color="text.secondary">Valor hora CCT</Typography>
                         <Typography variant="body2" fontWeight={700} color="primary.main">
@@ -989,7 +989,7 @@ export default function EmployeeDetailPage() {
               </Box>
 
               {employee?.pay_type === 'monthly' ? (
-                <Alert severity="info">Empleado mensualizado: aquí puedes configurar excepciones o la tarifa de extras para un tipo de trabajo.</Alert>
+                <Alert severity="info">Empleado mensualizado: aquí puedes configurar la tarifa de extras. La hora de gremio para licencia médica se toma de la Categoría (CCT) asignada en "Editar Base".</Alert>
               ) : (
                 <Alert severity="info">Empleado jornalizado: configurar tarifa por hora para cada tipo de trabajo (ej: Horas Grúa) y su tarifa de gremio (feriados).</Alert>
               )}
@@ -1005,7 +1005,9 @@ export default function EmployeeDetailPage() {
                       <TableRow>
                         <TableCell><strong>Concepto</strong></TableCell>
                         <TableCell align="right"><strong>{employee?.pay_type === 'monthly' ? 'Sueldo' : 'Tarifa'}</strong></TableCell>
-                        <TableCell align="right"><strong>Tarifa Gremio</strong></TableCell>
+                        {employee?.pay_type !== 'monthly' && (
+                          <TableCell align="right"><strong>Tarifa Gremio</strong></TableCell>
+                        )}
                         {employee?.pay_type === 'monthly' && (
                           <TableCell align="right"><strong>Tarifa Extras</strong></TableCell>
                         )}
@@ -1019,7 +1021,9 @@ export default function EmployeeDetailPage() {
                             <Chip label={r.concept?.name || 'General'} size="small" color="primary" variant="outlined" />
                           </TableCell>
                           <TableCell align="right">{'$' + Number(r.rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell align="right">{r.guild_rate ? '$' + Number(r.guild_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</TableCell>
+                          {employee?.pay_type !== 'monthly' && (
+                            <TableCell align="right">{r.guild_rate ? '$' + Number(r.guild_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</TableCell>
+                          )}
                           {employee?.pay_type === 'monthly' && (
                             <TableCell align="right">{r.extras_rate ? '$' + Number(r.extras_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</TableCell>
                           )}
@@ -1173,7 +1177,7 @@ export default function EmployeeDetailPage() {
                       onChange={(e) => setBaseConfigForm({ ...baseConfigForm, category_id: e.target.value ? Number(e.target.value) : null })}
                       SelectProps={{ native: true }}
                       InputLabelProps={{ shrink: true }}
-                      helperText="Obligatorio. Determina los aumentos retroactivos y feriados"
+                      helperText={baseConfigForm.pay_type === 'monthly' ? 'Determina la hora de gremio usada para pagar la licencia médica' : 'Obligatorio. Determina los aumentos retroactivos y feriados'}
                     >
                       <option value="">— Sin categoría —</option>
                       {categories.map(c => (
@@ -1199,8 +1203,7 @@ export default function EmployeeDetailPage() {
                     pay_type: baseConfigForm.pay_type,
                     hourly_rate: baseConfigForm.pay_type === 'hourly' ? baseConfigForm.hourly_rate : 0,
                     monthly_salary: baseConfigForm.pay_type === 'monthly' ? baseConfigForm.monthly_salary : 0,
-                    
-                    category_id: baseConfigForm.pay_type === 'hourly' ? baseConfigForm.category_id : null,
+                    category_id: baseConfigForm.category_id,
                   });
                   setSuccess('Configuración salarial base actualizada');
                   setBaseConfigDialogOpen(false);

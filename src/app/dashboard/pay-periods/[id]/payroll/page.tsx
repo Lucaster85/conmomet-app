@@ -797,7 +797,8 @@ export default function PayrollPage() {
                               const totalSimples = pepOcaSimples + pepRegSimples;
                               const total50 = oca50 + reg50;
                               const total100 = oca100 + reg100;
-                              const totalPep = isMonthly ? total50 + total100 : ocaReg + regReg;
+                              // regular_hours ya es la fuente de verdad de horas PEP para ambos pay_types
+                              const totalPep = ocaReg + regReg;
 
                               return (
                                 <TableRow>
@@ -1158,7 +1159,8 @@ export default function PayrollPage() {
                           const totalSimples = pepOcaSimples + pepRegSimples;
                           const total50 = oca50 + reg50;
                           const total100 = oca100 + reg100;
-                          const totalPep = isMonthly ? total50 + total100 : ocaReg + regReg;
+                          // regular_hours ya es la fuente de verdad de horas PEP para ambos pay_types
+                          const totalPep = ocaReg + regReg;
 
                           return (
                             <TableRow>

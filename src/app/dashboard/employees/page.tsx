@@ -400,35 +400,33 @@ export default function EmployeesPage() {
             {form.pay_type === 'monthly' ? (
               <CurrencyInput label="Sueldo Mensual *" fullWidth value={form.monthly_salary || 0} onChange={(value) => setForm({ ...form, monthly_salary: value ?? 0 })} />
             ) : (
-              <>
-                <CurrencyInput label="Arreglo Particular (valor hora) *" fullWidth value={form.hourly_rate} onChange={(value) => setForm({ ...form, hourly_rate: value ?? 0 })} helperText="Valor hora acordado con el empleado" />
-                <Box>
-                  <TextField
-                    label="Categoría (CCT)"
-                    select
-                    fullWidth
-                    value={form.category_id ?? ''}
-                    onChange={(e) => setForm({ ...form, category_id: e.target.value ? Number(e.target.value) : null })}
-                    SelectProps={{ native: true }}
-                    InputLabelProps={{ shrink: true }}
-                    helperText="Categoría del convenio colectivo de trabajo"
-                  >
-                    <option value="">— Sin categoría —</option>
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </TextField>
-                  {form.category_id && categories.find(c => c.id === form.category_id) && (
-                    <Box mt={1} p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
-                      <Typography variant="caption" color="text.secondary">Valor hora CCT</Typography>
-                      <Typography variant="body2" fontWeight={700} color="primary.main">
-                        ${Number(categories.find(c => c.id === form.category_id)!.guild_hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })} / hora
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              </>
+              <CurrencyInput label="Arreglo Particular (valor hora) *" fullWidth value={form.hourly_rate} onChange={(value) => setForm({ ...form, hourly_rate: value ?? 0 })} helperText="Valor hora acordado con el empleado" />
             )}
+            <Box>
+              <TextField
+                label="Categoría (CCT)"
+                select
+                fullWidth
+                value={form.category_id ?? ''}
+                onChange={(e) => setForm({ ...form, category_id: e.target.value ? Number(e.target.value) : null })}
+                SelectProps={{ native: true }}
+                InputLabelProps={{ shrink: true }}
+                helperText={form.pay_type === 'monthly' ? 'Categoría del convenio colectivo — su hora de gremio se usa para pagar la licencia médica' : 'Categoría del convenio colectivo de trabajo'}
+              >
+                <option value="">— Sin categoría —</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </TextField>
+              {form.category_id && categories.find(c => c.id === form.category_id) && (
+                <Box mt={1} p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
+                  <Typography variant="caption" color="text.secondary">Valor hora CCT</Typography>
+                  <Typography variant="body2" fontWeight={700} color="primary.main">
+                    ${Number(categories.find(c => c.id === form.category_id)!.guild_hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })} / hora
+                  </Typography>
+                </Box>
+              )}
+            </Box>
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
               <TextField label="Teléfono" fullWidth value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               <TextField label="Email" fullWidth value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />

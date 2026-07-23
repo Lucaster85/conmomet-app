@@ -316,21 +316,11 @@ export default function TimeEntriesPage() {
     if (selectedEmployees.length === 0) { setError('Seleccioná al menos un empleado'); return; }
     if (!formDate) { setError('Fecha obligatoria'); return; }
 
-    const isMonthly = selectedEmployees[0]?.pay_type === 'monthly';
-    if (entryMode === 'massive' && isMonthly && selectedEmployees.length > 1) {
-      // Validate that all selected are monthly, or warn
-      const allMonthly = selectedEmployees.every(e => e.pay_type === 'monthly');
-      if (!allMonthly) {
-        setError('No podés mezclar mensualizados y jornalizados en carga masiva');
-        return;
-      }
-    }
-
     try {
       // Build payloads depending on mode
       const payloads: CreateTimeEntryData[] = [];
 
-      if (entryMode === 'massive' || isMonthlySelected) {
+      if (entryMode === 'massive') {
         const formattedIn = formatTime(massiveBlock.check_in);
         const formattedOut = formatTime(massiveBlock.check_out);
         if (!formattedIn || !formattedOut) { setError('Ingreso y egreso obligatorios'); return; }
@@ -524,8 +514,6 @@ export default function TimeEntriesPage() {
     return acc;
   }, {});
   const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
-
-  const isMonthlySelected = selectedEmployees.length === 1 && selectedEmployees[0].pay_type === 'monthly';
 
   if (loading) {
     return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
@@ -776,14 +764,9 @@ export default function TimeEntriesPage() {
             <Divider />
 
             {/* Block Input UI */}
-            {entryMode === 'massive' || isMonthlySelected ? (
-              // MASSIVE OR MONTHLY MODE (Single Block)
+            {entryMode === 'massive' ? (
+              // MASSIVE MODE (Single Block, multi-employee)
               <Box>
-                {isMonthlySelected ? (
-                  <Typography variant="subtitle2" color="secondary" gutterBottom>
-                    Modo Mensualizado: Solo carga de horas extras.
-                  </Typography>
-                ) : null}
                 <Grid container spacing={2} alignItems="center">
                   <Grid size={{ xs: 12, md: 3 }}>
                     <TimeField
@@ -794,7 +777,6 @@ export default function TimeEntriesPage() {
                         setMassiveBlock({ ...massiveBlock, check_in: val });
                       }}
                       fullWidth
-                      disabled={isMonthlySelected}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 3 }}>
@@ -806,14 +788,12 @@ export default function TimeEntriesPage() {
                         setMassiveBlock({ ...massiveBlock, check_out: val });
                       }}
                       fullWidth
-                      disabled={isMonthlySelected}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField label="Concepto (Opcional)" select fullWidth value={massiveBlock.concept_id}
-                      onChange={(e) => handleMassiveConceptChange(e.target.value ? Number(e.target.value) : '')} 
-                      SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
-                      disabled={isMonthlySelected}>
+                      onChange={(e) => handleMassiveConceptChange(e.target.value ? Number(e.target.value) : '')}
+                      SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
                       <option value="">— General —</option>
                       {concepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </TextField>
@@ -1115,7 +1095,7 @@ export default function TimeEntriesPage() {
             )}
 
             {/* Total Preview */}
-            {entryMode === 'individual' && !isMonthlySelected && (
+            {entryMode === 'individual' && (
               <Paper variant="outlined" sx={{ p: 2, bgcolor: 'primary.50' }}>
                 <Typography variant="body1" fontWeight="bold">
                   Total de horas a registrar: {individualBlocks.reduce((acc, b) => acc + calculateHours(b.check_in, b.check_out), 0).toFixed(1)}h

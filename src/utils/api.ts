@@ -1214,6 +1214,7 @@ export interface Attendance {
   employee_id: number;
   date: string;
   status: 'absent' | 'justified' | 'vacation' | 'medical_leave';
+  hours?: number | null;
   notes?: string;
   document_url?: string;
   document_name?: string;
@@ -1232,11 +1233,12 @@ export class AttendanceService {
     return data.data || [];
   }
 
-  static async create(payload: { employee_id: number; date: string; status: string; notes?: string; file?: File }): Promise<Attendance> {
+  static async create(payload: { employee_id: number; date: string; status: string; hours?: number | null; notes?: string; file?: File }): Promise<Attendance> {
     const formData = new FormData();
     formData.append('employee_id', String(payload.employee_id));
     formData.append('date', payload.date);
     formData.append('status', payload.status);
+    if (payload.hours != null) formData.append('hours', String(payload.hours));
     if (payload.notes) formData.append('notes', payload.notes);
     if (payload.file) formData.append('file', payload.file);
 
@@ -1251,9 +1253,10 @@ export class AttendanceService {
     return data.data;
   }
 
-  static async update(id: number, payload: { status: string; notes?: string; file?: File }): Promise<Attendance> {
+  static async update(id: number, payload: { status: string; hours?: number | null; notes?: string; file?: File }): Promise<Attendance> {
     const formData = new FormData();
     formData.append('status', payload.status);
+    if (payload.hours != null) formData.append('hours', String(payload.hours));
     if (payload.notes) formData.append('notes', payload.notes);
     if (payload.file) formData.append('file', payload.file);
 
@@ -1809,7 +1812,7 @@ export interface PayrollLine {
   quantity: number;
   rate: number;
   subtotal: number;
-  line_type: 'regular' | 'extras_50' | 'extras_100' | 'holiday' | 'fixed' | 'retroactive' | 'vacation' | 'medical_leave' | 'justified';
+  line_type: 'regular' | 'extras_50' | 'extras_100' | 'holiday' | 'fixed' | 'retroactive' | 'vacation' | 'medical_leave' | 'justified' | 'medical_leave_deduction' | 'vacation_deduction' | 'absence_deduction';
   source_period_id: number | null;
   concept?: PayrollConcept;
 }

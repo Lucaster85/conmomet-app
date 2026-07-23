@@ -112,7 +112,7 @@ export default function AttendancePage() {
   };
 
   // Form
-  const [form, setForm] = useState({ employee_id: '', date: '', status: 'absent', notes: '' });
+  const [form, setForm] = useState({ employee_id: '', date: '', status: 'absent', hours: '', notes: '' });
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -150,7 +150,7 @@ export default function AttendancePage() {
 
   const handleOpenCreate = () => {
     setEditingAttendance(null);
-    setForm({ employee_id: '', date: new Date().toISOString().split('T')[0], status: 'absent', notes: '' });
+    setForm({ employee_id: '', date: new Date().toISOString().split('T')[0], status: 'absent', hours: '', notes: '' });
     setFile(null);
     setOpenDialog(true);
   };
@@ -161,21 +161,31 @@ export default function AttendancePage() {
       employee_id: String(att.employee_id),
       date: att.date,
       status: att.status,
+      hours: att.hours != null ? String(att.hours) : '',
       notes: att.notes || ''
     });
     setFile(null);
     setOpenDialog(true);
   };
 
+  const selectedEmployeeIsMonthly = employees.find(e => String(e.id) === form.employee_id)?.pay_type === 'monthly';
+  const showPartialHours = selectedEmployeeIsMonthly && (form.status === 'absent' || form.status === 'medical_leave');
+
   const handleSubmit = async () => {
     if (!form.employee_id || !form.date || !form.status) {
       setError('Empleado, fecha y estado son obligatorios');
       return;
     }
+    if (form.hours && (Number(form.hours) <= 0 || Number(form.hours) > 8)) {
+      setError('Las horas parciales deben estar entre 0 y 8');
+      return;
+    }
+    const hours = showPartialHours && form.hours ? Number(form.hours) : null;
     try {
       if (editingAttendance) {
         await AttendanceService.update(editingAttendance.id, {
           status: form.status,
+          hours,
           notes: form.notes,
           file: file || undefined
         });
@@ -185,6 +195,7 @@ export default function AttendancePage() {
           employee_id: Number(form.employee_id),
           date: form.date,
           status: form.status,
+          hours,
           notes: form.notes,
           file: file || undefined
         });
@@ -374,6 +385,18 @@ export default function AttendancePage() {
               <option value="medical_leave">Licencia Médica</option>
               <option value="vacation">Vacaciones</option>
             </TextField>
+
+            {showPartialHours && (
+              <TextField
+                label="Horas (dejar vacío = día completo)"
+                type="number"
+                fullWidth
+                value={form.hours}
+                onChange={(e) => setForm({ ...form, hours: e.target.value })}
+                inputProps={{ min: 0.5, max: 8, step: 0.5 }}
+                helperText="Para una ausencia/licencia parcial (ej: llegó 3hs tarde). Vacío = se descuenta/paga el día completo (8hs)."
+              />
+            )}
 
             <TextField label="Notas" fullWidth multiline rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
 
