@@ -58,6 +58,7 @@ import {
   Visibility as VisibilityIcon,
   Block as AnnulIcon,
   Edit as EditIcon,
+  FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
 import {
   Oca,
@@ -656,6 +657,82 @@ export default function OcasPage() {
     setPrintOca(oca);
   };
 
+  const handleDownloadExcel = async (oca: Oca) => {
+    const XLSX = await import('xlsx');
+    const isManHours = oca.type === 'man_hours';
+    const title = isManHours ? 'PARTE DIARIO DE PERSONAL' : 'REMITO DE SERVICIO DE GRÚA';
+    const lines = oca.lines || [];
+
+    const regularSum = lines.reduce((acc, l) => acc + Number(l.regular_hours || 0), 0);
+    const overtime50Sum = lines.reduce((acc, l) => acc + Number(l.overtime_50_hours || 0), 0);
+    const overtime100Sum = lines.reduce((acc, l) => acc + Number(l.overtime_100_hours || 0), 0);
+    const simplesSum = regularSum - overtime50Sum - overtime100Sum;
+
+    const rows: (string | number)[][] = [
+      ['CONMOMET S.A.'],
+      ['Servicios Metalúrgicos e Industriales'],
+      [title],
+      [`OCA Nº: ${oca.number}`],
+      [''],
+    ];
+
+    if (isManHours) {
+      rows.push(
+        ['Cliente:', oca.client?.razonSocial || ''],
+        ['Sector / Planta:', oca.project?.plant?.name || ''],
+        ['Solicitante (Supervisor):', `${oca.supervisor?.lastname || ''}, ${oca.supervisor?.name || ''}`],
+        ['Fecha de Presentación:', new Date(oca.date).toLocaleDateString('es-AR')],
+        [''],
+        ['Empleado', 'Fecha', 'Entrada', 'Salida', 'Hs Simples', 'Extra 50%', 'Extra 100%', 'Tarea Realizada']
+      );
+      lines.forEach((line) => {
+        const simples = Number(line.regular_hours || 0) - Number(line.overtime_50_hours || 0) - Number(line.overtime_100_hours || 0);
+        rows.push([
+          `${line.employee?.lastname || ''}, ${line.employee?.name || ''}`,
+          new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR'),
+          line.check_in?.substring(0, 5) || '',
+          line.check_out?.substring(0, 5) || '',
+          Number(simples.toFixed(1)),
+          Number(Number(line.overtime_50_hours || 0).toFixed(1)),
+          Number(Number(line.overtime_100_hours || 0).toFixed(1)),
+          line.task || '',
+        ]);
+      });
+      rows.push([''], ['TOTALES', '', '', '', Number(simplesSum.toFixed(1)), Number(overtime50Sum.toFixed(1)), Number(overtime100Sum.toFixed(1)), '']);
+    } else {
+      rows.push(
+        ['Cliente:', oca.client?.razonSocial || ''],
+        ['Dirección Planta / Obra:', oca.project?.plant?.address || ''],
+        ['Detalle Servicio (Proyecto):', oca.project?.name || ''],
+        ['Fecha Emisión:', new Date(oca.date).toLocaleDateString('es-AR')],
+        [''],
+        ['Fecha', 'Vehículo / Grúa', 'Patente', 'Hs Simples', 'Extra 50%', 'Extra 100%', 'Detalle de Tarea']
+      );
+      lines.forEach((line) => {
+        const simples = Number(line.regular_hours || 0) - Number(line.overtime_50_hours || 0) - Number(line.overtime_100_hours || 0);
+        rows.push([
+          new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR'),
+          `${line.vehicle?.brand || ''} ${line.vehicle?.model || ''}`.trim(),
+          line.vehicle?.plate || '',
+          Number(simples.toFixed(1)),
+          Number(Number(line.overtime_50_hours || 0).toFixed(1)),
+          Number(Number(line.overtime_100_hours || 0).toFixed(1)),
+          line.task || '',
+        ]);
+      });
+      rows.push([''], ['TOTALES', '', '', Number(simplesSum.toFixed(1)), Number(overtime50Sum.toFixed(1)), Number(overtime100Sum.toFixed(1)), '']);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = isManHours
+      ? [{ wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 35 }]
+      : [{ wch: 12 }, { wch: 22 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 35 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Remito');
+    XLSX.writeFile(wb, `${oca.number}.xlsx`);
+  };
+
   // Filter OCAs
   const filteredOcas = ocas.filter(oca => {
     const matchesClient = filterClient === '' || oca.client_id === filterClient;
@@ -844,6 +921,9 @@ export default function OcasPage() {
             </DialogContent>
             <DialogActions className="no-print">
               <Button onClick={() => setPrintOca(null)}>Cerrar</Button>
+              <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={() => handleDownloadExcel(printOca)}>
+                Descargar Excel
+              </Button>
               <Button variant="contained" startIcon={<PrintIcon />} onClick={() => window.print()}>
                 Imprimir
               </Button>
