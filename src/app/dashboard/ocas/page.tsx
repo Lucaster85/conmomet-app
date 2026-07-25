@@ -119,6 +119,8 @@ export default function OcasPage() {
   const [createClientId, setCreateClientId] = useState<number | ''>('');
   const [filterSupervisorId, setFilterSupervisorId] = useState<number | ''>('');
   const [filterProjectId, setFilterProjectId] = useState<number | ''>('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
   const [pendingEntries, setPendingEntries] = useState<TimeEntry[]>([]);
   const [clientProjects, setClientProjects] = useState<Project[]>([]);
   const [clientSupervisors, setClientSupervisors] = useState<ClientSupervisor[]>([]);
@@ -214,6 +216,8 @@ export default function OcasPage() {
     setSelectedEntryIds([]);
     setFilterSupervisorId('');
     setFilterProjectId('');
+    setFilterDateFrom('');
+    setFilterDateTo('');
     setClientProjects([]);
     setClientSupervisors([]);
     if (!clientId) {
@@ -263,6 +267,8 @@ export default function OcasPage() {
   };
 
   const visibleEntries = pendingEntries.filter(entry => {
+    const matchesDate = (filterDateFrom === '' || entry.date >= filterDateFrom) && (filterDateTo === '' || entry.date <= filterDateTo);
+    if (!matchesDate) return false;
     if (typeKey === 'man_hours') {
       if (filterSupervisorId !== '') {
         return entry.supervisor_id === filterSupervisorId;
@@ -614,6 +620,8 @@ export default function OcasPage() {
     setSelectedEntryIds([]);
     setFilterSupervisorId('');
     setFilterProjectId('');
+    setFilterDateFrom('');
+    setFilterDateTo('');
     try {
       setLoadingPending(true);
       setError('');
@@ -1645,6 +1653,34 @@ export default function OcasPage() {
                         </Select>
                       </FormControl>
                     )}
+
+                    {/* Date Range Filter (both types) */}
+                    <Box display="flex" gap={2}>
+                      <TextField
+                        label="Fecha Desde"
+                        type="date"
+                        fullWidth
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                        value={filterDateFrom}
+                        onChange={(e) => {
+                          setFilterDateFrom(e.target.value);
+                          setSelectedEntryIds([]);
+                        }}
+                      />
+                      <TextField
+                        label="Fecha Hasta"
+                        type="date"
+                        fullWidth
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                        value={filterDateTo}
+                        onChange={(e) => {
+                          setFilterDateTo(e.target.value);
+                          setSelectedEntryIds([]);
+                        }}
+                      />
+                    </Box>
                   </Stack>
                 )}
 
@@ -1878,6 +1914,36 @@ export default function OcasPage() {
                   </Button>
                 </Box>
                 
+                {/* Add Entries Dialog Date Range Filter (both types) */}
+                {pendingEntries.length > 0 && (
+                  <Box display="flex" gap={2}>
+                    <TextField
+                      label="Fecha Desde"
+                      type="date"
+                      fullWidth
+                      size="small"
+                      InputLabelProps={{ shrink: true }}
+                      value={filterDateFrom}
+                      onChange={(e) => {
+                        setFilterDateFrom(e.target.value);
+                        setSelectedEntryIds([]);
+                      }}
+                    />
+                    <TextField
+                      label="Fecha Hasta"
+                      type="date"
+                      fullWidth
+                      size="small"
+                      InputLabelProps={{ shrink: true }}
+                      value={filterDateTo}
+                      onChange={(e) => {
+                        setFilterDateTo(e.target.value);
+                        setSelectedEntryIds([]);
+                      }}
+                    />
+                  </Box>
+                )}
+
                 {/* Add Entries Dialog Supervisor Filter for crane_hours */}
                 {typeKey === 'crane_hours' && pendingEntries.length > 0 && (
                   <FormControl fullWidth size="small">
