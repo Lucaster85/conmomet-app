@@ -2795,5 +2795,18 @@ export class OcaService {
     const data = await response.json();
     return data.data || data;
   }
+
+  static async replaceLine(id: number, lineId: number, lineData: Partial<OcaLine>): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/lines/${lineId}/replace`, {
+      method: 'PUT',
+      body: JSON.stringify(lineData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al editar la línea de la OCA');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
 }
 

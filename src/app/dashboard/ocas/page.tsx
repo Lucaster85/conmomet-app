@@ -57,6 +57,7 @@ import {
   Close as CloseIcon,
   Visibility as VisibilityIcon,
   Block as AnnulIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import {
   Oca,
@@ -149,9 +150,10 @@ export default function OcasPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
-  // Manual Line Dialog State
+  // Manual Line Dialog State (also reused for editing existing lines, see editingLineId)
   const [openManualLineDialog, setOpenManualLineDialog] = useState(false);
   const [manualLineOca, setManualLineOca] = useState<Oca | null>(null);
+  const [editingLineId, setEditingLineId] = useState<number | null>(null);
   const [manualEmployeeId, setManualEmployeeId] = useState<number | ''>('');
   const [manualVehicleId, setManualVehicleId] = useState<number | ''>('');
   const [manualDate, setManualDate] = useState(new Date().toISOString().split('T')[0]);
@@ -500,6 +502,7 @@ export default function OcasPage() {
 
   const handleOpenAddManualLine = async (oca: Oca) => {
     setManualLineOca(oca);
+    setEditingLineId(null);
     setManualEmployeeId('');
     setManualVehicleId('');
     setManualDate(new Date().toISOString().split('T')[0]);
@@ -531,6 +534,42 @@ export default function OcasPage() {
     setOpenManualLineDialog(true);
   };
 
+  // Edita una línea existente (con o sin TimeEntry real detrás): reutiliza el mismo
+  // formulario de carga manual, precargado, y al guardar reemplaza la línea (ver replaceLine).
+  const handleOpenEditLine = async (oca: Oca, line: OcaLine) => {
+    setManualLineOca(oca);
+    setEditingLineId(line.id);
+    setManualEmployeeId(line.employee_id ?? '');
+    setManualVehicleId(line.vehicle_id ?? '');
+    setManualDate(line.date);
+    setManualCheckIn(line.check_in ? line.check_in.substring(0, 5) : '08:00');
+    setManualCheckOut(line.check_out ? line.check_out.substring(0, 5) : '17:00');
+    setManualRegularHours(Number(line.regular_hours || 0));
+    setManualOvertime50(Number(line.overtime_50_hours || 0));
+    setManualOvertime100(Number(line.overtime_100_hours || 0));
+    setManualTask(line.task || '');
+    setManualNotes(line.notes || '');
+    setManualProjectId(line.project_id ?? '');
+    setSupervisorProjects([]);
+
+    try {
+      const allProjects = await ProjectService.getAll({ client_id: oca.client_id });
+      if (oca.type === 'man_hours') {
+        const filteredProjects = allProjects.filter(p =>
+          p.supervisors?.some(s => s.id === oca.supervisor_id)
+        );
+        setSupervisorProjects(filteredProjects);
+      } else {
+        setSupervisorProjects(allProjects);
+      }
+    } catch (err) {
+      console.error('Error al cargar proyectos:', err);
+      setError('Error al cargar proyectos');
+    }
+
+    setOpenManualLineDialog(true);
+  };
+
   const handleManualLineSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualLineOca) return;
@@ -538,7 +577,7 @@ export default function OcasPage() {
     try {
       setError('');
       setSuccess('');
-      
+
       const payload: Partial<OcaLine> = {
         employee_id: manualEmployeeId ? Number(manualEmployeeId) : undefined,
         project_id: manualProjectId ? Number(manualProjectId) : undefined,
@@ -553,12 +592,18 @@ export default function OcasPage() {
         notes: manualNotes,
       };
 
-      await OcaService.addLine(manualLineOca.id, payload);
-      setSuccess('Línea manual agregada correctamente al remito');
+      if (editingLineId) {
+        await OcaService.replaceLine(manualLineOca.id, editingLineId, payload);
+        setSuccess('Línea editada correctamente');
+      } else {
+        await OcaService.addLine(manualLineOca.id, payload);
+        setSuccess('Línea manual agregada correctamente al remito');
+      }
       setOpenManualLineDialog(false);
+      setEditingLineId(null);
       loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al agregar línea');
+      setError(err instanceof Error ? err.message : editingLineId ? 'Error al editar línea' : 'Error al agregar línea');
     }
   };
 
@@ -1276,6 +1321,15 @@ export default function OcasPage() {
                                   </TableCell>
                                   {oca.status === 'pendiente' && (
                                     <TableCell align="center">
+                                      <Tooltip title="Editar Línea">
+                                        <IconButton
+                                          color="primary"
+                                          size="small"
+                                          onClick={() => handleOpenEditLine(oca, line)}
+                                        >
+                                          <EditIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
                                       <Tooltip title="Remover del Remito">
                                         <IconButton
                                           color="error"
@@ -1324,14 +1378,24 @@ export default function OcasPage() {
                                   )}
                                 </Box>
                                 {oca.status === 'pendiente' && (
-                                  <IconButton
-                                    color="error"
-                                    size="small"
-                                    onClick={() => handleRemoveLine(oca.id, line.id)}
-                                    sx={{ p: 0.5 }}
-                                  >
-                                    <RemoveIcon fontSize="small" />
-                                  </IconButton>
+                                  <Box display="flex" gap={0.5}>
+                                    <IconButton
+                                      color="primary"
+                                      size="small"
+                                      onClick={() => handleOpenEditLine(oca, line)}
+                                      sx={{ p: 0.5 }}
+                                    >
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                    <IconButton
+                                      color="error"
+                                      size="small"
+                                      onClick={() => handleRemoveLine(oca.id, line.id)}
+                                      sx={{ p: 0.5 }}
+                                    >
+                                      <RemoveIcon fontSize="small" />
+                                    </IconButton>
+                                  </Box>
                                 )}
                               </Box>
                               
@@ -1971,7 +2035,9 @@ export default function OcasPage() {
         {/* Add Manual Line Dialog */}
         <Dialog open={openManualLineDialog} onClose={() => setOpenManualLineDialog(false)} maxWidth="sm" fullWidth>
           <form onSubmit={handleManualLineSubmit}>
-            <DialogTitle>Agregar Línea Manual al Remito {manualLineOca?.number}</DialogTitle>
+            <DialogTitle>
+              {editingLineId ? `Editar Línea del Remito ${manualLineOca?.number}` : `Agregar Línea Manual al Remito ${manualLineOca?.number}`}
+            </DialogTitle>
             <DialogContent dividers>
               <Stack spacing={2}>
                 {manualLineOca?.type === 'man_hours' ? (
@@ -2108,8 +2174,8 @@ export default function OcasPage() {
               </Stack>
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setOpenManualLineDialog(false)}>Cancelar</Button>
-              <Button type="submit" variant="contained">Agregar Línea</Button>
+              <Button onClick={() => { setOpenManualLineDialog(false); setEditingLineId(null); }}>Cancelar</Button>
+              <Button type="submit" variant="contained">{editingLineId ? 'Guardar Cambios' : 'Agregar Línea'}</Button>
             </DialogActions>
           </form>
         </Dialog>
