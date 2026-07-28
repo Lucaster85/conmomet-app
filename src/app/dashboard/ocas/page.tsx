@@ -665,11 +665,32 @@ export default function OcasPage() {
     setPrintOca(oca);
   };
 
+  const handlePrintOca = () => {
+    if (!printOca) return;
+    const originalTitle = document.title;
+    document.title = printOca.number;
+    const restoreTitle = () => {
+      document.title = originalTitle;
+      window.removeEventListener('afterprint', restoreTitle);
+    };
+    window.addEventListener('afterprint', restoreTitle);
+    window.print();
+  };
+
+  // OCAs de hs hombre venían ordenadas por inserción (agrupadas por proyecto); se ordenan solo por fecha.
+  const sortManHourLines = (lines?: OcaLine[]): OcaLine[] => {
+    if (!lines) return [];
+    return [...lines].sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return (a.check_in || '').localeCompare(b.check_in || '');
+    });
+  };
+
   const handleDownloadExcel = async (oca: Oca) => {
     const XLSX = await import('xlsx');
     const isManHours = oca.type === 'man_hours';
     const title = isManHours ? 'PARTE DIARIO DE PERSONAL' : 'REMITO DE SERVICIO DE GRÚA';
-    const lines = oca.lines || [];
+    const lines = isManHours ? sortManHourLines(oca.lines) : (oca.lines || []);
 
     const regularSum = lines.reduce((acc, l) => acc + Number(l.regular_hours || 0), 0);
     const overtime50Sum = lines.reduce((acc, l) => acc + Number(l.overtime_50_hours || 0), 0);
@@ -767,7 +788,7 @@ export default function OcasPage() {
                 sx={{
                   bgcolor: 'white',
                   color: 'black',
-                  p: { xs: 1, sm: 3 },
+                  p: { xs: 1, sm: 1.5 },
                   fontFamily: 'sans-serif',
                 }}
               >
@@ -799,31 +820,59 @@ export default function OcasPage() {
                     </Grid>
 
                     {/* Lines Table */}
-                    <TableContainer component={Paper} variant="outlined" sx={{ mb: 4, borderRadius: 0 }}>
-                      <Table size="small">
+                    <TableContainer component={Paper} variant="outlined" sx={{ mb: 1.5, borderRadius: 0 }}>
+                      <Table
+                        size="small"
+                        sx={{
+                          '& .MuiTableCell-root': {
+                            padding: '2px 6px',
+                            fontSize: '0.72rem',
+                            lineHeight: 1.25,
+                          },
+                        }}
+                      >
                         <TableHead>
+                          {/* Repite automáticamente en cada hoja impresa (thead se re-renderiza en cada page break) */}
+                          <TableRow>
+                            <TableCell
+                              colSpan={9}
+                              sx={{
+                                color: 'black',
+                                fontWeight: 'bold',
+                                fontSize: '0.62rem',
+                                padding: '8px 6px 3px',
+                                borderBottom: '1px solid black',
+                                bgcolor: '#f0f0f0',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              CONMOMET S.A. &nbsp;·&nbsp; OCA Nº: {printOca.number} &nbsp;·&nbsp; Cliente: {printOca.client?.razonSocial} &nbsp;·&nbsp; Planta: {printOca.project?.plant?.name || '—'} &nbsp;·&nbsp; Supervisor: {printOca.supervisor?.lastname}, {printOca.supervisor?.name} &nbsp;·&nbsp; Fecha: {new Date(printOca.date).toLocaleDateString('es-AR')}
+                            </TableCell>
+                          </TableRow>
                           <TableRow sx={{ borderBottom: '2px solid black' }}>
                             <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Empleado</TableCell>
                             <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Fecha</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Horario (Entrada - Salida)</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', color: 'black', align: 'center' }}>Hs Simples</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', color: 'black', align: 'center' }}>50%</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', color: 'black', align: 'center' }}>100%</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Entrada</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Salida</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>Hs Simples</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>50%</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>100%</TableCell>
                             <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Tarea Realizada</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', color: 'black', width: '120px' }}>Firma Sup.</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: 'black', width: '70px' }}>Firma Sup.</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {printOca.lines?.map((line) => (
+                          {sortManHourLines(printOca.lines).map((line) => (
                             <TableRow key={line.id} sx={{ borderBottom: '1px solid grey' }}>
-                              <TableCell sx={{ color: 'black' }}>{line.employee?.lastname}, {line.employee?.name}</TableCell>
-                              <TableCell sx={{ color: 'black' }}>{new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
-                              <TableCell sx={{ color: 'black' }}>{line.check_in?.substring(0, 5) || '—'} a {line.check_out?.substring(0, 5) || '—'}</TableCell>
+                              <TableCell sx={{ color: 'black', whiteSpace: 'nowrap' }}>{line.employee?.lastname}, {line.employee?.name}</TableCell>
+                              <TableCell sx={{ color: 'black', whiteSpace: 'nowrap' }}>{new Date(line.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                              <TableCell sx={{ color: 'black' }}>{line.check_in?.substring(0, 5) || '—'}</TableCell>
+                              <TableCell sx={{ color: 'black' }}>{line.check_out?.substring(0, 5) || '—'}</TableCell>
                               <TableCell align="center" sx={{ color: 'black' }}>{(Number(line.regular_hours) - Number(line.overtime_50_hours || 0) - Number(line.overtime_100_hours || 0)).toFixed(1)}</TableCell>
                               <TableCell align="center" sx={{ color: 'black' }}>{Number(line.overtime_50_hours).toFixed(1)}</TableCell>
                               <TableCell align="center" sx={{ color: 'black' }}>{Number(line.overtime_100_hours).toFixed(1)}</TableCell>
                               <TableCell sx={{ color: 'black' }}>{modifiedLines[line.id] !== undefined ? modifiedLines[line.id] : (line.task || '—')}</TableCell>
-                              <TableCell sx={{ borderLeft: '1px solid grey', height: '40px' }}></TableCell>
+                              <TableCell sx={{ borderLeft: '1px solid grey', height: '24px' }}></TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -841,37 +890,37 @@ export default function OcasPage() {
                     return (
                       <Box>
                         {/* Header */}
-                        <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={3}>
+                        <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={0.5} mb={1}>
                           <Box>
-                            <Typography variant="h5" fontWeight="bold" sx={{ color: 'black' }}>CONMOMET S.A.</Typography>
-                            <Typography variant="caption" sx={{ color: 'black' }}>Servicios Metalúrgicos e Industriales</Typography>
+                            <Typography variant="h6" fontWeight="bold" sx={{ color: 'black' }}>CONMOMET S.A.</Typography>
+                            <Typography variant="caption" sx={{ color: 'black', fontSize: '0.65rem' }}>Servicios Metalúrgicos e Industriales</Typography>
                           </Box>
                           <Box textAlign="right">
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: 'black' }}>REMITO DE SERVICIO DE GRÚA</Typography>
-                            <Typography variant="subtitle1" fontWeight="bold" sx={{ fontFamily: 'monospace', color: 'black' }}>OCA Nº: {printOca.number}</Typography>
+                            <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'black' }}>REMITO DE SERVICIO DE GRÚA</Typography>
+                            <Typography variant="body2" fontWeight="bold" sx={{ fontFamily: 'monospace', color: 'black' }}>OCA Nº: {printOca.number}</Typography>
                           </Box>
                         </Box>
 
                         {/* Data Summary Grid */}
-                        <Card variant="outlined" sx={{ borderRadius: 0, p: 3, mb: 4, bgcolor: '#fafafa', border: '1px solid black' }}>
-                          <Grid container spacing={2}>
+                        <Card variant="outlined" sx={{ borderRadius: 0, p: 1, mb: 1, bgcolor: '#fafafa', border: '1px solid black' }}>
+                          <Grid container spacing={1}>
                             <Grid size={{ xs: 12, md: 7 }}>
-                              <Stack spacing={2}>
-                                <Typography variant="body1" sx={{ color: 'black' }}><strong>Cliente:</strong> {printOca.client?.razonSocial}</Typography>
-                                <Typography variant="body1" sx={{ color: 'black' }}><strong>Dirección Planta / Obra:</strong> {printOca.project?.plant?.address || '—'}</Typography>
-                                <Typography variant="body1" sx={{ color: 'black' }}><strong>Detalle Servicio (Proyecto):</strong> {printOca.project?.name || '—'}</Typography>
-                                <Typography variant="body1" sx={{ color: 'black' }}><strong>Fecha Emisión:</strong> {new Date(printOca.date).toLocaleDateString('es-AR')}</Typography>
+                              <Stack spacing={0.4}>
+                                <Typography variant="body2" sx={{ color: 'black' }}><strong>Cliente:</strong> {printOca.client?.razonSocial}</Typography>
+                                <Typography variant="body2" sx={{ color: 'black' }}><strong>Dirección Planta / Obra:</strong> {printOca.project?.plant?.address || '—'}</Typography>
+                                <Typography variant="body2" sx={{ color: 'black' }}><strong>Detalle Servicio (Proyecto):</strong> {printOca.project?.name || '—'}</Typography>
+                                <Typography variant="body2" sx={{ color: 'black' }}><strong>Fecha Emisión:</strong> {new Date(printOca.date).toLocaleDateString('es-AR')}</Typography>
                               </Stack>
                             </Grid>
                             <Grid size={{ xs: 12, md: 5 }}>
-                              <Box sx={{ border: '1px solid black', p: 2, bgcolor: 'white' }}>
-                                <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'black', mb: 1, textTransform: 'uppercase' }}>Resumen de Horas:</Typography>
-                                <Stack spacing={0.5}>
-                                  <Typography variant="body2" sx={{ color: 'black' }}><strong>Hs Simples:</strong> {simplesSum.toFixed(1)} hs</Typography>
-                                  <Typography variant="body2" sx={{ color: 'black' }}><strong>Extras 50%:</strong> {overtime50Sum.toFixed(1)} hs</Typography>
-                                  <Typography variant="body2" sx={{ color: 'black' }}><strong>Extras 100%:</strong> {overtime100Sum.toFixed(1)} hs</Typography>
-                                  <Divider sx={{ my: 0.5, borderColor: 'black' }} />
-                                  <Typography variant="body1" fontWeight="bold" sx={{ color: 'black' }}><strong>Horas Totales:</strong> {regularSum.toFixed(1)} hs</Typography>
+                              <Box sx={{ border: '1px solid black', p: 0.75, bgcolor: 'white' }}>
+                                <Typography variant="caption" fontWeight="bold" sx={{ color: 'black', mb: 0.25, display: 'block', textTransform: 'uppercase' }}>Resumen de Horas:</Typography>
+                                <Stack spacing={0.15}>
+                                  <Typography variant="caption" sx={{ color: 'black' }}><strong>Hs Simples:</strong> {simplesSum.toFixed(1)} hs</Typography>
+                                  <Typography variant="caption" sx={{ color: 'black' }}><strong>Extras 50%:</strong> {overtime50Sum.toFixed(1)} hs</Typography>
+                                  <Typography variant="caption" sx={{ color: 'black' }}><strong>Extras 100%:</strong> {overtime100Sum.toFixed(1)} hs</Typography>
+                                  <Divider sx={{ my: 0.25, borderColor: 'black' }} />
+                                  <Typography variant="body2" fontWeight="bold" sx={{ color: 'black' }}><strong>Horas Totales:</strong> {regularSum.toFixed(1)} hs</Typography>
                                 </Stack>
                               </Box>
                             </Grid>
@@ -879,9 +928,18 @@ export default function OcasPage() {
                         </Card>
 
                         {/* Detailed lines */}
-                        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1, color: 'black' }}>Detalle de Servicios Diarios:</Typography>
-                        <TableContainer component={Paper} variant="outlined" sx={{ mb: 5, borderRadius: 0 }}>
-                          <Table size="small">
+                        <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5, color: 'black' }}>Detalle de Servicios Diarios:</Typography>
+                        <TableContainer component={Paper} variant="outlined" sx={{ mb: 2, borderRadius: 0 }}>
+                          <Table
+                            size="small"
+                            sx={{
+                              '& .MuiTableCell-root': {
+                                padding: '3px 8px',
+                                fontSize: '0.75rem',
+                                lineHeight: 1.3,
+                              },
+                            }}
+                          >
                             <TableHead>
                               <TableRow sx={{ borderBottom: '2px solid black' }}>
                                 <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Fecha</TableCell>
@@ -916,8 +974,8 @@ export default function OcasPage() {
                         </TableContainer>
 
                         {/* Footer / Signatures */}
-                        <Box mt={8} display="flex" justifyContent="center">
-                          <Box width="250px" borderTop="1px solid black" textAlign="center" pt={1}>
+                        <Box mt={3} display="flex" justifyContent="center">
+                          <Box width="220px" borderTop="1px solid black" textAlign="center" pt={0.5}>
                             <Typography variant="caption" display="block" sx={{ color: 'black' }}>Firma Conformidad Supervisor</Typography>
                           </Box>
                         </Box>
@@ -932,7 +990,7 @@ export default function OcasPage() {
               <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={() => handleDownloadExcel(printOca)}>
                 Descargar Excel
               </Button>
-              <Button variant="contained" startIcon={<PrintIcon />} onClick={() => window.print()}>
+              <Button variant="contained" startIcon={<PrintIcon />} onClick={handlePrintOca}>
                 Imprimir
               </Button>
             </DialogActions>
@@ -1052,6 +1110,7 @@ export default function OcasPage() {
             {filteredOcas.map((oca) => {
               const isExpanded = expandedOcaId === oca.id;
               const hasModifications = oca.lines?.some(l => modifiedLines[l.id] !== undefined && modifiedLines[l.id] !== l.task);
+              const sortedLines = oca.type === 'man_hours' ? sortManHourLines(oca.lines) : (oca.lines || []);
 
               return (
                 <Accordion
@@ -1363,7 +1422,7 @@ export default function OcasPage() {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {oca.lines?.map((line) => {
+                            {sortedLines.map((line) => {
                               const totalLineHours = Number(line.regular_hours || 0);
                               const lineOvertime50 = Number(line.overtime_50_hours || 0);
                               const lineOvertime100 = Number(line.overtime_100_hours || 0);
@@ -1437,7 +1496,7 @@ export default function OcasPage() {
                       </TableContainer>
                     ) : (
                       <Box display="flex" flexDirection="column" gap={1.5} sx={{ mb: 2 }}>
-                        {oca.lines?.map((line) => {
+                        {sortedLines.map((line) => {
                           return (
                             <Paper key={line.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                               <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
