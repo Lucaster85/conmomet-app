@@ -2177,6 +2177,7 @@ export interface LoanPayment {
   exchange_rate?: number | null;
   amount_ars?: number | null;
   payroll_entry_id?: number;
+  payrollEntry?: { id: number; pay_period_id: number; payPeriod?: PayPeriod };
   notes?: string;
   created_by?: number;
   createdAt: string;

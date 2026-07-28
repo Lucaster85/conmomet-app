@@ -7,14 +7,23 @@ import {
   MenuItem, FormControl, InputLabel, Select, Chip, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
 import {
-  Add as AddIcon, Delete as DeleteIcon,
+  Add as AddIcon, Delete as DeleteIcon, Visibility as VisibilityIcon,
   Refresh as RefreshIcon, Search as SearchIcon
 } from '@mui/icons-material';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
-import { Loan, Employee, LoanService, EmployeeService } from '@/utils/api';
+import { Loan, Employee, LoanPayment, PayPeriod, LoanService, EmployeeService } from '@/utils/api';
 
 const emptyForm = { employee_id: 0, currency: 'USD' as 'USD' | 'ARS', start_date: '', amount: 0, exchange_rate_at_origin: 0, notes: '' };
+
+const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+const formatPeriodLabel = (p?: PayPeriod) => {
+  if (!p) return 'Sin liquidación asociada';
+  const half = p.type === 'first_half' ? '1ª Quincena' : '2ª Quincena';
+  const month = MONTHS[(p.month ?? 1) - 1];
+  return `${half} de ${month} ${p.year}`;
+};
 
 export default function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
@@ -27,6 +36,8 @@ export default function LoansPage() {
   const [editing, setEditing] = useState<Loan | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Loan | null }>({ open: false, item: null });
   const [form, setForm] = useState(emptyForm);
+  const [detailLoan, setDetailLoan] = useState<Loan | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const loadData = async () => {
     try {
@@ -81,6 +92,20 @@ export default function LoansPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    }
+  };
+
+  const handleOpenDetail = async (loan: Loan) => {
+    setDetailLoan(loan);
+    setDetailLoading(true);
+    try {
+      const fullLoan = await LoanService.getById(loan.id);
+      setDetailLoan(fullLoan);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al obtener el detalle del préstamo');
+      setDetailLoan(null);
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -217,6 +242,11 @@ export default function LoansPage() {
                     />
                   </TableCell>
                   <TableCell align="center">
+                    <Tooltip title="Ver Detalle de Descuentos">
+                      <IconButton size="small" color="primary" onClick={() => handleOpenDetail(loan)}>
+                        <VisibilityIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     <Tooltip title={loan.status === 'completed' ? "Préstamo completado" : "Eliminar"}>
                       <span>
                         <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: loan })} disabled={loan.status === 'completed'}>
@@ -331,6 +361,57 @@ export default function LoansPage() {
         <DialogActions>
           <Button onClick={() => setDeleteDialog({ open: false, item: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Detail Dialog: descuentos aplicados y quincena en la que se hizo cada uno */}
+      <Dialog open={!!detailLoan} onClose={() => setDetailLoan(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Detalle de Descuentos
+          {detailLoan?.employee && (
+            <Typography variant="body2" color="text.secondary">
+              {detailLoan.employee.lastname}, {detailLoan.employee.name}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          {detailLoading ? (
+            <Box display="flex" justifyContent="center" py={4}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : !detailLoan?.payments || detailLoan.payments.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+              Todavía no se registraron descuentos para este préstamo.
+            </Typography>
+          ) : (
+            <TableContainer component={Paper} elevation={0} sx={{ mt: 1, border: '1px solid', borderColor: 'divider' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                    <TableCell><strong>Fecha</strong></TableCell>
+                    <TableCell><strong>Quincena</strong></TableCell>
+                    <TableCell align="right"><strong>Monto</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {detailLoan.payments.map((payment: LoanPayment) => (
+                    <TableRow key={payment.id} hover>
+                      <TableCell>{new Date(payment.date).toLocaleDateString('es-AR')}</TableCell>
+                      <TableCell>{formatPeriodLabel(payment.payrollEntry?.payPeriod)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                        {detailLoan.currency === 'USD'
+                          ? `USD ${Number(payment.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                          : formatCurrency(payment.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailLoan(null)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
     </Box>
