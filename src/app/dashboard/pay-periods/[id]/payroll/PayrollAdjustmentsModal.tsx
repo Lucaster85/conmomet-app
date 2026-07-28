@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, CircularProgress, Select, InputLabel, FormControl, Divider, useTheme, useMediaQuery
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, CircularProgress, Select, InputLabel, FormControl, FormControlLabel, Checkbox, Divider, useTheme, useMediaQuery
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import { PayrollAdjustment, PayrollAdjustmentService, CreatePayrollAdjustmentData, Loan, LoanService } from '../../../../../utils/api';
@@ -24,7 +24,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
   const [error, setError] = useState('');
 
   const [form, setForm] = useState<Partial<CreatePayrollAdjustmentData>>({});
-  const [loanForm, setLoanForm] = useState({ loanId: '', amount: 0, exchangeRate: 0 });
+  const [loanForm, setLoanForm] = useState({ loanId: '', amount: 0, exchangeRate: 0, inputCurrency: 'USD' as 'USD' | 'ARS' });
 
   const loadData = React.useCallback(async () => {
     if (!payrollEntryId) return;
@@ -47,7 +47,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
     if (open) {
       loadData();
       setForm({ type: 'bonus', amount: 0, label: '' });
-      setLoanForm({ loanId: '', amount: 0, exchangeRate: 0 });
+      setLoanForm({ loanId: '', amount: 0, exchangeRate: 0, inputCurrency: 'USD' });
     }
   }, [open, payrollEntryId, loadData]);
 
@@ -75,6 +75,12 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
   // Get the selected loan to determine its currency
   const selectedLoan = loans.find(l => l.id.toString() === loanForm.loanId);
   const isUSDLoan = selectedLoan?.currency === 'USD';
+  const isArsInput = isUSDLoan && loanForm.inputCurrency === 'ARS';
+
+  // Equivalente informativo en la otra moneda (no se envía tal cual al backend; el préstamo siempre se descuenta en USD y el sueldo siempre en ARS)
+  const equivalentAmount = loanForm.exchangeRate > 0
+    ? (isArsInput ? loanForm.amount / loanForm.exchangeRate : loanForm.amount * loanForm.exchangeRate)
+    : 0;
 
   const handleAddLoanPayment = async () => {
     if (!loanForm.loanId) return setError('Seleccione un préstamo');
@@ -84,20 +90,29 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
     try {
       setLoading(true);
 
+      // El préstamo siempre se descuenta en su moneda de origen (USD acá); si el usuario cargó
+      // el monto en pesos, se convierte a USD solo para descontar del saldo del préstamo
+      // (ahí una diferencia de centavos por redondeo es aceptable). El monto que impacta el
+      // sueldo neto (amount_ars) se manda tal cual lo ingresó el usuario, sin recalcularlo desde
+      // el USD redondeado, para evitar que $133.000 termine descontándose como $133.002,90.
+      const usdAmount = isArsInput
+        ? Math.round((loanForm.amount / loanForm.exchangeRate) * 100) / 100
+        : loanForm.amount;
+
       const paymentData: Parameters<typeof LoanService.addPayment>[1] = {
         loan_id: Number(loanForm.loanId),
         date: new Date().toISOString().split('T')[0],
-        amount: loanForm.amount,
+        amount: isUSDLoan ? usdAmount : loanForm.amount,
         payroll_entry_id: payrollEntryId
       };
 
       if (isUSDLoan) {
         paymentData.exchange_rate = loanForm.exchangeRate;
-        paymentData.amount_ars = loanForm.amount * loanForm.exchangeRate;
+        paymentData.amount_ars = isArsInput ? loanForm.amount : usdAmount * loanForm.exchangeRate;
       }
 
       await LoanService.addPayment(Number(loanForm.loanId), paymentData);
-      setLoanForm({ loanId: '', amount: 0, exchangeRate: 0 });
+      setLoanForm({ loanId: '', amount: 0, exchangeRate: 0, inputCurrency: 'USD' });
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -125,7 +140,8 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
     const balanceStr = l.currency === 'USD'
       ? `USD ${Number(l.remaining_balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
       : `$${Number(l.remaining_balance).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
-    return `${dateStr} - Restan ${balanceStr}`;
+    const notesStr = l.notes ? ` · ${l.notes}` : '';
+    return `${dateStr} · Restan ${balanceStr}${notesStr}`;
   };
 
   return (
@@ -182,23 +198,39 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
             <Divider sx={{ my: 3 }} />
             <Typography variant="subtitle2" mb={1} color="secondary">Descontar Cuota de Préstamo Activo</Typography>
             <Box display="flex" gap={2} mb={3} alignItems="flex-start" flexWrap="wrap">
-              <FormControl sx={{ minWidth: 200, width: isMobile ? '100%' : 'auto', flexShrink: 0 }} size="small">
+              <FormControl sx={{ minWidth: 200, maxWidth: isMobile ? '100%' : 260, width: isMobile ? '100%' : 'auto', flexShrink: 0 }} size="small">
                 <InputLabel>Préstamo</InputLabel>
                 <Select
                   value={loanForm.loanId}
                   label="Préstamo"
-                  onChange={(e) => setLoanForm({ loanId: e.target.value, amount: 0, exchangeRate: 0 })}
+                  onChange={(e) => setLoanForm({ loanId: e.target.value, amount: 0, exchangeRate: 0, inputCurrency: 'USD' })}
+                  sx={{ '& .MuiSelect-select': { fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }}
+                  MenuProps={{ PaperProps: { sx: { maxWidth: 320 } } }}
                 >
                   {loans.map(l => (
-                    <MenuItem key={l.id} value={l.id.toString()}>
+                    <MenuItem key={l.id} value={l.id.toString()} sx={{ fontSize: '0.78rem', whiteSpace: 'normal' }}>
                       {formatLoanOption(l)}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
 
+              {isUSDLoan && (
+                <FormControlLabel
+                  sx={{ flexShrink: 0, mr: 0, ml: 0 }}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={loanForm.inputCurrency === 'ARS'}
+                      onChange={(e) => setLoanForm({ ...loanForm, amount: 0, inputCurrency: e.target.checked ? 'ARS' : 'USD' })}
+                    />
+                  }
+                  label={<Typography variant="caption">Pesos</Typography>}
+                />
+              )}
+
               <CurrencyInput
-                label={isUSDLoan ? 'Monto a descontar (USD)' : 'Monto a descontar ($)'}
+                label={isArsInput ? 'Monto a descontar ($)' : 'Monto a descontar (USD)'}
                 value={loanForm.amount}
                 onChange={(val: number | null) => setLoanForm({ ...loanForm, amount: val ?? 0 })}
                 sx={{ width: isMobile ? '100%' : 200, flexShrink: 0 }}
@@ -215,7 +247,18 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
                 />
               )}
 
-              <Button 
+              {isUSDLoan && (
+                <CurrencyInput
+                  label={isArsInput ? 'Equivale a (USD)' : 'Equivale a ($)'}
+                  value={Math.round(equivalentAmount * 100) / 100}
+                  onChange={() => {}}
+                  disabled
+                  sx={{ width: isMobile ? '100%' : 180, flexShrink: 0 }}
+                  size="small"
+                />
+              )}
+
+              <Button
                 variant="contained" 
                 color="secondary" 
                 onClick={handleAddLoanPayment} 

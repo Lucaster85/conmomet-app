@@ -24,6 +24,19 @@ const formatPeriodLabel = (p: PayPeriod) => {
   return `${half} de ${month} ${p.year}`;
 };
 
+type AdvanceInfo = { payment_method: string; date: string };
+
+const formatAdvancesSummary = (advances?: AdvanceInfo[]) => {
+  if (!advances || advances.length === 0) return '';
+  return advances
+    .map((adv) => {
+      const method = adv.payment_method === 'efectivo' ? 'Efvo' : 'Transf';
+      const date = new Date(adv.date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+      return `${method} ${date}`;
+    })
+    .join(', ');
+};
+
 export default function PayrollPage() {
   const params = useParams();
   const router = useRouter();
@@ -1018,7 +1031,12 @@ export default function PayrollPage() {
                 <Stack spacing={0.5} mt={1} mb={1}>
                   {Number(detailEntry.advances_deducted) > 0 && (
                     <Box display="flex" justifyContent="space-between">
-                      <Typography variant="body2" color="error.main">Adelantos</Typography>
+                      <Typography variant="body2" color="error.main">
+                        Adelantos
+                        {formatAdvancesSummary(detailEntry.advances) && (
+                          <Typography component="span" variant="caption" color="text.secondary"> ({formatAdvancesSummary(detailEntry.advances)})</Typography>
+                        )}
+                      </Typography>
                       <Typography variant="body2" color="error.main">-{formatCurrency(detailEntry.advances_deducted)}</Typography>
                     </Box>
                   )}

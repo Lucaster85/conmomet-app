@@ -1397,6 +1397,7 @@ export interface PayrollEntry {
   overtime_100_amount: number;
   gross_amount: number;
   advances_deducted: number;
+  advances?: Pick<SalaryAdvance, 'id' | 'employee_id' | 'amount' | 'payment_method' | 'date'>[];
   deductions?: number;
   extra_payments_notes?: string;
   deductions_notes?: string;

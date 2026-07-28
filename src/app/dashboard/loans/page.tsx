@@ -365,7 +365,7 @@ export default function LoansPage() {
       </Dialog>
 
       {/* Detail Dialog: descuentos aplicados y quincena en la que se hizo cada uno */}
-      <Dialog open={!!detailLoan} onClose={() => setDetailLoan(null)} maxWidth="sm" fullWidth>
+      <Dialog open={!!detailLoan} onClose={() => setDetailLoan(null)} maxWidth="md" fullWidth>
         <DialogTitle>
           Detalle de Descuentos
           {detailLoan?.employee && (
@@ -390,7 +390,15 @@ export default function LoansPage() {
                   <TableRow sx={{ bgcolor: '#F8FAFC' }}>
                     <TableCell><strong>Fecha</strong></TableCell>
                     <TableCell><strong>Quincena</strong></TableCell>
-                    <TableCell align="right"><strong>Monto</strong></TableCell>
+                    {detailLoan.currency === 'USD' ? (
+                      <>
+                        <TableCell align="right"><strong>USD</strong></TableCell>
+                        <TableCell align="right"><strong>Cotización</strong></TableCell>
+                        <TableCell align="right"><strong>$ Descontados</strong></TableCell>
+                      </>
+                    ) : (
+                      <TableCell align="right"><strong>Monto</strong></TableCell>
+                    )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -398,11 +406,23 @@ export default function LoansPage() {
                     <TableRow key={payment.id} hover>
                       <TableCell>{new Date(payment.date).toLocaleDateString('es-AR')}</TableCell>
                       <TableCell>{formatPeriodLabel(payment.payrollEntry?.payPeriod)}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                        {detailLoan.currency === 'USD'
-                          ? `USD ${Number(payment.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-                          : formatCurrency(payment.amount)}
-                      </TableCell>
+                      {detailLoan.currency === 'USD' ? (
+                        <>
+                          <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                            USD {Number(payment.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell align="right" sx={{ color: 'text.secondary' }}>
+                            {payment.exchange_rate ? formatCurrency(payment.exchange_rate) : '—'}
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                            {payment.amount_ars ? formatCurrency(payment.amount_ars) : '—'}
+                          </TableCell>
+                        </>
+                      ) : (
+                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                          {formatCurrency(payment.amount)}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
