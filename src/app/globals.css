@@ -25,6 +25,11 @@ body {
   z-index: 10000 !important;
 }
 
+/* Declared at top level (not nested in @media print) for broader browser support */
+@page {
+  margin: 12mm;
+}
+
 @media print {
   /* Hide everything except the MUI portal that contains the print area */
   body > *:not(:has(.print-area)) {
@@ -56,10 +61,18 @@ body {
     max-height: none !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 16px !important;
+    padding: 4px !important;
   }
   .MuiDialogContent-root {
     padding: 0 !important;
     overflow: visible !important;
+  }
+  /* Keep table rows and the repeating head from being sliced across a page break */
+  .print-area tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .print-area thead {
+    display: table-header-group;
   }
 }
