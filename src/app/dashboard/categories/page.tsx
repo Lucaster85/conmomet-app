@@ -7,12 +7,13 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Refresh as RefreshIcon, Search as SearchIcon,
+  Refresh as RefreshIcon, Search as SearchIcon, Paid as PaidIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
-import { Category, CategoryService, Guild, GuildService } from '@/utils/api';
+import { Category, CategoryService, Guild, GuildService, ApplyCategoryBonusResponse } from '@/utils/api';
 import { Select, MenuItem, InputLabel, FormControl } from '@mui/material';
+import ApplyCategoryBonusModal from './ApplyCategoryBonusModal';
 
 const emptyForm = { name: '', guild_hourly_rate: 0, guild_id: 0 };
 
@@ -27,6 +28,16 @@ export default function CategoriesPage() {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Category | null }>({ open: false, item: null });
   const [form, setForm] = useState(emptyForm);
   const [guilds, setGuilds] = useState<Guild[]>([]);
+  const [bonusModal, setBonusModal] = useState<{ open: boolean; category: Category | null }>({ open: false, category: null });
+
+  const handleBonusSuccess = (result: ApplyCategoryBonusResponse) => {
+    const lines = [result.message];
+    if (result.skipped.length > 0) {
+      lines.push('', 'Salteados:');
+      result.skipped.forEach(s => lines.push(`• ${s.name}: ${s.reason}`));
+    }
+    setSuccess(lines.join('\n'));
+  };
 
   const loadData = async () => {
     try {
@@ -154,6 +165,9 @@ export default function CategoriesPage() {
                     </Typography>
                   </Box>
                   <Box>
+                    <IconButton size="small" color="success" onClick={() => setBonusModal({ open: true, category: cat })}>
+                      <PaidIcon fontSize="small" />
+                    </IconButton>
                     <IconButton size="small" color="primary" onClick={() => handleOpenEdit(cat)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
@@ -203,6 +217,11 @@ export default function CategoriesPage() {
                       <Typography variant="caption" color="text.secondary">por hora</Typography>
                     </TableCell>
                     <TableCell align="center">
+                      <Tooltip title="Aplicar Suma No Remunerativa">
+                        <IconButton size="small" color="success" onClick={() => setBonusModal({ open: true, category: cat })}>
+                          <PaidIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="Editar">
                         <IconButton size="small" color="primary" onClick={() => handleOpenEdit(cat)}>
                           <EditIcon fontSize="small" />
@@ -281,6 +300,13 @@ export default function CategoriesPage() {
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
       </Dialog>
+
+      <ApplyCategoryBonusModal
+        open={bonusModal.open}
+        category={bonusModal.category}
+        onClose={() => setBonusModal({ open: false, category: null })}
+        onSuccess={handleBonusSuccess}
+      />
     </Box>
   );
 }

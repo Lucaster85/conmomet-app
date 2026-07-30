@@ -1139,6 +1139,39 @@ export class CategoryService {
       throw new Error(error.error || 'Error al eliminar categoría');
     }
   }
+
+  static async applyBonus(id: number, body: ApplyCategoryBonusData): Promise<ApplyCategoryBonusResponse> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/categories/${id}/apply-bonus`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al aplicar la suma no remunerativa');
+    }
+    return response.json();
+  }
+}
+
+export interface ApplyCategoryBonusData {
+  pay_period_id: number;
+  amount: number;
+  label: string;
+}
+
+export interface ApplyCategoryBonusResultItem {
+  employee_id: number;
+  name: string;
+}
+
+export interface ApplyCategoryBonusSkippedItem extends ApplyCategoryBonusResultItem {
+  reason: string;
+}
+
+export interface ApplyCategoryBonusResponse {
+  message: string;
+  created: ApplyCategoryBonusResultItem[];
+  skipped: ApplyCategoryBonusSkippedItem[];
 }
 
 // TimeEntry Service

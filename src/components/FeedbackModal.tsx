@@ -89,7 +89,7 @@ export default function FeedbackModal({ open, onClose, message, type = 'error', 
         </DialogTitle>
       </Box>
       <DialogContent sx={{ pt: 3, pb: 2 }}>
-        <Typography variant="body1" color="text.primary">
+        <Typography variant="body1" color="text.primary" sx={{ whiteSpace: 'pre-line' }}>
           {message}
         </Typography>
       </DialogContent>
