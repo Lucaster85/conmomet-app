@@ -575,15 +575,22 @@ export interface Project {
   code: string;
   client_id: number;
   plant_id?: number;
+  parent_id?: number;
   description?: string;
   budgeted_hours: number;
-  consumed_hours?: number;
+  consumed_hours_own?: number;
+  consumed_hours_total?: number;
+  consumed_cost_labor?: number;
   status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
   start_date?: string;
   end_date?: string;
   notes?: string;
   client?: { id: number; razonSocial: string };
   plant?: { id: number; name: string };
+  parent?: { id: number; name: string; code: string };
+  subprojects?: (Project & { consumed_hours_own?: number })[];
+  subproject_count?: number;
+  budget?: Budget;
   supervisors?: { id: number; name: string; lastname: string }[];
   createdAt: string;
 }
@@ -849,13 +856,15 @@ export class EmployeeService {
 }
 
 export class ProjectService {
-  static async getAll(params?: { client_id?: number; status?: string; plant_id?: number }): Promise<Project[]> {
+  static async getAll(params?: { client_id?: number; status?: string; plant_id?: number; include_children?: boolean; without_budget?: boolean }): Promise<Project[]> {
     let url = `${API_BASE_URL}/projects`;
     if (params) {
       const qs = new URLSearchParams();
       if (params.client_id) qs.append('client_id', params.client_id.toString());
       if (params.status) qs.append('status', params.status);
       if (params.plant_id) qs.append('plant_id', params.plant_id.toString());
+      if (params.include_children) qs.append('include_children', 'true');
+      if (params.without_budget) qs.append('without_budget', 'true');
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);
@@ -911,6 +920,463 @@ export class ProjectService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Error al sincronizar los supervisores del proyecto');
+    }
+    const data = await response.json();
+    return data.data || [];
+  }
+}
+
+// Rubros de Presupuesto (antes "BudgetCategory" — renombrado para no confundir con
+// la Categoría gremial/CCT de empleados, que es un concepto distinto)
+export interface BudgetItemType {
+  id: number;
+  name: string;
+  unit_type: 'hours' | 'units';
+  unit_label: string;
+  display_order: number;
+  is_active: boolean;
+}
+
+export interface CreateBudgetItemTypeData {
+  name: string;
+  unit_type: 'hours' | 'units';
+  unit_label?: string;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export class BudgetItemTypeService {
+  static async getAll(isActive?: boolean): Promise<BudgetItemType[]> {
+    let url = `${API_BASE_URL}/budget-item-types`;
+    if (isActive !== undefined) url += `?is_active=${isActive}`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener rubros de presupuesto');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async create(body: CreateBudgetItemTypeData): Promise<BudgetItemType> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budget-item-types`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear rubro de presupuesto');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async update(id: number, body: Partial<CreateBudgetItemTypeData>): Promise<BudgetItemType> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budget-item-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar rubro de presupuesto');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budget-item-types/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar rubro de presupuesto');
+    }
+  }
+}
+
+// Unidades de Medida (para las líneas de materiales de un Presupuesto)
+export interface MaterialUnit {
+  id: number;
+  label: string;
+  display_order: number;
+  is_active: boolean;
+}
+
+export interface CreateMaterialUnitData {
+  label: string;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export class MaterialUnitService {
+  static async getAll(isActive?: boolean): Promise<MaterialUnit[]> {
+    let url = `${API_BASE_URL}/material-units`;
+    if (isActive !== undefined) url += `?is_active=${isActive}`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener unidades de medida');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async create(body: CreateMaterialUnitData): Promise<MaterialUnit> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/material-units`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear unidad de medida');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async update(id: number, body: Partial<CreateMaterialUnitData>): Promise<MaterialUnit> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/material-units/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar unidad de medida');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/material-units/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar unidad de medida');
+    }
+  }
+}
+
+// Presupuestos / Cotizaciones
+export type BudgetCurrency = 'ARS' | 'USD';
+
+// Catálogo de Materiales con costo real (para margen por obra). El costo/moneda son
+// opcionales a nivel de tipo porque el backend los omite por completo en la respuesta si el
+// usuario no tiene el permiso material_costs_read — no vienen en null, directamente no están.
+export interface Material {
+  id: number;
+  description: string;
+  material_unit_id: number;
+  materialUnit?: MaterialUnit;
+  current_cost?: number | null;
+  currency?: BudgetCurrency | null;
+  is_active: boolean;
+}
+
+export interface CreateMaterialData {
+  description: string;
+  material_unit_id: number;
+  current_cost?: number | null;
+  currency?: BudgetCurrency | null;
+  is_active?: boolean;
+}
+
+export interface MaterialImportRow {
+  description: string;
+  unit: string;
+  cost: number | null;
+  currency: BudgetCurrency | null;
+}
+
+// Registro de auditoría append-only del costo de un Material — nunca se edita ni se borra.
+export interface MaterialCostHistoryEntry {
+  id: number;
+  material_id: number;
+  cost: number;
+  currency: BudgetCurrency;
+  changed_by: number;
+  changedBy?: { id: number; name: string; lastname: string };
+  createdAt: string;
+}
+
+export class MaterialService {
+  static async getAll(params?: { q?: string; is_active?: boolean }): Promise<Material[]> {
+    let url = `${API_BASE_URL}/materials`;
+    if (params) {
+      const qs = new URLSearchParams();
+      if (params.q) qs.append('q', params.q);
+      if (params.is_active !== undefined) qs.append('is_active', String(params.is_active));
+      if (qs.toString()) url += `?${qs.toString()}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener materiales');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async create(body: CreateMaterialData): Promise<Material> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/materials`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear material');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async update(id: number, body: Partial<CreateMaterialData>): Promise<Material> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/materials/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar material');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/materials/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar material');
+    }
+  }
+
+  static async importPreview(file: File): Promise<MaterialImportRow[]> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/materials/import-preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' },
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al importar el Excel de materiales');
+    }
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getCostHistory(materialId: number): Promise<MaterialCostHistoryEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/materials/${materialId}/cost-history`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al obtener el historial de costos');
+    }
+    const data = await response.json();
+    return data.data || [];
+  }
+}
+
+export interface BudgetLaborLine {
+  id?: number;
+  budget_id?: number;
+  budget_item_type_id: number;
+  itemType?: BudgetItemType;
+  quantity: number;
+  unit_price: number;
+  currency?: BudgetCurrency | null;
+  estimated_total?: number;
+  notes?: string;
+}
+
+export interface BudgetMaterialItem {
+  id?: number;
+  budget_id?: number;
+  material_id?: number | null;
+  material?: Material;
+  description: string;
+  quantity: number;
+  material_unit_id: number;
+  materialUnit?: MaterialUnit;
+  unit_price: number;
+  currency?: BudgetCurrency | null;
+  total_price?: number;
+  // Presentes solo si el usuario tiene material_costs_read (igual que Material.current_cost)
+  material_cost_snapshot?: number | null;
+  material_cost_currency?: BudgetCurrency | null;
+  notes?: string;
+}
+
+export interface Budget {
+  id: number;
+  number: string;
+  title: string;
+  client_id: number;
+  plant_id?: number;
+  currency: BudgetCurrency;
+  status: 'draft' | 'sent' | 'approved' | 'rejected';
+  parent_project_id?: number;
+  existing_project_id?: number;
+  project_id?: number;
+  description?: string;
+  start_date?: string;
+  end_date?: string;
+  validity_days?: number;
+  notes?: string;
+  sent_at?: string;
+  approved_at?: string;
+  rejected_at?: string;
+  rejection_reason?: string;
+  approved_by?: number;
+  approved_document_url?: string;
+  approved_by_supervisor_id?: number;
+  created_by: number;
+  client?: { id: number; razonSocial: string };
+  plant?: { id: number; name: string };
+  parentProject?: { id: number; name: string; code: string };
+  existingProject?: { id: number; name: string; code: string };
+  project?: { id: number; name: string; code: string };
+  createdBy?: { id: number; name: string; lastname: string };
+  approvedBy?: { id: number; name: string; lastname: string };
+  // Contacto externo del cliente que aprobó — distinto de approvedBy (usuario interno)
+  approvedBySupervisor?: { id: number; name: string; lastname: string; email?: string; phone?: string };
+  laborLines?: BudgetLaborLine[];
+  materialItems?: BudgetMaterialItem[];
+  totals_by_currency?: Record<BudgetCurrency, number>;
+  createdAt: string;
+}
+
+export interface CreateBudgetData {
+  title: string;
+  client_id?: number;
+  plant_id?: number;
+  currency?: BudgetCurrency;
+  parent_project_id?: number;
+  existing_project_id?: number;
+  description?: string;
+  start_date?: string;
+  end_date?: string;
+  validity_days?: number;
+  notes?: string;
+  laborLines?: BudgetLaborLine[];
+  materialItems?: BudgetMaterialItem[];
+}
+
+export interface BudgetMaterialImportRow {
+  description: string;
+  quantity: number;
+  unit: string;
+  // Costo real del material (lo que sale comprarlo) — nunca el precio al cliente.
+  cost: number;
+  total_price: number;
+}
+
+export class BudgetService {
+  static async getAll(params?: { status?: string; client_id?: number }): Promise<Budget[]> {
+    let url = `${API_BASE_URL}/budgets`;
+    if (params) {
+      const qs = new URLSearchParams();
+      if (params.status) qs.append('status', params.status);
+      if (params.client_id) qs.append('client_id', params.client_id.toString());
+      if (qs.toString()) url += `?${qs.toString()}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener presupuestos');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getById(id: number): Promise<Budget> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}`);
+    if (!response.ok) throw new Error('Error al obtener presupuesto');
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async create(body: CreateBudgetData): Promise<Budget> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear presupuesto');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async update(id: number, body: Partial<CreateBudgetData>): Promise<Budget> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar presupuesto');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar presupuesto');
+    }
+  }
+
+  static async changeStatus(id: number, status: string, options?: { rejection_reason?: string; file?: File; approved_by_supervisor_id?: number }): Promise<Budget> {
+    const formData = new FormData();
+    formData.append('status', status);
+    if (options?.rejection_reason) formData.append('rejection_reason', options.rejection_reason);
+    if (options?.file) formData.append('file', options.file);
+    if (options?.approved_by_supervisor_id) formData.append('approved_by_supervisor_id', String(options.approved_by_supervisor_id));
+
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}/status`, {
+      method: 'PUT',
+      headers: {
+        // Dejar que fetch ponga el header Content-Type correcto para FormData
+        'Content-Type': 'SKIP_MULTIPART_HEADER',
+      },
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al cambiar el estado del presupuesto');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async generateProject(id: number): Promise<Budget> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}/generate-project`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al generar el proyecto');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async duplicate(id: number): Promise<Budget> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}/duplicate`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al duplicar el presupuesto');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async importMaterials(file: File): Promise<BudgetMaterialImportRow[]> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/budgets/materials/import`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al importar el Excel de materiales');
     }
     const data = await response.json();
     return data.data || [];
@@ -1176,7 +1642,7 @@ export interface ApplyCategoryBonusResponse {
 
 // TimeEntry Service
 export class TimeEntryService {
-  static async getAll(filters?: { employee_id?: number; plant_id?: number; date_from?: string; date_to?: string; status?: string; include_voided?: boolean }): Promise<TimeEntry[]> {
+  static async getAll(filters?: { employee_id?: number; project_id?: number; plant_id?: number; date_from?: string; date_to?: string; status?: string; include_voided?: boolean }): Promise<TimeEntry[]> {
     const params = new URLSearchParams();
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {

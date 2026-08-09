@@ -169,7 +169,7 @@ export default function TimeEntriesPage() {
       const [emps, plts, projs, concs, vehs, periods] = await Promise.all([
         EmployeeService.getAll('active'),
         PlantService.getAll(),
-        ProjectService.getAll({ status: 'active' }),
+        ProjectService.getAll({ status: 'active', include_children: true }),
         PayrollConceptService.getAll(true), // active only
         VehicleService.getAll({ is_active: true }), // active only
         PayPeriodService.getAll(),

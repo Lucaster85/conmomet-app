@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
@@ -8,13 +9,15 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
+  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, OpenInNew as DetailIcon,
   Refresh as RefreshIcon, Groups as TeamIcon, CheckCircle as CompleteIcon,
+  RequestQuote as BudgetIcon,
 } from '@mui/icons-material';
 import {
   Project, ProjectService, Client, ClientService, Plant, PlantService, CreateProjectData,
   ComplianceService, ProjectTeamResult, ClientSupervisor, ClientSupervisorService,
 } from '../../../utils/api';
+import { useAuth } from '../../../utils/auth';
 
 const COMPLIANCE_CHIP: Record<string, { label: string; color: 'success' | 'warning' | 'error' }> = {
   compliant: { label: '🟢', color: 'success' },
@@ -31,12 +34,24 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function ProjectsPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const userPermissions: string[] = Array.isArray((user as unknown as Record<string, unknown>)?.permissions)
+    ? ((user as unknown as Record<string, unknown>).permissions as string[])
+    : [];
+  const hasBudgetsRead = userPermissions.includes('admin_granted') || userPermissions.includes('budgets_read');
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [plants, setPlants] = useState<Plant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Filtros del listado
+  const [filterCode, setFilterCode] = useState('');
+  const [filterName, setFilterName] = useState('');
+  const [filterClientId, setFilterClientId] = useState<number | ''>('');
+  const [filterPlantId, setFilterPlantId] = useState<number | ''>('');
   
   const [openDialog, setOpenDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -62,6 +77,8 @@ export default function ProjectsPage() {
     description: '',
     budgeted_hours: 0,
     status: 'active',
+    start_date: '',
+    end_date: '',
   });
 
   const loadData = async () => {
@@ -129,6 +146,8 @@ export default function ProjectsPage() {
       description: '',
       budgeted_hours: 0,
       status: 'active',
+      start_date: '',
+      end_date: '',
     });
     setSelectedSupervisorIds([]);
     setOpenDialog(true);
@@ -144,6 +163,8 @@ export default function ProjectsPage() {
       description: project.description || '',
       budgeted_hours: project.budgeted_hours || 0,
       status: project.status || 'active',
+      start_date: project.start_date || '',
+      end_date: project.end_date || '',
     });
 
     if (project.supervisors) {
@@ -173,6 +194,8 @@ export default function ProjectsPage() {
         description: form.description || undefined,
         budgeted_hours: Number(form.budgeted_hours) || 0,
         status: form.status as CreateProjectData['status'],
+        start_date: form.start_date || undefined,
+        end_date: form.end_date || undefined,
       };
       // Solo enviamos el code si el usuario lo escribió, sino el backend lo genera
       if (form.code.trim()) {
@@ -260,6 +283,14 @@ export default function ProjectsPage() {
     }
   };
 
+  const filteredProjects = projects.filter((proj) => {
+    if (filterCode && !proj.code?.toLowerCase().includes(filterCode.toLowerCase())) return false;
+    if (filterName && !proj.name.toLowerCase().includes(filterName.toLowerCase())) return false;
+    if (filterClientId && proj.client_id !== filterClientId) return false;
+    if (filterPlantId && proj.plant_id !== filterPlantId) return false;
+    return true;
+  });
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -281,17 +312,78 @@ export default function ProjectsPage() {
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
+      {/* Filters */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              label="Código"
+              size="small"
+              fullWidth
+              value={filterCode}
+              onChange={(e) => setFilterCode(e.target.value)}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              label="Nombre del proyecto"
+              size="small"
+              fullWidth
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              label="Cliente"
+              select
+              size="small"
+              fullWidth
+              value={filterClientId}
+              onChange={(e) => { setFilterClientId(e.target.value ? Number(e.target.value) : ''); setFilterPlantId(''); }}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="">Todos los clientes</option>
+              {clients.map((c) => <option key={c.id} value={c.id}>{c.razonSocial}</option>)}
+            </TextField>
+          </Grid>
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              label="Planta"
+              select
+              size="small"
+              fullWidth
+              value={filterPlantId}
+              onChange={(e) => setFilterPlantId(e.target.value ? Number(e.target.value) : '')}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="">Todas las plantas</option>
+              {plants
+                .filter((p) => !filterClientId || p.client_id === filterClientId)
+                .map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </TextField>
+          </Grid>
+        </Grid>
+      </Paper>
+
       {/* Mobile view */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-        {projects.length === 0 ? (
-          <Typography color="text.secondary" textAlign="center" py={4}>No hay proyectos registrados</Typography>
+        {filteredProjects.length === 0 ? (
+          <Typography color="text.secondary" textAlign="center" py={4}>No hay proyectos que coincidan con los filtros</Typography>
         ) : (
           <Stack spacing={2}>
-            {projects.map((proj) => (
+            {filteredProjects.map((proj) => (
               <Paper key={proj.id} sx={{ p: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
                   <Box>
-                    <Typography variant="subtitle1" fontWeight="bold">[{proj.code}] {proj.name}</Typography>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Typography variant="subtitle1" fontWeight="bold">[{proj.code}] {proj.name}</Typography>
+                      {!!proj.subproject_count && (
+                        <Chip size="small" label={`${proj.subproject_count} adicional(es)`} color="secondary" variant="outlined" />
+                      )}
+                    </Box>
                     <Typography variant="body2" color="text.secondary">{proj.client?.razonSocial}</Typography>
                     {proj.supervisors && proj.supervisors.length > 0 && (
                       <Typography variant="caption" color="primary.main" display="block" sx={{ mt: 0.5 }}>
@@ -303,6 +395,7 @@ export default function ProjectsPage() {
                     </Typography>
                   </Box>
                   <Box>
+                    <IconButton size="small" color="secondary" onClick={() => router.push(`/dashboard/projects/${proj.id}`)}><DetailIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="primary" onClick={() => handleOpenEdit(proj)}><EditIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="info" onClick={() => handleOpenTeam(proj)}><TeamIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="success" onClick={() => setCompleteDialog({ open: true, project: proj })} disabled={proj.status === 'completed' || proj.status === 'cancelled'}><CompleteIcon fontSize="small" /></IconButton>
@@ -311,8 +404,21 @@ export default function ProjectsPage() {
                 </Box>
                 <Divider sx={{ my: 1 }} />
                 <Box mt={1}>
-                  {renderProgress(proj.consumed_hours || 0, proj.budgeted_hours || 0)}
+                  {renderProgress(proj.consumed_hours_total || 0, proj.budgeted_hours || 0)}
                 </Box>
+                {hasBudgetsRead && (
+                  <Box mt={1}>
+                    {proj.budget ? (
+                      <Chip
+                        size="small" icon={<BudgetIcon />} label={proj.budget.number}
+                        color="primary" variant="outlined" clickable
+                        onClick={() => router.push(`/dashboard/budgets?view=${proj.budget!.id}`)}
+                      />
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">Sin presupuesto</Typography>
+                    )}
+                  </Box>
+                )}
               </Paper>
             ))}
           </Stack>
@@ -330,21 +436,29 @@ export default function ProjectsPage() {
                 <TableCell><strong>Cliente</strong></TableCell>
                 <TableCell><strong>Estado</strong></TableCell>
                 <TableCell sx={{ minWidth: 200 }}><strong>Progreso de Horas</strong></TableCell>
+                {hasBudgetsRead && <TableCell><strong>Presupuesto</strong></TableCell>}
                 <TableCell align="center"><strong>Acciones</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {projects.length === 0 ? (
+              {filteredProjects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                    <Typography variant="body2" color="text.secondary">No hay proyectos registrados</Typography>
+                  <TableCell colSpan={hasBudgetsRead ? 7 : 6} align="center" sx={{ py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">No hay proyectos que coincidan con los filtros</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                projects.map((proj) => (
+                filteredProjects.map((proj) => (
                   <TableRow key={proj.id} hover>
                     <TableCell><Typography variant="body2" color="text.secondary" fontWeight="medium">{proj.code}</Typography></TableCell>
-                    <TableCell><Typography fontWeight="medium">{proj.name}</Typography></TableCell>
+                    <TableCell>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Typography fontWeight="medium">{proj.name}</Typography>
+                        {!!proj.subproject_count && (
+                          <Chip size="small" label={`${proj.subproject_count} adicional(es)`} color="secondary" variant="outlined" />
+                        )}
+                      </Box>
+                    </TableCell>
                     <TableCell>
                       <Typography variant="body2">{proj.client?.razonSocial}</Typography>
                       {proj.plant && <Typography variant="caption" color="text.secondary" display="block">Planta: {proj.plant.name}</Typography>}
@@ -360,9 +474,25 @@ export default function ProjectsPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      {renderProgress(proj.consumed_hours || 0, proj.budgeted_hours || 0)}
+                      {renderProgress(proj.consumed_hours_total || 0, proj.budgeted_hours || 0)}
                     </TableCell>
+                    {hasBudgetsRead && (
+                      <TableCell>
+                        {proj.budget ? (
+                          <Tooltip title="Ver / Imprimir presupuesto">
+                            <Chip
+                              size="small" icon={<BudgetIcon />} label={proj.budget.number}
+                              color="primary" variant="outlined" clickable
+                              onClick={() => router.push(`/dashboard/budgets?view=${proj.budget!.id}`)}
+                            />
+                          </Tooltip>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">Sin presupuesto</Typography>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell align="center">
+                      <Tooltip title="Ver detalle"><IconButton size="small" color="secondary" onClick={() => router.push(`/dashboard/projects/${proj.id}`)}><DetailIcon fontSize="small" /></IconButton></Tooltip>
                       <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(proj)}><EditIcon fontSize="small" /></IconButton></Tooltip>
                       <Tooltip title="Equipo"><IconButton size="small" color="info" onClick={() => handleOpenTeam(proj)}><TeamIcon fontSize="small" /></IconButton></Tooltip>
                       <Tooltip title="Finalizar Proyecto">
@@ -427,6 +557,17 @@ export default function ProjectsPage() {
                   <option value="completed">Completado</option>
                   <option value="cancelled">Cancelado</option>
                 </TextField>
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField label="Fecha de Inicio" type="date" fullWidth value={form.start_date}
+                  onChange={(e) => setForm({ ...form, start_date: e.target.value })} InputLabelProps={{ shrink: true }} />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField label="Fecha de Fin" type="date" fullWidth value={form.end_date}
+                  onChange={(e) => setForm({ ...form, end_date: e.target.value })} InputLabelProps={{ shrink: true }} />
               </Grid>
             </Grid>
 

@@ -49,6 +49,8 @@ import {
   LocalAtm as LocalAtmIcon,
   LocalShipping as LocalShippingIcon,
   ReceiptLong as ReceiptLongIcon,
+  RequestQuote as RequestQuoteIcon,
+  Inventory2 as InventoryIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -101,8 +103,16 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Clientes', icon: <Business />, path: '/dashboard/clients', requiredPermission: 'clients_read' },
       { text: 'Plantas', icon: <FactoryIcon />, path: '/dashboard/plants', requiredPermission: 'plants_read' },
       { text: 'Proyectos', icon: <AssignmentIcon />, path: '/dashboard/projects', requiredPermission: 'projects_read' },
+      { text: 'Presupuestos', icon: <RequestQuoteIcon />, path: '/dashboard/budgets', requiredPermission: 'budgets_read' },
       { text: 'Remitos / OCAs', icon: <ReceiptLongIcon />, path: '/dashboard/ocas', requiredPermission: 'ocas_read' },
       { text: 'Vehículos / Flota', icon: <LocalShippingIcon />, path: '/dashboard/vehicles', requiredPermission: 'vehicles_read' },
+    ]
+  },
+  {
+    title: 'Pañol',
+    items: [
+      { text: 'Materiales', icon: <InventoryIcon />, path: '/dashboard/materials', requiredPermission: 'materials_read' },
+      { text: 'Unidades de Medida', icon: <CategoryIcon />, path: '/dashboard/material-units', requiredPermission: 'material_units_read' },
     ]
   },
   {
@@ -119,6 +129,7 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Gremios (Sindicatos)', icon: <DomainIcon />, path: '/dashboard/guilds', requiredPermission: 'guilds_read' },
       { text: 'Categorías Gastos', icon: <CategoryIcon />, path: '/dashboard/employer-cost-categories', requiredPermission: 'employer_cost_categories_read' },
       { text: 'Categorías (CCT)', icon: <CategoryIcon />, path: '/dashboard/categories', requiredPermission: 'categories_read' },
+      { text: 'Rubros de Presupuesto', icon: <CategoryIcon />, path: '/dashboard/budget-item-types', requiredPermission: 'budget_item_types_read' },
       { text: 'Categorías de Documentos', icon: <FolderSpecialIcon />, path: '/dashboard/document-categories', requiredPermission: 'document_categories_read' },
       { text: 'Conceptos de Liquidación', icon: <CategoryIcon />, path: '/dashboard/payroll-concepts', requiredPermission: 'payroll_concepts_read' },
       { text: 'Feriados', icon: <CalendarIcon />, path: '/dashboard/holidays', requiredPermission: 'holidays_read' },
