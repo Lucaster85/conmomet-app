@@ -1018,9 +1018,22 @@ function BudgetsPageContent() {
                       const { inputValue } = params;
                       const exists = options.some((o) => o.description.toLowerCase() === inputValue.toLowerCase());
                       if (inputValue !== '' && !exists) {
-                        filtered.push({ description: `Agregar "${inputValue}"`, inputValue });
+                        filtered.unshift({ description: `Agregar "${inputValue}"`, inputValue });
                       }
                       return filtered;
+                    }}
+                    renderOption={(props, option) => {
+                      const { key, ...optionProps } = props;
+                      return (
+                        <li key={key} {...optionProps}>
+                          {option.inputValue ? (
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <AddIcon fontSize="small" sx={{ color: 'success.main' }} />
+                              <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 500 }}>{option.description}</Typography>
+                            </Box>
+                          ) : option.description}
+                        </li>
+                      );
                     }}
                     renderInput={(params) => <TextField {...params} label="Descripción" helperText={item.material_id ? '✓ vinculado al catálogo' : ' '} />}
                   />
@@ -1056,8 +1069,14 @@ function BudgetsPageContent() {
                 {hasCostsRead && (
                   <Grid size={{ xs: 6, md: 1.5 }}>
                     <TextField
-                      size="small" fullWidth label="Costo real" disabled
-                      value={cost ? formatMoney(cost.value, cost.currency) : 'Sin vincular'}
+                      type={item.material_id ? 'number' : 'text'}
+                      size="small" fullWidth label="Costo real"
+                      disabled={!item.material_id}
+                      value={item.material_id ? (cost?.value ?? '') : 'Sin vincular'}
+                      onChange={(e) => updateMaterialItem(idx, {
+                        material_cost_snapshot: e.target.value === '' ? null : Number(e.target.value),
+                        material_cost_currency: cost?.currency || item.material_cost_currency || form.currency,
+                      })}
                       InputLabelProps={{ shrink: true }}
                     />
                   </Grid>
