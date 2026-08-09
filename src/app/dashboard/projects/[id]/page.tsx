@@ -51,6 +51,7 @@ export default function ProjectDetailPage() {
     ? ((user as unknown as Record<string, unknown>).permissions as string[])
     : [];
   const hasBudgetsRead = permissions.includes('admin_granted') || permissions.includes('budgets_read');
+  const hasPricesRead = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
 
   const [project, setProject] = useState<Project | null>(null);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -248,7 +249,7 @@ export default function ProjectDetailPage() {
                     <TableRow>
                       <TableCell>Rubro</TableCell>
                       <TableCell align="right">Cantidad</TableCell>
-                      <TableCell align="right">Estimado</TableCell>
+                      {hasPricesRead && <TableCell align="right">Estimado</TableCell>}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -256,7 +257,7 @@ export default function ProjectDetailPage() {
                       <TableRow key={i}>
                         <TableCell>{line.itemType?.name}</TableCell>
                         <TableCell align="right">{line.quantity} {line.itemType?.unit_label}</TableCell>
-                        <TableCell align="right">{line.currency || project.budget?.currency} {line.estimated_total}</TableCell>
+                        {hasPricesRead && <TableCell align="right">{line.currency || project.budget?.currency} {line.estimated_total}</TableCell>}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -270,7 +271,7 @@ export default function ProjectDetailPage() {
                     <TableRow>
                       <TableCell>Descripción</TableCell>
                       <TableCell align="right">Cantidad</TableCell>
-                      <TableCell align="right">Total</TableCell>
+                      {hasPricesRead && <TableCell align="right">Total</TableCell>}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -278,17 +279,21 @@ export default function ProjectDetailPage() {
                       <TableRow key={i}>
                         <TableCell>{item.description}</TableCell>
                         <TableCell align="right">{item.quantity} {item.materialUnit?.label}</TableCell>
-                        <TableCell align="right">{item.currency || project.budget?.currency} {item.total_price}</TableCell>
+                        {hasPricesRead && <TableCell align="right">{item.currency || project.budget?.currency} {item.total_price}</TableCell>}
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
 
-              <Divider sx={{ my: 2 }} />
-              <Box textAlign="right">
-                <Typography variant="h6" fontWeight="bold">Total: {formatTotals(project.budget.totals_by_currency)}</Typography>
-              </Box>
+              {hasPricesRead && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Box textAlign="right">
+                    <Typography variant="h6" fontWeight="bold">Total: {formatTotals(project.budget.totals_by_currency)}</Typography>
+                  </Box>
+                </>
+              )}
             </Box>
           )}
         </Paper>

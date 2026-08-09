@@ -116,6 +116,7 @@ function BudgetsPageContent() {
     ? ((user as unknown as Record<string, unknown>).permissions as string[])
     : [];
   const hasCostsRead = permissions.includes('admin_granted') || permissions.includes('material_costs_read');
+  const hasPricesRead = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const autoOpenedFromParent = useRef(false);
@@ -733,7 +734,7 @@ function BudgetsPageContent() {
                         </Box>
                       )}
                     </Box>
-                    <Typography variant="body2">{formatTotals(b.totals_by_currency)}</Typography>
+                    {hasPricesRead && <Typography variant="body2">{formatTotals(b.totals_by_currency)}</Typography>}
                     {b.project && (
                       <Chip
                         size="small" icon={<ProjectIcon />} label={`${b.project.code} - ${b.project.name}`}
@@ -782,7 +783,7 @@ function BudgetsPageContent() {
                     <TableCell><strong>Título</strong></TableCell>
                     <TableCell><strong>Cliente</strong></TableCell>
                     <TableCell><strong>Estado</strong></TableCell>
-                    <TableCell><strong>Total</strong></TableCell>
+                    {hasPricesRead && <TableCell><strong>Total</strong></TableCell>}
                     <TableCell><strong>Proyecto</strong></TableCell>
                     <TableCell align="center"><strong>Acciones</strong></TableCell>
                   </TableRow>
@@ -819,7 +820,7 @@ function BudgetsPageContent() {
                           </Box>
                         )}
                       </TableCell>
-                      <TableCell>{formatTotals(b.totals_by_currency)}</TableCell>
+                      {hasPricesRead && <TableCell>{formatTotals(b.totals_by_currency)}</TableCell>}
                       <TableCell>
                         {b.project ? (
                           <Tooltip title="Ver proyecto">
@@ -940,36 +941,40 @@ function BudgetsPageContent() {
             </Box>
             {form.laborLines.map((line, idx) => (
               <Grid container spacing={1} key={idx} alignItems="center">
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, md: hasPricesRead ? 4 : 6 }}>
                   <TextField select fullWidth size="small" label="Rubro" value={line.budget_item_type_id}
                     onChange={(e) => updateLaborLine(idx, { budget_item_type_id: Number(e.target.value) })}
                     SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
                     {itemTypes.map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}
                   </TextField>
                 </Grid>
-                <Grid size={{ xs: 6, md: 2 }}>
+                <Grid size={{ xs: hasPricesRead ? 6 : 10, md: hasPricesRead ? 2 : 5 }}>
                   <TextField type="number" size="small" fullWidth label="Cantidad" value={line.quantity}
                     onChange={(e) => updateLaborLine(idx, { quantity: Number(e.target.value) })} />
                 </Grid>
-                <Grid size={{ xs: 6, md: 2 }}>
-                  <TextField type="number" size="small" fullWidth label="Valor unitario" value={line.unit_price}
-                    onChange={(e) => updateLaborLine(idx, { unit_price: Number(e.target.value) })} />
-                </Grid>
-                <Grid size={{ xs: 6, md: 2 }}>
-                  <TextField select size="small" fullWidth label="Moneda" value={line.currency || ''}
-                    onChange={(e) => updateLaborLine(idx, { currency: (e.target.value || null) as BudgetCurrency | null })}
-                    SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-                    <option value="">{form.currency} (default)</option>
-                    <option value="ARS">ARS</option>
-                    <option value="USD">USD</option>
-                  </TextField>
-                </Grid>
-                <Grid size={{ xs: 5, md: 1.5 }}>
-                  <Typography variant="body2" fontWeight="bold">
-                    {formatMoney((line.quantity || 0) * (line.unit_price || 0), line.currency || form.currency)}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 1, md: 0.5 }}>
+                {hasPricesRead && (
+                  <>
+                    <Grid size={{ xs: 6, md: 2 }}>
+                      <TextField type="number" size="small" fullWidth label="Valor unitario" value={line.unit_price}
+                        onChange={(e) => updateLaborLine(idx, { unit_price: Number(e.target.value) })} />
+                    </Grid>
+                    <Grid size={{ xs: 6, md: 2 }}>
+                      <TextField select size="small" fullWidth label="Moneda" value={line.currency || ''}
+                        onChange={(e) => updateLaborLine(idx, { currency: (e.target.value || null) as BudgetCurrency | null })}
+                        SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
+                        <option value="">{form.currency} (default)</option>
+                        <option value="ARS">ARS</option>
+                        <option value="USD">USD</option>
+                      </TextField>
+                    </Grid>
+                    <Grid size={{ xs: 5, md: 1.5 }}>
+                      <Typography variant="body2" fontWeight="bold">
+                        {formatMoney((line.quantity || 0) * (line.unit_price || 0), line.currency || form.currency)}
+                      </Typography>
+                    </Grid>
+                  </>
+                )}
+                <Grid size={{ xs: hasPricesRead ? 1 : 2, md: hasPricesRead ? 0.5 : 1 }}>
                   <IconButton size="small" color="error" onClick={() => removeLaborLine(idx)}><DeleteIcon fontSize="small" /></IconButton>
                 </Grid>
               </Grid>
@@ -996,7 +1001,7 @@ function BudgetsPageContent() {
               const marginPct = lineMarginPercent(item);
               return (
               <Grid container spacing={1} key={idx} alignItems="center">
-                <Grid size={{ xs: 12, md: hasCostsRead ? 3.5 : 5 }}>
+                <Grid size={{ xs: 12, md: hasPricesRead ? (hasCostsRead ? 3.5 : 5) : (hasCostsRead ? 5 : 7) }}>
                   <Autocomplete<MaterialOption, false, false, true>
                     freeSolo
                     size="small"
@@ -1038,11 +1043,11 @@ function BudgetsPageContent() {
                     renderInput={(params) => <TextField {...params} label="Descripción" helperText={item.material_id ? '✓ vinculado al catálogo' : ' '} />}
                   />
                 </Grid>
-                <Grid size={{ xs: 6, md: 1.1 }}>
+                <Grid size={{ xs: 6, md: hasPricesRead ? 1.1 : 1.5 }}>
                   <TextField type="number" size="small" fullWidth label="Cant." value={item.quantity}
                     onChange={(e) => updateMaterialItem(idx, { quantity: Number(e.target.value) })} />
                 </Grid>
-                <Grid size={{ xs: 6, md: 1.2 }}>
+                <Grid size={{ xs: 6, md: hasPricesRead ? 1.2 : 1.6 }}>
                   <Autocomplete<MaterialUnitOption>
                     size="small"
                     fullWidth
@@ -1067,7 +1072,7 @@ function BudgetsPageContent() {
                   />
                 </Grid>
                 {hasCostsRead && (
-                  <Grid size={{ xs: 6, md: 1.5 }}>
+                  <Grid size={{ xs: hasPricesRead ? 6 : 12, md: hasPricesRead ? 1.5 : 2.5 }}>
                     <TextField
                       type={item.material_id ? 'number' : 'text'}
                       size="small" fullWidth label="Costo real"
@@ -1081,54 +1086,62 @@ function BudgetsPageContent() {
                     />
                   </Grid>
                 )}
-                <Grid size={{ xs: hasCostsRead ? 6 : 12, md: 1.5 }}>
-                  <TextField type="number" size="small" fullWidth label="Precio al cliente" value={item.unit_price}
-                    onChange={(e) => updateMaterialItem(idx, { unit_price: Number(e.target.value) })} />
-                </Grid>
-                <Grid size={{ xs: 6, md: 1.2 }}>
-                  <TextField select size="small" fullWidth label="Moneda" value={item.currency || ''}
-                    onChange={(e) => updateMaterialItem(idx, { currency: (e.target.value || null) as BudgetCurrency | null })}
-                    SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-                    <option value="">{form.currency} (default)</option>
-                    <option value="ARS">ARS</option>
-                    <option value="USD">USD</option>
-                  </TextField>
-                </Grid>
-                <Grid size={{ xs: 5, md: 1.5 }}>
-                  <Typography variant="body2" fontWeight="bold">
-                    {formatMoney((item.quantity || 0) * (item.unit_price || 0), item.currency || form.currency)}
-                  </Typography>
-                  {hasCostsRead && item.material_id && (
-                    <Typography variant="caption" display="block" color={margin !== null && margin >= 0 ? 'success.main' : margin !== null ? 'error.main' : 'text.secondary'}>
-                      {margin !== null && marginPct !== null
-                        ? `Margen: ${formatMoney(margin, item.currency || form.currency)} (${marginPct.toFixed(1)}%)`
-                        : 'Margen: — cargar precio'}
-                    </Typography>
-                  )}
-                </Grid>
-                <Grid size={{ xs: 1, md: 0.5 }}>
+                {hasPricesRead && (
+                  <>
+                    <Grid size={{ xs: hasCostsRead ? 6 : 12, md: 1.5 }}>
+                      <TextField type="number" size="small" fullWidth label="Precio al cliente" value={item.unit_price}
+                        onChange={(e) => updateMaterialItem(idx, { unit_price: Number(e.target.value) })} />
+                    </Grid>
+                    <Grid size={{ xs: 6, md: 1.2 }}>
+                      <TextField select size="small" fullWidth label="Moneda" value={item.currency || ''}
+                        onChange={(e) => updateMaterialItem(idx, { currency: (e.target.value || null) as BudgetCurrency | null })}
+                        SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
+                        <option value="">{form.currency} (default)</option>
+                        <option value="ARS">ARS</option>
+                        <option value="USD">USD</option>
+                      </TextField>
+                    </Grid>
+                    <Grid size={{ xs: 5, md: 1.5 }}>
+                      <Typography variant="body2" fontWeight="bold">
+                        {formatMoney((item.quantity || 0) * (item.unit_price || 0), item.currency || form.currency)}
+                      </Typography>
+                      {hasCostsRead && item.material_id && (
+                        <Typography variant="caption" display="block" color={margin !== null && margin >= 0 ? 'success.main' : margin !== null ? 'error.main' : 'text.secondary'}>
+                          {margin !== null && marginPct !== null
+                            ? `Margen: ${formatMoney(margin, item.currency || form.currency)} (${marginPct.toFixed(1)}%)`
+                            : 'Margen: — cargar precio'}
+                        </Typography>
+                      )}
+                    </Grid>
+                  </>
+                )}
+                <Grid size={{ xs: hasPricesRead ? 1 : 2, md: hasPricesRead ? 0.5 : 1 }}>
                   <IconButton size="small" color="error" onClick={() => removeMaterialItem(idx)}><DeleteIcon fontSize="small" /></IconButton>
                 </Grid>
               </Grid>
               );
             })}
 
-            <Divider />
-            <Box textAlign="right">
-              <Typography variant="body2">Mano de obra: {formatMoney(laborTotal('ARS'), 'ARS')} {laborTotal('USD') > 0 && `+ ${formatMoney(laborTotal('USD'), 'USD')}`}</Typography>
-              <Typography variant="body2">Materiales: {formatMoney(materialsTotal('ARS'), 'ARS')} {materialsTotal('USD') > 0 && `+ ${formatMoney(materialsTotal('USD'), 'USD')}`}</Typography>
-              <Typography variant="h6" fontWeight="bold">
-                Total: {formatMoney(laborTotal('ARS') + materialsTotal('ARS'), 'ARS')} {(laborTotal('USD') + materialsTotal('USD')) > 0 && `+ ${formatMoney(laborTotal('USD') + materialsTotal('USD'), 'USD')}`}
-              </Typography>
-              {hasCostsRead && (totalMargin('ARS') !== 0 || totalMargin('USD') !== 0) && (
-                <Typography variant="body2" color="text.secondary">
-                  Margen materiales: {formatMoney(totalMargin('ARS'), 'ARS')}
-                  {totalMarginPercent('ARS') !== null && ` (${totalMarginPercent('ARS')!.toFixed(1)}%)`}
-                  {totalMargin('USD') !== 0 && ` + ${formatMoney(totalMargin('USD'), 'USD')}`}
-                  {totalMargin('USD') !== 0 && totalMarginPercent('USD') !== null && ` (${totalMarginPercent('USD')!.toFixed(1)}%)`}
-                </Typography>
-              )}
-            </Box>
+            {hasPricesRead && (
+              <>
+                <Divider />
+                <Box textAlign="right">
+                  <Typography variant="body2">Mano de obra: {formatMoney(laborTotal('ARS'), 'ARS')} {laborTotal('USD') > 0 && `+ ${formatMoney(laborTotal('USD'), 'USD')}`}</Typography>
+                  <Typography variant="body2">Materiales: {formatMoney(materialsTotal('ARS'), 'ARS')} {materialsTotal('USD') > 0 && `+ ${formatMoney(materialsTotal('USD'), 'USD')}`}</Typography>
+                  <Typography variant="h6" fontWeight="bold">
+                    Total: {formatMoney(laborTotal('ARS') + materialsTotal('ARS'), 'ARS')} {(laborTotal('USD') + materialsTotal('USD')) > 0 && `+ ${formatMoney(laborTotal('USD') + materialsTotal('USD'), 'USD')}`}
+                  </Typography>
+                  {hasCostsRead && (totalMargin('ARS') !== 0 || totalMargin('USD') !== 0) && (
+                    <Typography variant="body2" color="text.secondary">
+                      Margen materiales: {formatMoney(totalMargin('ARS'), 'ARS')}
+                      {totalMarginPercent('ARS') !== null && ` (${totalMarginPercent('ARS')!.toFixed(1)}%)`}
+                      {totalMargin('USD') !== 0 && ` + ${formatMoney(totalMargin('USD'), 'USD')}`}
+                      {totalMargin('USD') !== 0 && totalMarginPercent('USD') !== null && ` (${totalMarginPercent('USD')!.toFixed(1)}%)`}
+                    </Typography>
+                  )}
+                </Box>
+              </>
+            )}
 
             <TextField label="Notas internas" fullWidth multiline rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </Stack>
@@ -1311,8 +1324,8 @@ function BudgetsPageContent() {
                         <TableRow>
                           <TableCell>Rubro</TableCell>
                           <TableCell align="right">Cantidad</TableCell>
-                          <TableCell align="right">Valor Unitario</TableCell>
-                          <TableCell align="right">Total</TableCell>
+                          {hasPricesRead && <TableCell align="right">Valor Unitario</TableCell>}
+                          {hasPricesRead && <TableCell align="right">Total</TableCell>}
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -1320,8 +1333,8 @@ function BudgetsPageContent() {
                           <TableRow key={i}>
                             <TableCell>{line.itemType?.name}</TableCell>
                             <TableCell align="right">{line.quantity} {line.itemType?.unit_label}</TableCell>
-                            <TableCell align="right">{formatMoney(line.unit_price, line.currency || printBudget.currency)}</TableCell>
-                            <TableCell align="right">{formatMoney(line.estimated_total || 0, line.currency || printBudget.currency)}</TableCell>
+                            {hasPricesRead && <TableCell align="right">{formatMoney(line.unit_price, line.currency || printBudget.currency)}</TableCell>}
+                            {hasPricesRead && <TableCell align="right">{formatMoney(line.estimated_total || 0, line.currency || printBudget.currency)}</TableCell>}
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1339,8 +1352,8 @@ function BudgetsPageContent() {
                         <TableRow>
                           <TableCell>Descripción</TableCell>
                           <TableCell align="right">Cantidad</TableCell>
-                          <TableCell align="right">Precio Unitario</TableCell>
-                          <TableCell align="right">Total</TableCell>
+                          {hasPricesRead && <TableCell align="right">Precio Unitario</TableCell>}
+                          {hasPricesRead && <TableCell align="right">Total</TableCell>}
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -1348,8 +1361,8 @@ function BudgetsPageContent() {
                           <TableRow key={i}>
                             <TableCell>{item.description}</TableCell>
                             <TableCell align="right">{item.quantity} {item.materialUnit?.label}</TableCell>
-                            <TableCell align="right">{formatMoney(item.unit_price, item.currency || printBudget.currency)}</TableCell>
-                            <TableCell align="right">{formatMoney(item.total_price || 0, item.currency || printBudget.currency)}</TableCell>
+                            {hasPricesRead && <TableCell align="right">{formatMoney(item.unit_price, item.currency || printBudget.currency)}</TableCell>}
+                            {hasPricesRead && <TableCell align="right">{formatMoney(item.total_price || 0, item.currency || printBudget.currency)}</TableCell>}
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1358,10 +1371,14 @@ function BudgetsPageContent() {
                 </>
               )}
 
-              <Divider sx={{ my: 2 }} />
-              <Box textAlign="right">
-                <Typography variant="h6" fontWeight="bold">Total: {formatTotals(printBudget.totals_by_currency)}</Typography>
-              </Box>
+              {hasPricesRead && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Box textAlign="right">
+                    <Typography variant="h6" fontWeight="bold">Total: {formatTotals(printBudget.totals_by_currency)}</Typography>
+                  </Box>
+                </>
+              )}
 
               {printBudget.notes && (
                 <Box sx={{ mt: 2 }}>
