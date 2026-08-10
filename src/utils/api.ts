@@ -608,6 +608,29 @@ export interface CreateProjectData {
   notes?: string;
 }
 
+export interface WorkDayLog {
+  id?: number;
+  project_id: number;
+  date: string;
+  day_name: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  computed_start_time?: string | null;
+  computed_end_time?: string | null;
+  suspension_reason?: string | null;
+  suspended_by?: string | null;
+  observations?: string | null;
+  is_saved: boolean;
+  is_holiday?: boolean;
+  holiday_name?: string | null;
+}
+
+export interface WorkDayLogWeek {
+  week_start: string;
+  week_end: string;
+  days: WorkDayLog[];
+}
+
 export interface Category {
   id: number;
   name: string;
@@ -923,6 +946,37 @@ export class ProjectService {
     }
     const data = await response.json();
     return data.data || [];
+  }
+
+  static async getWorkDayLogs(id: number, weekStart?: string): Promise<{ week_start: string; week_end: string; days: WorkDayLog[] }> {
+    let url = `${API_BASE_URL}/projects/${id}/work-day-logs`;
+    if (weekStart) url += `?week_start=${encodeURIComponent(weekStart)}`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener la planilla diaria');
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async getWorkDayLogsAll(id: number, from?: string, to?: string): Promise<WorkDayLogWeek[]> {
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/projects/${id}/work-day-logs/all${qs}`);
+    if (!response.ok) throw new Error('Error al obtener las planillas del proyecto');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async saveWorkDayLogs(id: number, entries: Partial<WorkDayLog>[]): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/projects/${id}/work-day-logs`, {
+      method: 'PUT',
+      body: JSON.stringify({ entries }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al guardar la planilla diaria');
+    }
   }
 }
 
