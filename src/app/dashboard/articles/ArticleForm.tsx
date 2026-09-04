@@ -14,7 +14,7 @@ import {
   CircularProgress,
   Alert,
 } from '@mui/material';
-import { Close as CloseIcon, CloudUpload as CloudUploadIcon, Image as ImageIcon } from '@mui/icons-material';
+import { CloseOutlined as CloseIcon, CloudUploadOutlined as CloudUploadIcon, ImageOutlined as ImageIcon } from '@mui/icons-material';
 import { MediaService, Media, CreateMediaData, UpdateMediaData } from '@/utils/api';
 
 interface ArticleFormProps {

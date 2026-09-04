@@ -27,12 +27,13 @@ import {
   Switch,
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Security as SecurityIcon,
-  Search as SearchIcon,
-  Key as KeyIcon,
+  AddOutlined as AddIcon,
+  EditOutlined as EditIcon,
+  DeleteOutlined as DeleteIcon,
+  SecurityOutlined as SecurityIcon,
+  SearchOutlined as SearchIcon,
+  KeyOutlined as KeyIcon,
+  AdminPanelSettingsOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { RoleService, PermissionService, Role, Permission } from '@/utils/api';
 
@@ -254,11 +255,14 @@ export default function RolesPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Box>
-          <Typography variant="h5" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
-            Roles y Permisos
-          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+            <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
+              Roles y Permisos
+            </Typography>
+          </Box>
           <Typography variant="body2" color="#64748B" mt={0.5}>
             Gestioná los roles y sus permisos de acceso
           </Typography>
@@ -271,7 +275,7 @@ export default function RolesPage() {
         >
           Nuevo rol
         </Button>
-      </Stack>
+      </Box>
 
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2, borderRadius: '10px' }}>

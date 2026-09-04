@@ -12,9 +12,9 @@ import DateField from '../../../components/DateField';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import CurrencyInput from '../../../components/CurrencyInput';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Refresh as RefreshIcon, Search as SearchIcon, Visibility as VisibilityIcon,
-  Link as LinkIcon, LinkOff as LinkOffIcon,
+  AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
+  RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, VisibilityOutlined as VisibilityIcon,
+  LinkOutlined as LinkIcon, LinkOffOutlined as LinkOffIcon, BadgeOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { Employee, EmployeeService, CreateEmployeeData, User, UserService, CategoryService, Category } from '../../../utils/api';
@@ -189,7 +189,10 @@ export default function EmployeesPage() {
     <Box>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold">Empleados</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Empleados</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadEmployees} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} size="small">Nuevo Empleado</Button>

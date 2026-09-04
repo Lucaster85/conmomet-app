@@ -14,6 +14,7 @@ import {
   Alert,
   Chip
 } from '@mui/material';
+import { SecurityOutlined as TitleIcon } from '@mui/icons-material';
 import { SelfService, SafetyEquipment } from '@/utils/api';
 import dayjs from 'dayjs';
 
@@ -45,9 +46,12 @@ export default function PortalSafetyEquipment() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={600} mb={3}>
-        Mi Equipo de Protección Personal (EPP)
-      </Typography>
+      <Box display="flex" alignItems="center" gap={1} mb={3}>
+        <TitleIcon color="primary" sx={{ fontSize: 28 }} />
+        <Typography variant="h5" fontWeight={600}>
+          Mi Equipo de Protección Personal (EPP)
+        </Typography>
+      </Box>
 
       {/* Mobile Cards */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>

@@ -8,8 +8,8 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
-  Add as AddIcon, Refresh as RefreshIcon, Edit as EditIcon,
-  Delete as DeleteIcon,
+  AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, EditOutlined as EditIcon,
+  DeleteOutlined as DeleteIcon, CalendarMonthOutlined as TitleIcon,
 } from '@mui/icons-material';
 import DateField from '../../../components/DateField';
 import { Holiday, HolidayService } from '../../../utils/api';
@@ -89,9 +89,12 @@ export default function HolidaysPage() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-          Feriados Nacionales
-        </Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
+            Feriados Nacionales
+          </Typography>
+        </Box>
         <Box display="flex" gap={1} alignItems="center">
           <TextField label="Año" type="number" size="small" value={yearFilter}
             onChange={(e) => setYearFilter(Number(e.target.value))} sx={{ width: 100 }} />

@@ -2,15 +2,15 @@
 import React from "react";
 import { Box, Card, Container, Typography } from "@mui/material";
 import {
-  AutoFixNormal,
+  AutoFixNormalOutlined as AutoFixNormal,
   CabinOutlined,
-  Engineering,
-  FormatPaint,
+  EngineeringOutlined as Engineering,
+  FormatPaintOutlined as FormatPaint,
   FrontLoader,
-  Handyman,
-  OpenInBrowser,
-  RadioButtonChecked,
-  VerticalAlignBottom,
+  HandymanOutlined as Handyman,
+  OpenInBrowserOutlined as OpenInBrowser,
+  RadioButtonCheckedOutlined as RadioButtonChecked,
+  VerticalAlignBottomOutlined as VerticalAlignBottom,
 } from "@mui/icons-material";
 
 export default function FeaturesSection() {

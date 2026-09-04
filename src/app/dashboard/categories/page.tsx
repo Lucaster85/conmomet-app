@@ -6,8 +6,9 @@ import {
   DialogActions, CircularProgress, Tooltip, Stack, TextField, InputAdornment,
 } from '@mui/material';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Refresh as RefreshIcon, Search as SearchIcon, Paid as PaidIcon,
+  AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
+  RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, PaidOutlined as PaidIcon,
+  CategoryOutlined as TitleIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
@@ -123,9 +124,12 @@ export default function CategoriesPage() {
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box>
-          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
-            Categorías
-          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+            <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
+              Categorías
+            </Typography>
+          </Box>
           <Typography variant="body2" color="#64748B">
             Administrá las categorías laborales y su valor hora gremio (CCT)
           </Typography>

@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { Box, Container, Paper, Stack, Typography } from '@mui/material';
-import { Checkroom, Email, Facebook, Instagram, LocationOn, Phone, WhatsApp } from '@mui/icons-material';
+import { CheckroomOutlined as Checkroom, EmailOutlined as Email, FacebookOutlined as Facebook, Instagram, LocationOnOutlined as LocationOn, PhoneOutlined as Phone, WhatsApp } from '@mui/icons-material';
 
 export default function FooterSection() {
   return (

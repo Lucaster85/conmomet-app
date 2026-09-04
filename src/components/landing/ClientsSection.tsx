@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Box, Container, IconButton, Typography } from '@mui/material';
-import { ArrowBackIos, ArrowForwardIos } from '@mui/icons-material';
+import { ArrowBackIosOutlined as ArrowBackIos, ArrowForwardIosOutlined as ArrowForwardIos } from '@mui/icons-material';
 
 interface Client {
   name: string;

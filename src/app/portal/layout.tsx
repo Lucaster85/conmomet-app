@@ -21,18 +21,18 @@ import {
   ListItemButton
 } from '@mui/material';
 import {
-  Logout as LogoutIcon,
-  AccountCircle,
-  Badge as BadgeIcon,
-  Article as ArticleIcon,
-  AccessTime as TimeIcon,
-  Security as SecurityIcon,
-  Payments as PaymentsIcon,
-  ArrowBack as ArrowBackIcon,
-  EventAvailable as EventAvailableIcon,
-  RequestQuote as RequestQuoteIcon,
-  Menu as MenuIcon,
-  Close as CloseIcon
+  LogoutOutlined as LogoutIcon,
+  AccountCircleOutlined as AccountCircle,
+  BadgeOutlined as BadgeIcon,
+  ArticleOutlined as ArticleIcon,
+  AccessTimeOutlined as TimeIcon,
+  SecurityOutlined as SecurityIcon,
+  PaymentsOutlined as PaymentsIcon,
+  ArrowBackOutlined as ArrowBackIcon,
+  EventAvailableOutlined as EventAvailableIcon,
+  RequestQuoteOutlined as RequestQuoteIcon,
+  MenuOutlined as MenuIcon,
+  CloseOutlined as CloseIcon
 } from '@mui/icons-material';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';

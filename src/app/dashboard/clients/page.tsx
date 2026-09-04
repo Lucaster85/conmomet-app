@@ -24,13 +24,14 @@ import {
   Stack,
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Refresh as RefreshIcon,
-  Search as SearchIcon,
-  SupervisorAccount as SupervisorAccountIcon,
-  Percent as RatesIcon,
+  AddOutlined as AddIcon,
+  EditOutlined as EditIcon,
+  DeleteOutlined as DeleteIcon,
+  RefreshOutlined as RefreshIcon,
+  SearchOutlined as SearchIcon,
+  SupervisorAccountOutlined as SupervisorAccountIcon,
+  PercentOutlined as RatesIcon,
+  BusinessOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { Client, ClientService } from '../../../utils/api';
 import ClientForm from './ClientForm';
@@ -143,9 +144,12 @@ export default function ClientsPage() {
     <Box>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
-        <Typography variant="h4" fontWeight="bold">
-          Gestión de Clientes
-        </Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
+            Gestión de Clientes
+          </Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button
             variant="outlined"

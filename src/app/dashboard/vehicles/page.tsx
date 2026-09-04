@@ -34,15 +34,16 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Refresh as RefreshIcon,
-  LocalShipping as TruckIcon,
-  FolderOpen as FolderIcon,
-  Search as SearchIcon,
-  Build as CraneIcon,
-  DirectionsCar as OtherVehicleIcon,
+  AddOutlined as AddIcon,
+  EditOutlined as EditIcon,
+  DeleteOutlined as DeleteIcon,
+  RefreshOutlined as RefreshIcon,
+  LocalShippingOutlined as TruckIcon,
+  FolderOpenOutlined as FolderIcon,
+  SearchOutlined as SearchIcon,
+  BuildOutlined as CraneIcon,
+  DirectionsCarOutlined as OtherVehicleIcon,
+  LocalShippingOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { Vehicle, VehicleService, CreateVehicleData } from '../../../utils/api';
 import VehicleDocumentsDialog from './VehicleDocumentsDialog';
@@ -215,9 +216,12 @@ export default function VehiclesPage() {
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Box>
-          <Typography variant="h4" fontWeight="bold" color="primary" gutterBottom>
-            Control de Flota y Vehículos
-          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+            <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
+              Control de Flota y Vehículos
+            </Typography>
+          </Box>
           <Typography variant="body2" color="text.secondary">
             Administre las grúas, camiones y utilitarios de la empresa junto con sus seguros y habilitaciones VTV.
           </Typography>

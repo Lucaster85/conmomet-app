@@ -9,9 +9,9 @@ import {
   FormControlLabel, FormControl, FormLabel, IconButton,
 } from '@mui/material';
 import {
-  ArrowBack as BackIcon, Add as AddIcon, Print as PrintIcon, Save as SaveIcon,
-  ChevronLeft as PrevIcon, ChevronRight as NextIcon, InfoOutlined as InfoIcon,
-  Today as TodayIcon, Refresh as RefreshIcon,
+  ArrowBackOutlined as BackIcon, AddOutlined as AddIcon, PrintOutlined as PrintIcon, SaveOutlined as SaveIcon,
+  ChevronLeftOutlined as PrevIcon, ChevronRightOutlined as NextIcon, InfoOutlined as InfoIcon,
+  TodayOutlined as TodayIcon, RefreshOutlined as RefreshIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../../../utils/auth';
 import {

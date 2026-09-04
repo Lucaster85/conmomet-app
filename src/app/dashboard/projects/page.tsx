@@ -9,9 +9,9 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, OpenInNew as DetailIcon,
-  Refresh as RefreshIcon, Groups as TeamIcon, CheckCircle as CompleteIcon,
-  RequestQuote as BudgetIcon,
+  AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, OpenInNewOutlined as DetailIcon,
+  RefreshOutlined as RefreshIcon, GroupsOutlined as TeamIcon, CheckCircleOutlined as CompleteIcon,
+  RequestQuoteOutlined as BudgetIcon, AssignmentOutlined as TitleIcon,
 } from '@mui/icons-material';
 import {
   Project, ProjectService, Client, ClientService, Plant, PlantService, CreateProjectData,
@@ -302,7 +302,10 @@ export default function ProjectsPage() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold">Proyectos</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Proyectos</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} size="small">Nuevo Proyecto</Button>

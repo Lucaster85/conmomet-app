@@ -7,8 +7,9 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
-  Add as AddIcon, Refresh as RefreshIcon, Payment as PaymentIcon,
-  CheckCircle as ConfirmIcon, AttachMoney as MoneyIcon
+  AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, PaymentOutlined as PaymentIcon,
+  CheckCircleOutlined as ConfirmIcon, AttachMoneyOutlined as MoneyIcon,
+  PaymentsOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { PayPeriod, PayPeriodService } from '../../../utils/api';
 import { useRouter } from 'next/navigation';
@@ -109,7 +110,10 @@ export default function PayPeriodsPage() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold">Quincenas</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Quincenas</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadPeriods} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)} size="small">Abrir Quincena</Button>

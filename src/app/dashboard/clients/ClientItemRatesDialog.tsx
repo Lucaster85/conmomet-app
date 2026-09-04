@@ -22,11 +22,11 @@ import {
   Divider,
 } from '@mui/material';
 import {
-  Close as CloseIcon,
-  Edit as EditIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
-  History as HistoryIcon,
+  CloseOutlined as CloseIcon,
+  EditOutlined as EditIcon,
+  SaveOutlined as SaveIcon,
+  CancelOutlined as CancelIcon,
+  HistoryOutlined as HistoryIcon,
 } from '@mui/icons-material';
 import {
   Client, BudgetItemType, BudgetItemTypeService, BudgetCurrency,

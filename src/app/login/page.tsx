@@ -11,7 +11,7 @@ import {
   IconButton,
   InputAdornment,
 } from '@mui/material';
-import { Visibility, VisibilityOff, ArrowBack } from '@mui/icons-material';
+import { VisibilityOutlined as Visibility, VisibilityOffOutlined as VisibilityOff, ArrowBackOutlined as ArrowBack } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth, TokenManager } from '../../utils/auth';
 

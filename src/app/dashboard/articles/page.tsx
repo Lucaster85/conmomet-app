@@ -22,11 +22,12 @@ import {
   Grid,
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Image as ImageIcon,
-  SwapVert as SortIcon,
+  AddOutlined as AddIcon,
+  EditOutlined as EditIcon,
+  DeleteOutlined as DeleteIcon,
+  ImageOutlined as ImageIcon,
+  SwapVertOutlined as SortIcon,
+  ArticleOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { MediaService, Media } from '@/utils/api';
 import ArticleForm from './ArticleForm';
@@ -107,14 +108,17 @@ export default function ArticlesPage() {
         gap={2}
       >
         <Box>
-          <Typography
-            variant="h5"
-            fontWeight={700}
-            letterSpacing="-0.02em"
-            color="#1E293B"
-          >
-            Artículos
-          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+            <Typography
+              variant="h4"
+              fontWeight={700}
+              letterSpacing="-0.02em"
+              color="#1E293B"
+            >
+              Artículos
+            </Typography>
+          </Box>
           <Typography variant="body2" color="#64748B" mt={0.5}>
             Gestión de imágenes para la sección de artículos
           </Typography>

@@ -7,12 +7,12 @@ import {
   MenuItem, FormControl, InputLabel, Select, Chip, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
 import {
-  Add as AddIcon, Delete as DeleteIcon, Visibility as VisibilityIcon,
-  Refresh as RefreshIcon, Search as SearchIcon,
-  CheckCircle as ApproveIcon, Cancel as RejectIcon,
-  WarningAmber as ConflictIcon, Percent as InterestIcon,
-  LocalAtm as CashIcon, AccountBalance as BankIcon,
-  Payments as PaidIcon, AttachFile as ProofIcon
+  AddOutlined as AddIcon, DeleteOutlined as DeleteIcon, VisibilityOutlined as VisibilityIcon,
+  RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon,
+  CheckCircleOutlined as ApproveIcon, CancelOutlined as RejectIcon,
+  WarningAmberOutlined as ConflictIcon, PercentOutlined as InterestIcon,
+  LocalAtmOutlined as CashIcon, AccountBalanceOutlined as BankIcon,
+  PaymentsOutlined as PaidIcon, AttachFileOutlined as ProofIcon
 } from '@mui/icons-material';
 import Alert from '@mui/material/Alert';
 import Checkbox from '@mui/material/Checkbox';
@@ -322,9 +322,12 @@ export default function LoansPage() {
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box>
-          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
-            Préstamos
-          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <BankIcon color="primary" sx={{ fontSize: 32 }} />
+            <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
+              Préstamos
+            </Typography>
+          </Box>
           <Typography variant="body2" color="#64748B">
             Gestioná los adelantos o préstamos otorgados al personal en Pesos o Dólares.
           </Typography>

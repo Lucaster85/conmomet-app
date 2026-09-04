@@ -16,7 +16,7 @@ import {
   IconButton,
   Tooltip
 } from '@mui/material';
-import { Visibility as ViewIcon } from '@mui/icons-material';
+import { VisibilityOutlined as ViewIcon, ArticleOutlined as TitleIcon } from '@mui/icons-material';
 import { SelfService, EntityDocument } from '@/utils/api';
 import dayjs from 'dayjs';
 
@@ -69,9 +69,12 @@ export default function PortalDocuments() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={600} mb={3}>
-        Mis Documentos
-      </Typography>
+      <Box display="flex" alignItems="center" gap={1} mb={3}>
+        <TitleIcon color="primary" sx={{ fontSize: 28 }} />
+        <Typography variant="h5" fontWeight={600}>
+          Mis Documentos
+        </Typography>
+      </Box>
 
       {/* Mobile Cards */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>

@@ -12,11 +12,11 @@ import {
   Chip
 } from '@mui/material';
 import {
-  Badge as BadgeIcon,
-  Work as WorkIcon,
-  CalendarMonth as CalendarIcon,
-  AssignmentInd as DniIcon,
-  Checkroom as ShirtIcon
+  BadgeOutlined as BadgeIcon,
+  WorkOutlined as WorkIcon,
+  CalendarMonthOutlined as CalendarIcon,
+  AssignmentIndOutlined as DniIcon,
+  CheckroomOutlined as ShirtIcon
 } from '@mui/icons-material';
 import { SelfService, Employee } from '@/utils/api';
 import dayjs from 'dayjs';
@@ -62,9 +62,12 @@ export default function PortalDashboard() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={600} mb={3}>
-        Mi Legajo
-      </Typography>
+      <Box display="flex" alignItems="center" gap={1} mb={3}>
+        <BadgeIcon color="primary" sx={{ fontSize: 28 }} />
+        <Typography variant="h5" fontWeight={600}>
+          Mi Legajo
+        </Typography>
+      </Box>
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 8 }}>

@@ -10,12 +10,13 @@ import {
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import {
-  Add as AddIcon,
-  Refresh as RefreshIcon,
-  CheckCircle as ApproveIcon,
-  Cancel as RejectIcon,
-  Block as CancelIcon,
-  CloudUpload as UploadIcon,
+  AddOutlined as AddIcon,
+  RefreshOutlined as RefreshIcon,
+  CheckCircleOutlined as ApproveIcon,
+  CancelOutlined as RejectIcon,
+  BlockOutlined as CancelIcon,
+  CloudUploadOutlined as UploadIcon,
+  BeachAccessOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { LeaveRequest, LeaveRequestService, Employee, EmployeeService, LeaveBalance } from '../../../utils/api';
 
@@ -188,7 +189,10 @@ export default function LeaveRequestsPage() {
 
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
-        <Typography variant="h4" fontWeight="bold">Licencias y Vacaciones</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Licencias y Vacaciones</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} disabled={loading}>
             Actualizar

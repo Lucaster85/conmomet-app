@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { Box, Button, Container, Typography } from '@mui/material';
-import { ArrowForward } from '@mui/icons-material';
+import { ArrowForwardOutlined as ArrowForward } from '@mui/icons-material';
 
 interface HeroSectionProps {
   onContactClick: () => void;

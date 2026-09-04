@@ -29,17 +29,17 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import {
-  Close as CloseIcon,
-  CloudUpload as CloudUploadIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Visibility as VisibilityIcon,
-  Warning as WarningIcon,
-  Error as ErrorIcon,
-  Refresh as RefreshIcon,
-  Payment as PaymentIcon,
-  History as HistoryIcon,
-  CheckCircle as CheckCircleIcon,
+  CloseOutlined as CloseIcon,
+  CloudUploadOutlined as CloudUploadIcon,
+  DeleteOutlined as DeleteIcon,
+  EditOutlined as EditIcon,
+  VisibilityOutlined as VisibilityIcon,
+  WarningOutlined as WarningIcon,
+  ErrorOutlined as ErrorIcon,
+  RefreshOutlined as RefreshIcon,
+  PaymentOutlined as PaymentIcon,
+  HistoryOutlined as HistoryIcon,
+  CheckCircleOutlined as CheckCircleIcon,
 } from '@mui/icons-material';
 import {
   Vehicle,

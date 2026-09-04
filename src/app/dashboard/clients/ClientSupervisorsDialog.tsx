@@ -26,12 +26,12 @@ import {
   Zoom,
 } from '@mui/material';
 import {
-  Close as CloseIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
+  CloseOutlined as CloseIcon,
+  EditOutlined as EditIcon,
+  DeleteOutlined as DeleteIcon,
+  AddOutlined as AddIcon,
+  SaveOutlined as SaveIcon,
+  CancelOutlined as CancelIcon,
 } from '@mui/icons-material';
 import { Client, ClientSupervisor, ClientSupervisorService } from '../../../utils/api';
 

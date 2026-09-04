@@ -33,9 +33,10 @@ import {
   Stack,
 } from '@mui/material';
 import {
-  FileDownload as FileDownloadIcon,
-  PictureAsPdf as PdfIcon,
-  TableChart as ExcelIcon,
+  FileDownloadOutlined as FileDownloadIcon,
+  PictureAsPdfOutlined as PdfIcon,
+  TableChartOutlined as ExcelIcon,
+  AccountBalanceOutlined as TitleIcon,
 } from '@mui/icons-material';
 import {
   ExpenseSummaryService,
@@ -324,9 +325,12 @@ export default function ExpenseSummaryPage() {
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-        <Typography variant="h4" fontWeight="bold" color="primary">
-          Resumen de Costos Laborales
-        </Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
+            Resumen de Costos Laborales
+          </Typography>
+        </Box>
 
         {/* EXPORT BUTTON */}
         {hasData && !loading && (

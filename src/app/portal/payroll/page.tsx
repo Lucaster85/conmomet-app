@@ -11,6 +11,7 @@ import {
   Chip,
   Divider,
 } from '@mui/material';
+import { PaymentsOutlined as TitleIcon } from '@mui/icons-material';
 import { SelfService, PayrollEntry, PayrollAdjustment } from '@/utils/api';
 import dayjs from 'dayjs';
 
@@ -42,9 +43,12 @@ export default function PortalPayroll() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={600} mb={3}>
-        Mis Liquidaciones
-      </Typography>
+      <Box display="flex" alignItems="center" gap={1} mb={3}>
+        <TitleIcon color="primary" sx={{ fontSize: 28 }} />
+        <Typography variant="h5" fontWeight={600}>
+          Mis Liquidaciones
+        </Typography>
+      </Box>
 
       {payrolls.length === 0 ? (
         <Card sx={{ borderRadius: 3, p: 3, textAlign: 'center', bgcolor: 'grey.50' }}>

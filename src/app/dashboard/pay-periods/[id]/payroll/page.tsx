@@ -7,9 +7,9 @@ import {
   Card, CardContent, Grid, useTheme, useMediaQuery,
 } from '@mui/material';
 import FeedbackModal from '../../../../../components/FeedbackModal';
-import { Refresh as RefreshIcon, Edit as EditIcon, CheckCircle as ConfirmIcon, Calculate as CalcIcon, ArrowBack as BackIcon, Payment as PaymentIcon, Visibility as ViewIcon, Print as PrintIcon } from '@mui/icons-material';
+import { RefreshOutlined as RefreshIcon, EditOutlined as EditIcon, CheckCircleOutlined as ConfirmIcon, CalculateOutlined as CalcIcon, ArrowBackOutlined as BackIcon, PaymentOutlined as PaymentIcon, VisibilityOutlined as ViewIcon, PrintOutlined as PrintIcon } from '@mui/icons-material';
 import Divider from '@mui/material/Divider';
-import { TableChart as ExcelIcon } from '@mui/icons-material';
+import { TableChartOutlined as ExcelIcon } from '@mui/icons-material';
 import { PayrollEntry, PayrollService, PayPeriod, PayrollLine, PayrollAdjustment } from '../../../../../utils/api';
 import { TokenManager } from '../../../../../utils/auth';
 import { useParams, useRouter } from 'next/navigation';

@@ -14,17 +14,17 @@ import {
   Tooltip
 } from '@mui/material';
 import {
-  Warning as WarningIcon,
-  Error as ErrorIcon,
-  Assignment as AssignmentIcon,
-  Refresh as RefreshIcon,
-  Payment as PaymentIcon,
-  Visibility as VisibilityIcon
+  WarningOutlined as WarningIcon,
+  ErrorOutlined as ErrorIcon,
+  AssignmentOutlined as AssignmentIcon,
+  RefreshOutlined as RefreshIcon,
+  PaymentOutlined as PaymentIcon,
+  VisibilityOutlined as VisibilityIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../utils/auth';
 import { EntityDocumentService, EntityDocument, LoanService, SalaryAdvanceService } from '../../utils/api';
 import {
-  RequestQuote as RequestQuoteIcon,
+  RequestQuoteOutlined as RequestQuoteIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '../../components/FeedbackModal';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';

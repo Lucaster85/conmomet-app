@@ -14,8 +14,9 @@ import {
   Stack,
 } from '@mui/material';
 import {
-  MonetizationOn as AdvanceIcon,
-  AccountBalance as LoanIcon,
+  MonetizationOnOutlined as AdvanceIcon,
+  AccountBalanceOutlined as LoanIcon,
+  RequestQuoteOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { SelfService, Employee, SalaryAdvance, Loan } from '@/utils/api';
 import CurrencyInput from '@/components/CurrencyInput';
@@ -247,9 +248,12 @@ export default function PortalRequestsPage() {
         type={feedback?.type || 'error'}
       />
 
-      <Typography variant="h5" fontWeight={600} mb={3}>
-        Adelantos y Préstamos
-      </Typography>
+      <Box display="flex" alignItems="center" gap={1} mb={3}>
+        <TitleIcon color="primary" sx={{ fontSize: 28 }} />
+        <Typography variant="h5" fontWeight={600}>
+          Adelantos y Préstamos
+        </Typography>
+      </Box>
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>

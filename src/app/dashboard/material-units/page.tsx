@@ -6,7 +6,7 @@ import {
   DialogActions, CircularProgress, Tooltip, TextField, Stack, Chip, Switch, FormControlLabel,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon, CategoryOutlined as TitleIcon } from '@mui/icons-material';
 import { MaterialUnit, MaterialUnitService, CreateMaterialUnitData } from '../../../utils/api';
 
 const emptyForm = (): CreateMaterialUnitData => ({ label: '', display_order: 0, is_active: true });
@@ -88,7 +88,10 @@ export default function MaterialUnitsPage() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold">Unidades de Medida</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Unidades de Medida</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} size="small">Nueva Unidad</Button>

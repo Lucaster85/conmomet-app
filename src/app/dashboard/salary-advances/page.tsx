@@ -14,11 +14,11 @@ import Alert from '@mui/material/Alert';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import {
-  Add as AddIcon, Refresh as RefreshIcon,
-  LocalAtm as CashIcon, AccountBalance as BankIcon,
-  CheckCircle as ApproveIcon, Cancel as RejectIcon,
-  WarningAmber as ConflictIcon, Payments as PaidIcon,
-  AttachFile as ProofIcon, UploadFile as UploadProofIcon
+  AddOutlined as AddIcon, RefreshOutlined as RefreshIcon,
+  LocalAtmOutlined as CashIcon, AccountBalanceOutlined as BankIcon,
+  CheckCircleOutlined as ApproveIcon, CancelOutlined as RejectIcon,
+  WarningAmberOutlined as ConflictIcon, PaymentsOutlined as PaidIcon,
+  AttachFileOutlined as ProofIcon, UploadFileOutlined as UploadProofIcon
 } from '@mui/icons-material';
 import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService } from '../../../utils/api';
 
@@ -268,7 +268,10 @@ export default function SalaryAdvancesPage() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold">Adelantos</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <PaidIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight="bold">Adelantos</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenDialog} size="small">Registrar Adelanto</Button>

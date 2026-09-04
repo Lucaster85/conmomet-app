@@ -9,9 +9,9 @@ import {
 import FeedbackModal from '../../../components/FeedbackModal';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Refresh as RefreshIcon, Checklist as ChecklistIcon,
-  VerifiedUser as ComplianceIcon,
+  AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
+  RefreshOutlined as RefreshIcon, ChecklistOutlined as ChecklistIcon,
+  VerifiedUserOutlined as ComplianceIcon, FactoryOutlined as TitleIcon,
 } from '@mui/icons-material';
 import {
   Plant, PlantService, Client, ClientService,
@@ -216,7 +216,10 @@ export default function PlantsPage() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold">Plantas</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Plantas</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadPlants} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} size="small">Nueva Planta</Button>

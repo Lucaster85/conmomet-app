@@ -20,10 +20,11 @@ import {
   Paper,
 } from '@mui/material';
 import {
-  BeachAccess as VacationIcon,
-  LocalHospital as MedicalIcon,
-  FactCheck as JustifiedIcon,
-  EventBusy as AbsentIcon,
+  BeachAccessOutlined as VacationIcon,
+  LocalHospitalOutlined as MedicalIcon,
+  FactCheckOutlined as JustifiedIcon,
+  EventBusyOutlined as AbsentIcon,
+  EventAvailableOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { SelfService, LeaveRequest, LeaveBalance, Attendance } from '@/utils/api';
 import dayjs from 'dayjs';
@@ -99,9 +100,12 @@ export default function PortalAttendance() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={600} mb={3}>
-        Mi Asistencia y Licencias
-      </Typography>
+      <Box display="flex" alignItems="center" gap={1} mb={3}>
+        <TitleIcon color="primary" sx={{ fontSize: 28 }} />
+        <Typography variant="h5" fontWeight={600}>
+          Mi Asistencia y Licencias
+        </Typography>
+      </Box>
 
       <Grid container spacing={4}>
         {/* Vacation Balance */}

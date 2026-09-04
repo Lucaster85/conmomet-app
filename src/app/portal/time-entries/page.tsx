@@ -15,7 +15,7 @@ import {
   Button,
   Stack
 } from '@mui/material';
-import { Search as SearchIcon } from '@mui/icons-material';
+import { SearchOutlined as SearchIcon, AccessTimeOutlined as TitleIcon } from '@mui/icons-material';
 import { SelfService, TimeEntry } from '@/utils/api';
 import dayjs from 'dayjs';
 
@@ -53,9 +53,12 @@ export default function PortalTimeEntries() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={600} mb={3}>
-        Mis Horas Registradas
-      </Typography>
+      <Box display="flex" alignItems="center" gap={1} mb={3}>
+        <TitleIcon color="primary" sx={{ fontSize: 28 }} />
+        <Typography variant="h5" fontWeight={600}>
+          Mis Horas Registradas
+        </Typography>
+      </Box>
 
       <Card sx={{ mb: 3, p: 2, borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">

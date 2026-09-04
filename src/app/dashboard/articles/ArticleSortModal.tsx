@@ -13,7 +13,7 @@ import {
   CircularProgress,
   Alert,
 } from '@mui/material';
-import { Close as CloseIcon, DragIndicator as DragIndicatorIcon } from '@mui/icons-material';
+import { CloseOutlined as CloseIcon, DragIndicatorOutlined as DragIndicatorIcon } from '@mui/icons-material';
 import {
   DndContext,
   closestCenter,

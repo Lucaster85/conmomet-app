@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { TextField, TextFieldProps, InputAdornment, CircularProgress } from '@mui/material';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
+import LocationOnIcon from '@mui/icons-material/LocationOnOutlined';
 
 type AddressAutocompleteProps = Omit<TextFieldProps, 'onChange' | 'value'> & {
   value: string;

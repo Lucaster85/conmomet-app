@@ -7,8 +7,8 @@ import {
   Switch, FormControlLabel
 } from '@mui/material';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Refresh as RefreshIcon, Search as SearchIcon,
+  AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
+  RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, CategoryOutlined as TitleIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '@/components/FeedbackModal';
 import { EmployerCostCategory, EmployerCostCategoryService } from '@/utils/api';
@@ -104,9 +104,12 @@ export default function EmployerCostCategorysPage() {
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box>
-          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
-            Categorías de Costos Patronales
-          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+            <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
+              Categorías de Costos Patronales
+            </Typography>
+          </Box>
           <Typography variant="body2" color="#64748B">
             Administrá las categorías de gastos patronales (F931, UOCRA, ART, etc.)
           </Typography>

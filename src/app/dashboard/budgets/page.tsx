@@ -9,11 +9,12 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Refresh as RefreshIcon,
-  ContentCopy as DuplicateIcon, Visibility as ViewIcon, PlayArrow as GenerateIcon,
-  UploadFile as UploadIcon, Send as SendIcon, CheckCircle as ApproveIcon,
-  Cancel as RejectIcon, Print as PrintIcon, Description as DocumentIcon,
-  Assignment as ProjectIcon, Download as DownloadIcon, Percent as DiscountIcon,
+  AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon,
+  ContentCopyOutlined as DuplicateIcon, VisibilityOutlined as ViewIcon, PlayArrowOutlined as GenerateIcon,
+  UploadFileOutlined as UploadIcon, SendOutlined as SendIcon, CheckCircleOutlined as ApproveIcon,
+  CancelOutlined as RejectIcon, PrintOutlined as PrintIcon, DescriptionOutlined as DocumentIcon,
+  AssignmentOutlined as ProjectIcon, DownloadOutlined as DownloadIcon, PercentOutlined as DiscountIcon,
+  RequestQuoteOutlined as TitleIcon,
 } from '@mui/icons-material';
 import {
   Budget, BudgetService, BudgetLaborLine, BudgetMaterialItem, CreateBudgetData,
@@ -780,7 +781,10 @@ function BudgetsPageContent() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold">Presupuestos</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Presupuestos</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} size="small">Nuevo Presupuesto</Button>

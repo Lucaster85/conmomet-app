@@ -8,8 +8,8 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Refresh as RefreshIcon,
+  AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
+  RefreshOutlined as RefreshIcon, FolderSpecialOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { DocumentCategory, DocumentCategoryService, CreateDocumentCategoryData } from '../../../utils/api';
 
@@ -126,7 +126,10 @@ export default function DocumentCategoriesPage() {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
         <Box>
-          <Typography variant="h4" fontWeight="bold">Categorías de Documentos</Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+            <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Categorías de Documentos</Typography>
+          </Box>
           <Typography variant="body2" color="text.secondary">
             Define los tipos de documentos que el sistema reconoce para el motor de habilitaciones.
           </Typography>

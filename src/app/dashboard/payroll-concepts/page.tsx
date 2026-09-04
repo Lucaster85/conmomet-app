@@ -7,8 +7,8 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
-  Add as AddIcon, Refresh as RefreshIcon, Edit as EditIcon,
-  Delete as DeleteIcon,
+  AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, EditOutlined as EditIcon,
+  DeleteOutlined as DeleteIcon, CategoryOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { PayrollConcept, PayrollConceptService } from '../../../utils/api';
 
@@ -86,9 +86,12 @@ export default function PayrollConceptsPage() {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box>
-          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
-            Conceptos de Liquidación
-          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+            <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
+              Conceptos de Liquidación
+            </Typography>
+          </Box>
           <Typography variant="body2" color="#64748B">
             Administrá los conceptos para el cálculo de sueldos y jornales.
           </Typography>

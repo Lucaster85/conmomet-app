@@ -4,7 +4,7 @@ import {
   Box, Card, CardContent, CardMedia, IconButton,
   Typography, useMediaQuery, useTheme,
 } from '@mui/material';
-import { ChevronLeft, ChevronRight } from '@mui/icons-material';
+import { ChevronLeftOutlined as ChevronLeft, ChevronRightOutlined as ChevronRight } from '@mui/icons-material';
 
 interface NewsCard {
   title: string;

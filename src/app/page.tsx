@@ -5,7 +5,7 @@ import {
   List, ListItem, ListItemButton, ListItemText,
   Toolbar, Typography,
 } from '@mui/material';
-import { Menu as MenuIcon, AccountCircle as AccountCircleIcon } from '@mui/icons-material';
+import { MenuOutlined as MenuIcon, AccountCircleOutlined as AccountCircleIcon } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import HeroSection from '../components/landing/HeroSection';
 import NosotrosSection from '../components/landing/NosotrosSection';

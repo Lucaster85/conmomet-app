@@ -42,23 +42,24 @@ import {
   FormControlLabel,
 } from '@mui/material';
 import {
-  ExpandMore as ExpandMoreIcon,
-  Add as AddIcon,
-  Refresh as RefreshIcon,
-  Print as PrintIcon,
-  CheckCircle as ApproveIcon,
-  Cancel as RejectIcon,
-  Send as PresentIcon,
-  Autorenew as CorrectIcon,
-  Delete as RemoveIcon,
-  CloudUpload as UploadIcon,
-  HelpOutline as HelpIcon,
-  ChevronRight as ChevronRightIcon,
-  Close as CloseIcon,
-  Visibility as VisibilityIcon,
-  Block as AnnulIcon,
-  Edit as EditIcon,
-  FileDownload as FileDownloadIcon,
+  ExpandMoreOutlined as ExpandMoreIcon,
+  AddOutlined as AddIcon,
+  RefreshOutlined as RefreshIcon,
+  PrintOutlined as PrintIcon,
+  CheckCircleOutlined as ApproveIcon,
+  CancelOutlined as RejectIcon,
+  SendOutlined as PresentIcon,
+  AutorenewOutlined as CorrectIcon,
+  DeleteOutlined as RemoveIcon,
+  CloudUploadOutlined as UploadIcon,
+  HelpOutlineOutlined as HelpIcon,
+  ChevronRightOutlined as ChevronRightIcon,
+  CloseOutlined as CloseIcon,
+  VisibilityOutlined as VisibilityIcon,
+  BlockOutlined as AnnulIcon,
+  EditOutlined as EditIcon,
+  FileDownloadOutlined as FileDownloadIcon,
+  ReceiptLongOutlined as TitleIcon,
 } from '@mui/icons-material';
 import {
   Oca,
@@ -1003,9 +1004,12 @@ export default function OcasPage() {
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
           <Box>
-            <Typography variant="h4" fontWeight="bold" color="primary" gutterBottom>
-              Gestión de Remitos y OCAs
-            </Typography>
+            <Box display="flex" alignItems="center" gap={1}>
+              <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+              <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
+                Gestión de Remitos y OCAs
+              </Typography>
+            </Box>
             <Typography variant="body2" color="text.secondary">
               Agrupe y presente las horas registradas en plantas para la facturación ante los supervisores de clientes.
             </Typography>

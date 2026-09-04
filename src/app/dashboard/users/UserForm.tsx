@@ -16,7 +16,7 @@ import {
   Paper,
   Divider,
 } from '@mui/material';
-import { Save as SaveIcon } from '@mui/icons-material';
+import { SaveOutlined as SaveIcon } from '@mui/icons-material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import { 
   UserService, 

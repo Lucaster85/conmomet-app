@@ -8,9 +8,9 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Refresh as RefreshIcon,
-  Search as SearchIcon, UploadFile as UploadIcon, History as HistoryIcon,
-  Download as DownloadIcon,
+  AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon,
+  SearchOutlined as SearchIcon, UploadFileOutlined as UploadIcon, HistoryOutlined as HistoryIcon,
+  DownloadOutlined as DownloadIcon, Inventory2Outlined as TitleIcon,
 } from '@mui/icons-material';
 import {
   Material, MaterialService, CreateMaterialData, MaterialUnit, MaterialUnitService,
@@ -204,7 +204,10 @@ export default function MaterialsPage() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold">Materiales</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Materiales</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => loadData(search || undefined)} size="small">Actualizar</Button>
           <Button variant="outlined" component="a" href="/plantillas/plantilla-materiales.xlsx" download startIcon={<DownloadIcon />} size="small">

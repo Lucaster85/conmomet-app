@@ -10,8 +10,9 @@ import { TimeField } from '@mui/x-date-pickers/TimeField';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import {
-  Add as AddIcon, Refresh as RefreshIcon, Block as VoidIcon,
-  CheckCircle as ApproveIcon, Delete as DeleteIcon
+  AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, BlockOutlined as VoidIcon,
+  CheckCircleOutlined as ApproveIcon, DeleteOutlined as DeleteIcon,
+  AccessTimeOutlined as TitleIcon,
 } from '@mui/icons-material';
 import {
   Employee, EmployeeService, Plant, PlantService,
@@ -522,7 +523,10 @@ export default function TimeEntriesPage() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>Carga de Horas</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>Carga de Horas</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadEntries} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => { resetForm(); setOpenCreateDialog(true); }} size="small">Nuevo Registro</Button>

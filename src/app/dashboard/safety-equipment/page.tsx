@@ -7,8 +7,9 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
-  Add as AddIcon, Refresh as RefreshIcon, Settings as SettingsIcon,
-  Edit as EditIcon, ToggleOn as ToggleOnIcon, ToggleOff as ToggleOffIcon
+  AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, SettingsOutlined as SettingsIcon,
+  EditOutlined as EditIcon, ToggleOnOutlined as ToggleOnIcon, ToggleOffOutlined as ToggleOffIcon,
+  SecurityOutlined as TitleIcon,
 } from '@mui/icons-material';
 import DateField from '../../../components/DateField';
 import {
@@ -212,7 +213,10 @@ export default function SafetyEquipmentPage() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold">Entrega de EPP</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Entrega de EPP</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<SettingsIcon />} onClick={handleOpenCatalog} size="small">Catálogo</Button>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>

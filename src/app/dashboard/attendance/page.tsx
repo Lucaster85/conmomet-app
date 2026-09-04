@@ -9,9 +9,10 @@ import {
 import dayjs from 'dayjs';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
-  Add as AddIcon, Edit as EditIcon,
-  Refresh as RefreshIcon,
-  AttachFile as AttachFileIcon, OpenInNew as OpenIcon
+  AddOutlined as AddIcon, EditOutlined as EditIcon,
+  RefreshOutlined as RefreshIcon,
+  AttachFileOutlined as AttachFileIcon, OpenInNewOutlined as OpenIcon,
+  EventAvailableOutlined as TitleIcon,
 } from '@mui/icons-material';
 import DateField from '../../../components/DateField';
 import { Attendance, AttendanceService, Employee, EmployeeService } from '../../../utils/api';
@@ -217,7 +218,10 @@ export default function AttendancePage() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-        <Typography variant="h4" fontWeight="bold">Presentismo</Typography>
+        <Box display="flex" alignItems="center" gap={1}>
+          <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Presentismo</Typography>
+        </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadAttendances} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} size="small">Registrar Ausencia</Button>

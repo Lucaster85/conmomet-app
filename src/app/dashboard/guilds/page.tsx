@@ -7,8 +7,8 @@ import {
   Switch, FormControlLabel
 } from '@mui/material';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Refresh as RefreshIcon, Search as SearchIcon,
+  AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
+  RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, DomainOutlined as TitleIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '@/components/FeedbackModal';
 import { Guild, GuildService } from '@/utils/api';
@@ -105,9 +105,12 @@ export default function GuildsPage() {
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box>
-          <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
-            Gremios (Sindicatos)
-          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <TitleIcon color="primary" sx={{ fontSize: 32 }} />
+            <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">
+              Gremios (Sindicatos)
+            </Typography>
+          </Box>
           <Typography variant="body2" color="#64748B">
             Administrá los gremios laborales para agrupar categorías y aplicar aumentos retroactivos
           </Typography>
