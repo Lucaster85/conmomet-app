@@ -220,7 +220,6 @@ function BudgetsPageContent() {
   useEffect(() => {
     if (!hasPricesRead || !form.client_id) { setClientRates([]); return; }
     ClientItemRateService.getAll(Number(form.client_id)).then(setClientRates).catch(() => setClientRates([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.client_id, hasPricesRead]);
 
   // Al llegar desde "Nuevo Adicional" (?parent_project_id=X) o "Vincular Presupuesto"

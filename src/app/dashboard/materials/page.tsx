@@ -79,7 +79,6 @@ export default function MaterialsPage() {
   useEffect(() => {
     const timeout = setTimeout(() => loadData(search || undefined), 300);
     return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   const handleOpenCreate = () => {
