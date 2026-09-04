@@ -30,12 +30,20 @@ import {
   Refresh as RefreshIcon,
   Search as SearchIcon,
   SupervisorAccount as SupervisorAccountIcon,
+  Percent as RatesIcon,
 } from '@mui/icons-material';
 import { Client, ClientService } from '../../../utils/api';
 import ClientForm from './ClientForm';
 import ClientSupervisorsDialog from './ClientSupervisorsDialog';
+import ClientItemRatesDialog from './ClientItemRatesDialog';
+import { useAuth } from '../../../utils/auth';
 
 export default function ClientsPage() {
+  const { user } = useAuth();
+  const permissions: string[] = Array.isArray((user as unknown as Record<string, unknown>)?.permissions)
+    ? ((user as unknown as Record<string, unknown>).permissions as string[])
+    : [];
+  const hasPricesRead = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -47,6 +55,10 @@ export default function ClientsPage() {
     client: null
   });
   const [supervisorsDialog, setSupervisorsDialog] = useState<{open: boolean, client: Client | null}>({
+    open: false,
+    client: null
+  });
+  const [ratesDialog, setRatesDialog] = useState<{open: boolean, client: Client | null}>({
     open: false,
     client: null
   });
@@ -209,6 +221,11 @@ export default function ClientsPage() {
                     <IconButton size="small" color="info" onClick={() => setSupervisorsDialog({ open: true, client })}>
                       <SupervisorAccountIcon fontSize="small" />
                     </IconButton>
+                    {hasPricesRead && (
+                      <IconButton size="small" color="warning" onClick={() => setRatesDialog({ open: true, client })}>
+                        <RatesIcon fontSize="small" />
+                      </IconButton>
+                    )}
                     <IconButton size="small" color="primary" onClick={() => handleOpenEdit(client)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
@@ -269,6 +286,13 @@ export default function ClientsPage() {
                             <SupervisorAccountIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+                        {hasPricesRead && (
+                          <Tooltip title="Tarifas por rubro">
+                            <IconButton size="small" color="warning" onClick={() => setRatesDialog({ open: true, client })}>
+                              <RatesIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         <Tooltip title="Editar">
                           <IconButton size="small" color="primary" onClick={() => handleOpenEdit(client)}>
                             <EditIcon fontSize="small" />
@@ -346,6 +370,13 @@ export default function ClientsPage() {
         open={supervisorsDialog.open}
         onClose={() => setSupervisorsDialog({ open: false, client: null })}
         client={supervisorsDialog.client}
+      />
+
+      {/* Dialog para gestionar tarifas por rubro de un cliente */}
+      <ClientItemRatesDialog
+        open={ratesDialog.open}
+        onClose={() => setRatesDialog({ open: false, client: null })}
+        client={ratesDialog.client}
       />
     </Box>
   );

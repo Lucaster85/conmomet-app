@@ -566,7 +566,10 @@ export default function ProjectDetailPage() {
                 <Typography variant="h6">Presupuesto {project.budget.number}</Typography>
                 <Button size="small" onClick={() => router.push('/dashboard/budgets')}>Ver en módulo de Presupuestos</Button>
               </Box>
-              <Typography variant="body2" color="text.secondary" mb={2}>{project.budget.title}</Typography>
+              <Typography variant="body2" color="text.secondary">{project.budget.title}</Typography>
+              {project.budget.work_order_number && (
+                <Typography variant="body2" color="text.secondary" mb={2}>N° OT: {project.budget.work_order_number}</Typography>
+              )}
 
               <Typography variant="subtitle2" sx={{ mt: 2 }}>Mano de Obra</Typography>
               <TableContainer sx={{ mb: 2 }}>
@@ -616,6 +619,12 @@ export default function ProjectDetailPage() {
                 <>
                   <Divider sx={{ my: 2 }} />
                   <Box textAlign="right">
+                    {(project.budget.labor_discount_percent ?? 0) > 0 && (
+                      <Typography variant="body2" color="text.secondary">Bonificación mano de obra: {project.budget.labor_discount_percent}%</Typography>
+                    )}
+                    {(project.budget.material_discount_percent ?? 0) > 0 && (
+                      <Typography variant="body2" color="text.secondary">Bonificación material: {project.budget.material_discount_percent}%</Typography>
+                    )}
                     <Typography variant="h6" fontWeight="bold">Total: {formatTotals(project.budget.totals_by_currency)}</Typography>
                   </Box>
                 </>

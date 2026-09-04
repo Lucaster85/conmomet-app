@@ -1245,6 +1245,9 @@ export interface BudgetMaterialItem {
   unit_price: number;
   currency?: BudgetCurrency | null;
   total_price?: number;
+  // % de margen sobre material_cost_snapshot — unit_price se calcula desde acá en el backend,
+  // no se carga directo. Presente solo si el usuario tiene budget_prices_read.
+  margin_percent?: number;
   // Presentes solo si el usuario tiene material_costs_read (igual que Material.current_cost)
   material_cost_snapshot?: number | null;
   material_cost_currency?: BudgetCurrency | null;
@@ -1267,6 +1270,12 @@ export interface Budget {
   end_date?: string;
   validity_days?: number;
   notes?: string;
+  // N° de OT libre que asigna el cliente — solo para rastreo, sin gating de permisos.
+  work_order_number?: string | null;
+  // Bonificación % post-presentación, discriminada mano de obra / material — presentes solo
+  // si el usuario tiene budget_prices_read (ver FLOWS.md).
+  labor_discount_percent?: number;
+  material_discount_percent?: number;
   sent_at?: string;
   approved_at?: string;
   rejected_at?: string;
@@ -1302,6 +1311,7 @@ export interface CreateBudgetData {
   end_date?: string;
   validity_days?: number;
   notes?: string;
+  work_order_number?: string | null;
   laborLines?: BudgetLaborLine[];
   materialItems?: BudgetMaterialItem[];
 }
@@ -1418,6 +1428,21 @@ export class BudgetService {
     return data.data;
   }
 
+  // Bonificación post-presentación: separada de update porque solo se puede aplicar desde
+  // "sent" en adelante (update general solo permite editar en "draft") — ver FLOWS.md.
+  static async applyDiscount(id: number, labor_discount_percent: number, material_discount_percent: number): Promise<Budget> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}/discount`, {
+      method: 'PUT',
+      body: JSON.stringify({ labor_discount_percent, material_discount_percent }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al aplicar la bonificación');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
   static async importMaterials(file: File): Promise<BudgetMaterialImportRow[]> {
     const formData = new FormData();
     formData.append('file', file);
@@ -1432,6 +1457,61 @@ export class BudgetService {
       const error = await response.json();
       throw new Error(error.error || 'Error al importar el Excel de materiales');
     }
+    const data = await response.json();
+    return data.data || [];
+  }
+}
+
+// Tarifa por cliente y rubro de mano de obra (ej. "Hs Grúa" varía según el cliente) — valor
+// actual + historial append-only, mismo patrón que Material/MaterialCostHistory. Montado bajo
+// /clients: hereda el permiso de ruta clients_read/clients_write, y cada endpoint chequea
+// budget_prices_read a mano (ver FLOWS.md).
+export interface ClientItemRate {
+  id: number;
+  client_id: number;
+  budget_item_type_id: number;
+  itemType?: BudgetItemType;
+  current_rate: number;
+  currency: BudgetCurrency;
+  updated_by: number;
+  updatedAt: string;
+}
+
+export interface ClientItemRateHistoryEntry {
+  id: number;
+  client_id: number;
+  budget_item_type_id: number;
+  rate: number;
+  currency: BudgetCurrency;
+  changed_by: number;
+  changedBy?: { id: number; name: string; lastname: string };
+  createdAt: string;
+}
+
+export class ClientItemRateService {
+  static async getAll(clientId: number): Promise<ClientItemRate[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients/${clientId}/item-rates`);
+    if (!response.ok) throw new Error('Error al obtener tarifas del cliente');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async upsert(clientId: number, itemTypeId: number, current_rate: number, currency: BudgetCurrency): Promise<ClientItemRate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients/${clientId}/item-rates/${itemTypeId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ current_rate, currency }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al guardar la tarifa del cliente');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async getHistory(clientId: number, itemTypeId: number): Promise<ClientItemRateHistoryEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients/${clientId}/item-rates/${itemTypeId}/history`);
+    if (!response.ok) throw new Error('Error al obtener el historial de tarifas');
     const data = await response.json();
     return data.data || [];
   }

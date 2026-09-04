@@ -13,14 +13,14 @@ import {
   ContentCopy as DuplicateIcon, Visibility as ViewIcon, PlayArrow as GenerateIcon,
   UploadFile as UploadIcon, Send as SendIcon, CheckCircle as ApproveIcon,
   Cancel as RejectIcon, Print as PrintIcon, Description as DocumentIcon,
-  Assignment as ProjectIcon, Download as DownloadIcon,
+  Assignment as ProjectIcon, Download as DownloadIcon, Percent as DiscountIcon,
 } from '@mui/icons-material';
 import {
   Budget, BudgetService, BudgetLaborLine, BudgetMaterialItem, CreateBudgetData,
   BudgetItemType, BudgetItemTypeService, MaterialUnit, MaterialUnitService,
   Material, MaterialService, Client, ClientService, Plant, PlantService,
   Project, ProjectService, BudgetCurrency,
-  ClientSupervisor, ClientSupervisorService,
+  ClientSupervisor, ClientSupervisorService, ClientItemRate, ClientItemRateService,
 } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
 
@@ -43,6 +43,7 @@ const emptyForm = () => ({
   end_date: '',
   validity_days: 15,
   notes: '',
+  work_order_number: '',
   laborLines: [] as BudgetLaborLine[],
   materialItems: [] as BudgetMaterialItem[],
 });
@@ -79,6 +80,25 @@ const supervisorFilter = createFilterOptions<SupervisorOption>();
 function formatMoney(value: number, currency: BudgetCurrency) {
   const symbol = currency === 'USD' ? 'US$' : '$';
   return `${symbol}${value.toLocaleString('es-AR', { maximumFractionDigits: 2 })}`;
+}
+
+// Subtotales "brutos" (sin bonificación) para el desglose del Ver/Imprimir — totals_by_currency
+// ya viene neto de bonificación desde el backend (ver FLOWS.md).
+function sumLaborByCurrency(lines: BudgetLaborLine[] | undefined, defaultCurrency: BudgetCurrency): Record<BudgetCurrency, number> {
+  const totals: Record<BudgetCurrency, number> = { ARS: 0, USD: 0 };
+  for (const l of lines || []) {
+    const currency = (l.currency || defaultCurrency) as BudgetCurrency;
+    totals[currency] += l.estimated_total || 0;
+  }
+  return totals;
+}
+function sumMaterialsByCurrency(items: BudgetMaterialItem[] | undefined, defaultCurrency: BudgetCurrency): Record<BudgetCurrency, number> {
+  const totals: Record<BudgetCurrency, number> = { ARS: 0, USD: 0 };
+  for (const m of items || []) {
+    const currency = (m.currency || defaultCurrency) as BudgetCurrency;
+    totals[currency] += m.total_price || 0;
+  }
+  return totals;
 }
 
 function formatTotals(totals?: Record<BudgetCurrency, number>) {
@@ -155,6 +175,15 @@ function BudgetsPageContent() {
   const [supervisorQuickAdd, setSupervisorQuickAdd] = useState<{ open: boolean; name: string; lastname: string; email: string; phone: string }>(
     { open: false, name: '', lastname: '', email: '', phone: '' }
   );
+  // Tarifas del cliente elegido en el form (por rubro) — para prellenar el valor unitario de
+  // mano de obra al elegir un rubro (ej. "Hs Grúa"), sin perder el historial de precios por
+  // cliente. Ver FLOWS.md.
+  const [clientRates, setClientRates] = useState<ClientItemRate[]>([]);
+  // Bonificación post-presentación (mano de obra / material por separado) — solo aplicable
+  // desde "sent" en adelante, separado del form de edición general (ver FLOWS.md).
+  const [discountDialog, setDiscountDialog] = useState<{ open: boolean; budget: Budget | null; labor: string; material: string }>(
+    { open: false, budget: null, labor: '0', material: '0' }
+  );
 
   const loadData = async () => {
     try {
@@ -186,6 +215,13 @@ function BudgetsPageContent() {
   };
 
   useEffect(() => { loadData(); }, []);
+
+  // Tarifas del cliente elegido en el form — se recargan cada vez que cambia el cliente.
+  useEffect(() => {
+    if (!hasPricesRead || !form.client_id) { setClientRates([]); return; }
+    ClientItemRateService.getAll(Number(form.client_id)).then(setClientRates).catch(() => setClientRates([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.client_id, hasPricesRead]);
 
   // Al llegar desde "Nuevo Adicional" (?parent_project_id=X) o "Vincular Presupuesto"
   // (?existing_project_id=X) en el detalle de un proyecto, abrimos el formulario de
@@ -251,6 +287,7 @@ function BudgetsPageContent() {
       end_date: budget.end_date || '',
       validity_days: budget.validity_days ?? 15,
       notes: budget.notes || '',
+      work_order_number: budget.work_order_number || '',
       laborLines: budget.laborLines || [],
       materialItems: budget.materialItems || [],
     });
@@ -303,9 +340,24 @@ function BudgetsPageContent() {
     }
   };
 
+  // Si el cliente del presupuesto tiene una tarifa cargada para el rubro elegido (ver
+  // ClientItemRateService), se prellena el valor unitario — sigue siendo editable normalmente,
+  // es solo el punto de partida (mismo criterio que vincular un material del catálogo).
+  const rateForItemType = (itemTypeId: number) => clientRates.find(r => r.budget_item_type_id === itemTypeId);
+
   const addLaborLine = () => {
     if (itemTypes.length === 0) return;
-    setForm({ ...form, laborLines: [...form.laborLines, { budget_item_type_id: itemTypes[0].id, quantity: 0, unit_price: 0 }] });
+    const defaultType = itemTypes[0];
+    const rate = rateForItemType(defaultType.id);
+    setForm({
+      ...form,
+      laborLines: [...form.laborLines, {
+        budget_item_type_id: defaultType.id,
+        quantity: 0,
+        unit_price: rate ? rate.current_rate : 0,
+        currency: rate ? rate.currency : undefined,
+      }],
+    });
   };
   const updateLaborLine = (index: number, patch: Partial<BudgetLaborLine>) => {
     const lines = [...form.laborLines];
@@ -316,8 +368,15 @@ function BudgetsPageContent() {
     setForm({ ...form, laborLines: form.laborLines.filter((_, i) => i !== index) });
   };
 
+  // El precio al cliente se calcula acá (no se carga directo): costo real × (1 + margen%).
+  const computeUnitPrice = (costValue: number | null | undefined, marginPercent: number) =>
+    costValue != null ? Math.round(costValue * (1 + marginPercent / 100) * 100) / 100 : 0;
+
   const addMaterialItem = (item?: Partial<BudgetMaterialItem>) => {
     const defaultUnitId = materialUnits.find(u => u.label.toLowerCase() === 'u')?.id;
+    const marginPercent = item?.margin_percent ?? 0;
+    const costValue = item?.material_cost_snapshot ?? null;
+    const costCurrency = item?.material_cost_currency ?? null;
     // setForm con updater funcional (no `{...form, ...}`) — importa cuando esta función se
     // llama varias veces seguidas en un loop (import de Excel): con el objeto directo, cada
     // llamada parte del mismo `form` desactualizado y las anteriores se pisan entre sí.
@@ -327,8 +386,12 @@ function BudgetsPageContent() {
         description: item?.description || '',
         quantity: item?.quantity || 0,
         material_unit_id: item?.material_unit_id ?? defaultUnitId ?? 0,
-        unit_price: item?.unit_price || 0,
+        unit_price: computeUnitPrice(costValue, marginPercent),
+        currency: costCurrency,
+        margin_percent: marginPercent,
         material_id: item?.material_id,
+        material_cost_snapshot: costValue,
+        material_cost_currency: costCurrency,
       }],
     }));
   };
@@ -371,10 +434,17 @@ function BudgetsPageContent() {
     }
     const material = materials.find(m => m.id === newValue.id);
     if (material) {
+      const marginPercent = form.materialItems[idx]?.margin_percent ?? 0;
+      const costValue = material.current_cost ?? null;
+      const costCurrency = material.currency ?? null;
       updateMaterialItem(idx, {
         material_id: material.id,
         description: material.description,
         material_unit_id: material.material_unit_id,
+        material_cost_snapshot: costValue,
+        material_cost_currency: costCurrency,
+        currency: costCurrency,
+        unit_price: computeUnitPrice(costValue, marginPercent),
       });
     }
   };
@@ -392,10 +462,17 @@ function BudgetsPageContent() {
         currency: hasCostsRead ? materialQuickAdd.currency : null,
       });
       setMaterials(prev => [...prev, created]);
+      const marginPercent = form.materialItems[materialQuickAdd.lineIdx]?.margin_percent ?? 0;
+      const costValue = created.current_cost ?? null;
+      const costCurrency = created.currency ?? null;
       updateMaterialItem(materialQuickAdd.lineIdx, {
         material_id: created.id,
         description: created.description,
         material_unit_id: created.material_unit_id,
+        material_cost_snapshot: costValue,
+        material_cost_currency: costCurrency,
+        currency: costCurrency,
+        unit_price: computeUnitPrice(costValue, marginPercent),
       });
       setMaterialQuickAdd({ open: false, lineIdx: -1, description: '', materialUnitId: '', cost: '', currency: 'ARS' });
     } catch (err) {
@@ -418,20 +495,12 @@ function BudgetsPageContent() {
     return { value: material.current_cost, currency: material.currency || form.currency };
   };
 
+  // El precio al cliente siempre se calcula en la misma moneda del costo (ver FLOWS.md), así
+  // que a diferencia de antes ya no hace falta chequear que las monedas coincidan.
   const lineMargin = (item: BudgetMaterialItem): number | null => {
     const cost = lineCost(item);
     if (!cost) return null;
-    const lineCurrency = item.currency || form.currency;
-    if (lineCurrency !== cost.currency) return null;
-    return (item.unit_price - cost.value) * item.quantity;
-  };
-
-  const lineMarginPercent = (item: BudgetMaterialItem): number | null => {
-    const cost = lineCost(item);
-    if (!cost || !item.unit_price) return null;
-    const lineCurrency = item.currency || form.currency;
-    if (lineCurrency !== cost.currency) return null;
-    return ((item.unit_price - cost.value) / item.unit_price) * 100;
+    return ((item.unit_price || 0) - cost.value) * (item.quantity || 0);
   };
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -481,14 +550,16 @@ function BudgetsPageContent() {
           touchedMaterials.push(material);
         }
 
-        // unit_price (precio al cliente) queda en 0 a propósito — nunca se autocompleta con
-        // el costo. El usuario lo carga aparte mirando el margen de cada línea.
+        // El precio al cliente arranca en margen 0% (= precio igual al costo) — el usuario
+        // carga el margen real de cada línea aparte, no se autocompleta con nada del Excel.
         addMaterialItem({
           description: material.description,
           quantity: row.quantity,
           material_unit_id: material.material_unit_id,
           material_id: material.id,
-          unit_price: 0,
+          material_cost_snapshot: material.current_cost ?? null,
+          material_cost_currency: material.currency ?? null,
+          margin_percent: 0,
         });
       }
 
@@ -503,7 +574,7 @@ function BudgetsPageContent() {
           return merged;
         });
       }
-      setSuccess(`${rows.length} fila(s) importadas desde el Excel. Cargá el precio al cliente de cada una antes de guardar.`);
+      setSuccess(`${rows.length} fila(s) importadas desde el Excel. Cargá el margen de cada una antes de guardar.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al importar el Excel');
     } finally {
@@ -531,6 +602,13 @@ function BudgetsPageContent() {
       setError('El título y el cliente son obligatorios');
       return;
     }
+    // El precio al cliente se calcula como margen % sobre el costo real — un material sin
+    // vincular al catálogo o sin costo cargado no se puede presupuestar (ver FLOWS.md).
+    const unpriceable = form.materialItems.find(item => lineCost(item) === null);
+    if (unpriceable) {
+      setError(`El material "${unpriceable.description || 'sin descripción'}" no tiene costo cargado en el catálogo. Cárguelo antes de presupuestarlo.`);
+      return;
+    }
     try {
       const payload: CreateBudgetData = {
         title: form.title,
@@ -544,6 +622,7 @@ function BudgetsPageContent() {
         end_date: form.end_date || undefined,
         validity_days: form.validity_days,
         notes: form.notes || undefined,
+        work_order_number: form.work_order_number || undefined,
         laborLines: form.laborLines,
         materialItems: form.materialItems,
       };
@@ -657,6 +736,27 @@ function BudgetsPageContent() {
     }
   };
 
+  const handleOpenDiscountDialog = (budget: Budget) => {
+    setDiscountDialog({
+      open: true,
+      budget,
+      labor: String(budget.labor_discount_percent ?? 0),
+      material: String(budget.material_discount_percent ?? 0),
+    });
+  };
+
+  const handleApplyDiscount = async () => {
+    if (!discountDialog.budget) return;
+    try {
+      await BudgetService.applyDiscount(discountDialog.budget.id, Number(discountDialog.labor) || 0, Number(discountDialog.material) || 0);
+      setDiscountDialog({ open: false, budget: null, labor: '0', material: '0' });
+      setSuccess('Bonificación aplicada');
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al aplicar la bonificación');
+    }
+  };
+
   // Mismo patrón que OCAs/Liquidación: window.print() sobre un .print-area, sin librería de PDF.
   const handlePrint = () => {
     if (!printBudget) return;
@@ -709,6 +809,7 @@ function BudgetsPageContent() {
                         <Typography fontWeight="medium">{b.title}</Typography>
                         {b.parentProject && <Typography variant="caption" color="text.secondary" display="block">Adicional de {b.parentProject.code}</Typography>}
                         {b.existingProject && <Typography variant="caption" color="text.secondary" display="block">Vinculado a {b.existingProject.code}</Typography>}
+                        {b.work_order_number && <Typography variant="caption" color="text.secondary" display="block">OT: {b.work_order_number}</Typography>}
                       </Box>
                     </Box>
                     <Typography variant="body2" color="text.secondary">{b.client?.razonSocial}</Typography>
@@ -765,6 +866,9 @@ function BudgetsPageContent() {
                       {b.status === 'approved' && !b.project_id && (
                         <Tooltip title="Generar Proyecto"><IconButton size="small" color="success" onClick={() => handleGenerateProject(b)}><GenerateIcon fontSize="small" /></IconButton></Tooltip>
                       )}
+                      {hasPricesRead && (b.status === 'sent' || b.status === 'approved') && (
+                        <Tooltip title="Bonificación"><IconButton size="small" color="warning" onClick={() => handleOpenDiscountDialog(b)}><DiscountIcon fontSize="small" /></IconButton></Tooltip>
+                      )}
                       <Tooltip title="Duplicar"><IconButton size="small" onClick={() => handleDuplicate(b)}><DuplicateIcon fontSize="small" /></IconButton></Tooltip>
                     </Box>
                   </Stack>
@@ -796,6 +900,7 @@ function BudgetsPageContent() {
                         <Typography fontWeight="medium">{b.title}</Typography>
                         {b.parentProject && <Typography variant="caption" color="text.secondary">Adicional de {b.parentProject.code}</Typography>}
                         {b.existingProject && <Typography variant="caption" color="text.secondary">Vinculado a {b.existingProject.code}</Typography>}
+                        {b.work_order_number && <Typography variant="caption" color="text.secondary" display="block">OT: {b.work_order_number}</Typography>}
                       </TableCell>
                       <TableCell>{b.client?.razonSocial}</TableCell>
                       <TableCell>
@@ -852,6 +957,9 @@ function BudgetsPageContent() {
                         )}
                         {b.status === 'approved' && !b.project_id && (
                           <Tooltip title="Generar Proyecto"><IconButton size="small" color="success" onClick={() => handleGenerateProject(b)}><GenerateIcon fontSize="small" /></IconButton></Tooltip>
+                        )}
+                        {hasPricesRead && (b.status === 'sent' || b.status === 'approved') && (
+                          <Tooltip title="Bonificación"><IconButton size="small" color="warning" onClick={() => handleOpenDiscountDialog(b)}><DiscountIcon fontSize="small" /></IconButton></Tooltip>
                         )}
                         <Tooltip title="Duplicar"><IconButton size="small" onClick={() => handleDuplicate(b)}><DuplicateIcon fontSize="small" /></IconButton></Tooltip>
                       </TableCell>
@@ -929,9 +1037,18 @@ function BudgetsPageContent() {
               </Grid>
             </Grid>
 
-            <TextField label="Vigencia (días)" type="number" value={form.validity_days} sx={{ maxWidth: 200 }}
-              onChange={(e) => setForm({ ...form, validity_days: Number(e.target.value) })} inputProps={{ min: 0 }}
-              helperText="Días desde que se envía hasta que se considera vencido (solo advertencia)" />
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField label="Vigencia (días)" type="number" fullWidth value={form.validity_days}
+                  onChange={(e) => setForm({ ...form, validity_days: Number(e.target.value) })} inputProps={{ min: 0 }}
+                  helperText="Días desde que se envía hasta que se considera vencido (solo advertencia)" />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField label="N° de OT" fullWidth value={form.work_order_number}
+                  onChange={(e) => setForm({ ...form, work_order_number: e.target.value })}
+                  helperText="OT que genera el cliente, para rastreo (opcional)" />
+              </Grid>
+            </Grid>
 
             {/* Mano de obra */}
             <Divider />
@@ -943,7 +1060,18 @@ function BudgetsPageContent() {
               <Grid container spacing={1} key={idx} alignItems="center">
                 <Grid size={{ xs: 12, md: hasPricesRead ? 4 : 6 }}>
                   <TextField select fullWidth size="small" label="Rubro" value={line.budget_item_type_id}
-                    onChange={(e) => updateLaborLine(idx, { budget_item_type_id: Number(e.target.value) })}
+                    onChange={(e) => {
+                      const newTypeId = Number(e.target.value);
+                      const rate = rateForItemType(newTypeId);
+                      const patch: Partial<BudgetLaborLine> = { budget_item_type_id: newTypeId };
+                      // Solo prellena si la línea todavía no tiene un valor cargado a mano —
+                      // no pisa una edición ya hecha por el usuario.
+                      if (rate && !line.unit_price) {
+                        patch.unit_price = rate.current_rate;
+                        patch.currency = rate.currency;
+                      }
+                      updateLaborLine(idx, patch);
+                    }}
                     SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
                     {itemTypes.map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}
                   </TextField>
@@ -998,10 +1126,9 @@ function BudgetsPageContent() {
             {form.materialItems.map((item, idx) => {
               const cost = lineCost(item);
               const margin = lineMargin(item);
-              const marginPct = lineMarginPercent(item);
               return (
               <Grid container spacing={1} key={idx} alignItems="center">
-                <Grid size={{ xs: 12, md: hasPricesRead ? (hasCostsRead ? 3.5 : 5) : (hasCostsRead ? 5 : 7) }}>
+                <Grid size={{ xs: 12, md: hasPricesRead ? (hasCostsRead ? 4.7 : 6.2) : (hasCostsRead ? 5 : 7) }}>
                   <Autocomplete<MaterialOption, false, false, true>
                     freeSolo
                     size="small"
@@ -1012,9 +1139,13 @@ function BudgetsPageContent() {
                     onInputChange={(_, newInputValue, reason) => {
                       if (reason !== 'input') return;
                       const linkedDescription = materials.find(m => m.id === item.material_id)?.description;
+                      const stillLinked = item.material_id && newInputValue === linkedDescription;
                       updateMaterialItem(idx, {
                         description: newInputValue,
-                        material_id: item.material_id && newInputValue === linkedDescription ? item.material_id : null,
+                        material_id: stillLinked ? item.material_id : null,
+                        // Al desvincular se pierde la base de costo — sin eso no se puede
+                        // calcular el precio con margen (ver FLOWS.md).
+                        ...(stillLinked ? {} : { material_cost_snapshot: null, material_cost_currency: null, unit_price: 0 }),
                       });
                     }}
                     getOptionLabel={(option) => typeof option === 'string' ? option : (option.description || option.inputValue || '')}
@@ -1078,10 +1209,16 @@ function BudgetsPageContent() {
                       size="small" fullWidth label="Costo real"
                       disabled={!item.material_id}
                       value={item.material_id ? (cost?.value ?? '') : 'Sin vincular'}
-                      onChange={(e) => updateMaterialItem(idx, {
-                        material_cost_snapshot: e.target.value === '' ? null : Number(e.target.value),
-                        material_cost_currency: cost?.currency || item.material_cost_currency || form.currency,
-                      })}
+                      onChange={(e) => {
+                        const newCost = e.target.value === '' ? null : Number(e.target.value);
+                        const newCurrency = cost?.currency || item.material_cost_currency || form.currency;
+                        updateMaterialItem(idx, {
+                          material_cost_snapshot: newCost,
+                          material_cost_currency: newCurrency,
+                          currency: newCurrency,
+                          unit_price: computeUnitPrice(newCost, item.margin_percent ?? 0),
+                        });
+                      }}
                       InputLabelProps={{ shrink: true }}
                     />
                   </Grid>
@@ -1089,17 +1226,17 @@ function BudgetsPageContent() {
                 {hasPricesRead && (
                   <>
                     <Grid size={{ xs: hasCostsRead ? 6 : 12, md: 1.5 }}>
-                      <TextField type="number" size="small" fullWidth label="Precio al cliente" value={item.unit_price}
-                        onChange={(e) => updateMaterialItem(idx, { unit_price: Number(e.target.value) })} />
-                    </Grid>
-                    <Grid size={{ xs: 6, md: 1.2 }}>
-                      <TextField select size="small" fullWidth label="Moneda" value={item.currency || ''}
-                        onChange={(e) => updateMaterialItem(idx, { currency: (e.target.value || null) as BudgetCurrency | null })}
-                        SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-                        <option value="">{form.currency} (default)</option>
-                        <option value="ARS">ARS</option>
-                        <option value="USD">USD</option>
-                      </TextField>
+                      <TextField
+                        type="number" size="small" fullWidth label="Margen %"
+                        disabled={!cost}
+                        value={item.margin_percent ?? 0}
+                        onChange={(e) => {
+                          const marginPercent = Number(e.target.value);
+                          updateMaterialItem(idx, { margin_percent: marginPercent, unit_price: computeUnitPrice(cost?.value, marginPercent) });
+                        }}
+                        helperText={!cost ? 'Vinculá un material con costo' : `${formatMoney(item.unit_price || 0, item.currency || form.currency)} c/u`}
+                        InputLabelProps={{ shrink: true }}
+                      />
                     </Grid>
                     <Grid size={{ xs: 5, md: 1.5 }}>
                       <Typography variant="body2" fontWeight="bold">
@@ -1107,9 +1244,7 @@ function BudgetsPageContent() {
                       </Typography>
                       {hasCostsRead && item.material_id && (
                         <Typography variant="caption" display="block" color={margin !== null && margin >= 0 ? 'success.main' : margin !== null ? 'error.main' : 'text.secondary'}>
-                          {margin !== null && marginPct !== null
-                            ? `Margen: ${formatMoney(margin, item.currency || form.currency)} (${marginPct.toFixed(1)}%)`
-                            : 'Margen: — cargar precio'}
+                          {margin !== null ? `Margen: ${formatMoney(margin, item.currency || form.currency)}` : 'Margen: —'}
                         </Typography>
                       )}
                     </Grid>
@@ -1263,6 +1398,25 @@ function BudgetsPageContent() {
         </DialogActions>
       </Dialog>
 
+      {/* Bonificación post-presentación — separada del form de edición porque solo aplica
+          desde "sent" en adelante, discriminada mano de obra / material (ver FLOWS.md) */}
+      <Dialog open={discountDialog.open} onClose={() => setDiscountDialog({ open: false, budget: null, labor: '0', material: '0' })} maxWidth="xs" fullWidth>
+        <DialogTitle>Bonificación</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>Presupuesto <strong>{discountDialog.budget?.number}</strong></Typography>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField label="Bonificación mano de obra (%)" type="number" fullWidth value={discountDialog.labor}
+              onChange={(e) => setDiscountDialog({ ...discountDialog, labor: e.target.value })} inputProps={{ min: 0, max: 100 }} />
+            <TextField label="Bonificación material (%)" type="number" fullWidth value={discountDialog.material}
+              onChange={(e) => setDiscountDialog({ ...discountDialog, material: e.target.value })} inputProps={{ min: 0, max: 100 }} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDiscountDialog({ open: false, budget: null, labor: '0', material: '0' })}>Cancelar</Button>
+          <Button onClick={handleApplyDiscount} variant="contained">Aplicar</Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Alta rápida de contacto del cliente (ClientSupervisor) — abierta desde el Autocomplete de arriba */}
       <Dialog open={supervisorQuickAdd.open} onClose={() => setSupervisorQuickAdd({ ...supervisorQuickAdd, open: false })} maxWidth="xs" fullWidth>
         <DialogTitle>Nuevo Contacto del Cliente</DialogTitle>
@@ -1304,6 +1458,7 @@ function BudgetsPageContent() {
                   {printBudget.plant && <Typography variant="body2"><strong>Planta:</strong> {printBudget.plant.name}</Typography>}
                   {printBudget.parentProject && <Typography variant="body2"><strong>Adicional de:</strong> {printBudget.parentProject.code} - {printBudget.parentProject.name}</Typography>}
                   {printBudget.existingProject && <Typography variant="body2"><strong>Vinculado a:</strong> {printBudget.existingProject.code} - {printBudget.existingProject.name}</Typography>}
+                  {printBudget.work_order_number && <Typography variant="body2"><strong>N° OT:</strong> {printBudget.work_order_number}</Typography>}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="body2"><strong>Fecha:</strong> {new Date(printBudget.createdAt).toLocaleDateString('es-AR')}</Typography>
@@ -1375,6 +1530,14 @@ function BudgetsPageContent() {
                 <>
                   <Divider sx={{ my: 2 }} />
                   <Box textAlign="right">
+                    <Typography variant="body2">Mano de obra: {formatTotals(sumLaborByCurrency(printBudget.laborLines, printBudget.currency))}</Typography>
+                    {(printBudget.labor_discount_percent ?? 0) > 0 && (
+                      <Typography variant="body2" color="text.secondary">Bonificación mano de obra: {printBudget.labor_discount_percent}%</Typography>
+                    )}
+                    <Typography variant="body2">Materiales: {formatTotals(sumMaterialsByCurrency(printBudget.materialItems, printBudget.currency))}</Typography>
+                    {(printBudget.material_discount_percent ?? 0) > 0 && (
+                      <Typography variant="body2" color="text.secondary">Bonificación material: {printBudget.material_discount_percent}%</Typography>
+                    )}
                     <Typography variant="h6" fontWeight="bold">Total: {formatTotals(printBudget.totals_by_currency)}</Typography>
                   </Box>
                 </>
