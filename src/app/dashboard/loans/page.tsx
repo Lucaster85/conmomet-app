@@ -8,13 +8,38 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon, Delete as DeleteIcon, Visibility as VisibilityIcon,
-  Refresh as RefreshIcon, Search as SearchIcon
+  Refresh as RefreshIcon, Search as SearchIcon,
+  CheckCircle as ApproveIcon, Cancel as RejectIcon,
+  WarningAmber as ConflictIcon, Percent as InterestIcon,
+  LocalAtm as CashIcon, AccountBalance as BankIcon,
+  Payments as PaidIcon
 } from '@mui/icons-material';
+import Alert from '@mui/material/Alert';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
-import { Loan, Employee, LoanPayment, PayPeriod, LoanService, EmployeeService } from '@/utils/api';
+import { Loan, Employee, LoanPayment, LoanInterestApplication, PayPeriod, LoanService, EmployeeService } from '@/utils/api';
 
-const emptyForm = { employee_id: 0, currency: 'USD' as 'USD' | 'ARS', start_date: '', amount: 0, exchange_rate_at_origin: 0, notes: '' };
+const LOAN_STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success' | 'error' | 'default' | 'primary' | 'info' }> = {
+  pending: { label: 'Pendiente de aprobación', color: 'warning' },
+  approved: { label: 'Aprobado — pend. de pago', color: 'info' },
+  active: { label: 'Activo', color: 'primary' },
+  rejected: { label: 'Rechazado', color: 'error' },
+  completed: { label: 'Completado', color: 'success' },
+  cancelled: { label: 'Cancelado', color: 'default' },
+};
+
+const emptyForm = {
+  employee_id: 0,
+  currency: 'USD' as 'USD' | 'ARS',
+  start_date: '',
+  amount: 0,
+  exchange_rate_at_origin: 0,
+  notes: '',
+  payment_method: 'transferencia' as 'efectivo' | 'transferencia',
+  mark_as_paid: true,
+};
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
@@ -39,6 +64,15 @@ export default function LoansPage() {
   const [detailLoan, setDetailLoan] = useState<Loan | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  const [approvingLoan, setApprovingLoan] = useState<Loan | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Loan | null>(null);
+  const [rejectNotes, setRejectNotes] = useState('');
+  const [markPaidTarget, setMarkPaidTarget] = useState<Loan | null>(null);
+  const [markPaidMethod, setMarkPaidMethod] = useState<'efectivo' | 'transferencia'>('transferencia');
+  const [interestTarget, setInterestTarget] = useState<Loan | null>(null);
+  const [interestRate, setInterestRate] = useState<number | null>(null);
+  const [processing, setProcessing] = useState(false);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -59,8 +93,14 @@ export default function LoansPage() {
 
   const handleOpenCreate = () => {
     setEditing(null);
+    setApprovingLoan(null);
     setForm({ ...emptyForm, start_date: new Date().toISOString().slice(0, 10) });
     setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setApprovingLoan(null);
   };
 
   const handleSubmit = async () => {
@@ -70,16 +110,30 @@ export default function LoansPage() {
     if (form.currency === 'USD' && (!form.exchange_rate_at_origin || form.exchange_rate_at_origin <= 0)) {
       return setError('La cotización debe ser mayor a 0 para préstamos en USD');
     }
-    
+    if (!form.payment_method) return setError('El método de pago es obligatorio');
+
     try {
-      if (editing) {
+      if (approvingLoan) {
+        await LoanService.approve(approvingLoan.id, {
+          amount: form.amount,
+          currency: form.currency,
+          exchange_rate_at_origin: form.currency === 'USD' ? form.exchange_rate_at_origin : undefined,
+          payment_method: form.payment_method,
+          notes: form.notes || undefined,
+          start_date: form.start_date,
+          mark_as_paid: form.mark_as_paid,
+        });
+        setSuccess(form.mark_as_paid ? 'Préstamo aprobado y marcado como pagado' : 'Préstamo aprobado — queda pendiente de pago');
+      } else if (editing) {
         setError('No se pueden editar préstamos. Elimine y vuelva a crear si hay un error.');
+        return;
       } else {
         const createData: Parameters<typeof LoanService.create>[0] = {
           employee_id: form.employee_id,
           currency: form.currency,
           start_date: form.start_date,
           amount: form.amount,
+          payment_method: form.payment_method,
           notes: form.notes || undefined,
         };
         if (form.currency === 'USD') {
@@ -88,7 +142,7 @@ export default function LoansPage() {
         await LoanService.create(createData);
         setSuccess('Préstamo registrado exitosamente');
       }
-      setOpenDialog(false);
+      handleCloseDialog();
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
@@ -121,6 +175,78 @@ export default function LoansPage() {
     }
   };
 
+  const handleOpenApprove = (loan: Loan) => {
+    setEditing(null);
+    setApprovingLoan(loan);
+    setForm({
+      employee_id: loan.employee_id,
+      currency: loan.currency || 'ARS',
+      start_date: new Date().toISOString().slice(0, 10),
+      amount: Number(loan.requested_amount ?? loan.amount),
+      exchange_rate_at_origin: 0,
+      notes: loan.notes || '',
+      payment_method: 'transferencia',
+      mark_as_paid: true,
+    });
+    setOpenDialog(true);
+  };
+
+  const handleOpenMarkPaid = (loan: Loan) => {
+    setMarkPaidTarget(loan);
+    setMarkPaidMethod(loan.payment_method || 'transferencia');
+  };
+
+  const handleConfirmMarkPaid = async () => {
+    if (!markPaidTarget) return;
+    setProcessing(true);
+    try {
+      await LoanService.markAsPaid(markPaidTarget.id, { payment_method: markPaidMethod });
+      setSuccess('Préstamo marcado como pagado');
+      setMarkPaidTarget(null);
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al marcar como pagado');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectTarget) return;
+    setProcessing(true);
+    try {
+      await LoanService.reject(rejectTarget.id, rejectNotes || undefined);
+      setSuccess('Préstamo rechazado');
+      setRejectTarget(null);
+      setRejectNotes('');
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al rechazar');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleOpenInterest = (loan: Loan) => {
+    setInterestTarget(loan);
+    setInterestRate(loan.interest_rate_percent !== undefined && loan.interest_rate_percent !== null ? Number(loan.interest_rate_percent) : null);
+  };
+
+  const handleConfirmInterest = async () => {
+    if (!interestTarget || !interestRate) return;
+    setProcessing(true);
+    try {
+      await LoanService.applyInterest(interestTarget.id, { rate_percent: interestRate });
+      setSuccess('Interés aplicado al saldo del préstamo');
+      setInterestTarget(null);
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al aplicar interés');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const formatCurrency = (val: number) =>
     `$${Number(val).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
@@ -133,6 +259,15 @@ export default function LoansPage() {
     loan.currency === 'USD'
       ? `USD ${Number(loan.remaining_balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
       : formatCurrency(loan.remaining_balance);
+
+  const renderPaymentMethodChip = (method?: 'efectivo' | 'transferencia' | null) => {
+    if (!method) return <Chip label="Sin definir" size="small" variant="outlined" />;
+    return method === 'efectivo' ? (
+      <Chip label="Efectivo" size="small" color="warning" variant="outlined" icon={<CashIcon sx={{ fontSize: '0.875rem !important' }} />} />
+    ) : (
+      <Chip label="Transferencia" size="small" color="info" variant="outlined" icon={<BankIcon sx={{ fontSize: '0.875rem !important' }} />} />
+    );
+  };
 
   const filtered = loans.filter(c => {
     const term = search.toLowerCase();
@@ -194,6 +329,7 @@ export default function LoansPage() {
               <TableCell align="right"><strong>Cotización</strong></TableCell>
               <TableCell align="right"><strong>Monto Pesos Orig.</strong></TableCell>
               <TableCell align="right"><strong>Saldo Pendiente</strong></TableCell>
+              <TableCell align="center"><strong>Método</strong></TableCell>
               <TableCell align="center"><strong>Estado</strong></TableCell>
               <TableCell align="center"><strong>Acciones</strong></TableCell>
             </TableRow>
@@ -201,7 +337,7 @@ export default function LoansPage() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
                   <Typography variant="body2" color="text.secondary">No hay préstamos registrados</Typography>
                 </TableCell>
               </TableRow>
@@ -235,14 +371,52 @@ export default function LoansPage() {
                     {formatLoanBalance(loan)}
                   </TableCell>
                   <TableCell align="center">
-                    <Chip
-                      label={loan.status === 'completed' ? 'Completado' : loan.status === 'cancelled' ? 'Cancelado' : 'Activo'}
-                      color={loan.status === 'completed' ? 'success' : loan.status === 'cancelled' ? 'default' : 'primary'}
-                      size="small"
-                    />
+                    {renderPaymentMethodChip(loan.payment_method)}
                   </TableCell>
                   <TableCell align="center">
-                    <Tooltip title="Ver Detalle de Descuentos">
+                    <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+                      <Chip
+                        label={LOAN_STATUS_LABEL[loan.status]?.label || loan.status}
+                        color={LOAN_STATUS_LABEL[loan.status]?.color || 'default'}
+                        size="small"
+                      />
+                      {loan.conflict_warning && (
+                        <Tooltip title={loan.conflict_warning}>
+                          <ConflictIcon color="warning" fontSize="small" />
+                        </Tooltip>
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell align="center">
+                    {loan.status === 'pending' && (
+                      <>
+                        <Tooltip title="Aprobar">
+                          <IconButton size="small" color="success" onClick={() => handleOpenApprove(loan)}>
+                            <ApproveIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Rechazar">
+                          <IconButton size="small" color="error" onClick={() => setRejectTarget(loan)}>
+                            <RejectIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </>
+                    )}
+                    {loan.status === 'approved' && (
+                      <Tooltip title="Marcar como pagado / entregado">
+                        <IconButton size="small" color="success" onClick={() => handleOpenMarkPaid(loan)} disabled={processing}>
+                          <PaidIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {loan.status === 'active' && (
+                      <Tooltip title="Aplicar interés del mes">
+                        <IconButton size="small" color="secondary" onClick={() => handleOpenInterest(loan)}>
+                          <InterestIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Ver Detalle de Movimientos">
                       <IconButton size="small" color="primary" onClick={() => handleOpenDetail(loan)}>
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
@@ -262,12 +436,22 @@ export default function LoansPage() {
         </Table>
       </TableContainer>
 
-      {/* Create Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Otorgar Préstamo a Empleado</DialogTitle>
+      {/* Create / Approve Dialog */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>{approvingLoan ? 'Aprobar Préstamo Solicitado' : 'Otorgar Préstamo a Empleado'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <FormControl fullWidth size="small">
+            {approvingLoan && (
+              <Typography variant="body2" color="text.secondary">
+                Pidió {formatCurrency(Number(approvingLoan.requested_amount ?? approvingLoan.amount))}
+                {approvingLoan.notes ? ` — "${approvingLoan.notes}"` : ''}
+              </Typography>
+            )}
+            {approvingLoan?.conflict_warning && (
+              <Alert severity="warning">{approvingLoan.conflict_warning}</Alert>
+            )}
+
+            <FormControl fullWidth size="small" disabled={!!approvingLoan}>
               <InputLabel>Empleado *</InputLabel>
               <Select
                 value={form.employee_id || ''}
@@ -277,7 +461,7 @@ export default function LoansPage() {
                 {employees.map(e => <MenuItem key={e.id} value={e.id}>{e.lastname}, {e.name}</MenuItem>)}
               </Select>
             </FormControl>
-            
+
             <TextField
               label="Fecha de Entrega *"
               type="date"
@@ -333,6 +517,20 @@ export default function LoansPage() {
             )}
 
             <TextField
+              label="Método de Pago *"
+              select
+              fullWidth
+              size="small"
+              value={form.payment_method}
+              onChange={(e) => setForm({ ...form, payment_method: e.target.value as 'efectivo' | 'transferencia' })}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="transferencia">Transferencia bancaria</option>
+              <option value="efectivo">Efectivo</option>
+            </TextField>
+
+            <TextField
               label="Notas o Referencia"
               fullWidth
               multiline
@@ -342,11 +540,30 @@ export default function LoansPage() {
               placeholder="Ej: Para reparación de vehículo..."
             />
 
+            {approvingLoan && (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={form.mark_as_paid}
+                    onChange={(e) => setForm({ ...form, mark_as_paid: e.target.checked })}
+                  />
+                }
+                label="Ya se le entregó el préstamo al empleado"
+              />
+            )}
+            {approvingLoan && !form.mark_as_paid && (
+              <Alert severity="info">
+                El préstamo quedará como &quot;Aprobado — pend. de pago&quot;. Cuando se le entregue el dinero, marcalo como pagado desde la tabla.
+              </Alert>
+            )}
+
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">Registrar Préstamo</Button>
+          <Button onClick={handleCloseDialog}>Cancelar</Button>
+          <Button onClick={handleSubmit} variant="contained" color={approvingLoan ? 'success' : 'primary'}>
+            {approvingLoan ? 'Aprobar Préstamo' : 'Registrar Préstamo'}
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -364,14 +581,22 @@ export default function LoansPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Detail Dialog: descuentos aplicados y quincena en la que se hizo cada uno */}
+      {/* Detail Dialog: descuentos e intereses aplicados */}
       <Dialog open={!!detailLoan} onClose={() => setDetailLoan(null)} maxWidth="md" fullWidth>
         <DialogTitle>
-          Detalle de Descuentos
+          Detalle de Movimientos
           {detailLoan?.employee && (
-            <Typography variant="body2" color="text.secondary">
-              {detailLoan.employee.lastname}, {detailLoan.employee.name}
-            </Typography>
+            <Box display="flex" alignItems="center" gap={1} flexWrap="wrap" mt={0.5}>
+              <Typography variant="body2" color="text.secondary">
+                {detailLoan.employee.lastname}, {detailLoan.employee.name}
+              </Typography>
+              {detailLoan.paid_at && (
+                <Typography variant="caption" color="text.secondary">
+                  · Pagado el {new Date(detailLoan.paid_at).toLocaleDateString('es-AR')}
+                </Typography>
+              )}
+              {detailLoan.paid_at && renderPaymentMethodChip(detailLoan.payment_method)}
+            </Box>
           )}
         </DialogTitle>
         <DialogContent>
@@ -379,59 +604,184 @@ export default function LoansPage() {
             <Box display="flex" justifyContent="center" py={4}>
               <CircularProgress size={28} />
             </Box>
-          ) : !detailLoan?.payments || detailLoan.payments.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-              Todavía no se registraron descuentos para este préstamo.
-            </Typography>
           ) : (
-            <TableContainer component={Paper} elevation={0} sx={{ mt: 1, border: '1px solid', borderColor: 'divider' }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                    <TableCell><strong>Fecha</strong></TableCell>
-                    <TableCell><strong>Quincena</strong></TableCell>
-                    {detailLoan.currency === 'USD' ? (
-                      <>
-                        <TableCell align="right"><strong>USD</strong></TableCell>
-                        <TableCell align="right"><strong>Cotización</strong></TableCell>
-                        <TableCell align="right"><strong>$ Descontados</strong></TableCell>
-                      </>
-                    ) : (
-                      <TableCell align="right"><strong>Monto</strong></TableCell>
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {detailLoan.payments.map((payment: LoanPayment) => (
-                    <TableRow key={payment.id} hover>
-                      <TableCell>{new Date(payment.date).toLocaleDateString('es-AR')}</TableCell>
-                      <TableCell>{formatPeriodLabel(payment.payrollEntry?.payPeriod)}</TableCell>
-                      {detailLoan.currency === 'USD' ? (
-                        <>
-                          <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                            USD {Number(payment.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                          </TableCell>
-                          <TableCell align="right" sx={{ color: 'text.secondary' }}>
-                            {payment.exchange_rate ? formatCurrency(payment.exchange_rate) : '—'}
-                          </TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                            {payment.amount_ars ? formatCurrency(payment.amount_ars) : '—'}
-                          </TableCell>
-                        </>
-                      ) : (
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                          {formatCurrency(payment.amount)}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Stack spacing={3}>
+              <Box>
+                <Typography variant="subtitle2" fontWeight={700} mb={1}>Cuotas Descontadas</Typography>
+                {!detailLoan?.payments || detailLoan.payments.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                    Todavía no se registraron descuentos para este préstamo.
+                  </Typography>
+                ) : (
+                  <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                          <TableCell><strong>Fecha</strong></TableCell>
+                          <TableCell><strong>Quincena</strong></TableCell>
+                          {detailLoan.currency === 'USD' ? (
+                            <>
+                              <TableCell align="right"><strong>USD</strong></TableCell>
+                              <TableCell align="right"><strong>Cotización</strong></TableCell>
+                              <TableCell align="right"><strong>$ Descontados</strong></TableCell>
+                            </>
+                          ) : (
+                            <TableCell align="right"><strong>Monto</strong></TableCell>
+                          )}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {detailLoan.payments.map((payment: LoanPayment) => (
+                          <TableRow key={payment.id} hover>
+                            <TableCell>{new Date(payment.date).toLocaleDateString('es-AR')}</TableCell>
+                            <TableCell>{formatPeriodLabel(payment.payrollEntry?.payPeriod)}</TableCell>
+                            {detailLoan.currency === 'USD' ? (
+                              <>
+                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                  USD {Number(payment.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                </TableCell>
+                                <TableCell align="right" sx={{ color: 'text.secondary' }}>
+                                  {payment.exchange_rate ? formatCurrency(payment.exchange_rate) : '—'}
+                                </TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                  {payment.amount_ars ? formatCurrency(payment.amount_ars) : '—'}
+                                </TableCell>
+                              </>
+                            ) : (
+                              <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                {formatCurrency(payment.amount)}
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle2" fontWeight={700} mb={1}>Intereses Aplicados</Typography>
+                {!detailLoan?.interestApplications || detailLoan.interestApplications.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                    Todavía no se aplicó interés a este préstamo.
+                  </Typography>
+                ) : (
+                  <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                          <TableCell><strong>Fecha</strong></TableCell>
+                          <TableCell align="right"><strong>Tasa</strong></TableCell>
+                          <TableCell align="right"><strong>Capital Antes</strong></TableCell>
+                          <TableCell align="right"><strong>Interés</strong></TableCell>
+                          <TableCell align="right"><strong>Capital Después</strong></TableCell>
+                          <TableCell><strong>Aplicado por</strong></TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {detailLoan.interestApplications.map((app: LoanInterestApplication) => (
+                          <TableRow key={app.id} hover>
+                            <TableCell>{new Date(app.applied_at).toLocaleDateString('es-AR')}</TableCell>
+                            <TableCell align="right">{Number(app.rate_percent_used).toLocaleString('es-AR')}%</TableCell>
+                            <TableCell align="right" sx={{ color: 'text.secondary' }}>{formatCurrency(app.capital_before)}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 'bold', color: 'warning.dark' }}>+{formatCurrency(app.interest_amount)}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatCurrency(app.capital_after)}</TableCell>
+                            <TableCell>{app.appliedBy ? `${app.appliedBy.lastname}, ${app.appliedBy.name}` : '—'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </Box>
+            </Stack>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDetailLoan(null)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Rechazar préstamo */}
+      <Dialog open={!!rejectTarget} onClose={() => setRejectTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Rechazar Préstamo</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {rejectTarget?.employee?.lastname}, {rejectTarget?.employee?.name} — {rejectTarget ? formatCurrency(Number(rejectTarget.requested_amount ?? rejectTarget.amount)) : ''}
+            </Typography>
+            <TextField label="Motivo (opcional)" fullWidth multiline rows={2} value={rejectNotes} onChange={(e) => setRejectNotes(e.target.value)} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmReject} variant="contained" color="error" disabled={processing}>
+            {processing ? 'Rechazando...' : 'Rechazar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmar pago de préstamo */}
+      <Dialog open={!!markPaidTarget} onClose={() => setMarkPaidTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Confirmar Pago de Préstamo</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              Vas a marcar como pagado el préstamo de <strong>{markPaidTarget?.employee?.lastname}, {markPaidTarget?.employee?.name}</strong> por <strong>{markPaidTarget ? formatLoanAmount(markPaidTarget) : ''}</strong>.
+            </Typography>
+            <TextField
+              label="Método de Pago *"
+              select
+              fullWidth
+              value={markPaidMethod}
+              onChange={(e) => setMarkPaidMethod(e.target.value as 'efectivo' | 'transferencia')}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="transferencia">Transferencia bancaria</option>
+              <option value="efectivo">Efectivo</option>
+            </TextField>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMarkPaidTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmMarkPaid} variant="contained" color="success" disabled={processing}>
+            {processing ? 'Confirmando...' : 'Confirmar Pago'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Aplicar interés mensual */}
+      <Dialog open={!!interestTarget} onClose={() => setInterestTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Aplicar Interés Mensual</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {interestTarget?.employee?.lastname}, {interestTarget?.employee?.name} — saldo actual {interestTarget ? formatCurrency(Number(interestTarget.remaining_balance)) : ''}
+            </Typography>
+            <CurrencyInput
+              label="Tasa a aplicar (%) *"
+              fullWidth
+              value={interestRate}
+              onChange={setInterestRate}
+              InputProps={{ startAdornment: <InputAdornment position="start">%</InputAdornment> }}
+            />
+            {interestTarget && interestRate ? (
+              <Box p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
+                <Typography variant="caption" color="text.secondary">Nuevo saldo estimado</Typography>
+                <Typography variant="body2" fontWeight={700} color="primary.main">
+                  {formatCurrency(Number(interestTarget.remaining_balance) * (1 + interestRate / 100))}
+                </Typography>
+              </Box>
+            ) : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setInterestTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmInterest} variant="contained" disabled={!interestRate || processing}>
+            {processing ? 'Aplicando...' : 'Aplicar Interés'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -8,11 +8,24 @@ import {
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import CurrencyInput from '../../../components/CurrencyInput';
+import Tooltip from '@mui/material/Tooltip';
+import IconButton from '@mui/material/IconButton';
+import Alert from '@mui/material/Alert';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import {
   Add as AddIcon, Refresh as RefreshIcon,
-  LocalAtm as CashIcon, AccountBalance as BankIcon
+  LocalAtm as CashIcon, AccountBalance as BankIcon,
+  CheckCircle as ApproveIcon, Cancel as RejectIcon,
+  WarningAmber as ConflictIcon, Payments as PaidIcon
 } from '@mui/icons-material';
 import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService } from '../../../utils/api';
+
+const STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success' | 'error' }> = {
+  pending: { label: 'Pendiente', color: 'warning' },
+  approved: { label: 'Aprobado', color: 'success' },
+  rejected: { label: 'Rechazado', color: 'error' },
+};
 
 export default function SalaryAdvancesPage() {
   const theme = useTheme();
@@ -36,6 +49,17 @@ export default function SalaryAdvancesPage() {
     notes: '',
     payment_method: 'transferencia'
   });
+
+  // Aprobación / rechazo
+  const [approveTarget, setApproveTarget] = useState<SalaryAdvance | null>(null);
+  const [approveAmount, setApproveAmount] = useState<number | null>(null);
+  const [approvePaymentMethod, setApprovePaymentMethod] = useState<'efectivo' | 'transferencia'>('transferencia');
+  const [approveMarkAsPaid, setApproveMarkAsPaid] = useState(true);
+  const [rejectTarget, setRejectTarget] = useState<SalaryAdvance | null>(null);
+  const [rejectNotes, setRejectNotes] = useState('');
+  const [markPaidTarget, setMarkPaidTarget] = useState<SalaryAdvance | null>(null);
+  const [markPaidMethod, setMarkPaidMethod] = useState<'efectivo' | 'transferencia'>('transferencia');
+  const [processing, setProcessing] = useState(false);
 
   const loadData = async () => {
     try {
@@ -87,10 +111,75 @@ export default function SalaryAdvancesPage() {
     }
   };
 
+  const handleOpenApprove = (advance: SalaryAdvance) => {
+    setApproveTarget(advance);
+    setApproveAmount(Number(advance.requested_amount ?? advance.amount));
+    setApprovePaymentMethod(advance.payment_method || 'transferencia');
+    setApproveMarkAsPaid(true);
+  };
+
+  const handleConfirmApprove = async () => {
+    if (!approveTarget || !approveAmount) return;
+    setProcessing(true);
+    try {
+      await SalaryAdvanceService.approve(approveTarget.id, {
+        amount: approveAmount,
+        payment_method: approvePaymentMethod,
+        mark_as_paid: approveMarkAsPaid,
+      });
+      setSuccess(approveMarkAsPaid ? 'Adelanto aprobado y marcado como pagado' : 'Adelanto aprobado — queda pendiente de pago');
+      setApproveTarget(null);
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al aprobar');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleOpenMarkPaid = (advance: SalaryAdvance) => {
+    setMarkPaidTarget(advance);
+    setMarkPaidMethod(advance.payment_method || 'transferencia');
+  };
+
+  const handleConfirmMarkPaid = async () => {
+    if (!markPaidTarget) return;
+    setProcessing(true);
+    try {
+      await SalaryAdvanceService.markAsPaid(markPaidTarget.id, { payment_method: markPaidMethod });
+      setSuccess('Adelanto marcado como pagado');
+      setMarkPaidTarget(null);
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al marcar como pagado');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectTarget) return;
+    setProcessing(true);
+    try {
+      await SalaryAdvanceService.reject(rejectTarget.id, rejectNotes || undefined);
+      setSuccess('Adelanto rechazado');
+      setRejectTarget(null);
+      setRejectNotes('');
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al rechazar');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const formatCurrency = (v: number) => `$${Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
   const formatDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-AR');
 
-  const renderPaymentMethodChip = (method: 'efectivo' | 'transferencia') => {
+  const renderPaymentMethodChip = (method?: 'efectivo' | 'transferencia' | null) => {
+    if (!method) {
+      return <Chip label="Sin definir" size="small" variant="outlined" />;
+    }
     if (method === 'efectivo') {
       return (
         <Chip
@@ -111,6 +200,18 @@ export default function SalaryAdvancesPage() {
         icon={<BankIcon sx={{ fontSize: '0.875rem !important' }} />}
       />
     );
+  };
+
+  const renderPaidChip = (a: SalaryAdvance) => {
+    if (a.status !== 'approved') return null;
+    if (a.paid_at) {
+      return (
+        <Tooltip title={`Pagado el ${new Date(a.paid_at).toLocaleDateString('es-AR')}`}>
+          <Chip label="Pagado" size="small" color="success" variant="outlined" />
+        </Tooltip>
+      );
+    }
+    return <Chip label="Pendiente de pago" size="small" color="info" variant="outlined" />;
   };
 
   const filteredAdvances = advances.filter(a => {
@@ -182,14 +283,34 @@ export default function SalaryAdvancesPage() {
           <Stack spacing={2}>
             {filteredAdvances.map(a => (
               <Paper key={a.id} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">{a.employee?.lastname}, {a.employee?.name}</Typography>
+                <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
+                  <Typography variant="subtitle1" fontWeight="bold">{a.employee?.lastname}, {a.employee?.name}</Typography>
+                  {a.conflict_warning && (
+                    <Tooltip title={a.conflict_warning}>
+                      <ConflictIcon color="warning" fontSize="small" />
+                    </Tooltip>
+                  )}
+                </Box>
                 <Typography variant="h6" color="error.main">{formatCurrency(a.amount)}</Typography>
                 <Typography variant="body2">{formatDate(a.date)}</Typography>
                 {a.notes && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>{a.notes}</Typography>}
                 <Box mt={1.5} display="flex" gap={1} flexWrap="wrap">
+                  <Chip label={STATUS_LABEL[a.status]?.label || a.status} size="small" color={STATUS_LABEL[a.status]?.color || 'default'} />
+                  {renderPaidChip(a)}
                   {renderPaymentMethodChip(a.payment_method)}
                   {a.pay_period_id ? <Chip label="Descontado" size="small" color="success" /> : <Chip label="Pendiente de descuento" size="small" color="warning" />}
                 </Box>
+                {a.status === 'pending' && (
+                  <Box mt={1.5} display="flex" gap={1}>
+                    <Button size="small" variant="contained" color="success" startIcon={<ApproveIcon />} onClick={() => handleOpenApprove(a)}>Aprobar</Button>
+                    <Button size="small" variant="outlined" color="error" startIcon={<RejectIcon />} onClick={() => setRejectTarget(a)}>Rechazar</Button>
+                  </Box>
+                )}
+                {a.status === 'approved' && !a.paid_at && (
+                  <Box mt={1.5}>
+                    <Button size="small" variant="contained" color="info" startIcon={<PaidIcon />} onClick={() => handleOpenMarkPaid(a)} disabled={processing}>Marcar como pagado</Button>
+                  </Box>
+                )}
               </Paper>
             ))}
           </Stack>
@@ -208,12 +329,14 @@ export default function SalaryAdvancesPage() {
                 <TableCell><strong>Método</strong></TableCell>
                 <TableCell><strong>Notas</strong></TableCell>
                 <TableCell><strong>Estado</strong></TableCell>
+                <TableCell><strong>Aprobación</strong></TableCell>
+                <TableCell align="right"><strong>Acciones</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredAdvances.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                     <Typography color="text.secondary">No hay adelantos para los filtros seleccionados</Typography>
                   </TableCell>
                 </TableRow>
@@ -226,6 +349,36 @@ export default function SalaryAdvancesPage() {
                     <TableCell>{renderPaymentMethodChip(a.payment_method)}</TableCell>
                     <TableCell>{a.notes || '—'}</TableCell>
                     <TableCell>{a.pay_period_id ? <Chip label="Descontado" size="small" color="success" /> : <Chip label="Pendiente de descuento" size="small" color="warning" />}</TableCell>
+                    <TableCell>
+                      <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
+                        <Chip label={STATUS_LABEL[a.status]?.label || a.status} size="small" color={STATUS_LABEL[a.status]?.color || 'default'} />
+                        {renderPaidChip(a)}
+                        {a.conflict_warning && (
+                          <Tooltip title={a.conflict_warning}>
+                            <ConflictIcon color="warning" fontSize="small" />
+                          </Tooltip>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="right">
+                      {a.status === 'pending' && (
+                        <Box display="flex" gap={0.5} justifyContent="flex-end">
+                          <Tooltip title="Aprobar">
+                            <IconButton size="small" color="success" onClick={() => handleOpenApprove(a)}><ApproveIcon fontSize="small" /></IconButton>
+                          </Tooltip>
+                          <Tooltip title="Rechazar">
+                            <IconButton size="small" color="error" onClick={() => setRejectTarget(a)}><RejectIcon fontSize="small" /></IconButton>
+                          </Tooltip>
+                        </Box>
+                      )}
+                      {a.status === 'approved' && !a.paid_at && (
+                        <Box display="flex" gap={0.5} justifyContent="flex-end">
+                          <Tooltip title="Marcar como pagado">
+                            <IconButton size="small" color="info" onClick={() => handleOpenMarkPaid(a)} disabled={processing}><PaidIcon fontSize="small" /></IconButton>
+                          </Tooltip>
+                        </Box>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -273,6 +426,103 @@ export default function SalaryAdvancesPage() {
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} variant="contained" disabled={selectedEmployees.length === 0 || !form.amount || !form.date}>
             Registrar {selectedEmployees.length > 1 ? `(${selectedEmployees.length})` : ''}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Aprobar adelanto */}
+      <Dialog open={!!approveTarget} onClose={() => setApproveTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Aprobar Adelanto</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {approveTarget?.employee?.lastname}, {approveTarget?.employee?.name} — pidió {approveTarget ? formatCurrency(Number(approveTarget.requested_amount ?? approveTarget.amount)) : ''}
+            </Typography>
+            {approveTarget?.conflict_warning && (
+              <Alert severity="warning">{approveTarget.conflict_warning}</Alert>
+            )}
+            <CurrencyInput label="Monto a aprobar *" fullWidth value={approveAmount} onChange={setApproveAmount} />
+            <TextField
+              label="Método de Pago *"
+              select
+              fullWidth
+              value={approvePaymentMethod}
+              onChange={(e) => setApprovePaymentMethod(e.target.value as 'efectivo' | 'transferencia')}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="transferencia">Transferencia bancaria</option>
+              <option value="efectivo">Efectivo</option>
+            </TextField>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={approveMarkAsPaid}
+                  onChange={(e) => setApproveMarkAsPaid(e.target.checked)}
+                />
+              }
+              label="Pagado al momento de la aprobación"
+            />
+            {!approveMarkAsPaid && (
+              <Alert severity="info">
+                El adelanto quedará como &quot;Pendiente de pago&quot;. Cuando se le pague, marcalo como pagado desde la tabla.
+              </Alert>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setApproveTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmApprove} variant="contained" color="success" disabled={!approveAmount || processing}>
+            {processing ? 'Aprobando...' : 'Aprobar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Rechazar adelanto */}
+      <Dialog open={!!rejectTarget} onClose={() => setRejectTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Rechazar Adelanto</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {rejectTarget?.employee?.lastname}, {rejectTarget?.employee?.name} — {rejectTarget ? formatCurrency(Number(rejectTarget.requested_amount ?? rejectTarget.amount)) : ''}
+            </Typography>
+            <TextField label="Motivo (opcional)" fullWidth multiline rows={2} value={rejectNotes} onChange={(e) => setRejectNotes(e.target.value)} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmReject} variant="contained" color="error" disabled={processing}>
+            {processing ? 'Rechazando...' : 'Rechazar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmar pago de adelanto */}
+      <Dialog open={!!markPaidTarget} onClose={() => setMarkPaidTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Confirmar Pago de Adelanto</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              Vas a marcar como pagado el adelanto de <strong>{markPaidTarget?.employee?.lastname}, {markPaidTarget?.employee?.name}</strong> por <strong>{markPaidTarget ? formatCurrency(Number(markPaidTarget.amount)) : ''}</strong>.
+            </Typography>
+            <TextField
+              label="Método de Pago *"
+              select
+              fullWidth
+              value={markPaidMethod}
+              onChange={(e) => setMarkPaidMethod(e.target.value as 'efectivo' | 'transferencia')}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="transferencia">Transferencia bancaria</option>
+              <option value="efectivo">Efectivo</option>
+            </TextField>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMarkPaidTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmMarkPaid} variant="contained" color="info" disabled={processing}>
+            {processing ? 'Confirmando...' : 'Confirmar Pago'}
           </Button>
         </DialogActions>
       </Dialog>

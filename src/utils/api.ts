@@ -2100,20 +2100,63 @@ export interface SalaryAdvance {
   id: number;
   employee_id: number;
   amount: number;
+  requested_amount?: number | null;
   date: string;
-  payment_method: 'efectivo' | 'transferencia';
+  payment_method?: 'efectivo' | 'transferencia' | null;
   pay_period_id?: number;
   notes?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requested_by?: number;
+  approved_by?: number;
+  approved_at?: string | null;
+  paid_by?: number;
+  paid_at?: string | null;
+  conflict_warning?: string | null;
   employee?: Employee;
   payPeriod?: PayPeriod;
 }
 
 export class SalaryAdvanceService {
-  static async getAll(employee_id?: number): Promise<SalaryAdvance[]> {
-    const url = employee_id ? `${API_BASE_URL}/salary-advances?employee_id=${employee_id}` : `${API_BASE_URL}/salary-advances`;
+  static async getAll(params?: { employee_id?: number; status?: string; paid?: boolean }): Promise<SalaryAdvance[]> {
+    const query = new URLSearchParams();
+    if (params?.employee_id) query.append('employee_id', params.employee_id.toString());
+    if (params?.status) query.append('status', params.status);
+    if (params?.paid !== undefined) query.append('paid', params.paid.toString());
+    const qs = query.toString();
+    const url = qs ? `${API_BASE_URL}/salary-advances?${qs}` : `${API_BASE_URL}/salary-advances`;
     const response = await TokenManager.authenticatedFetch(url);
     if (!response.ok) throw new Error('Error al obtener adelantos');
     return (await response.json()).data || [];
+  }
+
+  static async approve(id: number, data?: { amount?: number; payment_method?: 'efectivo' | 'transferencia'; pay_period_id?: number; mark_as_paid?: boolean }): Promise<SalaryAdvance> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances/${id}/approve`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {}),
+    });
+    if (!response.ok) throw new Error('Error al aprobar adelanto');
+    return (await response.json()).data;
+  }
+
+  static async reject(id: number, notes?: string): Promise<SalaryAdvance> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances/${id}/reject`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes }),
+    });
+    if (!response.ok) throw new Error('Error al rechazar adelanto');
+    return (await response.json()).data;
+  }
+
+  static async markAsPaid(id: number, data: { payment_method: 'efectivo' | 'transferencia' }): Promise<SalaryAdvance> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances/${id}/mark-paid`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al marcar el adelanto como pagado');
+    return (await response.json()).data;
   }
 
   static async create(payload: {
@@ -2389,6 +2432,48 @@ export class SelfService {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/salary-advances`);
     if (!response.ok) throw new Error('Error al obtener mis adelantos');
     return (await response.json()).data || [];
+  }
+
+  static async requestAdvance(data: { amount: number; notes?: string }): Promise<SalaryAdvance> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/salary-advances`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Error al solicitar el adelanto');
+    return (await response.json()).data;
+  }
+
+  static async cancelMyAdvance(id: number): Promise<SalaryAdvance> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/salary-advances/${id}/cancel`, {
+      method: 'PUT',
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Error al cancelar el adelanto');
+    return (await response.json()).data;
+  }
+
+  static async getMyLoans(): Promise<Loan[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/loans`);
+    if (!response.ok) throw new Error('Error al obtener mis préstamos');
+    return (await response.json()).data || [];
+  }
+
+  static async requestLoan(data: { amount: number; notes?: string }): Promise<Loan> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/loans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Error al solicitar el préstamo');
+    return (await response.json()).data;
+  }
+
+  static async cancelMyLoan(id: number): Promise<Loan> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/loans/${id}/cancel`, {
+      method: 'PUT',
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Error al cancelar el préstamo');
+    return (await response.json()).data;
   }
 
   static async getMyPayroll(): Promise<PayrollEntry[]> {
@@ -2790,17 +2875,40 @@ export interface Loan {
   currency: 'USD' | 'ARS';
   start_date: string;
   amount: number;
+  requested_amount?: number | null;
+  interest_rate_percent?: number | null;
   exchange_rate_at_origin?: number | null;
   amount_ars_at_origin?: number | null;
   remaining_balance: number;
+  payment_method?: 'efectivo' | 'transferencia' | null;
   notes?: string;
-  status: 'active' | 'completed' | 'cancelled';
+  status: 'pending' | 'approved' | 'active' | 'rejected' | 'completed' | 'cancelled';
+  requested_by?: number;
+  approved_by?: number;
+  approved_at?: string | null;
+  paid_by?: number;
+  paid_at?: string | null;
+  conflict_warning?: string | null;
   created_by?: number;
   updated_by?: number;
   createdAt: string;
   updatedAt: string;
   employee?: Employee;
   payments?: LoanPayment[];
+  interestApplications?: LoanInterestApplication[];
+}
+
+export interface LoanInterestApplication {
+  id: number;
+  loan_id: number;
+  applied_at: string;
+  rate_percent_used: number;
+  capital_before: number;
+  interest_amount: number;
+  capital_after: number;
+  notes?: string;
+  applied_by?: number;
+  appliedBy?: { id: number; name: string; lastname: string };
 }
 
 export interface LoanPayment {
@@ -2824,6 +2932,7 @@ export interface CreateLoanData {
   start_date: string;
   amount: number;
   exchange_rate_at_origin?: number;
+  payment_method?: 'efectivo' | 'transferencia';
   notes?: string;
 }
 
@@ -2882,6 +2991,54 @@ export class LoanService {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Error al eliminar préstamo');
+  }
+
+  static async approve(id: number, data?: {
+    amount?: number;
+    currency?: 'USD' | 'ARS';
+    exchange_rate_at_origin?: number;
+    payment_method?: 'efectivo' | 'transferencia';
+    notes?: string;
+    start_date?: string;
+    mark_as_paid?: boolean;
+  }): Promise<Loan> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${id}/approve`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {}),
+    });
+    if (!response.ok) throw new Error('Error al aprobar préstamo');
+    return response.json();
+  }
+
+  static async markAsPaid(id: number, data: { payment_method: 'efectivo' | 'transferencia' }): Promise<Loan> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${id}/mark-paid`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al marcar el préstamo como pagado');
+    return response.json();
+  }
+
+  static async reject(id: number, notes?: string): Promise<Loan> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${id}/reject`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes }),
+    });
+    if (!response.ok) throw new Error('Error al rechazar préstamo');
+    return response.json();
+  }
+
+  static async applyInterest(id: number, data?: { rate_percent?: number; notes?: string }): Promise<{ loan: Loan; application: LoanInterestApplication }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${id}/apply-interest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {}),
+    });
+    if (!response.ok) throw new Error('Error al aplicar interés');
+    return response.json();
   }
 }
 

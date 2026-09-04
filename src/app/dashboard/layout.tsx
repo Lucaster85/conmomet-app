@@ -363,14 +363,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </Typography>
               </Box>
               <IconButton
-                size="large"
                 edge="end"
                 aria-label="account of current user"
                 aria-haspopup="true"
                 onClick={handleProfileMenuOpen}
                 color="inherit"
+                sx={{ p: 0.5 }}
               >
-                <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                <Avatar
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.02em',
+                    color: 'white',
+                    background: 'linear-gradient(135deg, #60a5fa 0%, #1d4ed8 100%)',
+                    boxShadow: '0 2px 8px rgba(29, 78, 216, 0.35)',
+                  }}
+                >
                   {getUserInitials()}
                 </Avatar>
               </IconButton>

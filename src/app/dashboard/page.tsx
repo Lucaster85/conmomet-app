@@ -22,7 +22,10 @@ import {
   Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../utils/auth';
-import { EntityDocumentService, EntityDocument } from '../../utils/api';
+import { EntityDocumentService, EntityDocument, LoanService, SalaryAdvanceService } from '../../utils/api';
+import {
+  RequestQuote as RequestQuoteIcon,
+} from '@mui/icons-material';
 import FeedbackModal from '../../components/FeedbackModal';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import DateField from '../../components/DateField';
@@ -36,6 +39,12 @@ export default function DashboardPage() {
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const [pendingAdvances, setPendingAdvances] = useState(0);
+  const [advancesPendingPayment, setAdvancesPendingPayment] = useState(0);
+  const [pendingLoans, setPendingLoans] = useState(0);
+  const [loansPendingPayment, setLoansPendingPayment] = useState(0);
+  const [loadingRequests, setLoadingRequests] = useState(true);
 
   // Modals state
   const [renewDialog, setRenewDialog] = useState(false);
@@ -75,8 +84,29 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchPendingRequests = async () => {
+    try {
+      setLoadingRequests(true);
+      const [advances, advancesToPay, loans, loansToPay] = await Promise.all([
+        SalaryAdvanceService.getAll({ status: 'pending' }),
+        SalaryAdvanceService.getAll({ status: 'approved', paid: false }),
+        LoanService.getAll({ status: 'pending' }),
+        LoanService.getAll({ status: 'approved' }),
+      ]);
+      setPendingAdvances(advances.length);
+      setAdvancesPendingPayment(advancesToPay.length);
+      setPendingLoans(loans.length);
+      setLoansPendingPayment(loansToPay.length);
+    } catch {
+      // Silencioso: no bloquea el resto del dashboard si falla.
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
   useEffect(() => {
     fetchExpirations();
+    fetchPendingRequests();
   }, []);
 
   const handleRenewSubmit = async () => {
@@ -274,6 +304,45 @@ export default function DashboardPage() {
                   </Box>
                 );
               })}
+            </Stack>
+          )}
+        </Paper>
+
+        {/* Widget: Adelantos y Préstamos pendientes */}
+        <Paper sx={{ flex: '1 1 300px', p: 3, borderRadius: 2 }}>
+          <Box display="flex" alignItems="center" gap={1} mb={3}>
+            <RequestQuoteIcon color="primary" />
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+              Solicitudes Pendientes
+            </Typography>
+          </Box>
+
+          {loadingRequests ? (
+            <Box display="flex" justifyContent="center" py={2}><CircularProgress size={28} /></Box>
+          ) : (
+            <Stack spacing={2.5}>
+              <Box onClick={() => router.push('/dashboard/salary-advances')} sx={{ cursor: 'pointer', p: 1.5, borderRadius: 2, '&:hover': { bgcolor: 'grey.50' } }}>
+                <Typography fontWeight="bold" mb={0.75}>Adelantos</Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                  <Typography variant="body2" color="text.secondary">Pend. de aprobación</Typography>
+                  <Chip label={pendingAdvances} color={pendingAdvances > 0 ? 'warning' : 'success'} size="small" />
+                </Box>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" color="text.secondary">Pend. de pago</Typography>
+                  <Chip label={advancesPendingPayment} color={advancesPendingPayment > 0 ? 'info' : 'success'} size="small" />
+                </Box>
+              </Box>
+              <Box onClick={() => router.push('/dashboard/loans')} sx={{ cursor: 'pointer', p: 1.5, borderRadius: 2, '&:hover': { bgcolor: 'grey.50' } }}>
+                <Typography fontWeight="bold" mb={0.75}>Préstamos</Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                  <Typography variant="body2" color="text.secondary">Pend. de aprobación</Typography>
+                  <Chip label={pendingLoans} color={pendingLoans > 0 ? 'warning' : 'success'} size="small" />
+                </Box>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" color="text.secondary">Pend. de pago</Typography>
+                  <Chip label={loansPendingPayment} color={loansPendingPayment > 0 ? 'info' : 'success'} size="small" />
+                </Box>
+              </Box>
             </Stack>
           )}
         </Paper>
