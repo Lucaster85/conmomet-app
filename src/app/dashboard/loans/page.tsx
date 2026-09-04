@@ -12,7 +12,7 @@ import {
   CheckCircle as ApproveIcon, Cancel as RejectIcon,
   WarningAmber as ConflictIcon, Percent as InterestIcon,
   LocalAtm as CashIcon, AccountBalance as BankIcon,
-  Payments as PaidIcon
+  Payments as PaidIcon, AttachFile as ProofIcon
 } from '@mui/icons-material';
 import Alert from '@mui/material/Alert';
 import Checkbox from '@mui/material/Checkbox';
@@ -65,10 +65,12 @@ export default function LoansPage() {
   const [detailLoading, setDetailLoading] = useState(false);
 
   const [approvingLoan, setApprovingLoan] = useState<Loan | null>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Loan | null>(null);
   const [rejectNotes, setRejectNotes] = useState('');
   const [markPaidTarget, setMarkPaidTarget] = useState<Loan | null>(null);
   const [markPaidMethod, setMarkPaidMethod] = useState<'efectivo' | 'transferencia'>('transferencia');
+  const [markPaidProofFile, setMarkPaidProofFile] = useState<File | null>(null);
   const [interestTarget, setInterestTarget] = useState<Loan | null>(null);
   const [interestRate, setInterestRate] = useState<number | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -95,6 +97,7 @@ export default function LoansPage() {
     setEditing(null);
     setApprovingLoan(null);
     setForm({ ...emptyForm, start_date: new Date().toISOString().slice(0, 10) });
+    setProofFile(null);
     setOpenDialog(true);
   };
 
@@ -102,6 +105,8 @@ export default function LoansPage() {
     setOpenDialog(false);
     setApprovingLoan(null);
   };
+
+  const isProofRequired = form.payment_method === 'transferencia' && form.mark_as_paid;
 
   const handleSubmit = async () => {
     if (!form.employee_id) return setError('El empleado es obligatorio');
@@ -111,6 +116,7 @@ export default function LoansPage() {
       return setError('La cotización debe ser mayor a 0 para préstamos en USD');
     }
     if (!form.payment_method) return setError('El método de pago es obligatorio');
+    if (isProofRequired && !proofFile) return setError('El comprobante de pago es obligatorio para transferencias.');
 
     try {
       if (approvingLoan) {
@@ -122,7 +128,7 @@ export default function LoansPage() {
           notes: form.notes || undefined,
           start_date: form.start_date,
           mark_as_paid: form.mark_as_paid,
-        });
+        }, proofFile);
         setSuccess(form.mark_as_paid ? 'Préstamo aprobado y marcado como pagado' : 'Préstamo aprobado — queda pendiente de pago');
       } else if (editing) {
         setError('No se pueden editar préstamos. Elimine y vuelva a crear si hay un error.');
@@ -135,11 +141,12 @@ export default function LoansPage() {
           amount: form.amount,
           payment_method: form.payment_method,
           notes: form.notes || undefined,
+          mark_as_paid: form.mark_as_paid,
         };
         if (form.currency === 'USD') {
           createData.exchange_rate_at_origin = form.exchange_rate_at_origin;
         }
-        await LoanService.create(createData);
+        await LoanService.create(createData, proofFile);
         setSuccess('Préstamo registrado exitosamente');
       }
       handleCloseDialog();
@@ -188,19 +195,27 @@ export default function LoansPage() {
       payment_method: 'transferencia',
       mark_as_paid: true,
     });
+    setProofFile(null);
     setOpenDialog(true);
   };
 
   const handleOpenMarkPaid = (loan: Loan) => {
     setMarkPaidTarget(loan);
     setMarkPaidMethod(loan.payment_method || 'transferencia');
+    setMarkPaidProofFile(null);
   };
+
+  const isMarkPaidProofRequired = markPaidMethod === 'transferencia';
 
   const handleConfirmMarkPaid = async () => {
     if (!markPaidTarget) return;
+    if (isMarkPaidProofRequired && !markPaidProofFile) {
+      setError('El comprobante de pago es obligatorio para transferencias.');
+      return;
+    }
     setProcessing(true);
     try {
-      await LoanService.markAsPaid(markPaidTarget.id, { payment_method: markPaidMethod });
+      await LoanService.markAsPaid(markPaidTarget.id, { payment_method: markPaidMethod }, markPaidProofFile);
       setSuccess('Préstamo marcado como pagado');
       setMarkPaidTarget(null);
       loadData();
@@ -261,11 +276,26 @@ export default function LoansPage() {
       : formatCurrency(loan.remaining_balance);
 
   const renderPaymentMethodChip = (method?: 'efectivo' | 'transferencia' | null) => {
-    if (!method) return <Chip label="Sin definir" size="small" variant="outlined" />;
+    if (!method) return <Typography variant="body2" color="text.secondary">—</Typography>;
     return method === 'efectivo' ? (
-      <Chip label="Efectivo" size="small" color="warning" variant="outlined" icon={<CashIcon sx={{ fontSize: '0.875rem !important' }} />} />
+      <Tooltip title="Efectivo">
+        <CashIcon fontSize="small" sx={{ color: 'warning.main', display: 'block' }} />
+      </Tooltip>
     ) : (
-      <Chip label="Transferencia" size="small" color="info" variant="outlined" icon={<BankIcon sx={{ fontSize: '0.875rem !important' }} />} />
+      <Tooltip title="Transferencia bancaria">
+        <BankIcon fontSize="small" sx={{ color: 'info.main', display: 'block' }} />
+      </Tooltip>
+    );
+  };
+
+  const renderProofLink = (loan: Loan) => {
+    if (!loan.payment_proof_url) return null;
+    return (
+      <Tooltip title="Ver comprobante de pago">
+        <IconButton size="small" color="primary" component="a" href={loan.payment_proof_url} target="_blank" rel="noopener noreferrer">
+          <ProofIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
     );
   };
 
@@ -371,7 +401,10 @@ export default function LoansPage() {
                     {formatLoanBalance(loan)}
                   </TableCell>
                   <TableCell align="center">
-                    {renderPaymentMethodChip(loan.payment_method)}
+                    <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+                      {renderPaymentMethodChip(loan.payment_method)}
+                      {renderProofLink(loan)}
+                    </Box>
                   </TableCell>
                   <TableCell align="center">
                     <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
@@ -421,13 +454,13 @@ export default function LoansPage() {
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title={loan.status === 'completed' ? "Préstamo completado" : "Eliminar"}>
-                      <span>
-                        <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: loan })} disabled={loan.status === 'completed'}>
+                    {loan.status === 'pending' && (
+                      <Tooltip title="Eliminar">
+                        <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: loan })}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
-                      </span>
-                    </Tooltip>
+                      </Tooltip>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -540,28 +573,40 @@ export default function LoansPage() {
               placeholder="Ej: Para reparación de vehículo..."
             />
 
-            {approvingLoan && (
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={form.mark_as_paid}
-                    onChange={(e) => setForm({ ...form, mark_as_paid: e.target.checked })}
-                  />
-                }
-                label="Ya se le entregó el préstamo al empleado"
-              />
-            )}
-            {approvingLoan && !form.mark_as_paid && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={form.mark_as_paid}
+                  onChange={(e) => setForm({ ...form, mark_as_paid: e.target.checked })}
+                />
+              }
+              label="Ya se le entregó el préstamo al empleado"
+            />
+            {!form.mark_as_paid && (
               <Alert severity="info">
                 El préstamo quedará como &quot;Aprobado — pend. de pago&quot;. Cuando se le entregue el dinero, marcalo como pagado desde la tabla.
               </Alert>
+            )}
+            {isProofRequired && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>Comprobante de Pago *</Typography>
+                <Button variant="outlined" component="label" fullWidth color={proofFile ? 'success' : 'primary'}>
+                  {proofFile ? proofFile.name : 'Seleccionar Archivo (Requerido)'}
+                  <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setProofFile(e.target.files?.[0] || null)} />
+                </Button>
+              </Box>
             )}
 
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained" color={approvingLoan ? 'success' : 'primary'}>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            color={approvingLoan ? 'success' : 'primary'}
+            disabled={isProofRequired && !proofFile}
+          >
             {approvingLoan ? 'Aprobar Préstamo' : 'Registrar Préstamo'}
           </Button>
         </DialogActions>
@@ -596,6 +641,7 @@ export default function LoansPage() {
                 </Typography>
               )}
               {detailLoan.paid_at && renderPaymentMethodChip(detailLoan.payment_method)}
+              {detailLoan.paid_at && renderProofLink(detailLoan)}
             </Box>
           )}
         </DialogTitle>
@@ -742,11 +788,25 @@ export default function LoansPage() {
               <option value="transferencia">Transferencia bancaria</option>
               <option value="efectivo">Efectivo</option>
             </TextField>
+            {isMarkPaidProofRequired && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>Comprobante de Pago *</Typography>
+                <Button variant="outlined" component="label" fullWidth color={markPaidProofFile ? 'success' : 'primary'}>
+                  {markPaidProofFile ? markPaidProofFile.name : 'Seleccionar Archivo (Requerido)'}
+                  <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setMarkPaidProofFile(e.target.files?.[0] || null)} />
+                </Button>
+              </Box>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setMarkPaidTarget(null)}>Cancelar</Button>
-          <Button onClick={handleConfirmMarkPaid} variant="contained" color="success" disabled={processing}>
+          <Button
+            onClick={handleConfirmMarkPaid}
+            variant="contained"
+            color="success"
+            disabled={processing || (isMarkPaidProofRequired && !markPaidProofFile)}
+          >
             {processing ? 'Confirmando...' : 'Confirmar Pago'}
           </Button>
         </DialogActions>

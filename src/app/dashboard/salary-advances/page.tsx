@@ -17,7 +17,8 @@ import {
   Add as AddIcon, Refresh as RefreshIcon,
   LocalAtm as CashIcon, AccountBalance as BankIcon,
   CheckCircle as ApproveIcon, Cancel as RejectIcon,
-  WarningAmber as ConflictIcon, Payments as PaidIcon
+  WarningAmber as ConflictIcon, Payments as PaidIcon,
+  AttachFile as ProofIcon, UploadFile as UploadProofIcon
 } from '@mui/icons-material';
 import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService } from '../../../utils/api';
 
@@ -43,22 +44,28 @@ export default function SalaryAdvancesPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'discounted'>('all');
 
   const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
-  const [form, setForm] = useState<{ amount: number | null; date: string; notes: string; payment_method: 'efectivo' | 'transferencia' }>({
+  const [form, setForm] = useState<{ amount: number | null; date: string; notes: string; payment_method: 'efectivo' | 'transferencia'; mark_as_paid: boolean }>({
     amount: null,
     date: new Date().toISOString().split('T')[0],
     notes: '',
-    payment_method: 'transferencia'
+    payment_method: 'transferencia',
+    mark_as_paid: true,
   });
+  const [createProofFile, setCreateProofFile] = useState<File | null>(null);
 
   // Aprobación / rechazo
   const [approveTarget, setApproveTarget] = useState<SalaryAdvance | null>(null);
   const [approveAmount, setApproveAmount] = useState<number | null>(null);
   const [approvePaymentMethod, setApprovePaymentMethod] = useState<'efectivo' | 'transferencia'>('transferencia');
   const [approveMarkAsPaid, setApproveMarkAsPaid] = useState(true);
+  const [approveProofFile, setApproveProofFile] = useState<File | null>(null);
   const [rejectTarget, setRejectTarget] = useState<SalaryAdvance | null>(null);
   const [rejectNotes, setRejectNotes] = useState('');
   const [markPaidTarget, setMarkPaidTarget] = useState<SalaryAdvance | null>(null);
   const [markPaidMethod, setMarkPaidMethod] = useState<'efectivo' | 'transferencia'>('transferencia');
+  const [markPaidProofFile, setMarkPaidProofFile] = useState<File | null>(null);
+  const [uploadProofTarget, setUploadProofTarget] = useState<SalaryAdvance | null>(null);
+  const [uploadProofFile, setUploadProofFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const loadData = async () => {
@@ -85,14 +92,22 @@ export default function SalaryAdvancesPage() {
       amount: null,
       date: new Date().toISOString().split('T')[0],
       notes: '',
-      payment_method: 'transferencia'
+      payment_method: 'transferencia',
+      mark_as_paid: true,
     });
+    setCreateProofFile(null);
     setOpenDialog(true);
   };
+
+  const isCreateProofRequired = form.payment_method === 'transferencia' && form.mark_as_paid && selectedEmployees.length <= 1;
 
   const handleSubmit = async () => {
     if (selectedEmployees.length === 0 || !form.amount || !form.date) {
       setError('Campos obligatorios');
+      return;
+    }
+    if (isCreateProofRequired && !createProofFile) {
+      setError('El comprobante de pago es obligatorio para transferencias.');
       return;
     }
     try {
@@ -101,8 +116,9 @@ export default function SalaryAdvancesPage() {
         amount: form.amount!,
         date: form.date,
         payment_method: form.payment_method,
-        notes: form.notes
-      });
+        notes: form.notes,
+        mark_as_paid: form.mark_as_paid,
+      }, createProofFile);
       setSuccess(selectedEmployees.length > 1 ? 'Adelantos registrados en lote' : 'Adelanto registrado');
       setOpenDialog(false);
       loadData();
@@ -116,17 +132,24 @@ export default function SalaryAdvancesPage() {
     setApproveAmount(Number(advance.requested_amount ?? advance.amount));
     setApprovePaymentMethod(advance.payment_method || 'transferencia');
     setApproveMarkAsPaid(true);
+    setApproveProofFile(null);
   };
+
+  const isApproveProofRequired = approveMarkAsPaid && approvePaymentMethod === 'transferencia';
 
   const handleConfirmApprove = async () => {
     if (!approveTarget || !approveAmount) return;
+    if (isApproveProofRequired && !approveProofFile) {
+      setError('El comprobante de pago es obligatorio para transferencias.');
+      return;
+    }
     setProcessing(true);
     try {
       await SalaryAdvanceService.approve(approveTarget.id, {
         amount: approveAmount,
         payment_method: approvePaymentMethod,
         mark_as_paid: approveMarkAsPaid,
-      });
+      }, approveProofFile);
       setSuccess(approveMarkAsPaid ? 'Adelanto aprobado y marcado como pagado' : 'Adelanto aprobado — queda pendiente de pago');
       setApproveTarget(null);
       loadData();
@@ -140,18 +163,45 @@ export default function SalaryAdvancesPage() {
   const handleOpenMarkPaid = (advance: SalaryAdvance) => {
     setMarkPaidTarget(advance);
     setMarkPaidMethod(advance.payment_method || 'transferencia');
+    setMarkPaidProofFile(null);
   };
+
+  const isMarkPaidProofRequired = markPaidMethod === 'transferencia';
 
   const handleConfirmMarkPaid = async () => {
     if (!markPaidTarget) return;
+    if (isMarkPaidProofRequired && !markPaidProofFile) {
+      setError('El comprobante de pago es obligatorio para transferencias.');
+      return;
+    }
     setProcessing(true);
     try {
-      await SalaryAdvanceService.markAsPaid(markPaidTarget.id, { payment_method: markPaidMethod });
+      await SalaryAdvanceService.markAsPaid(markPaidTarget.id, { payment_method: markPaidMethod }, markPaidProofFile);
       setSuccess('Adelanto marcado como pagado');
       setMarkPaidTarget(null);
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al marcar como pagado');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleOpenUploadProof = (advance: SalaryAdvance) => {
+    setUploadProofTarget(advance);
+    setUploadProofFile(null);
+  };
+
+  const handleConfirmUploadProof = async () => {
+    if (!uploadProofTarget || !uploadProofFile) return;
+    setProcessing(true);
+    try {
+      await SalaryAdvanceService.uploadPaymentProof(uploadProofTarget.id, uploadProofFile);
+      setSuccess('Comprobante cargado correctamente');
+      setUploadProofTarget(null);
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar el comprobante');
     } finally {
       setProcessing(false);
     }
@@ -178,27 +228,19 @@ export default function SalaryAdvancesPage() {
 
   const renderPaymentMethodChip = (method?: 'efectivo' | 'transferencia' | null) => {
     if (!method) {
-      return <Chip label="Sin definir" size="small" variant="outlined" />;
+      return <Typography variant="body2" color="text.secondary">—</Typography>;
     }
     if (method === 'efectivo') {
       return (
-        <Chip
-          label="Efectivo"
-          size="small"
-          color="warning"
-          variant="outlined"
-          icon={<CashIcon sx={{ fontSize: '0.875rem !important' }} />}
-        />
+        <Tooltip title="Efectivo">
+          <CashIcon fontSize="small" sx={{ color: 'warning.main', display: 'block' }} />
+        </Tooltip>
       );
     }
     return (
-      <Chip
-        label="Transferencia"
-        size="small"
-        color="info"
-        variant="outlined"
-        icon={<BankIcon sx={{ fontSize: '0.875rem !important' }} />}
-      />
+      <Tooltip title="Transferencia bancaria">
+        <BankIcon fontSize="small" sx={{ color: 'info.main', display: 'block' }} />
+      </Tooltip>
     );
   };
 
@@ -311,6 +353,18 @@ export default function SalaryAdvancesPage() {
                     <Button size="small" variant="contained" color="info" startIcon={<PaidIcon />} onClick={() => handleOpenMarkPaid(a)} disabled={processing}>Marcar como pagado</Button>
                   </Box>
                 )}
+                {a.paid_at && !a.payment_proof_url && (
+                  <Box mt={1.5}>
+                    <Button size="small" variant="outlined" startIcon={<UploadProofIcon />} onClick={() => handleOpenUploadProof(a)} disabled={processing}>Cargar comprobante</Button>
+                  </Box>
+                )}
+                {a.payment_proof_url && (
+                  <Box mt={1.5}>
+                    <Button size="small" variant="outlined" startIcon={<ProofIcon />} component="a" href={a.payment_proof_url} target="_blank" rel="noopener noreferrer">
+                      Ver comprobante
+                    </Button>
+                  </Box>
+                )}
               </Paper>
             ))}
           </Stack>
@@ -378,6 +432,22 @@ export default function SalaryAdvancesPage() {
                           </Tooltip>
                         </Box>
                       )}
+                      {a.paid_at && !a.payment_proof_url && (
+                        <Box display="flex" gap={0.5} justifyContent="flex-end">
+                          <Tooltip title="Cargar comprobante">
+                            <IconButton size="small" color="primary" onClick={() => handleOpenUploadProof(a)} disabled={processing}><UploadProofIcon fontSize="small" /></IconButton>
+                          </Tooltip>
+                        </Box>
+                      )}
+                      {a.payment_proof_url && (
+                        <Box display="flex" gap={0.5} justifyContent="flex-end">
+                          <Tooltip title="Ver comprobante">
+                            <IconButton size="small" color="primary" component="a" href={a.payment_proof_url} target="_blank" rel="noopener noreferrer">
+                              <ProofIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -419,12 +489,46 @@ export default function SalaryAdvancesPage() {
               <option value="transferencia">Transferencia bancaria</option>
               <option value="efectivo">Efectivo</option>
             </TextField>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={form.mark_as_paid}
+                  onChange={(e) => setForm({ ...form, mark_as_paid: e.target.checked })}
+                />
+              }
+              label="Ya se pagó en este momento"
+            />
+            {!form.mark_as_paid && (
+              <Alert severity="info">
+                Quedará como &quot;Pendiente de pago&quot;. Cuando se le pague, marcalo como pagado desde la tabla.
+              </Alert>
+            )}
+            {form.payment_method === 'transferencia' && form.mark_as_paid && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Comprobante de Pago {selectedEmployees.length > 1 ? '(opcional para carga en lote)' : '*'}
+                </Typography>
+                <Button variant="outlined" component="label" fullWidth color={createProofFile ? 'success' : 'primary'}>
+                  {createProofFile ? createProofFile.name : 'Seleccionar Archivo'}
+                  <input type="file" hidden accept="image/*,.pdf,.xls,.xlsx,.csv" onChange={(e) => setCreateProofFile(e.target.files?.[0] || null)} />
+                </Button>
+                {selectedEmployees.length > 1 && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    Podés subir un único archivo para todo el lote (imagen, PDF o Excel con el detalle de las transferencias).
+                  </Typography>
+                )}
+              </Box>
+            )}
             <TextField label="Notas" fullWidth multiline rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={selectedEmployees.length === 0 || !form.amount || !form.date}>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={selectedEmployees.length === 0 || !form.amount || !form.date || (isCreateProofRequired && !createProofFile)}
+          >
             Registrar {selectedEmployees.length > 1 ? `(${selectedEmployees.length})` : ''}
           </Button>
         </DialogActions>
@@ -468,11 +572,25 @@ export default function SalaryAdvancesPage() {
                 El adelanto quedará como &quot;Pendiente de pago&quot;. Cuando se le pague, marcalo como pagado desde la tabla.
               </Alert>
             )}
+            {isApproveProofRequired && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>Comprobante de Pago *</Typography>
+                <Button variant="outlined" component="label" fullWidth color={approveProofFile ? 'success' : 'primary'}>
+                  {approveProofFile ? approveProofFile.name : 'Seleccionar Archivo (Requerido)'}
+                  <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setApproveProofFile(e.target.files?.[0] || null)} />
+                </Button>
+              </Box>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setApproveTarget(null)}>Cancelar</Button>
-          <Button onClick={handleConfirmApprove} variant="contained" color="success" disabled={!approveAmount || processing}>
+          <Button
+            onClick={handleConfirmApprove}
+            variant="contained"
+            color="success"
+            disabled={!approveAmount || processing || (isApproveProofRequired && !approveProofFile)}
+          >
             {processing ? 'Aprobando...' : 'Aprobar'}
           </Button>
         </DialogActions>
@@ -517,12 +635,51 @@ export default function SalaryAdvancesPage() {
               <option value="transferencia">Transferencia bancaria</option>
               <option value="efectivo">Efectivo</option>
             </TextField>
+            {isMarkPaidProofRequired && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>Comprobante de Pago *</Typography>
+                <Button variant="outlined" component="label" fullWidth color={markPaidProofFile ? 'success' : 'primary'}>
+                  {markPaidProofFile ? markPaidProofFile.name : 'Seleccionar Archivo (Requerido)'}
+                  <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setMarkPaidProofFile(e.target.files?.[0] || null)} />
+                </Button>
+              </Box>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setMarkPaidTarget(null)}>Cancelar</Button>
-          <Button onClick={handleConfirmMarkPaid} variant="contained" color="info" disabled={processing}>
+          <Button
+            onClick={handleConfirmMarkPaid}
+            variant="contained"
+            color="info"
+            disabled={processing || (isMarkPaidProofRequired && !markPaidProofFile)}
+          >
             {processing ? 'Confirmando...' : 'Confirmar Pago'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Cargar comprobante de pago */}
+      <Dialog open={!!uploadProofTarget} onClose={() => setUploadProofTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Cargar Comprobante de Pago</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              Adelanto de <strong>{uploadProofTarget?.employee?.lastname}, {uploadProofTarget?.employee?.name}</strong> por <strong>{uploadProofTarget ? formatCurrency(Number(uploadProofTarget.amount)) : ''}</strong>.
+            </Typography>
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>Comprobante *</Typography>
+              <Button variant="outlined" component="label" fullWidth color={uploadProofFile ? 'success' : 'primary'}>
+                {uploadProofFile ? uploadProofFile.name : 'Seleccionar Archivo (Requerido)'}
+                <input type="file" hidden accept="image/*,.pdf,.xls,.xlsx,.csv" onChange={(e) => setUploadProofFile(e.target.files?.[0] || null)} />
+              </Button>
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUploadProofTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmUploadProof} variant="contained" disabled={processing || !uploadProofFile}>
+            {processing ? 'Guardando...' : 'Guardar'}
           </Button>
         </DialogActions>
       </Dialog>

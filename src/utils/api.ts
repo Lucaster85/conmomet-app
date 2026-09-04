@@ -2111,6 +2111,9 @@ export interface SalaryAdvance {
   approved_at?: string | null;
   paid_by?: number;
   paid_at?: string | null;
+  payment_proof_url?: string | null;
+  payment_proof_key?: string | null;
+  payment_proof_name?: string | null;
   conflict_warning?: string | null;
   employee?: Employee;
   payPeriod?: PayPeriod;
@@ -2129,13 +2132,21 @@ export class SalaryAdvanceService {
     return (await response.json()).data || [];
   }
 
-  static async approve(id: number, data?: { amount?: number; payment_method?: 'efectivo' | 'transferencia'; pay_period_id?: number; mark_as_paid?: boolean }): Promise<SalaryAdvance> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances/${id}/approve`, {
+  static async approve(id: number, data?: { amount?: number; payment_method?: 'efectivo' | 'transferencia'; pay_period_id?: number; mark_as_paid?: boolean }, file?: File | null): Promise<SalaryAdvance> {
+    const formData = new FormData();
+    if (data?.amount !== undefined) formData.append('amount', data.amount.toString());
+    if (data?.payment_method) formData.append('payment_method', data.payment_method);
+    if (data?.pay_period_id !== undefined) formData.append('pay_period_id', data.pay_period_id.toString());
+    if (data?.mark_as_paid !== undefined) formData.append('mark_as_paid', data.mark_as_paid.toString());
+    if (file) formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/salary-advances/${id}/approve`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data || {}),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
     });
-    if (!response.ok) throw new Error('Error al aprobar adelanto');
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al aprobar adelanto');
     return (await response.json()).data;
   }
 
@@ -2149,13 +2160,32 @@ export class SalaryAdvanceService {
     return (await response.json()).data;
   }
 
-  static async markAsPaid(id: number, data: { payment_method: 'efectivo' | 'transferencia' }): Promise<SalaryAdvance> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances/${id}/mark-paid`, {
+  static async markAsPaid(id: number, data: { payment_method: 'efectivo' | 'transferencia' }, file?: File | null): Promise<SalaryAdvance> {
+    const formData = new FormData();
+    formData.append('payment_method', data.payment_method);
+    if (file) formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/salary-advances/${id}/mark-paid`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
     });
-    if (!response.ok) throw new Error('Error al marcar el adelanto como pagado');
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al marcar el adelanto como pagado');
+    return (await response.json()).data;
+  }
+
+  static async uploadPaymentProof(id: number, file: File): Promise<SalaryAdvance> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/salary-advances/${id}/payment-proof`, {
+      method: 'PUT',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al cargar el comprobante');
     return (await response.json()).data;
   }
 
@@ -2166,12 +2196,25 @@ export class SalaryAdvanceService {
     date: string;
     payment_method: 'efectivo' | 'transferencia';
     notes?: string;
-  }): Promise<SalaryAdvance | SalaryAdvance[]> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances`, {
+    mark_as_paid?: boolean;
+  }, file?: File | null): Promise<SalaryAdvance | SalaryAdvance[]> {
+    const formData = new FormData();
+    if (payload.employee_id !== undefined) formData.append('employee_id', payload.employee_id.toString());
+    if (payload.employee_ids) formData.append('employee_ids', JSON.stringify(payload.employee_ids));
+    formData.append('amount', payload.amount.toString());
+    formData.append('date', payload.date);
+    formData.append('payment_method', payload.payment_method);
+    if (payload.notes) formData.append('notes', payload.notes);
+    if (payload.mark_as_paid !== undefined) formData.append('mark_as_paid', payload.mark_as_paid.toString());
+    if (file) formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/salary-advances`, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
     });
-    if (!response.ok) throw new Error('Error al crear adelanto(s)');
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al crear adelanto(s)');
     return (await response.json()).data;
   }
 }
@@ -2888,6 +2931,9 @@ export interface Loan {
   approved_at?: string | null;
   paid_by?: number;
   paid_at?: string | null;
+  payment_proof_url?: string | null;
+  payment_proof_key?: string | null;
+  payment_proof_name?: string | null;
   conflict_warning?: string | null;
   created_by?: number;
   updated_by?: number;
@@ -2934,6 +2980,7 @@ export interface CreateLoanData {
   exchange_rate_at_origin?: number;
   payment_method?: 'efectivo' | 'transferencia';
   notes?: string;
+  mark_as_paid?: boolean;
 }
 
 export interface CreateLoanPaymentData {
@@ -2966,13 +3013,25 @@ export class LoanService {
     return response.json();
   }
 
-  static async create(data: CreateLoanData): Promise<Loan> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans`, {
+  static async create(data: CreateLoanData, file?: File | null): Promise<Loan> {
+    const formData = new FormData();
+    formData.append('employee_id', data.employee_id.toString());
+    formData.append('currency', data.currency);
+    formData.append('start_date', data.start_date);
+    formData.append('amount', data.amount.toString());
+    if (data.exchange_rate_at_origin !== undefined) formData.append('exchange_rate_at_origin', data.exchange_rate_at_origin.toString());
+    if (data.payment_method) formData.append('payment_method', data.payment_method);
+    if (data.notes) formData.append('notes', data.notes);
+    if (data.mark_as_paid !== undefined) formData.append('mark_as_paid', data.mark_as_paid.toString());
+    if (file) formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/loans`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
     });
-    if (!response.ok) throw new Error('Error al crear préstamo');
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Error al crear préstamo');
     return response.json();
   }
 
@@ -3001,23 +3060,39 @@ export class LoanService {
     notes?: string;
     start_date?: string;
     mark_as_paid?: boolean;
-  }): Promise<Loan> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${id}/approve`, {
+  }, file?: File | null): Promise<Loan> {
+    const formData = new FormData();
+    if (data?.amount !== undefined) formData.append('amount', data.amount.toString());
+    if (data?.currency) formData.append('currency', data.currency);
+    if (data?.exchange_rate_at_origin !== undefined) formData.append('exchange_rate_at_origin', data.exchange_rate_at_origin.toString());
+    if (data?.payment_method) formData.append('payment_method', data.payment_method);
+    if (data?.notes !== undefined) formData.append('notes', data.notes);
+    if (data?.start_date) formData.append('start_date', data.start_date);
+    if (data?.mark_as_paid !== undefined) formData.append('mark_as_paid', data.mark_as_paid.toString());
+    if (file) formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/loans/${id}/approve`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data || {}),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
     });
-    if (!response.ok) throw new Error('Error al aprobar préstamo');
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Error al aprobar préstamo');
     return response.json();
   }
 
-  static async markAsPaid(id: number, data: { payment_method: 'efectivo' | 'transferencia' }): Promise<Loan> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${id}/mark-paid`, {
+  static async markAsPaid(id: number, data: { payment_method: 'efectivo' | 'transferencia' }, file?: File | null): Promise<Loan> {
+    const formData = new FormData();
+    formData.append('payment_method', data.payment_method);
+    if (file) formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/loans/${id}/mark-paid`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
     });
-    if (!response.ok) throw new Error('Error al marcar el préstamo como pagado');
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Error al marcar el préstamo como pagado');
     return response.json();
   }
 
