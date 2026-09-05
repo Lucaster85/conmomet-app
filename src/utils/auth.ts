@@ -14,6 +14,39 @@ export interface UserData {
   [key: string]: unknown;
 }
 
+interface RawAuthUser {
+  id: number;
+  name: string;
+  lastname: string;
+  email: string;
+  role?: { name?: string; permissions?: { name: string }[] };
+  permissions?: { name: string }[];
+  employee_id?: number | null;
+  has_dashboard_access?: boolean;
+}
+
+// Aplana `role`+`permissions` de la respuesta cruda del backend (POST /auth/login o
+// POST /public/invitations/:token/accept, que devuelve exactamente la misma forma) en el
+// UserData que se persiste en TokenManager.
+export function buildCleanUser(user: RawAuthUser): UserData {
+  const rolePermissions = (user.role?.permissions || []).map((p) => p.name);
+  const userPermissions = (user.permissions || []).map((p) => p.name);
+  const allPermissions = [...new Set([...rolePermissions, ...userPermissions])];
+
+  return {
+    id: user.id,
+    name: user.name,
+    lastname: user.lastname,
+    email: user.email,
+    role: user.role?.name || 'Usuario',
+    roleName: user.role?.name || 'Usuario',
+    permissions: allPermissions,
+    fullName: `${user.name} ${user.lastname}`.trim(),
+    employee_id: user.employee_id || null,
+    has_dashboard_access: user.has_dashboard_access !== undefined ? user.has_dashboard_access : true,
+  };
+}
+
 export class TokenManager {
   private static readonly TOKEN_KEY = 'conmomet_token';
   private static readonly USER_KEY = 'conmomet_user';
@@ -208,24 +241,8 @@ export function useAuth() {
       }
       
       // Limpiar y estructurar los datos del usuario para evitar problemas con objetos complejos
-      // Merge role permissions + user individual permissions into a flat, deduplicated array of names
-      const rolePermissions = (data.user.role?.permissions || []).map((p: { name: string }) => p.name);
-      const userPermissions = (data.user.permissions || []).map((p: { name: string }) => p.name);
-      const allPermissions = [...new Set([...rolePermissions, ...userPermissions])];
+      const cleanUser = buildCleanUser(data.user);
 
-      const cleanUser = {
-        id: data.user.id,
-        name: data.user.name,
-        lastname: data.user.lastname,
-        email: data.user.email,
-        role: data.user.role?.name || 'Usuario',
-        roleName: data.user.role?.name || 'Usuario',
-        permissions: allPermissions,
-        fullName: `${data.user.name} ${data.user.lastname}`.trim(),
-        employee_id: data.user.employee_id || null,
-        has_dashboard_access: data.user.has_dashboard_access !== undefined ? data.user.has_dashboard_access : true,
-      };
-      
       // Guardar token y datos del usuario limpios
       TokenManager.saveToken(data.token);
       TokenManager.saveUser(cleanUser);

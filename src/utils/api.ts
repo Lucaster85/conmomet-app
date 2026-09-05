@@ -152,6 +152,17 @@ export class UserService {
       throw new Error(error.error || 'Error al eliminar usuario');
     }
   }
+
+  static async changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al cambiar la contraseña');
+    }
+  }
 }
 
 // Servicio para roles
@@ -875,6 +886,72 @@ export class EmployeeService {
       const error = await response.json();
       throw new Error(error.error || 'Error al eliminar empleado');
     }
+  }
+}
+
+// Employee Invitation Service (admin, autenticado)
+export interface EmployeeInvitationStatus {
+  id: number;
+  status: 'pending' | 'expired';
+  channel: 'email' | 'whatsapp';
+  expires_at: string;
+  createdAt: string;
+}
+
+export interface InviteResult {
+  invitation: { id: number; expires_at: string; channel: 'email' | 'whatsapp' };
+  invite_link: string;
+  email_sent: boolean;
+  test_mode: boolean;
+  contact_used: string;
+  whatsapp_contact: string | null;
+}
+
+export class EmployeeInvitationService {
+  static async getStatus(employeeId: number): Promise<EmployeeInvitationStatus | null> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${employeeId}/invitation`);
+    if (!response.ok) throw new Error('Error al consultar la invitación');
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async invite(employeeId: number, payload: { channel: 'email' | 'whatsapp'; contact: string }): Promise<InviteResult> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${employeeId}/invite`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al invitar al empleado');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+}
+
+// Public Invitation Service (sin sesión — usado por el formulario público de aceptación)
+export class PublicInvitationService {
+  static async validate(token: string): Promise<{ employeeName: string; employeeLastname: string }> {
+    const response = await fetch(`${API_BASE_URL}/public/invitations/${token}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Invitación inválida.');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async accept(token: string, password: string) {
+    const response = await fetch(`${API_BASE_URL}/public/invitations/${token}/accept`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'No se pudo crear tu usuario.');
+    }
+    return response.json();
   }
 }
 

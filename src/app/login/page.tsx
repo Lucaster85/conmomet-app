@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { VisibilityOutlined as Visibility, VisibilityOffOutlined as VisibilityOff, ArrowBackOutlined as ArrowBack } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth, TokenManager } from '../../utils/auth';
 
 export default function LoginPage() {
@@ -25,6 +26,13 @@ export default function LoginPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('password_changed') === 'true') {
+      setPasswordChanged(true);
+    }
+  }, []);
 
   // Verificar si ya está autenticado
   useEffect(() => {
@@ -112,9 +120,16 @@ export default function LoginPage() {
 
           {/* Header */}
           <Box textAlign="center" sx={{ mb: 4, mt: 2 }}>
-            <Typography variant="h4" component="h1" sx={{ mb: 1, fontWeight: 'bold', color: 'primary.main' }}>
-              Conmomet
-            </Typography>
+            <Box display="flex" justifyContent="center" sx={{ mb: 1 }}>
+              <Image
+                src="/img/logos/logo-conmomet-ROJO.png"
+                alt="Conmomet S.A."
+                width={192}
+                height={58}
+                style={{ objectFit: 'contain', width: 'auto', maxHeight: 58 }}
+                priority
+              />
+            </Box>
             <Typography variant="h6" color="text.secondary">
               Iniciar Sesión
             </Typography>
@@ -122,6 +137,12 @@ export default function LoginPage() {
               Accede a tu cuenta para continuar
             </Typography>
           </Box>
+
+          {passwordChanged && !error && (
+            <Alert severity="success" sx={{ mb: 3 }}>
+              Tu contraseña se actualizó correctamente. Iniciá sesión con la nueva.
+            </Alert>
+          )}
 
           {/* Alerta de error */}
           {error && (
@@ -184,20 +205,16 @@ export default function LoginPage() {
                 py: 1.5,
                 fontSize: '1.1rem',
                 fontWeight: 'bold',
+                background: 'linear-gradient(135deg, #60a5fa 0%, #1d4ed8 100%)',
+                boxShadow: '0 2px 8px rgba(29, 78, 216, 0.35)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
+                  boxShadow: '0 4px 12px rgba(29, 78, 216, 0.45)',
+                },
               }}
             >
               {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </Button>
-
-            {/* Enlaces adicionales */}
-            <Box textAlign="center" sx={{ mt: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                ¿Olvidaste tu contraseña?{' '}
-                <Button variant="text" size="small" sx={{ textTransform: 'none', p: 0, minWidth: 'auto' }}>
-                  Recuperar contraseña
-                </Button>
-              </Typography>
-            </Box>
           </Box>
         </Paper>
       </Container>

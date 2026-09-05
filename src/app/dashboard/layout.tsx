@@ -53,10 +53,12 @@ import {
   ReceiptLongOutlined as ReceiptLongIcon,
   RequestQuoteOutlined as RequestQuoteIcon,
   Inventory2Outlined as InventoryIcon,
+  LockOutlined as LockIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import ChangePasswordDialog from '../../components/ChangePasswordDialog';
 
 const drawerWidth = 280;
 
@@ -170,6 +172,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
     menuGroups.forEach((g) => {
@@ -440,12 +443,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <ListItemText>Mi Portal</ListItemText>
             </MenuItem>
           )}
-          {/* <MenuItem onClick={handleProfileMenuClose}>
+          <MenuItem onClick={() => { handleProfileMenuClose(); setChangePasswordOpen(true); }}>
             <ListItemIcon>
-            <SettingsIcon fontSize="small" />
+              <LockIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Configuración</ListItemText>
-            </MenuItem> */}
+            <ListItemText>Cambiar contraseña</ListItemText>
+          </MenuItem>
           <Divider />
           <MenuItem onClick={handleLogout}>
             <ListItemIcon>
@@ -454,6 +457,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <ListItemText>Cerrar Sesión</ListItemText>
           </MenuItem>
         </Menu>
+
+        <ChangePasswordDialog open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
 
         {/* Drawer */}
         <Box

@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import {
   LogoutOutlined as LogoutIcon,
+  LockOutlined as LockIcon,
   AccountCircleOutlined as AccountCircle,
   BadgeOutlined as BadgeIcon,
   ArticleOutlined as ArticleIcon,
@@ -38,6 +39,7 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import ChangePasswordDialog from '../../components/ChangePasswordDialog';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -45,6 +47,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   // Redirección si no tiene employee_id
   useEffect(() => {
@@ -210,12 +213,18 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <ListItemIcon><AccountCircle fontSize="small" /></ListItemIcon>
             <ListItemText>Mi Perfil</ListItemText>
           </MenuItem>
+          <MenuItem onClick={() => { handleProfileMenuClose(); setChangePasswordOpen(true); }}>
+            <ListItemIcon><LockIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>Cambiar contraseña</ListItemText>
+          </MenuItem>
           <Divider />
           <MenuItem onClick={handleLogout}>
             <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
             <ListItemText>Cerrar Sesión</ListItemText>
           </MenuItem>
         </Menu>
+
+        <ChangePasswordDialog open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
 
         <Drawer
           anchor="left"

@@ -34,6 +34,8 @@ import EventBusyIcon from '@mui/icons-material/EventBusyOutlined';
 import SearchIcon from '@mui/icons-material/SearchOutlined';
 import ThumbUpIcon from '@mui/icons-material/ThumbUpOutlined';
 import ThumbDownIcon from '@mui/icons-material/ThumbDownOutlined';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import ContentCopyIcon from '@mui/icons-material/ContentCopyOutlined';
 import dayjs from 'dayjs';
 
 import {
@@ -42,6 +44,7 @@ import {
   EmployeeRateService, EmployeeRate, PayrollConceptService, PayrollConcept,
   CategoryService, Category,
   DocumentCategoryService, DocumentCategory, PlantService, Plant,
+  EmployeeInvitationService, EmployeeInvitationStatus, InviteResult,
 } from '@/utils/api';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
@@ -128,6 +131,13 @@ export default function EmployeeDetailPage() {
   });
   const [categories, setCategories] = useState<Category[]>([]);
 
+  // Portal invitation state
+  const [invitationStatus, setInvitationStatus] = useState<EmployeeInvitationStatus | null>(null);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteContact, setInviteContact] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [inviteResult, setInviteResult] = useState<InviteResult | null>(null);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -166,6 +176,52 @@ export default function EmployeeDetailPage() {
       }).finally(() => setLoadingRates(false));
     }
   }, [tabValue, ratesLoaded, employeeId]);
+
+  // Portal invitation: solo consulta si el empleado no tiene ya un usuario vinculado.
+  useEffect(() => {
+    if (employee && !employee.user) {
+      EmployeeInvitationService.getStatus(employee.id)
+        .then(setInvitationStatus)
+        .catch(() => setInvitationStatus(null));
+    }
+  }, [employee]);
+
+  const buildWhatsAppLink = (phone: string, link: string, name: string): string => {
+    const digits = phone.replace(/\D/g, '');
+    const message = `Hola ${name}, te invitamos a crear tu usuario del Portal Conmomet. Ingresá acá para crear tu contraseña: ${link}`;
+    return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  };
+
+  // El envío por email queda oculto hasta tener un servicio de mail propio del cliente
+  // (el de prueba no está funcionando) — por ahora la invitación solo sale por WhatsApp.
+  const handleOpenInviteDialog = () => {
+    setInviteContact(employee?.phone || '');
+    setInviteResult(null);
+    setInviteDialogOpen(true);
+  };
+
+  const handleSendInvite = async () => {
+    if (!employee || !inviteContact.trim()) return;
+    setInviting(true);
+    try {
+      const result = await EmployeeInvitationService.invite(employee.id, { channel: 'whatsapp', contact: inviteContact.trim() });
+      setInviteResult(result);
+      const status = await EmployeeInvitationService.getStatus(employee.id);
+      setInvitationStatus(status);
+      window.open(buildWhatsAppLink(result.contact_used, result.invite_link, employee.name), '_blank');
+      setSuccess('Invitación generada. Se abrió WhatsApp para enviarla.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al invitar al empleado.');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleCopyInviteLink = () => {
+    if (!inviteResult) return;
+    navigator.clipboard.writeText(inviteResult.invite_link);
+    setSuccess('Link copiado al portapapeles.');
+  };
 
   const handleUploadSubmit = async () => {
     if (!form.title) return setError('El título es obligatorio');
@@ -548,12 +604,56 @@ export default function EmployeeDetailPage() {
                         </Box>
                       </Stack>
                     ) : (
-                      <Box>
-                        <Chip label="Sin acceso al portal" color="default" size="small" />
-                        <Typography variant="caption" color="text.secondary" display="block" mt={1}>
-                          El empleado no tiene usuario vinculado.
-                        </Typography>
-                      </Box>
+                      <Stack spacing={1.5}>
+                        {invitationStatus?.status === 'pending' && (
+                          <Chip
+                            label={`Invitación pendiente por ${invitationStatus.channel === 'email' ? 'Email' : 'WhatsApp'} (vence ${dayjs(invitationStatus.expires_at).format('DD/MM/YYYY')})`}
+                            color="warning"
+                            size="small"
+                          />
+                        )}
+                        {invitationStatus?.status === 'expired' && (
+                          <Chip label="Invitación expirada" color="default" size="small" />
+                        )}
+                        {!invitationStatus && (
+                          <Typography variant="caption" color="text.secondary">
+                            El empleado no tiene usuario vinculado.
+                          </Typography>
+                        )}
+
+                        <Button size="small" variant="outlined" onClick={handleOpenInviteDialog}>
+                          {invitationStatus ? 'Reenviar invitación' : 'Invitar al portal'}
+                        </Button>
+
+                        {inviteResult && (
+                          <Box>
+                            <TextField size="small" fullWidth value={inviteResult.invite_link} InputProps={{ readOnly: true }} />
+                            <Stack direction="row" spacing={1} mt={1}>
+                              <Button size="small" startIcon={<ContentCopyIcon />} onClick={handleCopyInviteLink}>
+                                Copiar link
+                              </Button>
+                              <Button
+                                size="small"
+                                startIcon={<WhatsAppIcon />}
+                                disabled={!inviteResult.whatsapp_contact}
+                                onClick={() => window.open(buildWhatsAppLink(inviteResult.whatsapp_contact!, inviteResult.invite_link, employee.name), '_blank')}
+                              >
+                                Compartir por WhatsApp
+                              </Button>
+                            </Stack>
+                            {inviteResult.invitation.channel === 'email' && !inviteResult.email_sent && (
+                              <Alert severity="warning" sx={{ mt: 1 }}>
+                                No se pudo enviar el email automático. Compartí el link manualmente.
+                              </Alert>
+                            )}
+                            {inviteResult.test_mode && (
+                              <Alert severity="info" sx={{ mt: 1 }}>
+                                Modo prueba activo: todo envío va a {inviteResult.contact_used} en vez del contacto real del empleado.
+                              </Alert>
+                            )}
+                          </Box>
+                        )}
+                      </Stack>
                     )}
                   </CardContent>
                 </Card>
@@ -1419,6 +1519,33 @@ export default function EmployeeDetailPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setHistoryDialog(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Invitar al portal (por ahora solo WhatsApp — el envío por email queda oculto hasta
+          tener un servicio de mail propio del cliente) */}
+      <Dialog open={inviteDialogOpen} onClose={() => setInviteDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Invitar al Portal por WhatsApp</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Celular de destino"
+              fullWidth
+              value={inviteContact}
+              onChange={(e) => setInviteContact(e.target.value)}
+              helperText="Confirmá que el dato sea correcto antes de enviar"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setInviteDialogOpen(false)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            disabled={inviting || !inviteContact.trim()}
+            onClick={async () => { await handleSendInvite(); setInviteDialogOpen(false); }}
+          >
+            {inviting ? 'Enviando…' : 'Confirmar y enviar'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
