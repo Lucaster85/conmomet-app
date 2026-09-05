@@ -350,127 +350,210 @@ export default function LoansPage() {
         InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
       />
 
-      {/* Desktop Table */}
-      <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-              <TableCell><strong>Fecha</strong></TableCell>
-              <TableCell><strong>Empleado</strong></TableCell>
-              <TableCell align="center"><strong>Moneda</strong></TableCell>
-              <TableCell align="right"><strong>Monto</strong></TableCell>
-              <TableCell align="right"><strong>Cotización</strong></TableCell>
-              <TableCell align="right"><strong>Monto Pesos Orig.</strong></TableCell>
-              <TableCell align="right"><strong>Saldo Pendiente</strong></TableCell>
-              <TableCell align="center"><strong>Método</strong></TableCell>
-              <TableCell align="center"><strong>Estado</strong></TableCell>
-              <TableCell align="center"><strong>Acciones</strong></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
-                  <Typography variant="body2" color="text.secondary">No hay préstamos registrados</Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((loan) => (
-                <TableRow key={loan.id} hover>
-                  <TableCell>
-                    {new Date(loan.start_date).toLocaleDateString('es-AR')}
-                  </TableCell>
-                  <TableCell>
+      {/* Mobile view */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {filtered.length === 0 ? (
+          <Paper sx={{ p: 4, textAlign: 'center' }}>
+            <Typography color="text.secondary">No hay préstamos registrados</Typography>
+          </Paper>
+        ) : (
+          <Stack spacing={2}>
+            {filtered.map((loan) => (
+              <Paper key={loan.id} sx={{ p: 2 }}>
+                <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
+                  <Box>
                     {loan.employee && <Typography fontWeight={600}>{loan.employee.lastname}, {loan.employee.name}</Typography>}
-                    {loan.notes && <Typography variant="caption" color="text.secondary" display="block">{loan.notes}</Typography>}
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip label={loan.currency} size="small" variant="outlined" color={loan.currency === 'USD' ? 'info' : 'default'} />
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                    {formatLoanAmount(loan)}
-                  </TableCell>
-                  <TableCell align="right">
-                    {loan.currency === 'USD' && loan.exchange_rate_at_origin
-                      ? formatCurrency(loan.exchange_rate_at_origin)
-                      : '—'}
-                  </TableCell>
-                  <TableCell align="right" sx={{ color: 'text.secondary' }}>
-                    {loan.currency === 'USD' && loan.amount_ars_at_origin
-                      ? formatCurrency(loan.amount_ars_at_origin)
-                      : '—'}
-                  </TableCell>
-                  <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
-                    {formatLoanBalance(loan)}
-                  </TableCell>
-                  <TableCell align="center">
-                    <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
-                      {renderPaymentMethodChip(loan.payment_method)}
-                      {renderProofLink(loan)}
+                    <Typography variant="caption" color="text.secondary">{new Date(loan.start_date).toLocaleDateString('es-AR')}</Typography>
+                  </Box>
+                  <Chip label={loan.currency} size="small" variant="outlined" color={loan.currency === 'USD' ? 'info' : 'default'} />
+                </Box>
+                {loan.notes && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>{loan.notes}</Typography>}
+
+                <Stack spacing={0.5} sx={{ mt: 1.5 }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">Monto</Typography>
+                    <Typography fontWeight="bold">{formatLoanAmount(loan)}</Typography>
+                  </Box>
+                  {loan.currency === 'USD' && loan.exchange_rate_at_origin && (
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Typography variant="body2" color="text.secondary">Cotización</Typography>
+                      <Typography variant="body2">{formatCurrency(loan.exchange_rate_at_origin)}</Typography>
                     </Box>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
-                      <Chip
-                        label={LOAN_STATUS_LABEL[loan.status]?.label || loan.status}
-                        color={LOAN_STATUS_LABEL[loan.status]?.color || 'default'}
-                        size="small"
-                      />
-                      {loan.conflict_warning && (
-                        <Tooltip title={loan.conflict_warning}>
-                          <ConflictIcon color="warning" fontSize="small" />
-                        </Tooltip>
-                      )}
+                  )}
+                  {loan.currency === 'USD' && loan.amount_ars_at_origin && (
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Typography variant="body2" color="text.secondary">Monto Pesos Orig.</Typography>
+                      <Typography variant="body2" color="text.secondary">{formatCurrency(loan.amount_ars_at_origin)}</Typography>
                     </Box>
-                  </TableCell>
-                  <TableCell align="center">
-                    {loan.status === 'pending' && (
-                      <>
-                        <Tooltip title="Aprobar">
-                          <IconButton size="small" color="success" onClick={() => handleOpenApprove(loan)}>
-                            <ApproveIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Rechazar">
-                          <IconButton size="small" color="error" onClick={() => setRejectTarget(loan)}>
-                            <RejectIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </>
-                    )}
-                    {loan.status === 'approved' && (
-                      <Tooltip title="Marcar como pagado / entregado">
-                        <IconButton size="small" color="success" onClick={() => handleOpenMarkPaid(loan)} disabled={processing}>
-                          <PaidIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                    {loan.status === 'active' && (
-                      <Tooltip title="Aplicar interés del mes">
-                        <IconButton size="small" color="secondary" onClick={() => handleOpenInterest(loan)}>
-                          <InterestIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                    <Tooltip title="Ver Detalle de Movimientos">
-                      <IconButton size="small" color="primary" onClick={() => handleOpenDetail(loan)}>
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
+                  )}
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">Saldo Pendiente</Typography>
+                    <Typography fontWeight="bold" color="error.main">{formatLoanBalance(loan)}</Typography>
+                  </Box>
+                </Stack>
+
+                <Box mt={1.5} display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                  <Chip
+                    label={LOAN_STATUS_LABEL[loan.status]?.label || loan.status}
+                    color={LOAN_STATUS_LABEL[loan.status]?.color || 'default'}
+                    size="small"
+                  />
+                  {loan.conflict_warning && (
+                    <Tooltip title={loan.conflict_warning}>
+                      <ConflictIcon color="warning" fontSize="small" />
                     </Tooltip>
-                    {loan.status === 'pending' && (
-                      <Tooltip title="Eliminar">
-                        <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: loan })}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
+                  )}
+                  {renderPaymentMethodChip(loan.payment_method)}
+                  {renderProofLink(loan)}
+                </Box>
+
+                <Box mt={1.5} display="flex" gap={1} flexWrap="wrap">
+                  {loan.status === 'pending' && (
+                    <>
+                      <Button size="small" variant="contained" color="success" startIcon={<ApproveIcon />} onClick={() => handleOpenApprove(loan)}>Aprobar</Button>
+                      <Button size="small" variant="outlined" color="error" startIcon={<RejectIcon />} onClick={() => setRejectTarget(loan)}>Rechazar</Button>
+                    </>
+                  )}
+                  {loan.status === 'approved' && (
+                    <Button size="small" variant="contained" color="success" startIcon={<PaidIcon />} onClick={() => handleOpenMarkPaid(loan)} disabled={processing}>Marcar como pagado</Button>
+                  )}
+                  {loan.status === 'active' && (
+                    <Button size="small" variant="outlined" color="secondary" startIcon={<InterestIcon />} onClick={() => handleOpenInterest(loan)}>Aplicar interés</Button>
+                  )}
+                  <Button size="small" variant="outlined" startIcon={<VisibilityIcon />} onClick={() => handleOpenDetail(loan)}>Ver Detalle</Button>
+                  {loan.status === 'pending' && (
+                    <Button size="small" variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteDialog({ open: true, item: loan })}>Eliminar</Button>
+                  )}
+                </Box>
+              </Paper>
+            ))}
+          </Stack>
+        )}
+      </Box>
+
+      {/* Desktop Table */}
+      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                <TableCell><strong>Fecha</strong></TableCell>
+                <TableCell><strong>Empleado</strong></TableCell>
+                <TableCell align="center"><strong>Moneda</strong></TableCell>
+                <TableCell align="right"><strong>Monto</strong></TableCell>
+                <TableCell align="right"><strong>Cotización</strong></TableCell>
+                <TableCell align="right"><strong>Monto Pesos Orig.</strong></TableCell>
+                <TableCell align="right"><strong>Saldo Pendiente</strong></TableCell>
+                <TableCell align="center"><strong>Método</strong></TableCell>
+                <TableCell align="center"><strong>Estado</strong></TableCell>
+                <TableCell align="center"><strong>Acciones</strong></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">No hay préstamos registrados</Typography>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ) : (
+                filtered.map((loan) => (
+                  <TableRow key={loan.id} hover>
+                    <TableCell>
+                      {new Date(loan.start_date).toLocaleDateString('es-AR')}
+                    </TableCell>
+                    <TableCell>
+                      {loan.employee && <Typography fontWeight={600}>{loan.employee.lastname}, {loan.employee.name}</Typography>}
+                      {loan.notes && <Typography variant="caption" color="text.secondary" display="block">{loan.notes}</Typography>}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip label={loan.currency} size="small" variant="outlined" color={loan.currency === 'USD' ? 'info' : 'default'} />
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                      {formatLoanAmount(loan)}
+                    </TableCell>
+                    <TableCell align="right">
+                      {loan.currency === 'USD' && loan.exchange_rate_at_origin
+                        ? formatCurrency(loan.exchange_rate_at_origin)
+                        : '—'}
+                    </TableCell>
+                    <TableCell align="right" sx={{ color: 'text.secondary' }}>
+                      {loan.currency === 'USD' && loan.amount_ars_at_origin
+                        ? formatCurrency(loan.amount_ars_at_origin)
+                        : '—'}
+                    </TableCell>
+                    <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                      {formatLoanBalance(loan)}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+                        {renderPaymentMethodChip(loan.payment_method)}
+                        {renderProofLink(loan)}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+                        <Chip
+                          label={LOAN_STATUS_LABEL[loan.status]?.label || loan.status}
+                          color={LOAN_STATUS_LABEL[loan.status]?.color || 'default'}
+                          size="small"
+                        />
+                        {loan.conflict_warning && (
+                          <Tooltip title={loan.conflict_warning}>
+                            <ConflictIcon color="warning" fontSize="small" />
+                          </Tooltip>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="center">
+                      {loan.status === 'pending' && (
+                        <>
+                          <Tooltip title="Aprobar">
+                            <IconButton size="small" color="success" onClick={() => handleOpenApprove(loan)}>
+                              <ApproveIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Rechazar">
+                            <IconButton size="small" color="error" onClick={() => setRejectTarget(loan)}>
+                              <RejectIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
+                      {loan.status === 'approved' && (
+                        <Tooltip title="Marcar como pagado / entregado">
+                          <IconButton size="small" color="success" onClick={() => handleOpenMarkPaid(loan)} disabled={processing}>
+                            <PaidIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {loan.status === 'active' && (
+                        <Tooltip title="Aplicar interés del mes">
+                          <IconButton size="small" color="secondary" onClick={() => handleOpenInterest(loan)}>
+                            <InterestIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      <Tooltip title="Ver Detalle de Movimientos">
+                        <IconButton size="small" color="primary" onClick={() => handleOpenDetail(loan)}>
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      {loan.status === 'pending' && (
+                        <Tooltip title="Eliminar">
+                          <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: loan })}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
 
       {/* Create / Approve Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>

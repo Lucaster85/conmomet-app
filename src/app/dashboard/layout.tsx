@@ -1,6 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import baseTheme from '../theme';
 import {
   Box,
   Drawer,
@@ -140,6 +142,25 @@ const menuGroups: MenuGroupDef[] = [
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
+
+// Prueba: degradé + sombra suave (mismo efecto que el avatar del header) en los
+// botones "contained" primarios, acotado al dashboard vía theme anidado.
+const dashboardTheme = createTheme(baseTheme, {
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        containedPrimary: {
+          background: 'linear-gradient(135deg, #60a5fa 0%, #1d4ed8 100%)',
+          boxShadow: '0 2px 8px rgba(29, 78, 216, 0.35)',
+          '&:hover': {
+            background: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
+            boxShadow: '0 4px 12px rgba(29, 78, 216, 0.45)',
+          },
+        },
+      },
+    },
+  },
+});
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const theme = useTheme();
@@ -323,6 +344,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   );
 
   return (
+    <ThemeProvider theme={dashboardTheme}>
     <ProtectedRoute>
       <Box sx={{ display: 'flex' }}>
         {/* App Bar */}
@@ -484,5 +506,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </Box>
       </Box>
     </ProtectedRoute>
+    </ThemeProvider>
   );
 }

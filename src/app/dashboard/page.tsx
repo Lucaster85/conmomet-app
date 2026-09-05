@@ -161,7 +161,18 @@ export default function DashboardPage() {
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
         
         {/* Widget: Alertas de Vencimientos */}
-        <Paper sx={{ flex: '1 1 500px', p: 3, borderRadius: 2 }}>
+        <Paper
+          sx={{
+            flex: '1 1 500px',
+            p: 3,
+            borderRadius: 2,
+            transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+            '&:hover': {
+              transform: 'translateY(-6px)',
+              boxShadow: '0 16px 40px rgba(0,0,0,0.14)',
+            },
+          }}
+        >
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
               Alertas de Vencimientos
@@ -309,7 +320,18 @@ export default function DashboardPage() {
         </Paper>
 
         {/* Widget: Adelantos y Préstamos pendientes */}
-        <Paper sx={{ flex: '1 1 300px', p: 3, borderRadius: 2 }}>
+        <Paper
+          sx={{
+            flex: '1 1 300px',
+            p: 3,
+            borderRadius: 2,
+            transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+            '&:hover': {
+              transform: 'translateY(-6px)',
+              boxShadow: '0 16px 40px rgba(0,0,0,0.14)',
+            },
+          }}
+        >
           <Box display="flex" alignItems="center" gap={1} mb={3}>
             <RequestQuoteIcon color="primary" />
             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
@@ -348,7 +370,18 @@ export default function DashboardPage() {
         </Paper>
 
         {/* Other future widgets can go here */}
-        <Paper sx={{ flex: '1 1 300px', p: 3, borderRadius: 2 }}>
+        <Paper
+          sx={{
+            flex: '1 1 300px',
+            p: 3,
+            borderRadius: 2,
+            transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+            '&:hover': {
+              transform: 'translateY(-6px)',
+              boxShadow: '0 16px 40px rgba(0,0,0,0.14)',
+            },
+          }}
+        >
           <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold' }}>
             Accesos Rápidos
           </Typography>
