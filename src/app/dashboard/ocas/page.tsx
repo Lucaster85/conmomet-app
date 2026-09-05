@@ -1502,7 +1502,7 @@ export default function OcasPage() {
                       <Box display="flex" flexDirection="column" gap={1.5} sx={{ mb: 2 }}>
                         {sortedLines.map((line) => {
                           return (
-                            <Paper key={line.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                            <Card key={line.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                               <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
                                 <Box>
                                   {oca.type === 'man_hours' ? (
@@ -1605,7 +1605,7 @@ export default function OcasPage() {
                                   <Typography variant="body2" sx={{ mt: 0.5 }}>{line.task || '—'}</Typography>
                                 )}
                               </Box>
-                            </Paper>
+                            </Card>
                           );
                         })}
                       </Box>

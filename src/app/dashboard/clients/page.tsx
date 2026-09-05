@@ -4,7 +4,7 @@ import {
   Box,
   Typography,
   Button,
-  Paper,
+  Paper, Card,
   Table,
   TableBody,
   TableCell,
@@ -203,7 +203,7 @@ export default function ClientsPage() {
         ) : (
           <Stack spacing={2}>
             {filteredClients.map((client) => (
-              <Paper key={client.id} sx={{ p: 2, borderRadius: 2 }}>
+              <Card key={client.id} sx={{ p: 2, borderRadius: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                   <Box flex={1}>
                     <Typography variant="subtitle1" fontWeight="bold">
@@ -238,7 +238,7 @@ export default function ClientsPage() {
                     </IconButton>
                   </Box>
                 </Box>
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}

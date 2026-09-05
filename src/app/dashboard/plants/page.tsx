@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Switch,
   FormControlLabel, Stack, Chip, Divider,
@@ -236,7 +236,7 @@ export default function PlantsPage() {
         ) : (
           <Stack spacing={2}>
             {plants.map((plant) => (
-              <Paper key={plant.id} sx={{ p: 2 }}>
+              <Card key={plant.id} sx={{ p: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                   <Box>
                     <Typography variant="subtitle1" fontWeight="bold">{plant.name}</Typography>
@@ -253,7 +253,7 @@ export default function PlantsPage() {
                     <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, plant })}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
                 </Box>
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}
@@ -352,7 +352,7 @@ export default function PlantsPage() {
               ) : (
                 <Stack spacing={1} mb={3}>
                   {requirements.map((req) => (
-                    <Paper key={req.id} variant="outlined" sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Card key={req.id} variant="outlined" sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Box>
                         <Box display="flex" alignItems="center" gap={1}>
                           <Typography fontWeight="medium">{req.documentCategory?.name}</Typography>
@@ -369,7 +369,7 @@ export default function PlantsPage() {
                       <IconButton size="small" color="error" onClick={() => handleDeleteRequirement(req.id)}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
-                    </Paper>
+                    </Card>
                   ))}
                 </Stack>
               )}
@@ -445,7 +445,7 @@ export default function PlantsPage() {
                     const cfg = STATUS_ICON[emp.status] || STATUS_ICON.non_compliant;
                     const isExpanded = expandedEmp === emp.employee.id;
                     return (
-                      <Paper key={emp.employee.id} variant="outlined" sx={{ p: 1.5, cursor: 'pointer' }} onClick={() => setExpandedEmp(isExpanded ? null : emp.employee.id)}>
+                      <Card key={emp.employee.id} variant="outlined" sx={{ p: 1.5, cursor: 'pointer' }} onClick={() => setExpandedEmp(isExpanded ? null : emp.employee.id)}>
                         <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1}>
                           <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
                             <Typography fontWeight="medium">{emp.employee.lastname}, {emp.employee.name}</Typography>
@@ -480,7 +480,7 @@ export default function PlantsPage() {
                             </Stack>
                           </Box>
                         )}
-                      </Paper>
+                      </Card>
                     );
                   })}
                 {compData.employees.filter(e => compFilter === 'all' || e.status === compFilter).length === 0 && (

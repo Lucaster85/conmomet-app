@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, TextField, Stack, Chip, Autocomplete, Grid, useTheme, useMediaQuery
 } from '@mui/material';
@@ -327,7 +327,7 @@ export default function SalaryAdvancesPage() {
         ) : (
           <Stack spacing={2}>
             {filteredAdvances.map(a => (
-              <Paper key={a.id} sx={{ p: 2 }}>
+              <Card key={a.id} sx={{ p: 2 }}>
                 <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
                   <Typography variant="subtitle1" fontWeight="bold">{a.employee?.lastname}, {a.employee?.name}</Typography>
                   {a.conflict_warning && (
@@ -368,7 +368,7 @@ export default function SalaryAdvancesPage() {
                     </Button>
                   </Box>
                 )}
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}

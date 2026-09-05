@@ -296,8 +296,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   primaryTypographyProps={{ 
                     color: 'text.secondary', 
                     fontWeight: 'bold', 
-                    textTransform: 'uppercase', 
-                    fontSize: '0.75rem', 
+                    //textTransform: 'uppercase', 
+                    fontSize: '1rem', 
                     lineHeight: '24px' 
                   }} 
                 />

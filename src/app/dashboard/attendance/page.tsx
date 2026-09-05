@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Stack,
   Chip, Link, Grid, useTheme, useMediaQuery
@@ -304,7 +304,7 @@ export default function AttendancePage() {
         ) : (
           <Stack spacing={2}>
             {attendances.map((att) => (
-              <Paper key={att.id} sx={{ p: 2 }}>
+              <Card key={att.id} sx={{ p: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                   <Box>
                     <Typography variant="subtitle1" fontWeight="bold">{att.employee?.lastname}, {att.employee?.name}</Typography>
@@ -319,7 +319,7 @@ export default function AttendancePage() {
                   </Box>
                   <IconButton size="small" color="primary" onClick={() => handleOpenEdit(att)}><EditIcon fontSize="small" /></IconButton>
                 </Box>
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}

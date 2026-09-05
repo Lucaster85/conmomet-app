@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Stack, LinearProgress,
   Grid, Divider, Chip,
@@ -378,7 +378,7 @@ export default function ProjectsPage() {
         ) : (
           <Stack spacing={2}>
             {filteredProjects.map((proj) => (
-              <Paper key={proj.id} sx={{ p: 2 }}>
+              <Card key={proj.id} sx={{ p: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
                   <Box>
                     <Box display="flex" alignItems="center" gap={1}>
@@ -422,7 +422,7 @@ export default function ProjectsPage() {
                     )}
                   </Box>
                 )}
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}
@@ -661,7 +661,7 @@ export default function ProjectsPage() {
               <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                 <Stack spacing={2}>
                   {teamData.team.map((m) => (
-                    <Paper key={m.employee.id} variant="outlined" sx={{ p: 2 }}>
+                    <Card key={m.employee.id} variant="outlined" sx={{ p: 2 }}>
                       <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
                         <Box>
                           <Typography fontWeight="medium">{m.employee.lastname}, {m.employee.name}</Typography>
@@ -701,7 +701,7 @@ export default function ProjectsPage() {
                           <Typography variant="body2" fontWeight="bold">{m.hours.weighted_total.toFixed(1)}</Typography>
                         </Grid>
                       </Grid>
-                    </Paper>
+                    </Card>
                   ))}
                   <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
                     <Typography fontWeight="bold" textAlign="center" mb={1}>Totales del Equipo</Typography>

@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, Stack, TextField, InputAdornment,
   Switch, FormControlLabel
@@ -139,7 +139,7 @@ export default function EmployerCostCategorysPage() {
         ) : (
           <Stack spacing={2}>
             {filtered.map((category) => (
-              <Paper key={category.id} sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 4px rgb(0 0 0 / 0.05)', borderLeft: category.is_active ? '4px solid #10B981' : '4px solid #94A3B8' }}>
+              <Card key={category.id} sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 4px rgb(0 0 0 / 0.05)', borderLeft: category.is_active ? '4px solid #10B981' : '4px solid #94A3B8' }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Box>
                     <Typography fontWeight={600}>{category.name}</Typography>
@@ -156,7 +156,7 @@ export default function EmployerCostCategorysPage() {
                     </IconButton>
                   </Box>
                 </Box>
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}

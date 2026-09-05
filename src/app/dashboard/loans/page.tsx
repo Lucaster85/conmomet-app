@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, Stack, TextField, InputAdornment,
   MenuItem, FormControl, InputLabel, Select, Chip, ToggleButtonGroup, ToggleButton
@@ -359,7 +359,7 @@ export default function LoansPage() {
         ) : (
           <Stack spacing={2}>
             {filtered.map((loan) => (
-              <Paper key={loan.id} sx={{ p: 2 }}>
+              <Card key={loan.id} sx={{ p: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
                   <Box>
                     {loan.employee && <Typography fontWeight={600}>{loan.employee.lastname}, {loan.employee.name}</Typography>}
@@ -425,7 +425,7 @@ export default function LoansPage() {
                     <Button size="small" variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteDialog({ open: true, item: loan })}>Eliminar</Button>
                   )}
                 </Box>
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}

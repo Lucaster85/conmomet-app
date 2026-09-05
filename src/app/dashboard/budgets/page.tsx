@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Stack, Chip, Divider, Grid,
   Autocomplete, createFilterOptions, useMediaQuery, useTheme,
@@ -804,7 +804,7 @@ function BudgetsPageContent() {
           <Box sx={{ display: { xs: 'block', md: 'none' } }}>
             <Stack spacing={2}>
               {budgets.map((b) => (
-                <Paper key={b.id} elevation={2} sx={{ p: 2 }}>
+                <Card key={b.id} elevation={2} sx={{ p: 2 }}>
                   <Stack spacing={1}>
                     <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
                       <Box>
@@ -875,7 +875,7 @@ function BudgetsPageContent() {
                       <Tooltip title="Duplicar"><IconButton size="small" onClick={() => handleDuplicate(b)}><DuplicateIcon fontSize="small" /></IconButton></Tooltip>
                     </Box>
                   </Stack>
-                </Paper>
+                </Card>
               ))}
             </Stack>
           </Box>

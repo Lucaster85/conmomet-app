@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Stack, Chip, Switch, FormControlLabel,
 } from '@mui/material';
@@ -106,39 +106,67 @@ export default function MaterialUnitsPage() {
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
-      <TableContainer component={Paper} elevation={2}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ bgcolor: 'grey.50' }}>
-              <TableCell><strong>Etiqueta</strong></TableCell>
-              <TableCell><strong>Orden</strong></TableCell>
-              <TableCell><strong>Estado</strong></TableCell>
-              <TableCell align="center"><strong>Acciones</strong></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {items.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
-                  <Typography variant="body2" color="text.secondary">No hay unidades registradas</Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              items.map((item) => (
-                <TableRow key={item.id} hover>
-                  <TableCell><Typography fontWeight="medium">{item.label}</Typography></TableCell>
-                  <TableCell>{item.display_order}</TableCell>
-                  <TableCell><Chip size="small" label={item.is_active ? 'Activo' : 'Inactivo'} color={item.is_active ? 'success' : 'default'} /></TableCell>
-                  <TableCell align="center">
+      {/* Mobile Cards */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {items.length === 0 ? (
+          <Typography color="text.secondary" textAlign="center" py={4}>No hay unidades registradas</Typography>
+        ) : (
+          <Stack spacing={2}>
+            {items.map((item) => (
+              <Card key={item.id} sx={{ p: 2, borderRadius: 2, borderLeft: item.is_active ? '4px solid #10B981' : '4px solid #94A3B8' }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Box>
+                    <Typography fontWeight={600}>{item.label}</Typography>
+                    <Typography variant="body2" color="text.secondary">Orden: {item.display_order}</Typography>
+                    <Chip size="small" label={item.is_active ? 'Activo' : 'Inactivo'} color={item.is_active ? 'success' : 'default'} sx={{ mt: 0.5 }} />
+                  </Box>
+                  <Box>
                     <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(item)}><EditIcon fontSize="small" /></IconButton></Tooltip>
                     <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                  </Box>
+                </Box>
+              </Card>
+            ))}
+          </Stack>
+        )}
+      </Box>
+
+      {/* Desktop Table */}
+      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        <TableContainer component={Paper} elevation={2}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: 'grey.50' }}>
+                <TableCell><strong>Etiqueta</strong></TableCell>
+                <TableCell><strong>Orden</strong></TableCell>
+                <TableCell><strong>Estado</strong></TableCell>
+                <TableCell align="center"><strong>Acciones</strong></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {items.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">No hay unidades registradas</Typography>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ) : (
+                items.map((item) => (
+                  <TableRow key={item.id} hover>
+                    <TableCell><Typography fontWeight="medium">{item.label}</Typography></TableCell>
+                    <TableCell>{item.display_order}</TableCell>
+                    <TableCell><Chip size="small" label={item.is_active ? 'Activo' : 'Inactivo'} color={item.is_active ? 'success' : 'default'} /></TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(item)}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>{editingItem ? 'Editar Unidad' : 'Nueva Unidad'}</DialogTitle>

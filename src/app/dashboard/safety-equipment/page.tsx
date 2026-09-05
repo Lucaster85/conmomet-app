@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, TextField, Stack, Chip, IconButton, Tooltip
 } from '@mui/material';
@@ -231,7 +231,7 @@ export default function SafetyEquipmentPage() {
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
         <Stack spacing={2}>
           {equipment.map(e => (
-            <Paper key={e.id} sx={{ p: 2 }}>
+            <Card key={e.id} sx={{ p: 2 }}>
               <Typography variant="subtitle1" fontWeight="bold">{e.employee?.lastname}, {e.employee?.name}</Typography>
               <Typography variant="body1">{e.eppItem?.name || '—'}</Typography>
               {e.size_delivered && <Typography variant="body2">Talle: {e.size_delivered}</Typography>}
@@ -239,7 +239,7 @@ export default function SafetyEquipmentPage() {
               <Typography variant="body2">Entregado: {formatDate(e.delivered_date)}</Typography>
               <Chip label={CONDITION_LABELS[e.condition || 'new']} size="small" color={CONDITION_COLORS[e.condition || 'new']} sx={{ mt: 1 }} />
               {e.notes && <Typography variant="caption" display="block" mt={1} color="text.secondary">{e.notes}</Typography>}
-            </Paper>
+            </Card>
           ))}
         </Stack>
       </Box>

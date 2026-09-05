@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, Stack, TextField, InputAdornment,
 } from '@mui/material';
@@ -159,7 +159,7 @@ export default function CategoriesPage() {
         ) : (
           <Stack spacing={2}>
             {filtered.map((cat) => (
-              <Paper key={cat.id} sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 4px rgb(0 0 0 / 0.05)' }}>
+              <Card key={cat.id} sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 4px rgb(0 0 0 / 0.05)' }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Box>
                     <Typography fontWeight={600}>{cat.name}</Typography>
@@ -180,7 +180,7 @@ export default function CategoriesPage() {
                     </IconButton>
                   </Box>
                 </Box>
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}

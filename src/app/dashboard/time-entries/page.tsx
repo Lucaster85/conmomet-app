@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, CircularProgress, TextField, Stack,
+  Box, Typography, Button, Paper, Card, CircularProgress, TextField, Stack,
   Chip, Checkbox, FormControlLabel, Autocomplete, Dialog, DialogTitle,
   DialogContent, DialogActions, Divider, IconButton, Tooltip, Switch, Grid
 } from '@mui/material';
@@ -624,7 +624,7 @@ export default function TimeEntriesPage() {
       ) : (
         <Stack spacing={2}>
           {sortedDates.map((date) => (
-            <Paper key={date} sx={{ overflow: 'hidden' }}>
+            <Card key={date} sx={{ overflow: 'hidden' }}>
               <Box sx={{ bgcolor: 'primary.main', color: 'white', px: 2, py: 1 }}>
                 <Typography variant="subtitle1" fontWeight="bold">
                   📅 {new Date(date + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -712,7 +712,7 @@ export default function TimeEntriesPage() {
                   ))}
                 </Stack>
               </Box>
-            </Paper>
+            </Card>
           ))}
         </Stack>
       )}
@@ -917,7 +917,7 @@ export default function TimeEntriesPage() {
                 <Typography variant="subtitle2" gutterBottom>Bloques de Horas para {selectedEmployees[0]?.name} {selectedEmployees[0]?.lastname}</Typography>
                 <Stack spacing={2}>
                   {individualBlocks.map((block, index) => (
-                    <Paper key={block.id} variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                    <Card key={block.id} variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
                       <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                         <Typography variant="subtitle2">Bloque {index + 1} — {calculateHours(block.check_in, block.check_out)}hs</Typography>
                         {individualBlocks.length > 1 && (
@@ -1089,7 +1089,7 @@ export default function TimeEntriesPage() {
                             }} size="small" />
                         </Grid>
                       </Grid>
-                    </Paper>
+                    </Card>
                   ))}
                   <Button variant="outlined" startIcon={<AddIcon />} onClick={addBlock} sx={{ alignSelf: 'flex-start' }}>
                     Añadir otro bloque de horas

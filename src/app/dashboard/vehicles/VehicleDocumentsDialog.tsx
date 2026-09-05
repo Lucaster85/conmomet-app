@@ -20,7 +20,7 @@ import {
   CircularProgress,
   Switch,
   FormControlLabel,
-  Paper,
+  Paper, Card,
   Divider,
   Stack,
   Chip,
@@ -632,7 +632,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
                   const isCritical = doc.computed_status === 'expiring_soon' || doc.computed_status === 'expired';
                   
                   return (
-                    <Paper key={doc.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Card key={doc.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                       <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
                         <Box>
                           <Typography variant="subtitle2" fontWeight="bold">{doc.title}</Typography>
@@ -692,7 +692,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
                           </IconButton>
                         </Box>
                       </Box>
-                    </Paper>
+                    </Card>
                   );
                 })
               )}

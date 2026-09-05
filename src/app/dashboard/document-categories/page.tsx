@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Stack, Chip,
   FormControlLabel, Switch,
@@ -150,7 +150,7 @@ export default function DocumentCategoriesPage() {
         ) : (
           <Stack spacing={2}>
             {categories.map((cat) => (
-              <Paper key={cat.id} sx={{ p: 2 }}>
+              <Card key={cat.id} sx={{ p: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                   <Box>
                     <Typography variant="subtitle1" fontWeight="bold">{cat.name}</Typography>
@@ -165,7 +165,7 @@ export default function DocumentCategoriesPage() {
                     <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, category: cat })}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
                 </Box>
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}

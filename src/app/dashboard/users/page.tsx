@@ -4,7 +4,7 @@ import {
   Box,
   Typography,
   Button,
-  Paper,
+  Paper, Card,
   Table,
   TableBody,
   TableCell,
@@ -190,7 +190,7 @@ export default function UsersPage() {
         ) : (
           <Stack spacing={2}>
             {filteredUsers.map((user) => (
-              <Paper key={user.id} sx={{ p: 2, borderRadius: 2 }}>
+              <Card key={user.id} sx={{ p: 2, borderRadius: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                   <Box flex={1}>
                     <Typography variant="subtitle1" fontWeight="bold">
@@ -225,7 +225,7 @@ export default function UsersPage() {
                     </IconButton>
                   </Box>
                 </Box>
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}

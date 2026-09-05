@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, CircularProgress, TextField, Stack,
+  Box, Typography, Button, Paper, Card, CircularProgress, TextField, Stack,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   IconButton, Tooltip, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
@@ -116,7 +116,7 @@ export default function PayrollConceptsPage() {
         ) : (
           <Stack spacing={2}>
             {concepts.map((c) => (
-              <Paper key={c.id} sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 4px rgb(0 0 0 / 0.05)', borderLeft: c.is_active ? '4px solid #10B981' : '4px solid #94A3B8' }}>
+              <Card key={c.id} sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 4px rgb(0 0 0 / 0.05)', borderLeft: c.is_active ? '4px solid #10B981' : '4px solid #94A3B8' }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Box>
                     <Typography fontWeight={600}>{c.name}</Typography>
@@ -136,7 +136,7 @@ export default function PayrollConceptsPage() {
                     </IconButton>
                   </Box>
                 </Box>
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}

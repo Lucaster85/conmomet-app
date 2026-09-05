@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Dialog, DialogTitle, DialogContent,
+  Box, Typography, Button, Paper, Card, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, TextField, Stack,
   Chip, Grid
 } from '@mui/material';
@@ -135,7 +135,7 @@ export default function PayPeriodsPage() {
       <Grid container spacing={3}>
         {periods.map((p) => (
           <Grid size={{ xs: 12, md: 6, lg: 4 }} key={p.id}>
-            <Paper sx={{ p: 3, position: 'relative', overflow: 'hidden' }}>
+            <Card sx={{ p: 3, position: 'relative', overflow: 'hidden' }}>
               <Box sx={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', bgcolor: `${STATUS_CONFIG[p.status].color}.main` }} />
               
               <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
@@ -170,7 +170,7 @@ export default function PayPeriodsPage() {
                   </Button>
                 )}
               </Stack>
-            </Paper>
+            </Card>
           </Grid>
         ))}
         {periods.length === 0 && (

@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, TextField, Stack,
   Chip, InputAdornment, Divider, MenuItem, Select, FormControl, InputLabel,
@@ -231,7 +231,7 @@ export default function EmployeesPage() {
         ) : (
           <Stack spacing={2}>
             {filtered.map((emp) => (
-              <Paper key={emp.id} sx={{ p: 2 }}>
+              <Card key={emp.id} sx={{ p: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                   <Box flex={1}>
                     <Typography variant="subtitle1" fontWeight="bold">{emp.lastname}, {emp.name}</Typography>
@@ -248,7 +248,7 @@ export default function EmployeesPage() {
                     <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, employee: emp })}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
                 </Box>
-              </Paper>
+              </Card>
             ))}
           </Stack>
         )}
