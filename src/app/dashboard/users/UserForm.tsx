@@ -15,8 +15,9 @@ import {
   FormGroup,
   Paper,
   Divider,
+  Alert,
 } from '@mui/material';
-import { SaveOutlined as SaveIcon } from '@mui/icons-material';
+import { SaveOutlined as SaveIcon, ContentCopyOutlined as ContentCopyIcon } from '@mui/icons-material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import { 
   UserService, 
@@ -43,7 +44,6 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
     name: user?.name || '',
     lastname: user?.lastname || '',
     email: user?.email || '',
-    password: '', // Password empty by default
     role_id: user?.role_id || 0,
     cuit: user?.cuit || '',
     phone: user?.phone || '',
@@ -59,6 +59,7 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [generatedPassword, setGeneratedPassword] = useState('');
 
   // Cargar roles y permisos al montar el componente
   // TODO: [LOOKUP ENDPOINTS] Reemplazar RoleService.getAll() y PermissionService.getAll()
@@ -152,10 +153,16 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
     if (!formData.name.trim()) return 'El nombre es obligatorio';
     if (!formData.lastname.trim()) return 'El apellido es obligatorio';
     if (!formData.email.trim()) return 'El email es obligatorio';
-    if (!isEditing && !formData.password.trim()) return 'La contraseña es obligatoria';
     if (!formData.role_id) return 'Debe seleccionar un rol';
     if (!formData.cuit.trim()) return 'El CUIT es obligatorio';
-    
+
+    if (!isEditing) {
+      const selectedRole = roles.find(r => r.id === formData.role_id);
+      if (selectedRole?.has_dashboard_access === false && !formData.employee_id) {
+        return 'Este rol no tiene acceso al dashboard: hay que vincular un empleado para poder crear el usuario (si no, no va a tener a dónde entrar).';
+      }
+    }
+
     // Validar email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
@@ -167,11 +174,6 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
       return 'El CUIT debe contener solo números';
     }
     
-    // Validar contraseña si se ingresó
-    if (formData.password && formData.password.length < 6) {
-      return 'La contraseña debe tener al menos 6 caracteres';
-    }
-
     return null;
   };
 
@@ -191,23 +193,20 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
       setSuccess('');
 
       if (isEditing && user) {
-        // Enviar solo los campos que se pueden actualizar. 
-        // Si el password está vacío, no lo enviamos.
-        const updateData: Partial<CreateUserData> = { ...formData };
-        if (!updateData.password) delete updateData.password;
-        
-        await UserService.update(user.id, updateData);
+        await UserService.update(user.id, formData);
         setSuccess('Usuario actualizado exitosamente');
+        setTimeout(() => onSuccessAction(), 1000);
       } else {
-        await UserService.create(formData);
-        setSuccess('Usuario creado exitosamente');
+        const result = await UserService.create(formData);
+        if (result.generatedPassword) {
+          // Se muestra una única vez: no queda guardada en ningún lado que se pueda volver a
+          // consultar, así que no cerramos el formulario solos — que administración la copie.
+          setGeneratedPassword(result.generatedPassword);
+        } else {
+          setSuccess('Usuario creado exitosamente');
+          setTimeout(() => onSuccessAction(), 1000);
+        }
       }
-      
-      // Llamar callback de éxito después de un breve delay
-      setTimeout(() => {
-        onSuccessAction();
-      }, 1000);
-
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar usuario');
     } finally {
@@ -219,6 +218,31 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
     return (
       <Box display="flex" justifyContent="center" p={4}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (generatedPassword) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="success" sx={{ mb: 2 }}>Usuario creado exitosamente.</Alert>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Esta es la contraseña inicial de la cuenta. Copiala y pasásela a la persona — no se
+          puede volver a consultar después de cerrar esta pantalla.
+        </Typography>
+        <Box display="flex" gap={1} alignItems="center" sx={{ mt: 2 }}>
+          <TextField fullWidth value={generatedPassword} InputProps={{ readOnly: true }} />
+          <Button
+            variant="outlined"
+            startIcon={<ContentCopyIcon />}
+            onClick={() => navigator.clipboard.writeText(generatedPassword)}
+          >
+            Copiar
+          </Button>
+        </Box>
+        <Box display="flex" justifyContent="flex-end" sx={{ mt: 3 }}>
+          <Button variant="contained" onClick={onSuccessAction}>Continuar</Button>
+        </Box>
       </Box>
     );
   }
@@ -291,10 +315,10 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
           />
         </Box>
 
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: { xs: 'column', sm: 'row' }, 
-          gap: 2 
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2
         }}>
           <TextField
             fullWidth
@@ -306,23 +330,12 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
             placeholder="usuario@ejemplo.com"
             required
           />
-
-          <TextField
-            fullWidth
-            label={isEditing ? "Contraseña (dejar en blanco para no cambiar)" : "Contraseña *"}
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={handleInputChange}
-            placeholder={isEditing ? "Opcional" : "Mínimo 6 caracteres"}
-            required={!isEditing}
-          />
         </Box>
 
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: { xs: 'column', sm: 'row' }, 
-          gap: 2 
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2
         }}>
           <TextField
             fullWidth

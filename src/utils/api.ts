@@ -48,7 +48,7 @@ export interface CreateUserData {
   name: string;
   lastname: string;
   email: string;
-  password: string;
+  password?: string;
   role_id: number;
   cuit: string;
   phone?: string;
@@ -119,7 +119,7 @@ export class UserService {
     return response.json();
   }
 
-  static async create(userData: CreateUserData): Promise<User> {
+  static async create(userData: CreateUserData): Promise<{ data: User; token: string; generatedPassword: string | null }> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/users`, {
       method: 'POST',
       body: JSON.stringify(userData),

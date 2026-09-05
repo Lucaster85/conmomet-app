@@ -27,11 +27,13 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
+  const [accountError, setAccountError] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('password_changed') === 'true') {
-      setPasswordChanged(true);
-    }
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('password_changed') === 'true') setPasswordChanged(true);
+    if (params.get('account_error') === 'true') setAccountError(true);
   }, []);
 
   // Verificar si ya está autenticado
@@ -141,6 +143,12 @@ export default function LoginPage() {
           {passwordChanged && !error && (
             <Alert severity="success" sx={{ mb: 3 }}>
               Tu contraseña se actualizó correctamente. Iniciá sesión con la nueva.
+            </Alert>
+          )}
+
+          {accountError && !error && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              Tu cuenta no tiene un acceso configurado correctamente. Contactá a administración.
             </Alert>
           )}
 

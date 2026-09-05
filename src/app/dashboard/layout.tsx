@@ -458,7 +458,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </MenuItem>
         </Menu>
 
-        <ChangePasswordDialog open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
+        <ChangePasswordDialog
+          open={changePasswordOpen || !!user?.must_change_password}
+          onClose={() => setChangePasswordOpen(false)}
+          forced={!!user?.must_change_password}
+        />
 
         {/* Drawer */}
         <Box

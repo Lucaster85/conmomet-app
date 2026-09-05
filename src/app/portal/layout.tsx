@@ -37,7 +37,7 @@ import {
 } from '@mui/icons-material';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '../../utils/auth';
+import { useAuth, TokenManager } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
 
@@ -52,6 +52,14 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   // Redirección si no tiene employee_id
   useEffect(() => {
     if (user && !user.employee_id) {
+      if (user.has_dashboard_access === false) {
+        // Cuenta rota: un rol sin acceso al dashboard pero sin empleado vinculado no tiene a
+        // dónde ir (mandarlo a /dashboard lo rebotaría de vuelta acá en loop). Se desloguea con
+        // un aviso en vez de crashear.
+        TokenManager.removeToken();
+        window.location.href = '/login?account_error=true';
+        return;
+      }
       router.replace('/dashboard');
     }
   }, [user, router]);
@@ -224,7 +232,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           </MenuItem>
         </Menu>
 
-        <ChangePasswordDialog open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
+        <ChangePasswordDialog
+          open={changePasswordOpen || !!user?.must_change_password}
+          onClose={() => setChangePasswordOpen(false)}
+          forced={!!user?.must_change_password}
+        />
 
         <Drawer
           anchor="left"

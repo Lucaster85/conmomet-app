@@ -3,7 +3,7 @@ import React from "react";
 import { Box, Container, Typography } from "@mui/material";
 
 const paragraphs = [
-  "En CONMOMET S.A. somos un equipo apasionado y experimentado en la construcción y montaje de estructuras metálicas. Con una sólida trayectoria en el sector, nos destacamos por nuestro compromiso con la calidad, la seguridad y la eficiencia.",
+  "En CONMOOMET S.A. somos un equipo apasionado y experimentado en la construcción y montaje de estructuras metálicas. Con una sólida trayectoria en el sector, nos destacamos por nuestro compromiso con la calidad, la seguridad y la eficiencia.",
   "Nuestros técnicos y operarios están altamente capacitados y cuentan con la experiencia necesaria para abordar proyectos complejos y personalizados. Contamos con una flota de maquinaria de última generación, incluyendo pantógrafo, guillotina, plegadora y grúas con capacidades de hasta 30 toneladas, lo que nos permite ofrecer soluciones integrales y flexibles a nuestros clientes.",
   "Nuestra misión es brindar soluciones de alta calidad y valor agregado a nuestros clientes, trabajando de manera segura, eficiente y comprometida con la excelencia. En CONMOMET S.A. nos enfocamos en construir relaciones duraderas con nuestros clientes y en contribuir al éxito de sus proyectos con nuestra experiencia y dedicación.",
 ];

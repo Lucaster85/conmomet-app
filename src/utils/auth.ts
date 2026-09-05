@@ -11,6 +11,7 @@ export interface UserData {
   role?: string;
   employee_id?: number | null;
   has_dashboard_access?: boolean;
+  must_change_password?: boolean;
   [key: string]: unknown;
 }
 
@@ -23,6 +24,7 @@ interface RawAuthUser {
   permissions?: { name: string }[];
   employee_id?: number | null;
   has_dashboard_access?: boolean;
+  must_change_password?: boolean;
 }
 
 // Aplana `role`+`permissions` de la respuesta cruda del backend (POST /auth/login o
@@ -44,6 +46,7 @@ export function buildCleanUser(user: RawAuthUser): UserData {
     fullName: `${user.name} ${user.lastname}`.trim(),
     employee_id: user.employee_id || null,
     has_dashboard_access: user.has_dashboard_access !== undefined ? user.has_dashboard_access : true,
+    must_change_password: !!user.must_change_password,
   };
 }
 

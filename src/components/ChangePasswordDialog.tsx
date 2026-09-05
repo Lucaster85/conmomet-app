@@ -11,9 +11,12 @@ import { TokenManager } from '@/utils/auth';
 interface ChangePasswordDialogProps {
   open: boolean;
   onClose: () => void;
+  // Modo forzado: no se puede cancelar ni cerrar sin completar el cambio (primer ingreso con
+  // contraseña generada por administración).
+  forced?: boolean;
 }
 
-export default function ChangePasswordDialog({ open, onClose }: ChangePasswordDialogProps) {
+export default function ChangePasswordDialog({ open, onClose, forced = false }: ChangePasswordDialogProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -61,10 +64,21 @@ export default function ChangePasswordDialog({ open, onClose }: ChangePasswordDi
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+    <Dialog
+      open={open}
+      onClose={forced ? undefined : handleClose}
+      disableEscapeKeyDown={forced}
+      maxWidth="xs"
+      fullWidth
+    >
       <DialogTitle>Cambiar contraseña</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
+          {forced && !success && (
+            <Alert severity="info">
+              Iniciaste sesión con una contraseña provisoria. Definí una nueva para continuar.
+            </Alert>
+          )}
           {success && <Alert severity="success">Contraseña actualizada correctamente.</Alert>}
           {error && <Alert severity="error">{error}</Alert>}
           <TextField
@@ -101,7 +115,7 @@ export default function ChangePasswordDialog({ open, onClose }: ChangePasswordDi
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose}>{success ? 'Cerrar' : 'Cancelar'}</Button>
+        {!forced && <Button onClick={handleClose}>{success ? 'Cerrar' : 'Cancelar'}</Button>}
         {!success && (
           <Button variant="contained" onClick={handleSubmit} disabled={loading}>
             {loading ? 'Guardando…' : 'Cambiar contraseña'}
