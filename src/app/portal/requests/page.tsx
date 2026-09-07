@@ -78,6 +78,7 @@ export default function PortalRequestsPage() {
   const [submittingAdvance, setSubmittingAdvance] = useState(false);
 
   const [loanAmount, setLoanAmount] = useState<number | null>(null);
+  const [loanInstallments, setLoanInstallments] = useState<number | null>(null);
   const [loanNotes, setLoanNotes] = useState('');
   const [submittingLoan, setSubmittingLoan] = useState(false);
 
@@ -130,8 +131,13 @@ export default function PortalRequestsPage() {
     }
     setSubmittingLoan(true);
     try {
-      await SelfService.requestLoan({ amount: loanAmount, notes: loanNotes || undefined });
+      await SelfService.requestLoan({
+        amount: loanAmount,
+        notes: loanNotes || undefined,
+        requested_num_installments: loanInstallments || undefined,
+      });
       setLoanAmount(null);
+      setLoanInstallments(null);
       setLoanNotes('');
       setFeedback({ message: 'Tu pedido de préstamo fue enviado.', type: 'success' });
       await loadData();
@@ -167,7 +173,10 @@ export default function PortalRequestsPage() {
     );
   }
 
-  const canRequestLoan = hasMinimumSeniority(employee?.hire_date);
+  // Mismo criterio que usa el backend para bloquear ("approved"/"active" cuentan como
+  // préstamo activo — un "pending" no bloquea, queda a criterio de quien aprueba).
+  const hasActiveLoan = loans.some((l) => l.status === 'approved' || l.status === 'active');
+  const canRequestLoan = hasMinimumSeniority(employee?.hire_date) && !hasActiveLoan;
 
   const history: HistoryItem[] = [
     ...advances.map((a) => ({
@@ -304,7 +313,13 @@ export default function PortalRequestsPage() {
               </Box>
               <Divider sx={{ mb: 3 }} />
 
-              {!canRequestLoan ? (
+              {hasActiveLoan ? (
+                <Box p={2} bgcolor="grey.50" borderRadius={2}>
+                  <Typography variant="body2" color="text.secondary">
+                    Ya tenés un préstamo activo — no podés solicitar otro hasta saldarlo.
+                  </Typography>
+                </Box>
+              ) : !canRequestLoan ? (
                 <Box p={2} bgcolor="grey.50" borderRadius={2}>
                   <Typography variant="body2" color="text.secondary">
                     Para solicitar un préstamo se requiere al menos {MIN_LOAN_SENIORITY_YEARS} año de antigüedad en la empresa.
@@ -313,7 +328,8 @@ export default function PortalRequestsPage() {
               ) : (
                 <>
                   <Typography variant="body2" color="text.secondary" mb={2}>
-                    Tu pedido queda sujeto a revisión y aprobación.
+                    Tu pedido queda sujeto a revisión y aprobación. La cantidad de cuotas final y
+                    el interés (si aplica) los define administración al aprobarlo.
                   </Typography>
                   <Stack spacing={2}>
                     <CurrencyInput
@@ -321,6 +337,14 @@ export default function PortalRequestsPage() {
                       fullWidth
                       value={loanAmount}
                       onChange={setLoanAmount}
+                    />
+                    <TextField
+                      label="Cantidad de cuotas deseadas (opcional)"
+                      type="number"
+                      fullWidth
+                      value={loanInstallments ?? ''}
+                      onChange={(e) => setLoanInstallments(e.target.value ? Number(e.target.value) : null)}
+                      inputProps={{ min: 1, step: 1 }}
                     />
                     <TextField
                       label="Motivo (opcional)"

@@ -21,7 +21,8 @@ import {
   AttachFileOutlined as ProofIcon, UploadFileOutlined as UploadProofIcon,
   DeleteOutline as DeleteIcon, SyncAltOutlined as ReassignIcon
 } from '@mui/icons-material';
-import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService, PayPeriod, PayPeriodService } from '../../../utils/api';
+import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService, PayPeriod, PayPeriodService, PayrollService } from '../../../utils/api';
+import { buildWhatsAppLink } from '../../../utils/whatsapp';
 
 const STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success' | 'error' }> = {
   pending: { label: 'Pendiente', color: 'warning' },
@@ -75,6 +76,10 @@ export default function SalaryAdvancesPage() {
   const [deleteTarget, setDeleteTarget] = useState<SalaryAdvance | null>(null);
   const [reassignTarget, setReassignTarget] = useState<SalaryAdvance | null>(null);
   const [reassignPeriodId, setReassignPeriodId] = useState<number | ''>('');
+  // Períodos "open" en general que igual hay que sacar del combo porque ESTE empleado puntual
+  // ya tiene su liquidación confirmada/pagada ahí (el status de PayPeriod es global).
+  const [reassignBlockedPeriodIds, setReassignBlockedPeriodIds] = useState<Set<number>>(new Set());
+  const [loadingReassignOptions, setLoadingReassignOptions] = useState(false);
 
   const loadData = async () => {
     try {
@@ -166,6 +171,10 @@ export default function SalaryAdvancesPage() {
         mark_as_paid: approveMarkAsPaid,
       }, approveProofFile);
       setSuccess(approveMarkAsPaid ? 'Adelanto aprobado y marcado como pagado' : 'Adelanto aprobado — queda pendiente de pago');
+      if (approveMarkAsPaid && approveTarget.employee?.phone) {
+        const message = `Hola ${approveTarget.employee.name}, tu adelanto de ${formatCurrency(approveAmount)} fue aprobado.`;
+        window.open(buildWhatsAppLink(approveTarget.employee.phone, message), '_blank');
+      }
       setApproveTarget(null);
       loadData();
     } catch (err) {
@@ -253,10 +262,25 @@ export default function SalaryAdvancesPage() {
     }
   };
 
-  const handleOpenReassign = (advance: SalaryAdvance) => {
+  const handleOpenReassign = async (advance: SalaryAdvance) => {
     setReassignTarget(advance);
     setReassignPeriodId(advance.pay_period_id ?? '');
+    setReassignBlockedPeriodIds(new Set());
+    setLoadingReassignOptions(true);
+    try {
+      const statuses = await PayrollService.getPeriodStatusesByEmployee(advance.employee_id);
+      const blocked = new Set(
+        statuses.filter((s) => s.status !== 'draft').map((s) => s.pay_period_id)
+      );
+      setReassignBlockedPeriodIds(blocked);
+    } catch {
+      // Si falla la consulta, no bloqueamos nada acá — el backend igual revalida al confirmar.
+    } finally {
+      setLoadingReassignOptions(false);
+    }
   };
+
+  const reassignAvailablePeriods = openPeriods.filter((p) => !reassignBlockedPeriodIds.has(p.id));
 
   const handleConfirmReassign = async () => {
     if (!reassignTarget) return;
@@ -807,9 +831,11 @@ export default function SalaryAdvancesPage() {
               onChange={(e) => setReassignPeriodId(e.target.value ? Number(e.target.value) : '')}
               SelectProps={{ native: true }}
               InputLabelProps={{ shrink: true }}
+              disabled={loadingReassignOptions}
+              helperText={loadingReassignOptions ? 'Verificando quincenas disponibles...' : ' '}
             >
               <option value="">Sin asignar (automático)</option>
-              {openPeriods.map(p => <option key={p.id} value={p.id}>{formatPeriodLabel(p)}</option>)}
+              {reassignAvailablePeriods.map(p => <option key={p.id} value={p.id}>{formatPeriodLabel(p)}</option>)}
             </TextField>
           </Stack>
         </DialogContent>

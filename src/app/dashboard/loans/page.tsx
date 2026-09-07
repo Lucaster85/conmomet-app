@@ -4,7 +4,7 @@ import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, CircularProgress, Tooltip, Stack, TextField, InputAdornment,
-  MenuItem, FormControl, InputLabel, Select, Chip, ToggleButtonGroup, ToggleButton
+  MenuItem, FormControl, InputLabel, Select
 } from '@mui/material';
 import {
   AddOutlined as AddIcon, DeleteOutlined as DeleteIcon, VisibilityOutlined as VisibilityIcon,
@@ -12,14 +12,18 @@ import {
   CheckCircleOutlined as ApproveIcon, CancelOutlined as RejectIcon,
   WarningAmberOutlined as ConflictIcon, PercentOutlined as InterestIcon,
   LocalAtmOutlined as CashIcon, AccountBalanceOutlined as BankIcon,
-  PaymentsOutlined as PaidIcon, AttachFileOutlined as ProofIcon
+  PaymentsOutlined as PaidIcon, AttachFileOutlined as ProofIcon,
+  WhatsApp as WhatsAppIcon, AssignmentReturnOutlined as SettleIcon
 } from '@mui/icons-material';
+import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
-import { Loan, Employee, LoanPayment, LoanInterestApplication, PayPeriod, LoanService, EmployeeService } from '@/utils/api';
+import { Loan, Employee, LoanPayment, LoanInterestApplication, LoanInstallment, PayPeriod, LoanService, EmployeeService } from '@/utils/api';
+import { buildWhatsAppLink } from '@/utils/whatsapp';
+import { computeFrenchSchedule } from '@/utils/loanAmortization';
 
 const LOAN_STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success' | 'error' | 'default' | 'primary' | 'info' }> = {
   pending: { label: 'Pendiente de aprobación', color: 'warning' },
@@ -30,15 +34,24 @@ const LOAN_STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'suc
   cancelled: { label: 'Cancelado', color: 'default' },
 };
 
+// Todo préstamo nuevo se otorga siempre en ARS con cuota fija (amortización francesa) — el
+// formato "a discreción" (currency/exchange_rate_at_origin, interés manual) queda congelado
+// solo para los préstamos que ya existían antes de este rediseño.
 const emptyForm = {
   employee_id: 0,
-  currency: 'USD' as 'USD' | 'ARS',
   start_date: '',
   amount: 0,
-  exchange_rate_at_origin: 0,
+  num_installments: 0,
+  monthly_interest_percent: 0,
   notes: '',
   payment_method: 'transferencia' as 'efectivo' | 'transferencia',
   mark_as_paid: true,
+};
+
+const SETTLE_REASON_LABEL: Record<string, string> = {
+  resignation: 'Renuncia',
+  dismissal: 'Despido',
+  other: 'Otro motivo',
 };
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -74,6 +87,9 @@ export default function LoansPage() {
   const [interestTarget, setInterestTarget] = useState<Loan | null>(null);
   const [interestRate, setInterestRate] = useState<number | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [settleTarget, setSettleTarget] = useState<Loan | null>(null);
+  const [settleReason, setSettleReason] = useState<'resignation' | 'dismissal' | 'other'>('resignation');
+  const [settleNotes, setSettleNotes] = useState('');
 
   const loadData = async () => {
     try {
@@ -108,46 +124,53 @@ export default function LoansPage() {
 
   const isProofRequired = form.payment_method === 'transferencia' && form.mark_as_paid;
 
+  const notifyLoanApprovedByWhatsApp = (employee: Employee | undefined, loan: Loan) => {
+    if (!employee?.phone) return;
+    const installmentAmount = loan.installment_amount ? formatCurrency(Number(loan.installment_amount)) : '';
+    const message = `Hola ${employee.name}, tu préstamo de ${formatCurrency(Number(loan.amount))} fue aprobado. Se va a descontar en ${loan.num_installments} cuota(s) fija(s)${installmentAmount ? ` de ${installmentAmount} por mes` : ''}.`;
+    window.open(buildWhatsAppLink(employee.phone, message), '_blank');
+  };
+
   const handleSubmit = async () => {
     if (!form.employee_id) return setError('El empleado es obligatorio');
     if (!form.start_date) return setError('La fecha es obligatoria');
     if (!form.amount || form.amount <= 0) return setError('El monto debe ser mayor a 0');
-    if (form.currency === 'USD' && (!form.exchange_rate_at_origin || form.exchange_rate_at_origin <= 0)) {
-      return setError('La cotización debe ser mayor a 0 para préstamos en USD');
-    }
+    if (!form.num_installments || form.num_installments <= 0) return setError('La cantidad de cuotas debe ser mayor a 0');
     if (!form.payment_method) return setError('El método de pago es obligatorio');
     if (isProofRequired && !proofFile) return setError('El comprobante de pago es obligatorio para transferencias.');
 
+    const employee = employees.find(e => e.id === form.employee_id);
+
     try {
       if (approvingLoan) {
-        await LoanService.approve(approvingLoan.id, {
+        const updatedLoan = await LoanService.approve(approvingLoan.id, {
           amount: form.amount,
-          currency: form.currency,
-          exchange_rate_at_origin: form.currency === 'USD' ? form.exchange_rate_at_origin : undefined,
+          num_installments: form.num_installments,
+          monthly_interest_percent: form.monthly_interest_percent,
           payment_method: form.payment_method,
           notes: form.notes || undefined,
           start_date: form.start_date,
           mark_as_paid: form.mark_as_paid,
         }, proofFile);
         setSuccess(form.mark_as_paid ? 'Préstamo aprobado y marcado como pagado' : 'Préstamo aprobado — queda pendiente de pago');
+        if (form.mark_as_paid) notifyLoanApprovedByWhatsApp(approvingLoan.employee || employee, updatedLoan);
       } else if (editing) {
         setError('No se pueden editar préstamos. Elimine y vuelva a crear si hay un error.');
         return;
       } else {
         const createData: Parameters<typeof LoanService.create>[0] = {
           employee_id: form.employee_id,
-          currency: form.currency,
           start_date: form.start_date,
           amount: form.amount,
+          num_installments: form.num_installments,
+          monthly_interest_percent: form.monthly_interest_percent,
           payment_method: form.payment_method,
           notes: form.notes || undefined,
           mark_as_paid: form.mark_as_paid,
         };
-        if (form.currency === 'USD') {
-          createData.exchange_rate_at_origin = form.exchange_rate_at_origin;
-        }
-        await LoanService.create(createData, proofFile);
+        const createdLoan = await LoanService.create(createData, proofFile);
         setSuccess('Préstamo registrado exitosamente');
+        if (form.mark_as_paid) notifyLoanApprovedByWhatsApp(employee, createdLoan);
       }
       handleCloseDialog();
       loadData();
@@ -187,10 +210,10 @@ export default function LoansPage() {
     setApprovingLoan(loan);
     setForm({
       employee_id: loan.employee_id,
-      currency: loan.currency || 'ARS',
       start_date: new Date().toISOString().slice(0, 10),
       amount: Number(loan.requested_amount ?? loan.amount),
-      exchange_rate_at_origin: 0,
+      num_installments: Number(loan.requested_num_installments || 0),
+      monthly_interest_percent: 0,
       notes: loan.notes || '',
       payment_method: 'transferencia',
       mark_as_paid: true,
@@ -257,6 +280,22 @@ export default function LoansPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al aplicar interés');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleConfirmSettle = async () => {
+    if (!settleTarget) return;
+    setProcessing(true);
+    try {
+      await LoanService.settle(settleTarget.id, { reason: settleReason, notes: settleNotes || undefined });
+      setSuccess('Préstamo liquidado por baja del empleado');
+      setSettleTarget(null);
+      setSettleNotes('');
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al liquidar el préstamo');
     } finally {
       setProcessing(false);
     }
@@ -398,6 +437,9 @@ export default function LoansPage() {
                     color={LOAN_STATUS_LABEL[loan.status]?.color || 'default'}
                     size="small"
                   />
+                  {loan.plan_type === 'discretionary' && (
+                    <Chip label="A discreción (formato anterior)" size="small" variant="outlined" />
+                  )}
                   {loan.conflict_warning && (
                     <Tooltip title={loan.conflict_warning}>
                       <ConflictIcon color="warning" fontSize="small" />
@@ -417,8 +459,11 @@ export default function LoansPage() {
                   {loan.status === 'approved' && (
                     <Button size="small" variant="contained" color="success" startIcon={<PaidIcon />} onClick={() => handleOpenMarkPaid(loan)} disabled={processing}>Marcar como pagado</Button>
                   )}
-                  {loan.status === 'active' && (
+                  {loan.status === 'active' && loan.plan_type === 'discretionary' && (
                     <Button size="small" variant="outlined" color="secondary" startIcon={<InterestIcon />} onClick={() => handleOpenInterest(loan)}>Aplicar interés</Button>
+                  )}
+                  {loan.status === 'active' && loan.plan_type === 'fixed_installments' && (
+                    <Button size="small" variant="outlined" color="warning" startIcon={<SettleIcon />} onClick={() => setSettleTarget(loan)}>Liquidar por baja</Button>
                   )}
                   <Button size="small" variant="outlined" startIcon={<VisibilityIcon />} onClick={() => handleOpenDetail(loan)}>Ver Detalle</Button>
                   {loan.status === 'pending' && (
@@ -498,6 +543,9 @@ export default function LoansPage() {
                           color={LOAN_STATUS_LABEL[loan.status]?.color || 'default'}
                           size="small"
                         />
+                        {loan.plan_type === 'discretionary' && (
+                          <Chip label="A discreción" size="small" variant="outlined" />
+                        )}
                         {loan.conflict_warning && (
                           <Tooltip title={loan.conflict_warning}>
                             <ConflictIcon color="warning" fontSize="small" />
@@ -527,10 +575,17 @@ export default function LoansPage() {
                           </IconButton>
                         </Tooltip>
                       )}
-                      {loan.status === 'active' && (
+                      {loan.status === 'active' && loan.plan_type === 'discretionary' && (
                         <Tooltip title="Aplicar interés del mes">
                           <IconButton size="small" color="secondary" onClick={() => handleOpenInterest(loan)}>
                             <InterestIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {loan.status === 'active' && loan.plan_type === 'fixed_installments' && (
+                        <Tooltip title="Liquidar por baja (renuncia/despido)">
+                          <IconButton size="small" color="warning" onClick={() => setSettleTarget(loan)}>
+                            <SettleIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       )}
@@ -591,49 +646,49 @@ export default function LoansPage() {
               onChange={(e) => setForm({ ...form, start_date: e.target.value })}
             />
 
-            <Box>
-              <Typography variant="caption" color="text.secondary" mb={0.5} display="block">Moneda del Préstamo *</Typography>
-              <ToggleButtonGroup
-                value={form.currency}
-                exclusive
-                onChange={(_, val) => { if (val) setForm({ ...form, currency: val }); }}
-                size="small"
-                fullWidth
-              >
-                <ToggleButton value="USD">🇺🇸 Dólares (USD)</ToggleButton>
-                <ToggleButton value="ARS">🇦🇷 Pesos (ARS)</ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
+            <CurrencyInput
+              label="Monto del Préstamo ($) *"
+              value={form.amount}
+              onChange={(val) => setForm({ ...form, amount: val ?? 0 })}
+              fullWidth
+              size="small"
+              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+            />
 
             <Box display="flex" gap={2}>
-              <CurrencyInput
-                label={form.currency === 'USD' ? 'Monto Préstamo (USD) *' : 'Monto Préstamo ($) *'}
-                value={form.amount}
-                onChange={(val) => setForm({ ...form, amount: val ?? 0 })}
+              <TextField
+                label="Cantidad de Cuotas *"
+                type="number"
                 fullWidth
                 size="small"
-                InputProps={{ startAdornment: <InputAdornment position="start">{form.currency === 'USD' ? 'USD' : '$'}</InputAdornment> }}
+                value={form.num_installments || ''}
+                onChange={(e) => setForm({ ...form, num_installments: Number(e.target.value) })}
+                inputProps={{ min: 1, step: 1 }}
               />
-              {form.currency === 'USD' && (
-                <CurrencyInput
-                  label="Cotización USD ($) *"
-                  value={form.exchange_rate_at_origin}
-                  onChange={(val) => setForm({ ...form, exchange_rate_at_origin: val ?? 0 })}
-                  fullWidth
-                  size="small"
-                  InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
-                />
-              )}
+              <CurrencyInput
+                label="Interés Mensual (%)"
+                value={form.monthly_interest_percent}
+                onChange={(val) => setForm({ ...form, monthly_interest_percent: val ?? 0 })}
+                fullWidth
+                size="small"
+                InputProps={{ startAdornment: <InputAdornment position="start">%</InputAdornment> }}
+              />
             </Box>
 
-            {form.currency === 'USD' && (
-              <Box mt={1} p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
-                <Typography variant="caption" color="text.secondary">Total entregado al empleado en Pesos (ARS)</Typography>
-                <Typography variant="body2" fontWeight={700} color="primary.main">
-                  {formatCurrency(form.amount * form.exchange_rate_at_origin)}
-                </Typography>
-              </Box>
-            )}
+            {(() => {
+              const preview = form.amount > 0 && form.num_installments > 0
+                ? computeFrenchSchedule(form.amount, form.monthly_interest_percent, form.num_installments)
+                : null;
+              if (!preview) return null;
+              return (
+                <Box p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
+                  <Typography variant="caption" color="text.secondary">Cuota mensual estimada (amortización francesa)</Typography>
+                  <Typography variant="body2" fontWeight={700} color="primary.main">
+                    {formatCurrency(preview.installmentAmount)} / mes × {form.num_installments} cuotas
+                  </Typography>
+                </Box>
+              );
+            })()}
 
             <TextField
               label="Método de Pago *"
@@ -728,6 +783,13 @@ export default function LoansPage() {
               )}
               {detailLoan.paid_at && renderPaymentMethodChip(detailLoan.payment_method)}
               {detailLoan.paid_at && renderProofLink(detailLoan)}
+              {detailLoan.employee.phone && detailLoan.plan_type === 'fixed_installments' && (
+                <Tooltip title="Reenviar aviso por WhatsApp">
+                  <IconButton size="small" color="success" onClick={() => notifyLoanApprovedByWhatsApp(detailLoan.employee, detailLoan)}>
+                    <WhatsAppIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
           )}
         </DialogTitle>
@@ -738,6 +800,53 @@ export default function LoansPage() {
             </Box>
           ) : (
             <Stack spacing={3}>
+              {detailLoan?.plan_type === 'fixed_installments' && (
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700} mb={1}>Plan de Cuotas</Typography>
+                  {!detailLoan.installments || detailLoan.installments.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                      Todavía no se generó el plan de cuotas.
+                    </Typography>
+                  ) : (
+                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                            <TableCell><strong>Cuota</strong></TableCell>
+                            <TableCell><strong>Vence</strong></TableCell>
+                            <TableCell align="right"><strong>Capital</strong></TableCell>
+                            <TableCell align="right"><strong>Interés</strong></TableCell>
+                            <TableCell align="right"><strong>Total</strong></TableCell>
+                            <TableCell align="center"><strong>Estado</strong></TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {detailLoan.installments.map((inst: LoanInstallment) => (
+                            <TableRow key={inst.id} hover>
+                              <TableCell>{inst.installment_number}/{detailLoan.num_installments}</TableCell>
+                              <TableCell>
+                                {(inst.due_period_type === 'first_half' ? '1ª Q. ' : '2ª Q. ')}
+                                {MONTHS[inst.due_month - 1]} {inst.due_year}
+                              </TableCell>
+                              <TableCell align="right">{formatCurrency(inst.principal_amount)}</TableCell>
+                              <TableCell align="right" sx={{ color: 'text.secondary' }}>{formatCurrency(inst.interest_amount)}</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatCurrency(inst.total_amount)}</TableCell>
+                              <TableCell align="center">
+                                <Chip
+                                  size="small"
+                                  label={inst.status === 'scheduled' ? 'Pendiente' : inst.status === 'deducted' ? 'Descontada' : inst.status === 'prepaid' ? 'Liquidada' : 'Cancelada'}
+                                  color={inst.status === 'scheduled' ? 'default' : inst.status === 'deducted' ? 'success' : inst.status === 'prepaid' ? 'info' : 'default'}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </Box>
+              )}
+
               <Box>
                 <Typography variant="subtitle2" fontWeight={700} mb={1}>Cuotas Descontadas</Typography>
                 {!detailLoan?.payments || detailLoan.payments.length === 0 ? (
@@ -792,6 +901,7 @@ export default function LoansPage() {
                 )}
               </Box>
 
+              {detailLoan?.plan_type === 'discretionary' && (
               <Box>
                 <Typography variant="subtitle2" fontWeight={700} mb={1}>Intereses Aplicados</Typography>
                 {!detailLoan?.interestApplications || detailLoan.interestApplications.length === 0 ? (
@@ -827,6 +937,7 @@ export default function LoansPage() {
                   </TableContainer>
                 )}
               </Box>
+              )}
             </Stack>
           )}
         </DialogContent>
@@ -927,6 +1038,48 @@ export default function LoansPage() {
           <Button onClick={() => setInterestTarget(null)}>Cancelar</Button>
           <Button onClick={handleConfirmInterest} variant="contained" disabled={!interestRate || processing}>
             {processing ? 'Aplicando...' : 'Aplicar Interés'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Liquidación por baja del empleado (renuncia/despido) */}
+      <Dialog open={!!settleTarget} onClose={() => setSettleTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Liquidar Préstamo por Baja</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {settleTarget?.employee?.lastname}, {settleTarget?.employee?.name} — saldo actual {settleTarget ? formatCurrency(Number(settleTarget.remaining_balance)) : ''}
+            </Typography>
+            <Alert severity="info">
+              La cuota de la quincena en curso se cobra completa. El resto de las cuotas pendientes
+              se liquidan cobrando solo el capital adeudado — el interés se perdona.
+            </Alert>
+            <TextField
+              label="Motivo"
+              select
+              fullWidth
+              value={settleReason}
+              onChange={(e) => setSettleReason(e.target.value as 'resignation' | 'dismissal' | 'other')}
+              SelectProps={{ native: true }}
+            >
+              {Object.entries(SETTLE_REASON_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </TextField>
+            <TextField
+              label="Notas (opcional)"
+              fullWidth
+              multiline
+              rows={2}
+              value={settleNotes}
+              onChange={(e) => setSettleNotes(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSettleTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmSettle} variant="contained" color="warning" disabled={processing}>
+            {processing ? 'Liquidando...' : 'Liquidar Préstamo'}
           </Button>
         </DialogActions>
       </Dialog>

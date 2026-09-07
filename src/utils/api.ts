@@ -2108,6 +2108,8 @@ export interface PayrollEntry {
   gross_amount: number;
   advances_deducted: number;
   advances?: Pick<SalaryAdvance, 'id' | 'employee_id' | 'amount' | 'payment_method' | 'date'>[];
+  loan_installments_deducted: number;
+  loanInstallments?: Pick<LoanInstallment, 'id' | 'loan_id' | 'installment_number' | 'principal_amount' | 'interest_amount' | 'total_amount'>[];
   deductions?: number;
   extra_payments_notes?: string;
   deductions_notes?: string;
@@ -2128,6 +2130,16 @@ export interface PayrollEntry {
 }
 
 export class PayrollService {
+  // El status de PayPeriod es global — puede seguir "open" aunque la liquidación puntual de un
+  // empleado ya esté confirmada/pagada. Esto devuelve, liviano, el status real por período de
+  // UN empleado, para no ofrecer quincenas ya cerradas para él en combos de reasignación.
+  static async getPeriodStatusesByEmployee(employeeId: number): Promise<{ id: number; pay_period_id: number; status: 'draft' | 'confirmed' | 'paid' }[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/employee/${employeeId}/period-statuses`);
+    if (!response.ok) throw new Error('Error al obtener el estado de liquidaciones del empleado');
+    const data = await response.json();
+    return data.data || [];
+  }
+
   static async getByPeriod(periodId: number): Promise<PayrollEntry[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${periodId}`);
     if (!response.ok) throw new Error('Error al obtener liquidaciones');
@@ -2600,7 +2612,7 @@ export class SelfService {
     return (await response.json()).data || [];
   }
 
-  static async requestLoan(data: { amount: number; notes?: string }): Promise<Loan> {
+  static async requestLoan(data: { amount: number; notes?: string; requested_num_installments?: number }): Promise<Loan> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/loans`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3025,6 +3037,15 @@ export interface Loan {
   payment_method?: 'efectivo' | 'transferencia' | null;
   notes?: string;
   status: 'pending' | 'approved' | 'active' | 'rejected' | 'completed' | 'cancelled';
+  // Rediseño de cuota fija — los préstamos viejos quedan plan_type:'discretionary' (formato
+  // congelado, sin tocar) y siguen usando interest_rate_percent + "Aplicar interés" manual.
+  // Todo préstamo nuevo se crea siempre 'fixed_installments'.
+  plan_type: 'discretionary' | 'fixed_installments';
+  num_installments?: number | null;
+  requested_num_installments?: number | null;
+  monthly_interest_percent?: number | null;
+  installment_amount?: number | null;
+  due_period_type?: 'first_half' | 'second_half' | null;
   requested_by?: number;
   approved_by?: number;
   approved_at?: string | null;
@@ -3041,6 +3062,24 @@ export interface Loan {
   employee?: Employee;
   payments?: LoanPayment[];
   interestApplications?: LoanInterestApplication[];
+  installments?: LoanInstallment[];
+}
+
+export interface LoanInstallment {
+  id: number;
+  loan_id: number;
+  installment_number: number;
+  due_month: number;
+  due_year: number;
+  due_period_type: 'first_half' | 'second_half';
+  principal_amount: number;
+  interest_amount: number;
+  total_amount: number;
+  remaining_principal_after: number;
+  status: 'scheduled' | 'deducted' | 'prepaid' | 'cancelled';
+  payroll_entry_id?: number | null;
+  loan_payment_id?: number | null;
+  deducted_at?: string | null;
 }
 
 export interface LoanInterestApplication {
@@ -3064,6 +3103,7 @@ export interface LoanPayment {
   exchange_rate?: number | null;
   amount_ars?: number | null;
   payroll_entry_id?: number;
+  loan_installment_id?: number | null;
   payrollEntry?: { id: number; pay_period_id: number; payPeriod?: PayPeriod };
   notes?: string;
   created_by?: number;
@@ -3071,12 +3111,14 @@ export interface LoanPayment {
   updatedAt: string;
 }
 
+// Todo préstamo nuevo es siempre en ARS con cuota fija — sin moneda/cotización, forzado también
+// del lado del servidor (ver api_conmomet/controllers/loanController.js).
 export interface CreateLoanData {
   employee_id: number;
-  currency: 'USD' | 'ARS';
   start_date: string;
   amount: number;
-  exchange_rate_at_origin?: number;
+  num_installments: number;
+  monthly_interest_percent?: number;
   payment_method?: 'efectivo' | 'transferencia';
   notes?: string;
   mark_as_paid?: boolean;
@@ -3115,10 +3157,10 @@ export class LoanService {
   static async create(data: CreateLoanData, file?: File | null): Promise<Loan> {
     const formData = new FormData();
     formData.append('employee_id', data.employee_id.toString());
-    formData.append('currency', data.currency);
     formData.append('start_date', data.start_date);
     formData.append('amount', data.amount.toString());
-    if (data.exchange_rate_at_origin !== undefined) formData.append('exchange_rate_at_origin', data.exchange_rate_at_origin.toString());
+    formData.append('num_installments', data.num_installments.toString());
+    if (data.monthly_interest_percent !== undefined) formData.append('monthly_interest_percent', data.monthly_interest_percent.toString());
     if (data.payment_method) formData.append('payment_method', data.payment_method);
     if (data.notes) formData.append('notes', data.notes);
     if (data.mark_as_paid !== undefined) formData.append('mark_as_paid', data.mark_as_paid.toString());
@@ -3153,8 +3195,8 @@ export class LoanService {
 
   static async approve(id: number, data?: {
     amount?: number;
-    currency?: 'USD' | 'ARS';
-    exchange_rate_at_origin?: number;
+    num_installments?: number;
+    monthly_interest_percent?: number;
     payment_method?: 'efectivo' | 'transferencia';
     notes?: string;
     start_date?: string;
@@ -3162,8 +3204,8 @@ export class LoanService {
   }, file?: File | null): Promise<Loan> {
     const formData = new FormData();
     if (data?.amount !== undefined) formData.append('amount', data.amount.toString());
-    if (data?.currency) formData.append('currency', data.currency);
-    if (data?.exchange_rate_at_origin !== undefined) formData.append('exchange_rate_at_origin', data.exchange_rate_at_origin.toString());
+    if (data?.num_installments !== undefined) formData.append('num_installments', data.num_installments.toString());
+    if (data?.monthly_interest_percent !== undefined) formData.append('monthly_interest_percent', data.monthly_interest_percent.toString());
     if (data?.payment_method) formData.append('payment_method', data.payment_method);
     if (data?.notes !== undefined) formData.append('notes', data.notes);
     if (data?.start_date) formData.append('start_date', data.start_date);
@@ -3213,6 +3255,44 @@ export class LoanService {
     });
     if (!response.ok) throw new Error('Error al aplicar interés');
     return response.json();
+  }
+
+  // Liquidación por baja (renuncia/despido) — no es cancelación anticipada por elección del
+  // empleado. Cobra completa la cuota de la quincena en curso y liquida el resto solo a capital.
+  static async settle(id: number, data?: { reason?: 'resignation' | 'dismissal' | 'other'; notes?: string }): Promise<{ loan: Loan; total_charged: number }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${id}/settle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {}),
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Error al liquidar el préstamo');
+    return response.json();
+  }
+}
+
+// --- SYSTEM SETTINGS ---
+export interface SystemSetting {
+  id: number;
+  max_loan_amount_ars: number;
+}
+
+export class SystemSettingService {
+  static async get(): Promise<SystemSetting> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings`);
+    if (!response.ok) throw new Error('Error al obtener la configuración general');
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async update(data: { max_loan_amount_ars: number }): Promise<SystemSetting> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al actualizar la configuración');
+    const result = await response.json();
+    return result.data;
   }
 }
 

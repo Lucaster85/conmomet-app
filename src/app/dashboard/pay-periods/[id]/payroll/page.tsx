@@ -37,6 +37,13 @@ const formatAdvancesSummary = (advances?: AdvanceInfo[]) => {
     .join(', ');
 };
 
+type LoanInstallmentInfo = { installment_number: number };
+
+const formatLoanInstallmentsSummary = (items?: LoanInstallmentInfo[]) => {
+  if (!items || items.length === 0) return '';
+  return items.map((i) => `Cuota ${i.installment_number}`).join(', ');
+};
+
 export default function PayrollPage() {
   const params = useParams();
   const router = useRouter();
@@ -427,6 +434,12 @@ export default function PayrollPage() {
                     <Typography variant="caption" color="text.secondary" display="block">Adelantos</Typography>
                     <Typography variant="body2" color="error.main" fontWeight="medium">-{formatCurrency(e.advances_deducted)}</Typography>
                   </Grid>
+                  {Number(e.loan_installments_deducted) > 0 && (
+                    <Grid size={{ xs: 6 }}>
+                      <Typography variant="caption" color="text.secondary" display="block">Cuota Préstamo</Typography>
+                      <Typography variant="body2" color="error.main" fontWeight="medium">-{formatCurrency(e.loan_installments_deducted)}</Typography>
+                    </Grid>
+                  )}
                   <Grid size={{ xs: 6 }}>
                     {(() => {
                       const extraPaymentsFromAdjustments = (e.adjustments || [])
@@ -595,6 +608,9 @@ export default function PayrollPage() {
                   <TableCell align="right" sx={{ bgcolor: 'grey.50' }}><strong>{formatCurrency(e.gross_amount as number)}</strong></TableCell>
                   <TableCell align="right">
                     <Typography variant="body2" color="error">-{formatCurrency(e.advances_deducted as number)}</Typography>
+                    {Number(e.loan_installments_deducted) > 0 && (
+                      <Typography variant="caption" color="error" display="block">Cuota: -{formatCurrency(e.loan_installments_deducted)}</Typography>
+                    )}
                   </TableCell>
                   {(() => {
                     const extraPaymentsFromAdjustments = (e.adjustments || [])
@@ -1040,6 +1056,17 @@ export default function PayrollPage() {
                       <Typography variant="body2" color="error.main">-{formatCurrency(detailEntry.advances_deducted)}</Typography>
                     </Box>
                   )}
+                  {Number(detailEntry.loan_installments_deducted) > 0 && (
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2" color="error.main">
+                        Cuota de Préstamo
+                        {formatLoanInstallmentsSummary(detailEntry.loanInstallments) && (
+                          <Typography component="span" variant="caption" color="text.secondary"> ({formatLoanInstallmentsSummary(detailEntry.loanInstallments)})</Typography>
+                        )}
+                      </Typography>
+                      <Typography variant="body2" color="error.main">-{formatCurrency(detailEntry.loan_installments_deducted)}</Typography>
+                    </Box>
+                  )}
                   {detailEntry.adjustments?.filter((a: { type: string; id: number; label: string; amount: number }) => a.type === 'deduction').map((a: { type: string; id: number; label: string; amount: number }) => (
                     <Box display="flex" justifyContent="space-between" key={a.id}>
                       <Typography variant="body2" color="error.main">
@@ -1048,7 +1075,7 @@ export default function PayrollPage() {
                       <Typography variant="body2" color="error.main">-{formatCurrency(a.amount)}</Typography>
                     </Box>
                   ))}
-                  {Number(detailEntry.advances_deducted) === 0 && (!detailEntry.adjustments || detailEntry.adjustments.filter((a: { type: string }) => a.type === 'deduction').length === 0) && (
+                  {Number(detailEntry.advances_deducted) === 0 && Number(detailEntry.loan_installments_deducted) === 0 && (!detailEntry.adjustments || detailEntry.adjustments.filter((a: { type: string }) => a.type === 'deduction').length === 0) && (
                     <Typography variant="body2" color="text.secondary">Sin deducciones</Typography>
                   )}
                 </Stack>
@@ -1387,6 +1414,12 @@ export default function PayrollPage() {
                       <Typography variant="caption" color="error.main">-{formatCurrency(entry.advances_deducted)}</Typography>
                     </Box>
                   )}
+                  {Number(entry.loan_installments_deducted) > 0 && (
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="caption" color="error.main">Cuota de Préstamo</Typography>
+                      <Typography variant="caption" color="error.main">-{formatCurrency(entry.loan_installments_deducted)}</Typography>
+                    </Box>
+                  )}
                   {entry.adjustments?.filter((a: PayrollAdjustment) => a.type === 'deduction').map((a: PayrollAdjustment) => (
                     <Box display="flex" justifyContent="space-between" key={a.id}>
                       <Typography variant="caption" color="error.main">
@@ -1395,7 +1428,7 @@ export default function PayrollPage() {
                       <Typography variant="caption" color="error.main">-{formatCurrency(a.amount)}</Typography>
                     </Box>
                   ))}
-                  {Number(entry.advances_deducted) === 0 && (!entry.adjustments || entry.adjustments.filter((a: PayrollAdjustment) => a.type === 'deduction').length === 0) && (
+                  {Number(entry.advances_deducted) === 0 && Number(entry.loan_installments_deducted) === 0 && (!entry.adjustments || entry.adjustments.filter((a: PayrollAdjustment) => a.type === 'deduction').length === 0) && (
                     <Typography variant="caption" color="text.secondary">Sin deducciones</Typography>
                   )}
                 </Stack>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, CircularProgress, Select, InputLabel, FormControl, FormControlLabel, Checkbox, Divider, useTheme, useMediaQuery
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, CircularProgress, Select, InputLabel, FormControl, FormControlLabel, Checkbox, Divider, useTheme, useMediaQuery, Stack
 } from '@mui/material';
 import { DeleteOutlined as DeleteIcon, AddOutlined as AddIcon } from '@mui/icons-material';
 import { PayrollAdjustment, PayrollAdjustmentService, CreatePayrollAdjustmentData, Loan, LoanService } from '../../../../../utils/api';
@@ -20,6 +20,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
 
   const [adjustments, setAdjustments] = useState<PayrollAdjustment[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [fixedInstallmentLoans, setFixedInstallmentLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,7 +36,11 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
         LoanService.getAll({ status: 'active', employee_id: employeeId })
       ]);
       setAdjustments(adjData);
-      setLoans(loansData);
+      // La sección manual de descuento de cuota solo aplica a préstamos "a discreción" (formato
+      // viejo, congelado) — los de cuota fija se descuentan solos al generar la liquidación, acá
+      // solo se muestran de referencia (solo lectura).
+      setLoans(loansData.filter(l => l.plan_type === 'discretionary'));
+      setFixedInstallmentLoans(loansData.filter(l => l.plan_type === 'fixed_installments'));
     } catch {
       setError('Error al cargar datos');
     } finally {
@@ -192,6 +197,28 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
             Agregar
           </Button>
         </Box>
+
+        {fixedInstallmentLoans.length > 0 && (
+          <>
+            <Divider sx={{ my: 3 }} />
+            <Typography variant="subtitle2" mb={1}>Cuota de Préstamo (automática)</Typography>
+            <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+              Se descuenta sola al generar la liquidación — no requiere carga manual.
+            </Typography>
+            <Stack spacing={0.5} mb={2}>
+              {fixedInstallmentLoans.map((l) => (
+                <Box key={l.id} display="flex" justifyContent="space-between">
+                  <Typography variant="body2" color="text.secondary">
+                    Cuota {l.installment_amount ? `de $${Number(l.installment_amount).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : ''} — Saldo restante
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    ${Number(l.remaining_balance).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          </>
+        )}
 
         {loans.length > 0 && (
           <>

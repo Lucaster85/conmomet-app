@@ -48,6 +48,7 @@ import {
 } from '@/utils/api';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
+import { buildWhatsAppLink } from '@/utils/whatsapp';
 
 const STATUS_CONFIG = {
   permanent: { label: 'Permanente', color: 'default', icon: <CheckCircleIcon fontSize="small" /> },
@@ -186,11 +187,8 @@ export default function EmployeeDetailPage() {
     }
   }, [employee]);
 
-  const buildWhatsAppLink = (phone: string, link: string, name: string): string => {
-    const digits = phone.replace(/\D/g, '');
-    const message = `Hola ${name}, te invitamos a crear tu usuario del Portal Conmomet. Ingresá acá para crear tu contraseña: ${link}`;
-    return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
-  };
+  const buildInviteMessage = (link: string, name: string) =>
+    `Hola ${name}, te invitamos a crear tu usuario del Portal Conmomet. Ingresá acá para crear tu contraseña: ${link}`;
 
   // El envío por email queda oculto hasta tener un servicio de mail propio del cliente
   // (el de prueba no está funcionando) — por ahora la invitación solo sale por WhatsApp.
@@ -208,7 +206,7 @@ export default function EmployeeDetailPage() {
       setInviteResult(result);
       const status = await EmployeeInvitationService.getStatus(employee.id);
       setInvitationStatus(status);
-      window.open(buildWhatsAppLink(result.contact_used, result.invite_link, employee.name), '_blank');
+      window.open(buildWhatsAppLink(result.contact_used, buildInviteMessage(result.invite_link, employee.name)), '_blank');
       setSuccess('Invitación generada. Se abrió WhatsApp para enviarla.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al invitar al empleado.');
@@ -636,7 +634,7 @@ export default function EmployeeDetailPage() {
                                 size="small"
                                 startIcon={<WhatsAppIcon />}
                                 disabled={!inviteResult.whatsapp_contact}
-                                onClick={() => window.open(buildWhatsAppLink(inviteResult.whatsapp_contact!, inviteResult.invite_link, employee.name), '_blank')}
+                                onClick={() => window.open(buildWhatsAppLink(inviteResult.whatsapp_contact!, buildInviteMessage(inviteResult.invite_link, employee.name)), '_blank')}
                               >
                                 Compartir por WhatsApp
                               </Button>
