@@ -2,15 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, TextField, Stack, Chip, Autocomplete, Grid, useTheme, useMediaQuery
+  TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogContentText,
+  DialogActions, CircularProgress, TextField, Stack, Chip, Autocomplete, Grid, useTheme, useMediaQuery,
+  IconButton, Tooltip
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import CurrencyInput from '../../../components/CurrencyInput';
 import {
   Add as AddIcon, Refresh as RefreshIcon,
-  LocalAtm as CashIcon, AccountBalance as BankIcon
+  LocalAtm as CashIcon, AccountBalance as BankIcon, Delete as DeleteIcon
 } from '@mui/icons-material';
 import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService } from '../../../utils/api';
 
@@ -24,6 +25,7 @@ export default function SalaryAdvancesPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: SalaryAdvance | null }>({ open: false, item: null });
 
   // Filters
   const [filterEmployee, setFilterEmployee] = useState<number | ''>('');
@@ -87,6 +89,19 @@ export default function SalaryAdvancesPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteDialog.item) return;
+    try {
+      await SalaryAdvanceService.delete(deleteDialog.item.id);
+      setSuccess('Adelanto eliminado');
+      setDeleteDialog({ open: false, item: null });
+      loadData();
+    } catch (err) {
+      setDeleteDialog({ open: false, item: null });
+      setError(err instanceof Error ? err.message : 'Error al eliminar');
+    }
+  };
+
   const formatCurrency = (v: number) => `$${Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
   const formatDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-AR');
 
@@ -112,6 +127,8 @@ export default function SalaryAdvancesPage() {
       />
     );
   };
+
+  const canDelete = (a: SalaryAdvance) => !a.payPeriod || a.payPeriod.status === 'open';
 
   const filteredAdvances = advances.filter(a => {
     if (filterEmployee && a.employee_id !== filterEmployee) return false;
@@ -182,7 +199,16 @@ export default function SalaryAdvancesPage() {
           <Stack spacing={2}>
             {filteredAdvances.map(a => (
               <Paper key={a.id} sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold">{a.employee?.lastname}, {a.employee?.name}</Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                  <Typography variant="subtitle1" fontWeight="bold">{a.employee?.lastname}, {a.employee?.name}</Typography>
+                  <Tooltip title={canDelete(a) ? 'Eliminar adelanto' : 'No se puede eliminar: la quincena ya fue cerrada/pagada'}>
+                    <span>
+                      <IconButton size="small" color="error" disabled={!canDelete(a)} onClick={() => setDeleteDialog({ open: true, item: a })}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Box>
                 <Typography variant="h6" color="error.main">{formatCurrency(a.amount)}</Typography>
                 <Typography variant="body2">{formatDate(a.date)}</Typography>
                 {a.notes && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>{a.notes}</Typography>}
@@ -208,12 +234,13 @@ export default function SalaryAdvancesPage() {
                 <TableCell><strong>Método</strong></TableCell>
                 <TableCell><strong>Notas</strong></TableCell>
                 <TableCell><strong>Estado</strong></TableCell>
+                <TableCell align="right"><strong>Acciones</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredAdvances.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                     <Typography color="text.secondary">No hay adelantos para los filtros seleccionados</Typography>
                   </TableCell>
                 </TableRow>
@@ -226,6 +253,15 @@ export default function SalaryAdvancesPage() {
                     <TableCell>{renderPaymentMethodChip(a.payment_method)}</TableCell>
                     <TableCell>{a.notes || '—'}</TableCell>
                     <TableCell>{a.pay_period_id ? <Chip label="Descontado" size="small" color="success" /> : <Chip label="Pendiente de descuento" size="small" color="warning" />}</TableCell>
+                    <TableCell align="right">
+                      <Tooltip title={canDelete(a) ? 'Eliminar adelanto' : 'No se puede eliminar: la quincena ya fue cerrada/pagada'}>
+                        <span>
+                          <IconButton size="small" color="error" disabled={!canDelete(a)} onClick={() => setDeleteDialog({ open: true, item: a })}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -274,6 +310,26 @@ export default function SalaryAdvancesPage() {
           <Button onClick={handleSubmit} variant="contained" disabled={selectedEmployees.length === 0 || !form.amount || !form.date}>
             Registrar {selectedEmployees.length > 1 ? `(${selectedEmployees.length})` : ''}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {deleteDialog.item && (
+              <>
+                ¿Seguro que querés eliminar el adelanto de{' '}
+                <strong>{deleteDialog.item.employee?.lastname}, {deleteDialog.item.employee?.name}</strong> por{' '}
+                <strong>{formatCurrency(deleteDialog.item.amount)}</strong> del {formatDate(deleteDialog.item.date)}?
+                {deleteDialog.item.pay_period_id && ' El descuento se recalculará en la liquidación correspondiente.'}
+              </>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog({ open: false, item: null })}>Cancelar</Button>
+          <Button onClick={handleDelete} variant="contained" color="error">Eliminar</Button>
         </DialogActions>
       </Dialog>
     </Box>

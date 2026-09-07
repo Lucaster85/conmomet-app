@@ -1531,6 +1531,16 @@ export class SalaryAdvanceService {
     if (!response.ok) throw new Error('Error al crear adelanto(s)');
     return (await response.json()).data;
   }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al eliminar adelanto');
+    }
+  }
 }
 
 // EPP Catalog Service
