@@ -15,10 +15,7 @@ import {
   Container,
   Tabs,
   Tab,
-  Button,
-  Drawer,
-  List,
-  ListItemButton
+  Button
 } from '@mui/material';
 import {
   LogoutOutlined as LogoutIcon,
@@ -32,8 +29,7 @@ import {
   ArrowBackOutlined as ArrowBackIcon,
   EventAvailableOutlined as EventAvailableIcon,
   RequestQuoteOutlined as RequestQuoteIcon,
-  MenuOutlined as MenuIcon,
-  CloseOutlined as CloseIcon
+  HomeOutlined as HomeIcon
 } from '@mui/icons-material';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
@@ -46,7 +42,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   // Redirección si no tiene employee_id
@@ -111,13 +106,14 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     <ProtectedRoute>
       <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
         <AppBar position="static" sx={{ bgcolor: 'background.paper', color: 'text.primary', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <Toolbar sx={{ position: 'relative' }}>
+          <Toolbar sx={{ position: 'relative', minHeight: { xs: 72, sm: 64 } }}>
             <IconButton
               edge="start"
-              onClick={() => setMobileNavOpen(true)}
+              onClick={() => router.push('/portal')}
               sx={{ display: { xs: 'inline-flex', sm: 'none' }, mr: 1 }}
+              aria-label="Ir al inicio del portal"
             >
-              <MenuIcon />
+              <HomeIcon sx={{ fontSize: 32 }} />
             </IconButton>
 
             <Box
@@ -133,7 +129,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
                 transform: { xs: 'translate(-50%, -50%)', sm: 'none' },
               }}
             >
-              <Box sx={{ height: { xs: 32, sm: 44 }, display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ height: { xs: 42, sm: 44 }, display: 'flex', alignItems: 'center' }}>
                 <Image
                   src="/img/logos/logo-conmomet-ROJO.png"
                   alt="Conmomet"
@@ -173,9 +169,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
               <IconButton onClick={handleProfileMenuOpen} color="inherit" sx={{ p: 0.5 }}>
                 <Avatar
                   sx={{
-                    width: 38,
-                    height: 38,
-                    fontSize: '0.9rem',
+                    width: { xs: 46, sm: 38 },
+                    height: { xs: 46, sm: 38 },
+                    fontSize: { xs: '1.05rem', sm: '0.9rem' },
                     fontWeight: 700,
                     letterSpacing: '0.02em',
                     color: 'white',
@@ -217,7 +213,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           transformOrigin={{ horizontal: 'right', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
-          <MenuItem onClick={() => { handleProfileMenuClose(); router.push('/portal'); }}>
+          <MenuItem onClick={() => { handleProfileMenuClose(); router.push('/portal/profile'); }}>
             <ListItemIcon><AccountCircle fontSize="small" /></ListItemIcon>
             <ListItemText>Mi Perfil</ListItemText>
           </MenuItem>
@@ -225,6 +221,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <ListItemIcon><LockIcon fontSize="small" /></ListItemIcon>
             <ListItemText>Cambiar contraseña</ListItemText>
           </MenuItem>
+          {user?.has_dashboard_access && (
+            <MenuItem onClick={() => { handleProfileMenuClose(); router.push('/dashboard'); }}>
+              <ListItemIcon><ArrowBackIcon fontSize="small" /></ListItemIcon>
+              <ListItemText>Volver al Dashboard</ListItemText>
+            </MenuItem>
+          )}
           <Divider />
           <MenuItem onClick={handleLogout}>
             <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
@@ -237,62 +239,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           onClose={() => setChangePasswordOpen(false)}
           forced={!!user?.must_change_password}
         />
-
-        <Drawer
-          anchor="left"
-          open={mobileNavOpen}
-          onClose={() => setMobileNavOpen(false)}
-          sx={{ display: { xs: 'block', sm: 'none' } }}
-        >
-          <Box sx={{ width: 280 }} role="presentation">
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2 }}>
-              <Typography variant="subtitle1" fontWeight="bold" color="primary.main">
-                Portal del Empleado
-              </Typography>
-              <IconButton size="small" onClick={() => setMobileNavOpen(false)}>
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            </Box>
-            <Divider />
-            <List sx={{ py: 1 }}>
-              {tabs.map((tab, idx) => (
-                <ListItemButton
-                  key={idx}
-                  selected={idx === currentTab}
-                  onClick={() => { router.push(tab.path); setMobileNavOpen(false); }}
-                  sx={{
-                    py: 1.25,
-                    '&.Mui-selected': { bgcolor: 'primary.50', borderRight: 3, borderColor: 'primary.main' },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40, color: idx === currentTab ? 'primary.main' : 'inherit' }}>
-                    {tab.icon}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={tab.label}
-                    slotProps={{ primary: { fontWeight: idx === currentTab ? 600 : 400 } }}
-                  />
-                </ListItemButton>
-              ))}
-            </List>
-            {user?.has_dashboard_access && (
-              <>
-                <Divider />
-                <List sx={{ py: 1 }}>
-                  <ListItemButton
-                    onClick={() => { router.push('/dashboard'); setMobileNavOpen(false); }}
-                    sx={{ py: 1.25 }}
-                  >
-                    <ListItemIcon sx={{ minWidth: 40 }}>
-                      <ArrowBackIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Volver al Dashboard" />
-                  </ListItemButton>
-                </List>
-              </>
-            )}
-          </Box>
-        </Drawer>
 
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4, flexGrow: 1 }}>
           {children}
