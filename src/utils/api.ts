@@ -2274,6 +2274,7 @@ export class SalaryAdvanceService {
     payment_method: 'efectivo' | 'transferencia';
     notes?: string;
     mark_as_paid?: boolean;
+    pay_period_id?: number;
   }, file?: File | null): Promise<SalaryAdvance | SalaryAdvance[]> {
     const formData = new FormData();
     if (payload.employee_id !== undefined) formData.append('employee_id', payload.employee_id.toString());
@@ -2283,6 +2284,7 @@ export class SalaryAdvanceService {
     formData.append('payment_method', payload.payment_method);
     if (payload.notes) formData.append('notes', payload.notes);
     if (payload.mark_as_paid !== undefined) formData.append('mark_as_paid', payload.mark_as_paid.toString());
+    if (payload.pay_period_id !== undefined) formData.append('pay_period_id', payload.pay_period_id.toString());
     if (file) formData.append('file', file);
 
     const token = TokenManager.getToken();
@@ -2293,6 +2295,26 @@ export class SalaryAdvanceService {
     });
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al crear adelanto(s)');
     return (await response.json()).data;
+  }
+
+  static async reassignPeriod(id: number, pay_period_id: number | null): Promise<SalaryAdvance> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances/${id}/reassign-period`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pay_period_id }),
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al reasignar la quincena');
+    return (await response.json()).data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al eliminar adelanto');
+    }
   }
 }
 

@@ -18,9 +18,10 @@ import {
   LocalAtmOutlined as CashIcon, AccountBalanceOutlined as BankIcon,
   CheckCircleOutlined as ApproveIcon, CancelOutlined as RejectIcon,
   WarningAmberOutlined as ConflictIcon, PaymentsOutlined as PaidIcon,
-  AttachFileOutlined as ProofIcon, UploadFileOutlined as UploadProofIcon
+  AttachFileOutlined as ProofIcon, UploadFileOutlined as UploadProofIcon,
+  DeleteOutline as DeleteIcon, SyncAltOutlined as ReassignIcon
 } from '@mui/icons-material';
-import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService } from '../../../utils/api';
+import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService, PayPeriod, PayPeriodService } from '../../../utils/api';
 
 const STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success' | 'error' }> = {
   pending: { label: 'Pendiente', color: 'warning' },
@@ -34,6 +35,7 @@ export default function SalaryAdvancesPage() {
 
   const [advances, setAdvances] = useState<SalaryAdvance[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [payPeriods, setPayPeriods] = useState<PayPeriod[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -44,12 +46,13 @@ export default function SalaryAdvancesPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'discounted'>('all');
 
   const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
-  const [form, setForm] = useState<{ amount: number | null; date: string; notes: string; payment_method: 'efectivo' | 'transferencia'; mark_as_paid: boolean }>({
+  const [form, setForm] = useState<{ amount: number | null; date: string; notes: string; payment_method: 'efectivo' | 'transferencia'; mark_as_paid: boolean; pay_period_id: number | '' }>({
     amount: null,
     date: new Date().toISOString().split('T')[0],
     notes: '',
     payment_method: 'transferencia',
     mark_as_paid: true,
+    pay_period_id: '',
   });
   const [createProofFile, setCreateProofFile] = useState<File | null>(null);
 
@@ -68,21 +71,31 @@ export default function SalaryAdvancesPage() {
   const [uploadProofFile, setUploadProofFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
 
+  // Eliminar / Reasignar quincena
+  const [deleteTarget, setDeleteTarget] = useState<SalaryAdvance | null>(null);
+  const [reassignTarget, setReassignTarget] = useState<SalaryAdvance | null>(null);
+  const [reassignPeriodId, setReassignPeriodId] = useState<number | ''>('');
+
   const loadData = async () => {
     try {
       setLoading(true);
-      const [advs, emps] = await Promise.all([
+      const [advs, emps, periods] = await Promise.all([
         SalaryAdvanceService.getAll(),
-        EmployeeService.getAll()
+        EmployeeService.getAll(),
+        PayPeriodService.getAll(),
       ]);
       setAdvances(advs);
       setEmployees(emps);
+      setPayPeriods(periods);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar');
     } finally {
       setLoading(false);
     }
   };
+
+  const openPeriods = payPeriods.filter(p => p.status === 'open');
+  const formatPeriodLabel = (p: PayPeriod) => `${p.type === 'first_half' ? '1ra' : '2da'} quincena ${p.month}/${p.year}`;
 
   useEffect(() => { loadData(); }, []);
 
@@ -94,6 +107,7 @@ export default function SalaryAdvancesPage() {
       notes: '',
       payment_method: 'transferencia',
       mark_as_paid: true,
+      pay_period_id: '',
     });
     setCreateProofFile(null);
     setOpenDialog(true);
@@ -118,6 +132,7 @@ export default function SalaryAdvancesPage() {
         payment_method: form.payment_method,
         notes: form.notes,
         mark_as_paid: form.mark_as_paid,
+        pay_period_id: form.pay_period_id || undefined,
       }, createProofFile);
       setSuccess(selectedEmployees.length > 1 ? 'Adelantos registrados en lote' : 'Adelanto registrado');
       setOpenDialog(false);
@@ -218,6 +233,41 @@ export default function SalaryAdvancesPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al rechazar');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setProcessing(true);
+    try {
+      await SalaryAdvanceService.delete(deleteTarget.id);
+      setSuccess('Adelanto eliminado');
+      setDeleteTarget(null);
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleOpenReassign = (advance: SalaryAdvance) => {
+    setReassignTarget(advance);
+    setReassignPeriodId(advance.pay_period_id ?? '');
+  };
+
+  const handleConfirmReassign = async () => {
+    if (!reassignTarget) return;
+    setProcessing(true);
+    try {
+      await SalaryAdvanceService.reassignPeriod(reassignTarget.id, reassignPeriodId || null);
+      setSuccess('Quincena reasignada');
+      setReassignTarget(null);
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al reasignar la quincena');
     } finally {
       setProcessing(false);
     }
@@ -352,8 +402,15 @@ export default function SalaryAdvancesPage() {
                   </Box>
                 )}
                 {a.status === 'approved' && !a.paid_at && (
-                  <Box mt={1.5}>
+                  <Box mt={1.5} display="flex" gap={1} flexWrap="wrap">
                     <Button size="small" variant="contained" color="info" startIcon={<PaidIcon />} onClick={() => handleOpenMarkPaid(a)} disabled={processing}>Marcar como pagado</Button>
+                    <Button size="small" variant="outlined" startIcon={<ReassignIcon />} onClick={() => handleOpenReassign(a)} disabled={processing}>Reasignar quincena</Button>
+                    <Button size="small" variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteTarget(a)} disabled={processing}>Eliminar</Button>
+                  </Box>
+                )}
+                {a.status === 'approved' && a.paid_at && (
+                  <Box mt={1.5}>
+                    <Button size="small" variant="outlined" startIcon={<ReassignIcon />} onClick={() => handleOpenReassign(a)} disabled={processing}>Reasignar quincena</Button>
                   </Box>
                 )}
                 {a.paid_at && !a.payment_proof_url && (
@@ -433,6 +490,19 @@ export default function SalaryAdvancesPage() {
                           <Tooltip title="Marcar como pagado">
                             <IconButton size="small" color="info" onClick={() => handleOpenMarkPaid(a)} disabled={processing}><PaidIcon fontSize="small" /></IconButton>
                           </Tooltip>
+                          <Tooltip title="Reasignar quincena">
+                            <IconButton size="small" onClick={() => handleOpenReassign(a)} disabled={processing}><ReassignIcon fontSize="small" /></IconButton>
+                          </Tooltip>
+                          <Tooltip title="Eliminar">
+                            <IconButton size="small" color="error" onClick={() => setDeleteTarget(a)} disabled={processing}><DeleteIcon fontSize="small" /></IconButton>
+                          </Tooltip>
+                        </Box>
+                      )}
+                      {a.status === 'approved' && a.paid_at && (
+                        <Box display="flex" gap={0.5} justifyContent="flex-end">
+                          <Tooltip title="Reasignar quincena">
+                            <IconButton size="small" onClick={() => handleOpenReassign(a)} disabled={processing}><ReassignIcon fontSize="small" /></IconButton>
+                          </Tooltip>
                         </Box>
                       )}
                       {a.paid_at && !a.payment_proof_url && (
@@ -491,6 +561,19 @@ export default function SalaryAdvancesPage() {
             >
               <option value="transferencia">Transferencia bancaria</option>
               <option value="efectivo">Efectivo</option>
+            </TextField>
+            <TextField
+              label="Quincena (opcional)"
+              select
+              fullWidth
+              value={form.pay_period_id}
+              onChange={(e) => setForm({ ...form, pay_period_id: e.target.value ? Number(e.target.value) : '' })}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+              helperText="Si no se asigna, se vincula automáticamente cuando se genere la liquidación correspondiente a la fecha."
+            >
+              <option value="">Sin asignar (automático)</option>
+              {openPeriods.map(p => <option key={p.id} value={p.id}>{formatPeriodLabel(p)}</option>)}
             </TextField>
             <FormControlLabel
               control={
@@ -683,6 +766,57 @@ export default function SalaryAdvancesPage() {
           <Button onClick={() => setUploadProofTarget(null)}>Cancelar</Button>
           <Button onClick={handleConfirmUploadProof} variant="contained" disabled={processing || !uploadProofFile}>
             {processing ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Eliminar adelanto */}
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            ¿Seguro que querés eliminar el adelanto de <strong>{deleteTarget?.employee?.lastname}, {deleteTarget?.employee?.name}</strong> por <strong>{deleteTarget ? formatCurrency(Number(deleteTarget.amount)) : ''}</strong> del {deleteTarget ? formatDate(deleteTarget.date) : ''}?
+            {deleteTarget?.pay_period_id && ' El descuento se recalculará en la liquidación correspondiente.'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmDelete} variant="contained" color="error" disabled={processing}>
+            {processing ? 'Eliminando...' : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reasignar quincena */}
+      <Dialog open={!!reassignTarget} onClose={() => setReassignTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Reasignar Quincena</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              Adelanto de <strong>{reassignTarget?.employee?.lastname}, {reassignTarget?.employee?.name}</strong> por <strong>{reassignTarget ? formatCurrency(Number(reassignTarget.amount)) : ''}</strong>.
+              Quincena actual: <strong>{reassignTarget?.payPeriod ? formatPeriodLabel(reassignTarget.payPeriod) : 'sin asignar'}</strong>.
+            </Typography>
+            <Alert severity="info">
+              Se recalculará el descuento en la liquidación de origen (si existía) y en la de destino.
+            </Alert>
+            <TextField
+              label="Nueva quincena"
+              select
+              fullWidth
+              value={reassignPeriodId}
+              onChange={(e) => setReassignPeriodId(e.target.value ? Number(e.target.value) : '')}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="">Sin asignar (automático)</option>
+              {openPeriods.map(p => <option key={p.id} value={p.id}>{formatPeriodLabel(p)}</option>)}
+            </TextField>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReassignTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmReassign} variant="contained" disabled={processing}>
+            {processing ? 'Guardando...' : 'Reasignar'}
           </Button>
         </DialogActions>
       </Dialog>
