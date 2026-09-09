@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Stack } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Stack, Typography } from '@mui/material';
 import { Employee, EmployeeInvitationService, InviteResult } from '../utils/api';
-import { buildWhatsAppLink } from '../utils/whatsapp';
+import { buildWhatsAppLink, normalizeArgentinaMobile } from '../utils/whatsapp';
 
 export const buildInviteMessage = (link: string, name: string) =>
   `Hola ${name}, te invitamos a crear tu usuario del Portal Conmomet. Ingresá acá para crear tu contraseña: ${link}`;
@@ -51,8 +51,13 @@ export default function InviteEmployeeDialog({ employee, open, onClose, onSent, 
             fullWidth
             value={contact}
             onChange={(e) => setContact(e.target.value)}
-            helperText="Confirmá que el dato sea correcto antes de enviar"
+            helperText='Código de área + número, sin 0 ni 15 (ej: 2262403020 o 1141234567).'
           />
+          {contact.trim() && (
+            <Typography variant="body2" color="text.secondary">
+              Se va a enviar a: <strong>+{normalizeArgentinaMobile(contact)}</strong>
+            </Typography>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions>
