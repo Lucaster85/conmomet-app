@@ -11,11 +11,13 @@ import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import CurrencyInput from '../../../components/CurrencyInput';
+import InviteEmployeeDialog from '../../../components/InviteEmployeeDialog';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, VisibilityOutlined as VisibilityIcon,
   LinkOutlined as LinkIcon, LinkOffOutlined as LinkOffIcon, BadgeOutlined as TitleIcon,
 } from '@mui/icons-material';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { useRouter } from 'next/navigation';
 import { Employee, EmployeeService, CreateEmployeeData, User, UserService, CategoryService, Category } from '../../../utils/api';
 
@@ -39,6 +41,7 @@ export default function EmployeesPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
+  const [inviteTarget, setInviteTarget] = useState<Employee | null>(null);
 
   const emptyForm: CreateEmployeeData & { status?: string; pay_type?: string; monthly_salary?: number; vacation_days_override?: number | null } = {
     name: '', lastname: '', dni: '', cuil: '', address: '', phone: '', email: '',
@@ -179,6 +182,12 @@ export default function EmployeesPage() {
     }
   };
 
+  const handleInviteSent = () => {
+    setInviteTarget(null);
+    setSuccess('Invitación generada. Se abrió WhatsApp para enviarla.');
+    loadEmployees();
+  };
+
   const formatCurrency = (val: number) => `$${Number(val).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
   if (loading) {
@@ -241,10 +250,21 @@ export default function EmployeesPage() {
                       {emp.pay_type === 'monthly' ? `${formatCurrency(emp.monthly_salary || 0)} /mes (Fijo)` : `${formatCurrency(emp.hourly_rate)} /hora`}
                     </Typography>
                     <Chip label={STATUS_LABELS[emp.status]?.label || emp.status} color={STATUS_LABELS[emp.status]?.color || 'default'} size="small" sx={{ mt: 0.5 }} />
+                    {!emp.user_id && emp.invitation_status && (
+                      <Chip
+                        label={emp.invitation_status === 'pending' ? 'Invitación pendiente' : 'Invitación expirada'}
+                        color={emp.invitation_status === 'pending' ? 'warning' : 'default'}
+                        size="small"
+                        sx={{ mt: 0.5, ml: 0.5 }}
+                      />
+                    )}
                   </Box>
                   <Box>
                     <IconButton size="small" color="info" onClick={() => router.push(`/dashboard/employees/${emp.id}`)}><VisibilityIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="primary" onClick={() => handleOpenEdit(emp)}><EditIcon fontSize="small" /></IconButton>
+                    {!emp.user_id && (
+                      <IconButton size="small" sx={{ color: '#25D366' }} onClick={() => setInviteTarget(emp)}><WhatsAppIcon fontSize="small" /></IconButton>
+                    )}
                     <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, employee: emp })}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
                 </Box>
@@ -283,6 +303,14 @@ export default function EmployeesPage() {
                           <Typography variant="caption" color="primary.main">{emp.user.email}</Typography>
                         </Box>
                       )}
+                      {!emp.user_id && emp.invitation_status && (
+                        <Chip
+                          label={emp.invitation_status === 'pending' ? 'Invitación pendiente' : 'Invitación expirada'}
+                          color={emp.invitation_status === 'pending' ? 'warning' : 'default'}
+                          size="small"
+                          sx={{ mt: 0.5 }}
+                        />
+                      )}
                     </TableCell>
                     <TableCell>{emp.dni}</TableCell>
                     <TableCell>{emp.position || '—'}</TableCell>
@@ -296,6 +324,11 @@ export default function EmployeesPage() {
                     <TableCell align="center">
                       <Tooltip title="Ver Legajo"><IconButton size="small" color="info" onClick={() => router.push(`/dashboard/employees/${emp.id}`)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
                       <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(emp)}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      {!emp.user_id && (
+                        <Tooltip title="Invitar al portal">
+                          <IconButton size="small" sx={{ color: '#25D366' }} onClick={() => setInviteTarget(emp)}><WhatsAppIcon fontSize="small" /></IconButton>
+                        </Tooltip>
+                      )}
                       <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, employee: emp })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
                   </TableRow>
@@ -484,6 +517,14 @@ export default function EmployeesPage() {
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
       </Dialog>
+
+      <InviteEmployeeDialog
+        employee={inviteTarget}
+        open={!!inviteTarget}
+        onClose={() => setInviteTarget(null)}
+        onSent={handleInviteSent}
+        onError={(message) => setError(message)}
+      />
     </Box>
   );
 }

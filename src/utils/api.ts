@@ -678,6 +678,7 @@ export interface Employee {
   vacation_days_override?: number | null;
   user?: { id: number; email: string; name: string; lastname: string };
   category?: Category;
+  invitation_status?: 'pending' | 'expired' | null;
   createdAt: string;
 }
 

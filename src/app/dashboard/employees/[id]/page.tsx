@@ -48,6 +48,7 @@ import {
 } from '@/utils/api';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
+import InviteEmployeeDialog, { buildInviteMessage } from '@/components/InviteEmployeeDialog';
 import { buildWhatsAppLink } from '@/utils/whatsapp';
 
 const STATUS_CONFIG = {
@@ -135,8 +136,6 @@ export default function EmployeeDetailPage() {
   // Portal invitation state
   const [invitationStatus, setInvitationStatus] = useState<EmployeeInvitationStatus | null>(null);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [inviteContact, setInviteContact] = useState('');
-  const [inviting, setInviting] = useState(false);
   const [inviteResult, setInviteResult] = useState<InviteResult | null>(null);
 
   const loadData = useCallback(async () => {
@@ -187,31 +186,20 @@ export default function EmployeeDetailPage() {
     }
   }, [employee]);
 
-  const buildInviteMessage = (link: string, name: string) =>
-    `Hola ${name}, te invitamos a crear tu usuario del Portal Conmomet. Ingresá acá para crear tu contraseña: ${link}`;
-
   // El envío por email queda oculto hasta tener un servicio de mail propio del cliente
   // (el de prueba no está funcionando) — por ahora la invitación solo sale por WhatsApp.
   const handleOpenInviteDialog = () => {
-    setInviteContact(employee?.phone || '');
     setInviteResult(null);
     setInviteDialogOpen(true);
   };
 
-  const handleSendInvite = async () => {
-    if (!employee || !inviteContact.trim()) return;
-    setInviting(true);
-    try {
-      const result = await EmployeeInvitationService.invite(employee.id, { channel: 'whatsapp', contact: inviteContact.trim() });
-      setInviteResult(result);
+  const handleInviteSent = async (result: InviteResult) => {
+    setInviteResult(result);
+    setInviteDialogOpen(false);
+    setSuccess('Invitación generada. Se abrió WhatsApp para enviarla.');
+    if (employee) {
       const status = await EmployeeInvitationService.getStatus(employee.id);
       setInvitationStatus(status);
-      window.open(buildWhatsAppLink(result.contact_used, buildInviteMessage(result.invite_link, employee.name)), '_blank');
-      setSuccess('Invitación generada. Se abrió WhatsApp para enviarla.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al invitar al empleado.');
-    } finally {
-      setInviting(false);
     }
   };
 
@@ -1520,32 +1508,13 @@ export default function EmployeeDetailPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Invitar al portal (por ahora solo WhatsApp — el envío por email queda oculto hasta
-          tener un servicio de mail propio del cliente) */}
-      <Dialog open={inviteDialogOpen} onClose={() => setInviteDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Invitar al Portal por WhatsApp</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              label="Celular de destino"
-              fullWidth
-              value={inviteContact}
-              onChange={(e) => setInviteContact(e.target.value)}
-              helperText="Confirmá que el dato sea correcto antes de enviar"
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setInviteDialogOpen(false)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            disabled={inviting || !inviteContact.trim()}
-            onClick={async () => { await handleSendInvite(); setInviteDialogOpen(false); }}
-          >
-            {inviting ? 'Enviando…' : 'Confirmar y enviar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <InviteEmployeeDialog
+        employee={employee}
+        open={inviteDialogOpen}
+        onClose={() => setInviteDialogOpen(false)}
+        onSent={handleInviteSent}
+        onError={(message) => setError(message)}
+      />
     </Box>
   );
 }
