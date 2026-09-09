@@ -270,7 +270,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-        <Toolbar sx={{ bgcolor: 'white', borderBottom: '1px solid', borderColor: 'divider', minHeight: { xs: 56, sm: 64 }, justifyContent: 'center' }}>
+        <Toolbar sx={{ background: 'linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%)', borderBottom: '1px solid', borderColor: 'divider', minHeight: { xs: 56, sm: 64 }, justifyContent: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', py: 1 }}>
           <Image
             src="/img/logos/logo-conmomet-ROJO.png"
@@ -364,7 +364,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           }}
         >
-          <Toolbar>
+          <Toolbar sx={{ background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
             <IconButton
               color="inherit"
               aria-label="open drawer"
