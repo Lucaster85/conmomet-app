@@ -19,7 +19,9 @@ import {
   AssignmentOutlined as AssignmentIcon,
   RefreshOutlined as RefreshIcon,
   PaymentOutlined as PaymentIcon,
-  VisibilityOutlined as VisibilityIcon
+  VisibilityOutlined as VisibilityIcon,
+  BadgeOutlined as BadgeIcon,
+  EventAvailableOutlined as EventAvailableIcon
 } from '@mui/icons-material';
 import { EntityDocumentService, EntityDocument, LoanService, SalaryAdvanceService } from '../../utils/api';
 import {
@@ -29,9 +31,25 @@ import FeedbackModal from '../../components/FeedbackModal';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import DateField from '../../components/DateField';
 import { ClockIcon } from '@mui/x-date-pickers';
+import { useAuth } from '../../utils/auth';
+import IconTileGrid, { IconTileItem } from '../../components/common/IconTileGrid';
+
+// Accesos rápidos del home mobile: solo las 3 secciones de uso más frecuente, cada una
+// condicionada al permiso de lectura correspondiente (mismo criterio que el menú del drawer).
+const QUICK_ACCESS_ITEMS: (IconTileItem & { requiredPermission: string })[] = [
+  { key: 'time-entries', label: 'Carga de Horas', path: '/dashboard/time-entries', icon: <ClockIcon />, requiredPermission: 'time_entries_read' },
+  { key: 'employees', label: 'Empleados', path: '/dashboard/employees', icon: <BadgeIcon />, requiredPermission: 'employees_read' },
+  { key: 'attendance', label: 'Presentismo', path: '/dashboard/attendance', icon: <EventAvailableIcon />, requiredPermission: 'attendance_read' },
+];
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const permissions: string[] = Array.isArray((user as unknown as Record<string, unknown>)?.permissions)
+    ? ((user as unknown as Record<string, unknown>).permissions as string[])
+    : [];
+  const hasPermission = (permission: string) => permissions.includes('admin_granted') || permissions.includes(permission);
+  const quickAccessItems = QUICK_ACCESS_ITEMS.filter((item) => hasPermission(item.requiredPermission));
 
   const [expiringDocs, setExpiringDocs] = useState<EntityDocument[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
@@ -144,6 +162,13 @@ export default function DashboardPage() {
     <Box>
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
+
+      {/* Accesos rápidos — prueba: solo mobile, en desktop ya está el menú del drawer siempre visible */}
+      {quickAccessItems.length > 0 && (
+        <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 3 }}>
+          <IconTileGrid items={quickAccessItems} columns={{ xs: 3, sm: 3 }} />
+        </Box>
+      )}
 
       {/* Content Sections */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
@@ -358,8 +383,10 @@ export default function DashboardPage() {
         </Paper>
 
         {/* Other future widgets can go here */}
+        {/* Oculto en mobile: redundante con la grilla de accesos rápidos de arriba */}
         <Paper
           sx={{
+            display: { xs: 'none', sm: 'block' },
             flex: '1 1 300px',
             p: 3,
             borderRadius: 2,

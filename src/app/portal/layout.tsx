@@ -20,14 +20,7 @@ import {
   LogoutOutlined as LogoutIcon,
   LockOutlined as LockIcon,
   AccountCircleOutlined as AccountCircle,
-  BadgeOutlined as BadgeIcon,
-  ArticleOutlined as ArticleIcon,
-  AccessTimeOutlined as TimeIcon,
-  SecurityOutlined as SecurityIcon,
-  PaymentsOutlined as PaymentsIcon,
   ArrowBackOutlined as ArrowBackIcon,
-  EventAvailableOutlined as EventAvailableIcon,
-  RequestQuoteOutlined as RequestQuoteIcon,
   HomeOutlined as HomeIcon
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
@@ -35,6 +28,7 @@ import { useAuth, TokenManager } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
 import { HeaderLogo, HeaderAvatarButton, HEADER_MIN_HEIGHT, HEADER_TOGGLE_ICON_SIZE } from '../../components/layout/HeaderChrome';
+import { PORTAL_MENU_ITEMS } from '../../components/portal/portalMenuItems';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -83,15 +77,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     return user?.name || user?.email || 'Usuario';
   };
 
-  const tabs = [
-    { label: 'Mi Legajo', path: '/portal', icon: <BadgeIcon /> },
-    { label: 'Documentos', path: '/portal/documents', icon: <ArticleIcon /> },
-    { label: 'Mis Horas', path: '/portal/time-entries', icon: <TimeIcon /> },
-    { label: 'Mi Asistencia', path: '/portal/attendance', icon: <EventAvailableIcon /> },
-    { label: 'Mi EPP', path: '/portal/safety-equipment', icon: <SecurityIcon /> },
-    { label: 'Liquidaciones', path: '/portal/payroll', icon: <PaymentsIcon /> },
-    { label: 'Adelantos y Préstamos', path: '/portal/requests', icon: <RequestQuoteIcon /> },
-  ];
+  const tabs = PORTAL_MENU_ITEMS.filter((item) => !item.hidden);
 
   const currentTab = tabs.findIndex(tab => pathname === tab.path) !== -1 
       ? tabs.findIndex(tab => pathname === tab.path) 
@@ -105,7 +91,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     <ProtectedRoute>
       <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
         <AppBar
-          position="static"
+          position="fixed"
           sx={{
             bgcolor: 'background.paper',
             color: 'text.primary',
@@ -199,6 +185,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             </Tabs>
           </Box>
         </AppBar>
+
+        {/* Spacers para compensar el AppBar fijo: uno por el Toolbar, otro por la fila de tabs
+            (solo visible desde sm+) — sin esto el contenido queda tapado detrás del header. */}
+        <Toolbar sx={{ minHeight: HEADER_MIN_HEIGHT }} />
+        <Box sx={{ display: { xs: 'none', sm: 'block' }, minHeight: 49 }} />
 
         <Menu
           anchorEl={anchorEl}
