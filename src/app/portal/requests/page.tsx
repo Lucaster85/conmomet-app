@@ -40,6 +40,7 @@ type HistoryItem = {
   status: 'pending' | 'approved' | 'rejected' | 'active' | 'completed' | 'cancelled';
   paidAt?: string | null;
   notes?: string;
+  rejectionReason?: string | null;
   payPeriodId?: number | null;
 };
 
@@ -188,6 +189,7 @@ export default function PortalRequestsPage() {
       status: a.status,
       paidAt: a.paid_at,
       notes: a.notes,
+      rejectionReason: a.rejection_reason,
       payPeriodId: a.pay_period_id,
     })),
     ...loans.map((l) => ({
@@ -199,6 +201,7 @@ export default function PortalRequestsPage() {
       status: l.status,
       paidAt: l.paid_at,
       notes: l.notes,
+      rejectionReason: l.rejection_reason,
     })),
   ].sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf());
 
@@ -229,10 +232,19 @@ export default function PortalRequestsPage() {
             </Typography>
             <Chip label={chip.label} color={chip.color} size="small" />
           </Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" component="div">
             {dayjs(item.date).format('DD/MM/YYYY')}
-            {item.notes ? ` · ${item.notes}` : ''}
           </Typography>
+          {item.notes && (
+            <Typography variant="caption" color="text.secondary" component="div">
+              <strong>Motivo solicitud:</strong> {item.notes}
+            </Typography>
+          )}
+          {item.status === 'rejected' && item.rejectionReason && (
+            <Typography variant="caption" color="error.main" component="div">
+              <strong>Motivo rechazo:</strong> {item.rejectionReason}
+            </Typography>
+          )}
         </Box>
         {item.status === 'pending' && (
           <Button

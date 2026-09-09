@@ -405,6 +405,9 @@ export default function PayrollPage() {
                   {Number(e.late_count) > 0 && (
                     <Chip label={`${e.late_count} tardanzas`} size="small" color="warning" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
                   )}
+                  {(e.rate_fallback_warnings || []).map((w: { concept_id: number; label: string }) => (
+                    <Chip key={w.concept_id} className="no-print" label={`Sin tarifa: ${w.label}`} size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem' }} />
+                  ))}
                 </Box>
 
                 <Divider sx={{ my: 1.5 }} />
@@ -585,6 +588,11 @@ export default function PayrollPage() {
                     {Number(e.late_count) > 0 && (
                       <Typography variant="caption" color="warning.main" display="block">{e.late_count as number} llegada(s) tarde</Typography>
                     )}
+                    {(e.rate_fallback_warnings || []).map((w: { concept_id: number; label: string }) => (
+                      <Tooltip key={w.concept_id} title={`Sin tarifa configurada para "${w.label}" — se pagó a la tarifa general del empleado.`}>
+                        <Chip className="no-print" label={`Sin tarifa: ${w.label}`} size="small" color="warning" sx={{ mr: 0.5, mb: 0.5 }} />
+                      </Tooltip>
+                    ))}
                   </TableCell>
                   <TableCell align="right">
                     {(e.employee as Record<string, string>)?.pay_type === 'monthly' ? (

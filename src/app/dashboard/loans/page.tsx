@@ -407,6 +407,11 @@ export default function LoansPage() {
                   <Chip label={loan.currency} size="small" variant="outlined" color={loan.currency === 'USD' ? 'info' : 'default'} />
                 </Box>
                 {loan.notes && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>{loan.notes}</Typography>}
+                {loan.status === 'rejected' && loan.rejection_reason && (
+                  <Typography variant="caption" color="error.main" display="block" sx={{ mt: 0.5 }}>
+                    <strong>Motivo rechazo:</strong> {loan.rejection_reason}
+                  </Typography>
+                )}
 
                 <Stack spacing={0.5} sx={{ mt: 1.5 }}>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
@@ -510,6 +515,11 @@ export default function LoansPage() {
                     <TableCell>
                       {loan.employee && <Typography fontWeight={600}>{loan.employee.lastname}, {loan.employee.name}</Typography>}
                       {loan.notes && <Typography variant="caption" color="text.secondary" display="block">{loan.notes}</Typography>}
+                      {loan.status === 'rejected' && loan.rejection_reason && (
+                        <Typography variant="caption" color="error.main" display="block">
+                          <strong>Motivo rechazo:</strong> {loan.rejection_reason}
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell align="center">
                       <Chip label={loan.currency} size="small" variant="outlined" color={loan.currency === 'USD' ? 'info' : 'default'} />

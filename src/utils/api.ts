@@ -2127,6 +2127,7 @@ export interface PayrollEntry {
   };
   lines?: PayrollLine[];
   pep_summary?: PepSummary;
+  rate_fallback_warnings?: { concept_id: number; label: string }[];
 }
 
 export class PayrollService {
@@ -2194,6 +2195,7 @@ export interface SalaryAdvance {
   payment_method?: 'efectivo' | 'transferencia' | null;
   pay_period_id?: number;
   notes?: string;
+  rejection_reason?: string | null;
   status: 'pending' | 'approved' | 'rejected';
   requested_by?: number;
   approved_by?: number;
@@ -3036,6 +3038,7 @@ export interface Loan {
   remaining_balance: number;
   payment_method?: 'efectivo' | 'transferencia' | null;
   notes?: string;
+  rejection_reason?: string | null;
   status: 'pending' | 'approved' | 'active' | 'rejected' | 'completed' | 'cancelled';
   // Rediseño de cuota fija — los préstamos viejos quedan plan_type:'discretionary' (formato
   // congelado, sin tocar) y siguen usando interest_rate_percent + "Aplicar interés" manual.

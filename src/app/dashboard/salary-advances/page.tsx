@@ -413,6 +413,11 @@ export default function SalaryAdvancesPage() {
                 <Typography variant="h6" color="error.main">{formatCurrency(a.amount)}</Typography>
                 <Typography variant="body2">{formatDate(a.date)}</Typography>
                 {a.notes && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>{a.notes}</Typography>}
+                {a.status === 'rejected' && a.rejection_reason && (
+                  <Typography variant="caption" color="error.main" display="block" sx={{ mt: 0.5 }}>
+                    <strong>Motivo rechazo:</strong> {a.rejection_reason}
+                  </Typography>
+                )}
                 <Box mt={1.5} display="flex" gap={1} flexWrap="wrap">
                   <Chip label={STATUS_LABEL[a.status]?.label || a.status} size="small" color={STATUS_LABEL[a.status]?.color || 'default'} />
                   {renderPaidChip(a)}
@@ -485,7 +490,14 @@ export default function SalaryAdvancesPage() {
                     <TableCell>{a.employee?.lastname}, {a.employee?.name}</TableCell>
                     <TableCell><Typography color="error.main" fontWeight="bold">{formatCurrency(a.amount)}</Typography></TableCell>
                     <TableCell>{renderPaymentMethodChip(a.payment_method)}</TableCell>
-                    <TableCell>{a.notes || '—'}</TableCell>
+                    <TableCell>
+                      {a.notes || '—'}
+                      {a.status === 'rejected' && a.rejection_reason && (
+                        <Typography variant="caption" color="error.main" display="block">
+                          <strong>Motivo rechazo:</strong> {a.rejection_reason}
+                        </Typography>
+                      )}
+                    </TableCell>
                     <TableCell>{a.pay_period_id ? <Chip label="Descontado" size="small" color="success" /> : <Chip label="Pendiente de descuento" size="small" color="warning" />}</TableCell>
                     <TableCell>
                       <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
