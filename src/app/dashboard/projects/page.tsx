@@ -311,7 +311,7 @@ export default function ProjectsPage() {
                 </Box>
                 <Divider sx={{ my: 1 }} />
                 <Box mt={1}>
-                  {renderProgress(proj.consumed_hours || 0, proj.budgeted_hours || 0)}
+                  {renderProgress(proj.consumed_hours_total || 0, proj.budgeted_hours || 0)}
                 </Box>
               </Paper>
             ))}
@@ -360,7 +360,7 @@ export default function ProjectsPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      {renderProgress(proj.consumed_hours || 0, proj.budgeted_hours || 0)}
+                      {renderProgress(proj.consumed_hours_total || 0, proj.budgeted_hours || 0)}
                     </TableCell>
                     <TableCell align="center">
                       <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(proj)}><EditIcon fontSize="small" /></IconButton></Tooltip>

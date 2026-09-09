@@ -577,7 +577,8 @@ export interface Project {
   plant_id?: number;
   description?: string;
   budgeted_hours: number;
-  consumed_hours?: number;
+  consumed_hours_own?: number;
+  consumed_hours_total?: number;
   status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
   start_date?: string;
   end_date?: string;
