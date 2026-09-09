@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Box, Card, CardActionArea } from '@mui/material';
+import { Box, Card, CardActionArea, Typography } from '@mui/material';
 import {
   BadgeOutlined as BadgeIcon,
   ArticleOutlined as ArticleIcon,
@@ -35,31 +35,44 @@ export default function PortalHomeGrid() {
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: 2,
+        gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(2, 1fr)' },
+        gap: { xs: 1.5, sm: 2 },
       }}
     >
       {GRID_ITEMS.filter((item) => !item.hidden).map((item) => (
-        // containerType habilita unidades `cqi` (% del ancho del propio Card) en el ícono de
-        // adentro, así el ícono escala con el tamaño real del botón en cualquier pantalla, en
-        // vez de quedar en un tamaño fijo que se ve chico en teléfonos grandes.
-        <Card key={item.path} sx={{ aspectRatio: '1', borderRadius: 4, containerType: 'inline-size' }}>
-          <CardActionArea
-            aria-label={item.label}
-            onClick={() => router.push(item.path)}
-            sx={{
-              height: '100%',
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'primary.main',
-              '& .MuiSvgIcon-root': { fontSize: 'clamp(28px, 40cqi, 64px)' },
-            }}
+        <Box
+          key={item.path}
+          sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75, cursor: 'pointer' }}
+          onClick={() => router.push(item.path)}
+        >
+          {/* containerType habilita unidades `cqi` (% del ancho del propio Card) en el ícono de
+              adentro, así el ícono escala con el tamaño real del botón en cualquier pantalla, en
+              vez de quedar en un tamaño fijo que se ve chico en teléfonos grandes. */}
+          <Card sx={{ aspectRatio: '1', width: '100%', borderRadius: 3, containerType: 'inline-size' }}>
+            <CardActionArea
+              aria-label={item.label}
+              sx={{
+                height: '100%',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'primary.main',
+                '& .MuiSvgIcon-root': { fontSize: 'clamp(20px, 32cqi, 48px)' },
+              }}
+            >
+              {item.icon}
+            </CardActionArea>
+          </Card>
+          <Typography
+            variant="caption"
+            textAlign="center"
+            lineHeight={1.2}
+            sx={{ color: 'text.secondary', fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
           >
-            {item.icon}
-          </CardActionArea>
-        </Card>
+            {item.label}
+          </Typography>
+        </Box>
       ))}
     </Box>
   );

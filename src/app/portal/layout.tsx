@@ -105,10 +105,24 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   return (
     <ProtectedRoute>
       <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
-        <AppBar position="static" sx={{ bgcolor: 'background.paper', color: 'text.primary', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <Toolbar sx={{ position: 'relative', minHeight: { xs: 72, sm: 64 } }}>
+        <AppBar
+          position="static"
+          sx={{
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          }}
+        >
+          <Toolbar
+            sx={{
+              position: 'relative',
+              minHeight: { xs: 72, sm: 64 },
+              background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+            }}
+          >
             <IconButton
               edge="start"
+              color="inherit"
               onClick={() => router.push('/portal')}
               sx={{ display: { xs: 'inline-flex', sm: 'none' }, mr: 1 }}
               aria-label="Ir al inicio del portal"
