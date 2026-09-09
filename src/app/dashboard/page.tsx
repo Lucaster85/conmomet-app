@@ -21,7 +21,6 @@ import {
   PaymentOutlined as PaymentIcon,
   VisibilityOutlined as VisibilityIcon
 } from '@mui/icons-material';
-import { useAuth } from '../../utils/auth';
 import { EntityDocumentService, EntityDocument, LoanService, SalaryAdvanceService } from '../../utils/api';
 import {
   RequestQuoteOutlined as RequestQuoteIcon,
@@ -32,7 +31,6 @@ import DateField from '../../components/DateField';
 import { ClockIcon } from '@mui/x-date-pickers';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
   const router = useRouter();
 
   const [expiringDocs, setExpiringDocs] = useState<EntityDocument[]>([]);
@@ -52,12 +50,6 @@ export default function DashboardPage() {
   const [editingDoc, setEditingDoc] = useState<EntityDocument | null>(null);
   const [form, setForm] = useState({ expiration_date: '', notify_days_before: 15 });
   const [file, setFile] = useState<File | null>(null);
-
-  const getUserWelcomeMessage = () => {
-    if (user?.fullName) return `Bienvenido, ${user.fullName}`;
-    if (user?.name) return `Bienvenido, ${user.name}`;
-    return 'Bienvenido';
-  };
 
   const fetchExpirations = async () => {
     try {
@@ -150,10 +142,6 @@ export default function DashboardPage() {
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold' }}>
-        {getUserWelcomeMessage()}
-      </Typography>
-
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 

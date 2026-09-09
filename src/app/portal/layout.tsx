@@ -6,7 +6,6 @@ import {
   Toolbar,
   Typography,
   IconButton,
-  Avatar,
   Menu,
   MenuItem,
   ListItemIcon,
@@ -31,11 +30,11 @@ import {
   RequestQuoteOutlined as RequestQuoteIcon,
   HomeOutlined as HomeIcon
 } from '@mui/icons-material';
-import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth, TokenManager } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
+import { HeaderLogo, HeaderAvatarButton, HEADER_MIN_HEIGHT, HEADER_TOGGLE_ICON_SIZE } from '../../components/layout/HeaderChrome';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -116,7 +115,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           <Toolbar
             sx={{
               position: 'relative',
-              minHeight: { xs: 72, sm: 64 },
+              minHeight: HEADER_MIN_HEIGHT,
               background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
             }}
           >
@@ -127,7 +126,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
               sx={{ display: { xs: 'inline-flex', sm: 'none' }, mr: 1 }}
               aria-label="Ir al inicio del portal"
             >
-              <HomeIcon sx={{ fontSize: 32 }} />
+              <HomeIcon sx={{ fontSize: HEADER_TOGGLE_ICON_SIZE }} />
             </IconButton>
 
             <Box
@@ -143,16 +142,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
                 transform: { xs: 'translate(-50%, -50%)', sm: 'none' },
               }}
             >
-              <Box sx={{ height: { xs: 42, sm: 44 }, display: 'flex', alignItems: 'center' }}>
-                <Image
-                  src="/img/logos/logo-conmomet-ROJO.png"
-                  alt="Conmomet"
-                  width={192}
-                  height={58}
-                  style={{ objectFit: 'contain', width: 'auto', height: '100%' }}
-                  priority
-                />
-              </Box>
+              <HeaderLogo />
               <Typography variant="subtitle1" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }} noWrap>
                 Portal del Empleado
               </Typography>
@@ -180,22 +170,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
                   Mi Legajo
                 </Typography>
               </Box>
-              <IconButton onClick={handleProfileMenuOpen} color="inherit" sx={{ p: 0.5 }}>
-                <Avatar
-                  sx={{
-                    width: { xs: 46, sm: 38 },
-                    height: { xs: 46, sm: 38 },
-                    fontSize: { xs: '1.05rem', sm: '0.9rem' },
-                    fontWeight: 700,
-                    letterSpacing: '0.02em',
-                    color: 'white',
-                    background: 'linear-gradient(135deg, #f87171 0%, #b91c1c 100%)',
-                    boxShadow: '0 2px 8px rgba(185, 28, 28, 0.35)',
-                  }}
-                >
-                  {getUserInitials()}
-                </Avatar>
-              </IconButton>
+              <HeaderAvatarButton
+                onClick={handleProfileMenuOpen}
+                initials={getUserInitials()}
+                gradient="linear-gradient(135deg, #f87171 0%, #b91c1c 100%)"
+                shadowColor="rgba(185, 28, 28, 0.35)"
+              />
             </Box>
           </Toolbar>
           
@@ -254,7 +234,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           forced={!!user?.must_change_password}
         />
 
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4, flexGrow: 1 }}>
+        <Container maxWidth="lg" sx={{ mt: { xs: 1.5, sm: 4 }, mb: 4, flexGrow: 1 }}>
+          <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Hola, {getUserDisplayName()}!
+            </Typography>
+          </Box>
           {children}
         </Container>
       </Box>

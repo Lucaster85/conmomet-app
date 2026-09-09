@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { HeaderLogo, HeaderAvatarButton, HEADER_MIN_HEIGHT, HEADER_TOGGLE_ICON_SIZE } from '../../components/layout/HeaderChrome';
 import baseTheme from '../theme';
 import {
   Box,
@@ -16,7 +17,6 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Avatar,
   Menu,
   MenuItem,
 
@@ -364,7 +364,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           }}
         >
-          <Toolbar sx={{ background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
+          <Toolbar sx={{ position: 'relative', minHeight: HEADER_MIN_HEIGHT, background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
             <IconButton
               color="inherit"
               aria-label="open drawer"
@@ -372,11 +372,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               onClick={handleDrawerToggle}
               sx={{ mr: 2, display: { md: 'none' } }}
             >
-              <MenuIcon />
+              <MenuIcon sx={{ fontSize: HEADER_TOGGLE_ICON_SIZE }} />
             </IconButton>
-            
+
+            <Box
+              sx={{
+                display: { xs: 'flex', md: 'none' },
+                alignItems: 'center',
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <HeaderLogo />
+            </Box>
+
             <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-              
+
             </Typography>
 
             {/* Usuario logueado */}
@@ -389,29 +402,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   {getUserRole()}
                 </Typography>
               </Box>
-              <IconButton
+              <HeaderAvatarButton
                 edge="end"
                 aria-label="account of current user"
                 aria-haspopup="true"
                 onClick={handleProfileMenuOpen}
-                color="inherit"
-                sx={{ p: 0.5 }}
-              >
-                <Avatar
-                  sx={{
-                    width: 34,
-                    height: 34,
-                    fontSize: '0.85rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.02em',
-                    color: 'white',
-                    background: 'linear-gradient(135deg, #60a5fa 0%, #1d4ed8 100%)',
-                    boxShadow: '0 2px 8px rgba(29, 78, 216, 0.35)',
-                  }}
-                >
-                  {getUserInitials()}
-                </Avatar>
-              </IconButton>
+                initials={getUserInitials()}
+                gradient="linear-gradient(135deg, #60a5fa 0%, #1d4ed8 100%)"
+                shadowColor="rgba(29, 78, 216, 0.35)"
+              />
             </Box>
           </Toolbar>
         </AppBar>
@@ -506,13 +505,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           component="main"
           sx={{
             flexGrow: 1,
-            p: 3,
+            px: 3,
+            pt: { xs: 1, md: 3 },
+            pb: 3,
             width: { md: `calc(100% - ${drawerWidth}px)` },
             minHeight: '100vh',
             bgcolor: 'background.default',
           }}
         >
-          <Toolbar />
+          <Toolbar sx={{ minHeight: HEADER_MIN_HEIGHT }} />
+          <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Hola, {getUserDisplayName()}!
+            </Typography>
+          </Box>
           {children}
         </Box>
       </Box>
