@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, CircularProgress, TextField, Stack,
   Chip, Checkbox, FormControlLabel, Autocomplete, Dialog, DialogTitle,
-  DialogContent, DialogActions, Divider, IconButton, Tooltip, Switch, Grid
+  DialogContent, DialogActions, Divider, IconButton, Tooltip, Switch, Grid, Alert
 } from '@mui/material';
 import dayjs from 'dayjs';
 import { TimeField } from '@mui/x-date-pickers/TimeField';
@@ -21,7 +21,8 @@ import {
   PayrollConcept, PayrollConceptService,
   Vehicle, VehicleService,
   ClientSupervisor, ClientSupervisorService,
-  PayPeriod, PayPeriodService
+  PayPeriod, PayPeriodService,
+  Holiday, HolidayService
 } from '../../../utils/api';
 
 const STATUS_COLORS: Record<string, 'success' | 'error' | 'warning' | 'default'> = {
@@ -60,6 +61,7 @@ export default function TimeEntriesPage() {
   const [concepts, setConcepts] = useState<PayrollConcept[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [payPeriods, setPayPeriods] = useState<PayPeriod[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [supervisorsCache, setSupervisorsCache] = useState<Record<number, ClientSupervisor[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -167,13 +169,14 @@ export default function TimeEntriesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [emps, plts, projs, concs, vehs, periods] = await Promise.all([
+      const [emps, plts, projs, concs, vehs, periods, hols] = await Promise.all([
         EmployeeService.getAll('active'),
         PlantService.getAll(),
         ProjectService.getAll({ status: 'active', include_children: true }),
         PayrollConceptService.getAll(true), // active only
         VehicleService.getAll({ is_active: true }), // active only
         PayPeriodService.getAll(),
+        HolidayService.getAll(),
       ]);
       setEmployees(emps);
       setPlants(plts);
@@ -181,6 +184,7 @@ export default function TimeEntriesPage() {
       setConcepts(concs);
       setVehicles(vehs);
       setPayPeriods(periods);
+      setHolidays(hols);
       await loadEntries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar datos');
@@ -193,6 +197,28 @@ export default function TimeEntriesPage() {
     const period = payPeriods.find(p => dateStr >= p.start_date && dateStr <= p.end_date);
     return period ? (period.status === 'closed' || period.status === 'paid') : false;
   };
+
+  // Feriado + jornalizado: el feriado trabajado ya se liquida al doble en el motor de
+  // liquidación, así que cargar además un recargo 50%/100% ese día triplicaría el pago.
+  // Se ocultan los campos y se fuerzan a 0 solo cuando no hay ambigüedad de tipo de pago
+  // (un jornalizado en modo individual, o un lote 100% jornalizados en modo masivo); el
+  // backend igual neutraliza el valor por las dudas (ver timeEntryController.js).
+  const isHolidayDate = holidays.some(h => h.date === formDate);
+  const massiveAllHourly = selectedEmployees.length > 0 && selectedEmployees.every(e => e.pay_type === 'hourly');
+  const hideOvertimeMassive = isHolidayDate && massiveAllHourly;
+  const hideOvertimeIndividual = isHolidayDate && selectedEmployees[0]?.pay_type === 'hourly';
+
+  useEffect(() => {
+    if (hideOvertimeMassive) {
+      setMassiveBlock(prev => ({ ...prev, overtime_50_hours: 0, overtime_100_hours: 0 }));
+    }
+  }, [hideOvertimeMassive]);
+
+  useEffect(() => {
+    if (hideOvertimeIndividual) {
+      setIndividualBlocks(prev => prev.map(b => ({ ...b, overtime_50_hours: 0, overtime_100_hours: 0 })));
+    }
+  }, [hideOvertimeIndividual]);
 
   const loadSupervisorsForProject = async (projectId: number) => {
     if (supervisorsCache[projectId]) return;
@@ -802,16 +828,24 @@ export default function TimeEntriesPage() {
                       {concepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </TextField>
                   </Grid>
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField label="Recargo 50%" type="number" fullWidth value={massiveBlock.overtime_50_hours}
-                      onChange={(e) => setMassiveBlock({ ...massiveBlock, overtime_50_hours: Number(e.target.value) })}
-                      inputProps={{ min: 0, step: 0.5 }} />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField label="Recargo 100%" type="number" fullWidth value={massiveBlock.overtime_100_hours}
-                      onChange={(e) => setMassiveBlock({ ...massiveBlock, overtime_100_hours: Number(e.target.value) })}
-                      inputProps={{ min: 0, step: 0.5 }} />
-                  </Grid>
+                  {hideOvertimeMassive ? (
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Alert severity="info">Dia feriado - recargo 100%</Alert>
+                    </Grid>
+                  ) : (
+                    <>
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <TextField label="Recargo 50%" type="number" fullWidth value={massiveBlock.overtime_50_hours}
+                          onChange={(e) => setMassiveBlock({ ...massiveBlock, overtime_50_hours: Number(e.target.value) })}
+                          inputProps={{ min: 0, step: 0.5 }} />
+                      </Grid>
+                      <Grid size={{ xs: 12, md: 3 }}>
+                        <TextField label="Recargo 100%" type="number" fullWidth value={massiveBlock.overtime_100_hours}
+                          onChange={(e) => setMassiveBlock({ ...massiveBlock, overtime_100_hours: Number(e.target.value) })}
+                          inputProps={{ min: 0, step: 0.5 }} />
+                      </Grid>
+                    </>
+                  )}
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField label="Planta" select fullWidth value={massiveBlock.plant_id}
                       onChange={(e) => setMassiveBlock({ ...massiveBlock, plant_id: e.target.value ? Number(e.target.value) : '', project_id: '' })} 
@@ -1064,22 +1098,30 @@ export default function TimeEntriesPage() {
                             </TextField>
                           </Grid>
                         )}
-                        <Grid size={{ xs: 6, md: 2 }}>
-                          <TextField label="Rec 50%" type="number" fullWidth value={block.overtime_50_hours}
-                            onChange={(e) => {
-                              const newBlocks = [...individualBlocks];
-                              newBlocks[index].overtime_50_hours = Number(e.target.value);
-                              setIndividualBlocks(newBlocks);
-                            }} inputProps={{ min: 0, step: 0.5 }} size="small" />
-                        </Grid>
-                        <Grid size={{ xs: 6, md: 2 }}>
-                          <TextField label="Rec 100%" type="number" fullWidth value={block.overtime_100_hours}
-                            onChange={(e) => {
-                              const newBlocks = [...individualBlocks];
-                              newBlocks[index].overtime_100_hours = Number(e.target.value);
-                              setIndividualBlocks(newBlocks);
-                            }} inputProps={{ min: 0, step: 0.5 }} size="small" />
-                        </Grid>
+                        {hideOvertimeIndividual ? (
+                          <Grid size={{ xs: 12, md: 4 }}>
+                            <Alert severity="info" sx={{ py: 0 }}>Dia feriado - recargo 100%</Alert>
+                          </Grid>
+                        ) : (
+                          <>
+                            <Grid size={{ xs: 6, md: 2 }}>
+                              <TextField label="Rec 50%" type="number" fullWidth value={block.overtime_50_hours}
+                                onChange={(e) => {
+                                  const newBlocks = [...individualBlocks];
+                                  newBlocks[index].overtime_50_hours = Number(e.target.value);
+                                  setIndividualBlocks(newBlocks);
+                                }} inputProps={{ min: 0, step: 0.5 }} size="small" />
+                            </Grid>
+                            <Grid size={{ xs: 6, md: 2 }}>
+                              <TextField label="Rec 100%" type="number" fullWidth value={block.overtime_100_hours}
+                                onChange={(e) => {
+                                  const newBlocks = [...individualBlocks];
+                                  newBlocks[index].overtime_100_hours = Number(e.target.value);
+                                  setIndividualBlocks(newBlocks);
+                                }} inputProps={{ min: 0, step: 0.5 }} size="small" />
+                            </Grid>
+                          </>
+                        )}
                         <Grid size={{ xs: 12, md: 8 }}>
                           <TextField label="Observaciones" fullWidth value={block.notes}
                             onChange={(e) => {
