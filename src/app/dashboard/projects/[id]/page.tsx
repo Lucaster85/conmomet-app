@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  Box, Typography, Paper, Tabs, Tab, CircularProgress, Chip, LinearProgress,
+  Box, Typography, Paper, Card, Tabs, Tab, CircularProgress, Chip, LinearProgress,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button,
   Grid, Divider, Stack, TextField, Autocomplete, Tooltip, Alert, Snackbar,
   Dialog, DialogTitle, DialogContent, DialogActions, RadioGroup, Radio,
@@ -11,9 +11,12 @@ import {
 import {
   ArrowBackOutlined as BackIcon, AddOutlined as AddIcon, PrintOutlined as PrintIcon, SaveOutlined as SaveIcon,
   ChevronLeftOutlined as PrevIcon, ChevronRightOutlined as NextIcon, InfoOutlined as InfoIcon,
-  TodayOutlined as TodayIcon, RefreshOutlined as RefreshIcon,
+  TodayOutlined as TodayIcon, RefreshOutlined as RefreshIcon, AccountTreeOutlined as SubprojectsIcon,
+  AccessTimeOutlined as HoursIcon, EventNoteOutlined as DailyLogIcon, RequestQuoteOutlined as BudgetTabIcon,
+  BuildOutlined as PanolIcon, OpenInNewOutlined as OpenIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../../../utils/auth';
+import IconTileGrid, { IconTileItem } from '../../../../components/common/IconTileGrid';
 import {
   Project, ProjectService, TimeEntry, TimeEntryService, BudgetCurrency,
   WorkDayLog, WorkDayLogWeek, AssetAssignment, AssetAssignmentService, AssetAssignmentStatus,
@@ -260,6 +263,19 @@ export default function ProjectDetailPage() {
     ...(hasToolsRead ? [{ label: 'Pañol' }] : []),
   ];
 
+  // Mismo orden/condiciones que `tabs` — navegación con íconos para mobile en vez del strip de
+  // Tabs (que con hasta 6 pestañas queda apretado en pantallas chicas), mismo patrón que el
+  // home del dashboard y el portal del empleado (IconTileGrid).
+  const mobileNavItems: IconTileItem[] = [
+    { key: 'resumen', label: 'Resumen', icon: <InfoIcon />, onClick: () => setTab(0) },
+    { key: 'adicionales', label: 'Adicionales', icon: <SubprojectsIcon />, badge: project.subproject_count ?? project.subprojects?.length ?? 0, onClick: () => setTab(1) },
+    { key: 'horas', label: 'Horas', icon: <HoursIcon />, onClick: () => setTab(2) },
+    { key: 'planilla', label: 'Planilla', icon: <DailyLogIcon />, onClick: () => setTab(3) },
+    ...(hasBudgetsRead ? [{ key: 'presupuesto', label: 'Presupuesto', icon: <BudgetTabIcon />, onClick: () => setTab(4) }] : []),
+    ...(hasToolsRead ? [{ key: 'panol', label: 'Pañol', icon: <PanolIcon />, onClick: () => setTab(panolTabIndex) }] : []),
+  ];
+  const activeMobileKey = mobileNavItems[tab]?.key;
+
   return (
     <Box>
       <Button startIcon={<BackIcon />} onClick={() => router.push('/dashboard/projects')} sx={{ mb: 2 }}>Volver a Proyectos</Button>
@@ -282,8 +298,14 @@ export default function ProjectDetailPage() {
         </Box>
       </Box>
 
-      <Paper elevation={1} sx={{ mb: 3 }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)}>
+      {/* Mobile: íconos en vez de pestañas, mismo patrón que el home del dashboard y el portal */}
+      <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 3 }}>
+        <IconTileGrid items={mobileNavItems} columns={{ xs: 3, sm: 3 }} activeKey={activeMobileKey} />
+      </Box>
+
+      {/* Desktop/Tablet: se mantiene el strip de pestañas de siempre */}
+      <Paper elevation={1} sx={{ mb: 3, display: { xs: 'none', sm: 'block' } }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
           {tabs.map((t, i) => <Tab key={i} label={t.label} />)}
         </Tabs>
       </Paper>
@@ -331,28 +353,49 @@ export default function ProjectDetailPage() {
           {(!project.subprojects || project.subprojects.length === 0) ? (
             <Typography color="text.secondary" textAlign="center" py={3}>No hay adicionales/subproyectos asociados.</Typography>
           ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'grey.50' }}>
-                    <TableCell><strong>Código</strong></TableCell>
-                    <TableCell><strong>Nombre</strong></TableCell>
-                    <TableCell><strong>Estado</strong></TableCell>
-                    <TableCell><strong>Horas</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+            <>
+              {/* Mobile Cards */}
+              <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Stack spacing={2}>
                   {project.subprojects.map((sp) => (
-                    <TableRow key={sp.id} hover sx={{ cursor: 'pointer' }} onClick={() => router.push(`/dashboard/projects/${sp.id}`)}>
-                      <TableCell>{sp.code}</TableCell>
-                      <TableCell>{sp.name}</TableCell>
-                      <TableCell>{STATUS_LABELS[sp.status]}</TableCell>
-                      <TableCell>{renderProgress(sp.consumed_hours_own || 0, sp.budgeted_hours || 0)}</TableCell>
-                    </TableRow>
+                    <Card key={sp.id} sx={{ p: 2, borderRadius: 2, cursor: 'pointer' }} onClick={() => router.push(`/dashboard/projects/${sp.id}`)}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
+                        <Box flex={1}>
+                          <Typography fontWeight={600}>{sp.code} — {sp.name}</Typography>
+                          <Chip size="small" label={STATUS_LABELS[sp.status]} sx={{ mt: 0.5 }} />
+                        </Box>
+                      </Box>
+                      <Box mt={1.5}>{renderProgress(sp.consumed_hours_own || 0, sp.budgeted_hours || 0)}</Box>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                </Stack>
+              </Box>
+              {/* Desktop Table */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell><strong>Código</strong></TableCell>
+                        <TableCell><strong>Nombre</strong></TableCell>
+                        <TableCell><strong>Estado</strong></TableCell>
+                        <TableCell><strong>Horas</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {project.subprojects.map((sp) => (
+                        <TableRow key={sp.id} hover sx={{ cursor: 'pointer' }} onClick={() => router.push(`/dashboard/projects/${sp.id}`)}>
+                          <TableCell>{sp.code}</TableCell>
+                          <TableCell>{sp.name}</TableCell>
+                          <TableCell>{STATUS_LABELS[sp.status]}</TableCell>
+                          <TableCell>{renderProgress(sp.consumed_hours_own || 0, sp.budgeted_hours || 0)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            </>
           )}
         </Paper>
       )}
@@ -371,34 +414,60 @@ export default function ProjectDetailPage() {
           {entries.length === 0 ? (
             <Typography color="text.secondary" textAlign="center" py={3}>No hay registros de horas.</Typography>
           ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'grey.50' }}>
-                    <TableCell><strong>Fecha</strong></TableCell>
-                    <TableCell><strong>Empleado</strong></TableCell>
-                    <TableCell><strong>Proyecto</strong></TableCell>
-                    <TableCell align="right"><strong>Reg.</strong></TableCell>
-                    <TableCell align="right"><strong>50%</strong></TableCell>
-                    <TableCell align="right"><strong>100%</strong></TableCell>
-                    <TableCell><strong>Estado</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+            <>
+              {/* Mobile Cards */}
+              <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Stack spacing={2}>
                   {entries.map((e) => (
-                    <TableRow key={e.id} hover>
-                      <TableCell>{e.date}</TableCell>
-                      <TableCell>{e.employee ? `${e.employee.lastname}, ${e.employee.name}` : '—'}</TableCell>
-                      <TableCell>{e.project ? `${e.project.code}` : '—'}</TableCell>
-                      <TableCell align="right">{e.regular_hours}</TableCell>
-                      <TableCell align="right">{e.overtime_50_hours}</TableCell>
-                      <TableCell align="right">{e.overtime_100_hours}</TableCell>
-                      <TableCell>{e.status}</TableCell>
-                    </TableRow>
+                    <Card key={e.id} sx={{ p: 2, borderRadius: 2 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
+                        <Box>
+                          <Typography fontWeight={600}>{e.employee ? `${e.employee.lastname}, ${e.employee.name}` : '—'}</Typography>
+                          <Typography variant="body2" color="text.secondary">{e.date}{e.project ? ` · ${e.project.code}` : ''}</Typography>
+                        </Box>
+                        <Chip size="small" label={e.status} />
+                      </Box>
+                      <Stack direction="row" spacing={2} mt={1}>
+                        <Typography variant="body2">Reg.: <strong>{e.regular_hours}</strong></Typography>
+                        <Typography variant="body2">50%: <strong>{e.overtime_50_hours}</strong></Typography>
+                        <Typography variant="body2">100%: <strong>{e.overtime_100_hours}</strong></Typography>
+                      </Stack>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                </Stack>
+              </Box>
+              {/* Desktop Table */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell><strong>Fecha</strong></TableCell>
+                        <TableCell><strong>Empleado</strong></TableCell>
+                        <TableCell><strong>Proyecto</strong></TableCell>
+                        <TableCell align="right"><strong>Reg.</strong></TableCell>
+                        <TableCell align="right"><strong>50%</strong></TableCell>
+                        <TableCell align="right"><strong>100%</strong></TableCell>
+                        <TableCell><strong>Estado</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {entries.map((e) => (
+                        <TableRow key={e.id} hover>
+                          <TableCell>{e.date}</TableCell>
+                          <TableCell>{e.employee ? `${e.employee.lastname}, ${e.employee.name}` : '—'}</TableCell>
+                          <TableCell>{e.project ? `${e.project.code}` : '—'}</TableCell>
+                          <TableCell align="right">{e.regular_hours}</TableCell>
+                          <TableCell align="right">{e.overtime_50_hours}</TableCell>
+                          <TableCell align="right">{e.overtime_100_hours}</TableCell>
+                          <TableCell>{e.status}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            </>
           )}
         </Paper>
       )}
@@ -407,8 +476,8 @@ export default function ProjectDetailPage() {
       {tab === 3 && (
         <Paper sx={{ p: 3 }}>
           {/* Header controls */}
-          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2} mb={3}>
-            <Box display="flex" alignItems="center" gap={1}>
+          <Stack spacing={2} mb={3}>
+            <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
               <IconButton onClick={() => setSelectedMonday(prev => addDaysStr(prev, -7))} title="Semana anterior">
                 <PrevIcon />
               </IconButton>
@@ -439,11 +508,13 @@ export default function ProjectDetailPage() {
               </Typography>
             </Box>
 
-            <Box display="flex" gap={1}>
+            <Box display="flex" gap={1} flexDirection={{ xs: 'column', sm: 'row' }}>
               <Button
                 variant="outlined"
                 startIcon={<PrintIcon />}
                 onClick={handleOpenPrintDialog}
+                fullWidth={false}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Imprimir Planilla
               </Button>
@@ -452,15 +523,89 @@ export default function ProjectDetailPage() {
                 startIcon={savingLogs ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
                 onClick={handleSaveWeekLogs}
                 disabled={savingLogs || loadingLogs}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Guardar Semana
               </Button>
             </Box>
-          </Box>
+          </Stack>
 
           {loadingLogs ? (
             <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
           ) : (
+            <>
+              {/* Mobile Cards — un Card por día */}
+              <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Stack spacing={2}>
+                  {weekLogs.map((log, index) => {
+                    const isWeekend = log.day_name === 'Sábado' || log.day_name === 'Domingo';
+                    const hasComputedDiff =
+                      log.is_saved &&
+                      (
+                        (log.computed_start_time && log.computed_start_time !== log.start_time) ||
+                        (log.computed_end_time && log.computed_end_time !== log.end_time)
+                      );
+                    return (
+                      <Card key={log.date} sx={{ p: 2, borderRadius: 2, bgcolor: log.is_holiday ? 'warning.50' : (isWeekend ? 'grey.50' : 'background.paper') }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+                          <Box>
+                            <Typography variant="body2" fontWeight="bold">{log.day_name}</Typography>
+                            <Typography variant="caption" color="text.secondary">{formatDateDisplay(log.date)}</Typography>
+                          </Box>
+                          {log.is_holiday && <Chip label={log.holiday_name || 'Feriado'} size="small" color="warning" />}
+                        </Box>
+                        <Stack spacing={1.5}>
+                          <Autocomplete
+                            freeSolo
+                            options={PRESET_SUSPENSION_REASONS}
+                            value={log.suspension_reason || ''}
+                            onInputChange={(_, newValue) => handleLogChange(index, 'suspension_reason', newValue || null)}
+                            renderInput={(params) => (
+                              <TextField {...params} label="Suspendido por" placeholder="Motivo de suspensión..." size="small" fullWidth />
+                            )}
+                          />
+                          <TextField
+                            label="Firma de" size="small" fullWidth placeholder="Nombre / Autorizó"
+                            value={log.suspended_by || ''}
+                            onChange={(e) => handleLogChange(index, 'suspended_by', e.target.value || null)}
+                          />
+                          <Stack direction="row" spacing={1.5}>
+                            <Box flex={1}>
+                              <TextField
+                                type="time" label="Hora inicio" size="small" fullWidth
+                                value={log.start_time || ''}
+                                onChange={(e) => handleLogChange(index, 'start_time', e.target.value || null)}
+                                slotProps={{ inputLabel: { shrink: true } }}
+                              />
+                              {hasComputedDiff && (
+                                <Typography variant="caption" color="info.main" display="block" mt={0.5}>
+                                  Fichajes: {log.computed_start_time || '—'} a {log.computed_end_time || '—'}
+                                </Typography>
+                              )}
+                            </Box>
+                            <Box flex={1}>
+                              <TextField
+                                type="time" label="Hora fin" size="small" fullWidth
+                                value={log.end_time || ''}
+                                onChange={(e) => handleLogChange(index, 'end_time', e.target.value || null)}
+                                slotProps={{ inputLabel: { shrink: true } }}
+                              />
+                            </Box>
+                          </Stack>
+                          <TextField
+                            label="Observaciones" size="small" fullWidth multiline minRows={2}
+                            placeholder="Observaciones..."
+                            value={log.observations || ''}
+                            onChange={(e) => handleLogChange(index, 'observations', e.target.value || null)}
+                          />
+                        </Stack>
+                      </Card>
+                    );
+                  })}
+                </Stack>
+              </Box>
+              {/* Desktop Table */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
             <TableContainer sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
               <Table size="small">
                 <TableHead>
@@ -578,6 +723,8 @@ export default function ProjectDetailPage() {
                 </TableBody>
               </Table>
             </TableContainer>
+              </Box>
+            </>
           )}
         </Paper>
       )}
@@ -599,48 +746,82 @@ export default function ProjectDetailPage() {
               )}
 
               <Typography variant="subtitle2" sx={{ mt: 2 }}>Mano de Obra</Typography>
-              <TableContainer sx={{ mb: 2 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Rubro</TableCell>
-                      <TableCell align="right">Cantidad</TableCell>
-                      {hasPricesRead && <TableCell align="right">Estimado</TableCell>}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(project.budget.laborLines || []).map((line, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{line.itemType?.name}</TableCell>
-                        <TableCell align="right">{line.quantity} {line.itemType?.unit_label}</TableCell>
-                        {hasPricesRead && <TableCell align="right">{line.currency || project.budget?.currency} {line.estimated_total}</TableCell>}
+              {/* Mobile Cards */}
+              <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 2 }}>
+                <Stack spacing={1}>
+                  {(project.budget.laborLines || []).map((line, i) => (
+                    <Card key={i} sx={{ p: 1.5, borderRadius: 2 }}>
+                      <Typography variant="body2" fontWeight={600}>{line.itemType?.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {line.quantity} {line.itemType?.unit_label}
+                        {hasPricesRead && ` · ${line.currency || project.budget?.currency} ${line.estimated_total}`}
+                      </Typography>
+                    </Card>
+                  ))}
+                </Stack>
+              </Box>
+              {/* Desktop Table */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <TableContainer sx={{ mb: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Rubro</TableCell>
+                        <TableCell align="right">Cantidad</TableCell>
+                        {hasPricesRead && <TableCell align="right">Estimado</TableCell>}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {(project.budget.laborLines || []).map((line, i) => (
+                        <TableRow key={i}>
+                          <TableCell>{line.itemType?.name}</TableCell>
+                          <TableCell align="right">{line.quantity} {line.itemType?.unit_label}</TableCell>
+                          {hasPricesRead && <TableCell align="right">{line.currency || project.budget?.currency} {line.estimated_total}</TableCell>}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
 
               <Typography variant="subtitle2">Materiales</Typography>
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Descripción</TableCell>
-                      <TableCell align="right">Cantidad</TableCell>
-                      {hasPricesRead && <TableCell align="right">Total</TableCell>}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(project.budget.materialItems || []).map((item, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell align="right">{item.quantity} {item.materialUnit?.label}</TableCell>
-                        {hasPricesRead && <TableCell align="right">{item.currency || project.budget?.currency} {item.total_price}</TableCell>}
+              {/* Mobile Cards */}
+              <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Stack spacing={1}>
+                  {(project.budget.materialItems || []).map((item, i) => (
+                    <Card key={i} sx={{ p: 1.5, borderRadius: 2 }}>
+                      <Typography variant="body2" fontWeight={600}>{item.description}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {item.quantity} {item.materialUnit?.label}
+                        {hasPricesRead && ` · ${item.currency || project.budget?.currency} ${item.total_price}`}
+                      </Typography>
+                    </Card>
+                  ))}
+                </Stack>
+              </Box>
+              {/* Desktop Table */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Descripción</TableCell>
+                        <TableCell align="right">Cantidad</TableCell>
+                        {hasPricesRead && <TableCell align="right">Total</TableCell>}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {(project.budget.materialItems || []).map((item, i) => (
+                        <TableRow key={i}>
+                          <TableCell>{item.description}</TableCell>
+                          <TableCell align="right">{item.quantity} {item.materialUnit?.label}</TableCell>
+                          {hasPricesRead && <TableCell align="right">{item.currency || project.budget?.currency} {item.total_price}</TableCell>}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
 
               {hasPricesRead && (
                 <>
@@ -677,14 +858,22 @@ export default function ProjectDetailPage() {
                   <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                     <Stack spacing={1}>
                       {toolAssignments.map(a => (
-                        <Paper key={a.id} variant="outlined" sx={{ p: 1.5 }}>
-                          <Typography variant="body2" fontWeight={600}>{a.tool?.name} ({a.tool?.reference_code})</Typography>
+                        <Card key={a.id} sx={{ p: 1.5, borderRadius: 2 }}>
+                          {a.tool ? (
+                            <Typography variant="body2" fontWeight={600} display="flex" alignItems="center" gap={0.5}
+                              sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                              onClick={() => router.push(`/dashboard/tools/${a.tool!.id}`)}>
+                              {a.tool.name} ({a.tool.reference_code}) <OpenIcon fontSize="inherit" />
+                            </Typography>
+                          ) : (
+                            <Typography variant="body2" fontWeight={600}>Herramienta eliminada</Typography>
+                          )}
                           <Typography variant="body2">{a.employee ? `${a.employee.lastname}, ${a.employee.name}` : 'Sin responsable'}</Typography>
                           <Typography variant="caption" color="text.secondary" display="block">
                             Entrega: {a.delivered_date || '—'} · Devolución: {a.returned_date || '—'}
                           </Typography>
                           <Chip size="small" label={ASSIGNMENT_STATUS_LABELS[a.status]} color={ASSIGNMENT_STATUS_COLORS[a.status]} sx={{ mt: 0.5 }} />
-                        </Paper>
+                        </Card>
                       ))}
                     </Stack>
                   </Box>
@@ -701,7 +890,13 @@ export default function ProjectDetailPage() {
                         <TableBody>
                           {toolAssignments.map(a => (
                             <TableRow key={a.id} hover sx={{ cursor: a.tool ? 'pointer' : 'default' }} onClick={() => a.tool && router.push(`/dashboard/tools/${a.tool.id}`)}>
-                              <TableCell>{a.tool?.name} ({a.tool?.reference_code})</TableCell>
+                              <TableCell>
+                                {a.tool ? (
+                                  <Box display="flex" alignItems="center" gap={0.5}>
+                                    {a.tool.name} ({a.tool.reference_code}) <OpenIcon fontSize="inherit" />
+                                  </Box>
+                                ) : 'Herramienta eliminada'}
+                              </TableCell>
                               <TableCell>{a.employee ? `${a.employee.lastname}, ${a.employee.name}` : '—'}</TableCell>
                               <TableCell>{a.delivered_date || '—'}</TableCell>
                               <TableCell>{a.returned_date || '—'}</TableCell>
@@ -726,14 +921,22 @@ export default function ProjectDetailPage() {
                   <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                     <Stack spacing={1}>
                       {vehicleAssignments.map(a => (
-                        <Paper key={a.id} variant="outlined" sx={{ p: 1.5 }}>
-                          <Typography variant="body2" fontWeight={600}>{[a.vehicle?.brand, a.vehicle?.model].filter(Boolean).join(' ')} — {a.vehicle?.plate}</Typography>
+                        <Card key={a.id} sx={{ p: 1.5, borderRadius: 2 }}>
+                          {a.vehicle ? (
+                            <Typography variant="body2" fontWeight={600} display="flex" alignItems="center" gap={0.5}
+                              sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                              onClick={() => router.push(`/dashboard/vehicles/${a.vehicle!.id}`)}>
+                              {[a.vehicle.brand, a.vehicle.model].filter(Boolean).join(' ')} — {a.vehicle.plate} <OpenIcon fontSize="inherit" />
+                            </Typography>
+                          ) : (
+                            <Typography variant="body2" fontWeight={600}>Vehículo eliminado</Typography>
+                          )}
                           <Typography variant="body2">{a.employee ? `${a.employee.lastname}, ${a.employee.name}` : 'Sin responsable'}</Typography>
                           <Typography variant="caption" color="text.secondary" display="block">
                             Entrega: {a.delivered_date || '—'} · Devolución: {a.returned_date || '—'}
                           </Typography>
                           <Chip size="small" label={ASSIGNMENT_STATUS_LABELS[a.status]} color={ASSIGNMENT_STATUS_COLORS[a.status]} sx={{ mt: 0.5 }} />
-                        </Paper>
+                        </Card>
                       ))}
                     </Stack>
                   </Box>
@@ -750,7 +953,13 @@ export default function ProjectDetailPage() {
                         <TableBody>
                           {vehicleAssignments.map(a => (
                             <TableRow key={a.id} hover sx={{ cursor: a.vehicle ? 'pointer' : 'default' }} onClick={() => a.vehicle && router.push(`/dashboard/vehicles/${a.vehicle.id}`)}>
-                              <TableCell>{[a.vehicle?.brand, a.vehicle?.model].filter(Boolean).join(' ')} — {a.vehicle?.plate}</TableCell>
+                              <TableCell>
+                                {a.vehicle ? (
+                                  <Box display="flex" alignItems="center" gap={0.5}>
+                                    {[a.vehicle.brand, a.vehicle.model].filter(Boolean).join(' ')} — {a.vehicle.plate} <OpenIcon fontSize="inherit" />
+                                  </Box>
+                                ) : 'Vehículo eliminado'}
+                              </TableCell>
                               <TableCell>{a.employee ? `${a.employee.lastname}, ${a.employee.name}` : '—'}</TableCell>
                               <TableCell>{a.delivered_date || '—'}</TableCell>
                               <TableCell>{a.returned_date || '—'}</TableCell>

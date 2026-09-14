@@ -77,6 +77,13 @@ const theme = createTheme({
             transform: 'translateY(-6px)',
             boxShadow: '0 16px 40px rgba(0,0,0,0.14)',
           },
+          // El :hover de arriba no dispara en celulares reales (no hay mouse) — esto da
+          // feedback visual inmediato al tocar, sea mouse o touch, sin depender de :hover.
+          '&:active': {
+            transform: 'translateY(-2px) scale(0.99)',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+            transition: 'transform 0.1s ease, box-shadow 0.1s ease',
+          },
         },
       },
     },
