@@ -719,12 +719,12 @@ export default function TimeEntriesPage() {
                             </Tooltip>
                           )}
                           {entry.status !== 'voided' && (
-                            <Tooltip title={entry.oca_id ? "Asignado a OCA (No se puede anular)" : isPeriodClosedOrPaid(entry.date) ? "Quincena cerrada o pagada (No se puede anular)" : "Anular"}>
+                            <Tooltip title={isPeriodClosedOrPaid(entry.date) ? "Quincena cerrada o pagada (No se puede anular)" : entry.oca_id ? `Anular (se desvinculará del remito OCA #${entry.oca?.number || entry.oca_id})` : "Anular"}>
                               <span>
-                                <IconButton 
-                                  size="small" 
-                                  color="error" 
-                                  disabled={!!entry.oca_id || isPeriodClosedOrPaid(entry.date)}
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  disabled={isPeriodClosedOrPaid(entry.date)}
                                   onClick={() => { setVoidDialog({ open: true, entry }); setVoidReason(''); }}
                                 >
                                   <VoidIcon fontSize="small" />
@@ -1164,6 +1164,13 @@ export default function TimeEntriesPage() {
           <Typography sx={{ mb: 2 }}>
             Anular el registro de <strong>{voidDialog.entry?.employee?.name} {voidDialog.entry?.employee?.lastname}</strong> del {voidDialog.entry?.date}
           </Typography>
+          {voidDialog.entry?.oca_id && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Esta hora está vinculada al remito OCA #{voidDialog.entry.oca?.number || voidDialog.entry.oca_id}
+              {voidDialog.entry.oca?.status ? ` (${voidDialog.entry.oca.status})` : ''}. Al anular, se va a
+              desvincular de ese remito — el remito ya emitido no se modifica.
+            </Alert>
+          )}
           <TextField label="Motivo de anulación (Opcional)" fullWidth multiline rows={2} value={voidReason} onChange={(e) => setVoidReason(e.target.value)} />
         </DialogContent>
         <DialogActions>
