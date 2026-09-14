@@ -55,6 +55,10 @@ import {
   Inventory2Outlined as InventoryIcon,
   LockOutlined as LockIcon,
   SettingsOutlined as SettingsIcon,
+  ConstructionOutlined as ConstructionIcon,
+  BuildOutlined as BuildIcon,
+  SwapHorizOutlined as SwapHorizIcon,
+  QrCodeScannerOutlined as QrCodeScannerIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -118,6 +122,10 @@ const menuGroups: MenuGroupDef[] = [
     items: [
       { text: 'Materiales', icon: <InventoryIcon />, path: '/dashboard/materials', requiredPermission: 'materials_read' },
       { text: 'Unidades de Medida', icon: <CategoryIcon />, path: '/dashboard/material-units', requiredPermission: 'material_units_read' },
+      { text: 'Tipos de Herramienta', icon: <ConstructionIcon />, path: '/dashboard/tool-types', requiredPermission: 'tool_types_read' },
+      { text: 'Herramientas', icon: <BuildIcon />, path: '/dashboard/tools', requiredPermission: 'tools_read' },
+      { text: 'Asignaciones', icon: <SwapHorizIcon />, path: '/dashboard/asset-assignments', requiredPermission: 'asset_assignments_read' },
+      { text: 'Escanear QR', icon: <QrCodeScannerIcon />, path: '/dashboard/scan', requiredPermission: null },
     ]
   },
   {

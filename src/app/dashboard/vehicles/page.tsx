@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Box,
   Typography,
@@ -44,8 +45,12 @@ import {
   BuildOutlined as CraneIcon,
   DirectionsCarOutlined as OtherVehicleIcon,
   LocalShippingOutlined as TitleIcon,
+  SwapHorizOutlined as StatusIcon,
+  HistoryOutlined as HistoryIcon,
+  VisibilityOutlined as ViewIcon,
+  AssignmentIndOutlined as AssignIcon,
 } from '@mui/icons-material';
-import { Vehicle, VehicleService, CreateVehicleData } from '../../../utils/api';
+import { Vehicle, VehicleService, CreateVehicleData, VehicleStatus, VehicleStatusLogEntry } from '../../../utils/api';
 import VehicleDocumentsDialog from './VehicleDocumentsDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 
@@ -55,9 +60,29 @@ const VEHICLE_TYPES = {
   other: { label: 'Otro / Utilitario', color: 'default', icon: <OtherVehicleIcon fontSize="small" /> },
 } as const;
 
+const STATUS_LABELS: Record<VehicleStatus, string> = {
+  available: 'Disponible',
+  reserved: 'Reservada',
+  delivered: 'Entregada',
+  in_repair: 'En reparación',
+  retired: 'De baja',
+};
+
+const STATUS_COLORS: Record<VehicleStatus, 'success' | 'info' | 'warning' | 'default'> = {
+  available: 'success',
+  reserved: 'info',
+  delivered: 'warning',
+  in_repair: 'warning',
+  retired: 'default',
+};
+
+// "delivered" solo lo maneja el flujo de asignaciones (asset-assignments), igual que en Tools.
+const CHANGEABLE_STATUSES: VehicleStatus[] = ['available', 'reserved', 'in_repair', 'retired'];
+
 export default function VehiclesPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const router = useRouter();
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +105,12 @@ export default function VehiclesPage() {
     open: false,
     vehicle: null,
   });
+  const [statusDialog, setStatusDialog] = useState<{ open: boolean; vehicle: Vehicle | null; status: VehicleStatus; notes: string }>(
+    { open: false, vehicle: null, status: 'available', notes: '' }
+  );
+  const [historyDialog, setHistoryDialog] = useState<{ open: boolean; vehicle: Vehicle | null; entries: VehicleStatusLogEntry[]; loading: boolean }>(
+    { open: false, vehicle: null, entries: [], loading: false }
+  );
 
   // Form State
   const [form, setForm] = useState({
@@ -191,6 +222,33 @@ export default function VehiclesPage() {
       loadVehicles();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar el vehículo');
+    }
+  };
+
+  const handleOpenStatus = (vehicle: Vehicle) => {
+    setStatusDialog({ open: true, vehicle, status: vehicle.status === 'delivered' ? 'available' : vehicle.status, notes: '' });
+  };
+
+  const handleSubmitStatus = async () => {
+    if (!statusDialog.vehicle) return;
+    try {
+      await VehicleService.changeStatus(statusDialog.vehicle.id, statusDialog.status, statusDialog.notes || undefined);
+      setSuccess('Estado actualizado');
+      setStatusDialog({ open: false, vehicle: null, status: 'available', notes: '' });
+      loadVehicles();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cambiar el estado');
+    }
+  };
+
+  const handleOpenHistory = async (vehicle: Vehicle) => {
+    setHistoryDialog({ open: true, vehicle, entries: [], loading: true });
+    try {
+      const entries = await VehicleService.getStatusHistory(vehicle.id);
+      setHistoryDialog({ open: true, vehicle, entries, loading: false });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar el historial');
+      setHistoryDialog({ open: false, vehicle: null, entries: [], loading: false });
     }
   };
 
@@ -356,6 +414,7 @@ export default function VehiclesPage() {
                             borderColor: 'grey.300',
                           }}
                         />
+                        <Chip label={STATUS_LABELS[vehicle.status]} color={STATUS_COLORS[vehicle.status]} size="small" />
                       </Box>
                     </Box>
                     <Box display="flex" flexDirection="column" alignItems="flex-end">
@@ -372,7 +431,7 @@ export default function VehiclesPage() {
 
                   <Divider sx={{ my: 1.5 }} />
 
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
                     <Button
                       variant="outlined"
                       size="small"
@@ -383,6 +442,25 @@ export default function VehiclesPage() {
                       Legajo Digital
                     </Button>
                     <Box display="flex" gap={0.5}>
+                      <Tooltip title="Ver ficha / QR">
+                        <IconButton size="small" color="secondary" onClick={() => router.push(`/dashboard/vehicles/${vehicle.id}`)} sx={{ p: 1 }}>
+                          <ViewIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Asignar a proyecto/responsable">
+                        <span>
+                          <IconButton size="small" disabled={vehicle.status !== 'available'} onClick={() => router.push(`/dashboard/asset-assignments?vehicle_id=${vehicle.id}`)} sx={{ p: 1 }}>
+                            <AssignIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Cambiar estado">
+                        <span>
+                          <IconButton size="small" color="primary" disabled={vehicle.status === 'delivered'} onClick={() => handleOpenStatus(vehicle)} sx={{ bgcolor: 'primary.lighter', p: 1 }}>
+                            <StatusIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                       <IconButton
                         color="primary"
                         size="small"
@@ -415,6 +493,7 @@ export default function VehiclesPage() {
                 <TableCell><strong>Marca y Modelo</strong></TableCell>
                 <TableCell><strong>Patente</strong></TableCell>
                 <TableCell><strong>Tipo</strong></TableCell>
+                <TableCell><strong>Estado</strong></TableCell>
                 <TableCell align="center"><strong>Legajo (Seguros / VTV)</strong></TableCell>
                 <TableCell align="center"><strong>Habilitado</strong></TableCell>
                 <TableCell align="center"><strong>Acciones</strong></TableCell>
@@ -456,6 +535,9 @@ export default function VehiclesPage() {
                         variant="outlined"
                       />
                     </TableCell>
+                    <TableCell>
+                      <Chip label={STATUS_LABELS[vehicle.status]} color={STATUS_COLORS[vehicle.status]} size="small" />
+                    </TableCell>
                     <TableCell align="center">
                       <Button
                         variant="outlined"
@@ -478,6 +560,30 @@ export default function VehiclesPage() {
                     </TableCell>
                     <TableCell align="center">
                       <Box display="flex" justifyContent="center" gap={1}>
+                        <Tooltip title="Ver ficha / QR">
+                          <IconButton size="small" color="secondary" onClick={() => router.push(`/dashboard/vehicles/${vehicle.id}`)}>
+                            <ViewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Asignar a proyecto/responsable">
+                          <span>
+                            <IconButton size="small" disabled={vehicle.status !== 'available'} onClick={() => router.push(`/dashboard/asset-assignments?vehicle_id=${vehicle.id}`)}>
+                              <AssignIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Cambiar estado">
+                          <span>
+                            <IconButton size="small" color="primary" disabled={vehicle.status === 'delivered'} onClick={() => handleOpenStatus(vehicle)}>
+                              <StatusIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Ver historial de estados">
+                          <IconButton size="small" onClick={() => handleOpenHistory(vehicle)}>
+                            <HistoryIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Editar Vehículo">
                           <IconButton
                             color="primary"
@@ -595,6 +701,62 @@ export default function VehiclesPage() {
         onClose={() => setDocDialog({ open: false, vehicle: null })}
         vehicle={docDialog.vehicle}
       />
+
+      {/* Status Change Dialog */}
+      <Dialog open={statusDialog.open} onClose={() => setStatusDialog({ open: false, vehicle: null, status: 'available', notes: '' })} maxWidth="xs" fullWidth>
+        <DialogTitle>Cambiar estado — {statusDialog.vehicle?.brand} {statusDialog.vehicle?.model} ({statusDialog.vehicle?.plate})</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField label="Nuevo estado" select fullWidth value={statusDialog.status}
+              onChange={(e) => setStatusDialog({ ...statusDialog, status: e.target.value as VehicleStatus })}
+              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
+              {CHANGEABLE_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+            </TextField>
+            <TextField label="Notas" fullWidth multiline rows={2} value={statusDialog.notes}
+              onChange={(e) => setStatusDialog({ ...statusDialog, notes: e.target.value })} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStatusDialog({ open: false, vehicle: null, status: 'available', notes: '' })}>Cancelar</Button>
+          <Button onClick={handleSubmitStatus} variant="contained">Guardar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Status History Dialog */}
+      <Dialog open={historyDialog.open} onClose={() => setHistoryDialog({ open: false, vehicle: null, entries: [], loading: false })} maxWidth="sm" fullWidth>
+        <DialogTitle>Historial de estados — {historyDialog.vehicle?.brand} {historyDialog.vehicle?.model} ({historyDialog.vehicle?.plate})</DialogTitle>
+        <DialogContent>
+          {historyDialog.loading ? (
+            <Box display="flex" justifyContent="center" py={3}><CircularProgress size={24} /></Box>
+          ) : historyDialog.entries.length === 0 ? (
+            <Typography color="text.secondary" textAlign="center" py={3}>Sin cambios de estado registrados todavía.</Typography>
+          ) : (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Fecha</TableCell>
+                  <TableCell>Cambio</TableCell>
+                  <TableCell>Quién</TableCell>
+                  <TableCell>Notas</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {historyDialog.entries.map((entry) => (
+                  <TableRow key={entry.id}>
+                    <TableCell>{new Date(entry.changed_at).toLocaleString('es-AR')}</TableCell>
+                    <TableCell>{entry.from_status ? `${STATUS_LABELS[entry.from_status as VehicleStatus] || entry.from_status} → ` : ''}{STATUS_LABELS[entry.to_status as VehicleStatus] || entry.to_status}</TableCell>
+                    <TableCell>{entry.changedByUser ? `${entry.changedByUser.lastname}, ${entry.changedByUser.name}` : '—'}</TableCell>
+                    <TableCell>{entry.notes || '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setHistoryDialog({ open: false, vehicle: null, entries: [], loading: false })}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Feedback Alerts */}
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />

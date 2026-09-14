@@ -20,7 +20,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       setIsLoading(false);
 
       if (!authenticated) {
-        router.push('/login');
+        // Guarda a dónde iba (ej. la ficha de una herramienta escaneada por QR) para volver
+        // ahí después de loguearse, en vez de tirarlo siempre al dashboard genérico.
+        const target = window.location.pathname + window.location.search;
+        router.push(`/login?redirect=${encodeURIComponent(target)}`);
       }
     };
 

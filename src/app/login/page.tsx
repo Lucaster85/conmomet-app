@@ -36,15 +36,25 @@ export default function LoginPage() {
     if (params.get('account_error') === 'true') setAccountError(true);
   }, []);
 
+  // Adónde volver después de loguearse — viene de ProtectedRoute cuando alguien entra a una
+  // URL protegida sin sesión (ej. escaneó el QR de una herramienta). Si el usuario no tiene
+  // acceso al dashboard, un destino /dashboard/... no le sirve — cae al portal en ese caso.
+  const getRedirectTarget = (hasDashboardAccess: boolean): string => {
+    if (typeof window === 'undefined') return hasDashboardAccess ? '/dashboard' : '/portal';
+    const redirect = new URLSearchParams(window.location.search).get('redirect');
+    if (redirect && redirect.startsWith('/')) {
+      if (!hasDashboardAccess && redirect.startsWith('/dashboard')) return '/portal';
+      return redirect;
+    }
+    return hasDashboardAccess ? '/dashboard' : '/portal';
+  };
+
   // Verificar si ya está autenticado
   useEffect(() => {
     if (TokenManager.isAuthenticated()) {
       const currentUser = TokenManager.getUser();
-      if (currentUser && currentUser.has_dashboard_access === false) {
-        router.push('/portal');
-      } else {
-        router.push('/dashboard');
-      }
+      const hasDashboardAccess = !(currentUser && currentUser.has_dashboard_access === false);
+      router.push(getRedirectTarget(hasDashboardAccess));
     }
   }, [router]);
 
@@ -71,11 +81,8 @@ export default function LoginPage() {
     
     if (result.success) {
       const currentUser = TokenManager.getUser();
-      if (currentUser && currentUser.has_dashboard_access === false) {
-        router.push('/portal');
-      } else {
-        router.push('/dashboard');
-      }
+      const hasDashboardAccess = !(currentUser && currentUser.has_dashboard_access === false);
+      router.push(getRedirectTarget(hasDashboardAccess));
     } else {
       setError(result.error || 'Credenciales incorrectas. Verifica tu correo y contraseña.');
     }

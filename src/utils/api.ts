@@ -1181,6 +1181,181 @@ export class MaterialUnitService {
   }
 }
 
+// Pañol — Tipos de Herramienta (catálogo chico, alta rápida inline) y Herramientas
+export interface ToolType {
+  id: number;
+  name: string;
+  is_active: boolean;
+}
+
+export interface CreateToolTypeData {
+  name: string;
+  is_active?: boolean;
+}
+
+export class ToolTypeService {
+  static async getAll(isActive?: boolean): Promise<ToolType[]> {
+    let url = `${API_BASE_URL}/tool-types`;
+    if (isActive !== undefined) url += `?is_active=${isActive}`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener tipos de herramienta');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async create(body: CreateToolTypeData): Promise<ToolType> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/tool-types`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear tipo de herramienta');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async update(id: number, body: Partial<CreateToolTypeData>): Promise<ToolType> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/tool-types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar tipo de herramienta');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/tool-types/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar tipo de herramienta');
+    }
+  }
+}
+
+export type ToolStatus = 'available' | 'reserved' | 'delivered' | 'in_repair' | 'retired' | 'lost';
+
+export interface Tool {
+  id: number;
+  tool_type_id: number;
+  toolType?: ToolType;
+  name: string;
+  reference_code: string;
+  brand?: string | null;
+  model?: string | null;
+  serial_number?: string | null;
+  status: ToolStatus;
+  notes?: string | null;
+}
+
+export interface CreateToolData {
+  tool_type_id: number;
+  name: string;
+  reference_code: string;
+  brand?: string | null;
+  model?: string | null;
+  serial_number?: string | null;
+  notes?: string | null;
+}
+
+// reference_code queda afuera a propósito: el backend nunca la acepta en el update (ver
+// toolController.js#update) — no editable una vez creada la herramienta.
+export type UpdateToolData = Partial<Omit<CreateToolData, 'reference_code'>>;
+
+export interface ToolStatusLogEntry {
+  id: number;
+  tool_id: number;
+  from_status?: string;
+  to_status: string;
+  changed_by: number;
+  changed_at: string;
+  notes?: string;
+  changedByUser?: { id: number; name: string; lastname: string };
+}
+
+export class ToolService {
+  static async getAll(params?: { tool_type_id?: number; status?: ToolStatus; q?: string }): Promise<Tool[]> {
+    let url = `${API_BASE_URL}/tools`;
+    if (params) {
+      const qs = new URLSearchParams();
+      if (params.tool_type_id) qs.append('tool_type_id', params.tool_type_id.toString());
+      if (params.status) qs.append('status', params.status);
+      if (params.q) qs.append('q', params.q);
+      if (qs.toString()) url += `?${qs.toString()}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener herramientas');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getById(id: number): Promise<Tool> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/tools/${id}`);
+    if (!response.ok) throw new Error('Error al obtener la herramienta');
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async create(body: CreateToolData): Promise<Tool> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/tools`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear la herramienta');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async update(id: number, body: UpdateToolData): Promise<Tool> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/tools/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar la herramienta');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async changeStatus(id: number, status: ToolStatus, notes?: string): Promise<Tool> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/tools/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, notes }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al cambiar el estado');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async getStatusHistory(id: number): Promise<ToolStatusLogEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/tools/${id}/status-history`);
+    if (!response.ok) throw new Error('Error al obtener el historial de estados');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/tools/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar la herramienta');
+    }
+  }
+}
+
 // Presupuestos / Cotizaciones
 export type BudgetCurrency = 'ARS' | 'USD';
 
@@ -3491,6 +3666,11 @@ export interface CreateClientSupervisorData {
   is_active?: boolean;
 }
 
+// Independiente de is_active a propósito — is_active sigue gateando los selects de carga de
+// horas/OCAs, status es el ciclo de vida de asignación del pañol. Sin "lost": no aplica a un
+// vehículo patentado (a diferencia de Tool.status).
+export type VehicleStatus = 'available' | 'reserved' | 'delivered' | 'in_repair' | 'retired';
+
 export interface Vehicle {
   id: number;
   brand?: string;
@@ -3498,6 +3678,7 @@ export interface Vehicle {
   plate: string;
   type: 'crane' | 'truck' | 'other';
   is_active: boolean;
+  status: VehicleStatus;
   createdAt: string;
   updatedAt?: string;
 }
@@ -3508,6 +3689,18 @@ export interface CreateVehicleData {
   plate: string;
   type: 'crane' | 'truck' | 'other';
   is_active?: boolean;
+  status?: VehicleStatus;
+}
+
+export interface VehicleStatusLogEntry {
+  id: number;
+  vehicle_id: number;
+  from_status?: string;
+  to_status: string;
+  changed_by: number;
+  changed_at: string;
+  notes?: string;
+  changedByUser?: { id: number; name: string; lastname: string };
 }
 
 export interface OcaLine {
@@ -3676,6 +3869,153 @@ export class VehicleService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Error al eliminar el vehículo');
+    }
+  }
+
+  static async changeStatus(id: number, status: VehicleStatus, notes?: string): Promise<Vehicle> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/vehicles/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, notes }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al cambiar el estado');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async getStatusHistory(id: number): Promise<VehicleStatusLogEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/vehicles/${id}/status-history`);
+    if (!response.ok) throw new Error('Error al obtener el historial de estados');
+    const data = await response.json();
+    return data.data || [];
+  }
+}
+
+// Pañol — Asignaciones de herramientas/grúas a proyecto + responsable. Tabla compartida entre
+// Tool y Vehicle (exactamente uno de tool_id/vehicle_id viene seteado).
+export type AssetAssignmentStatus = 'reserved' | 'delivered' | 'returned';
+export type AssetCondition = 'bueno' | 'regular' | 'malo';
+export type AssetCompleteness = 'completo' | 'faltante';
+
+export interface AssetAssignment {
+  id: number;
+  tool_id?: number | null;
+  vehicle_id?: number | null;
+  project_id?: number | null;
+  employee_id?: number | null;
+  status: AssetAssignmentStatus;
+  delivered_date?: string | null;
+  returned_date?: string | null;
+  delivery_condition?: AssetCondition | null;
+  delivery_completeness?: AssetCompleteness | null;
+  delivery_notes?: string | null;
+  return_condition?: AssetCondition | null;
+  return_completeness?: AssetCompleteness | null;
+  return_notes?: string | null;
+  tool?: Tool;
+  vehicle?: Vehicle;
+  project?: { id: number; name: string; code: string };
+  employee?: { id: number; name: string; lastname: string };
+  deliveredBy?: { id: number; name: string; lastname: string };
+  receivedBy?: { id: number; name: string; lastname: string };
+}
+
+export interface CreateAssetAssignmentData {
+  tool_id?: number;
+  vehicle_id?: number;
+  project_id?: number;
+  employee_id?: number;
+  delivered_date?: string;
+  delivery_condition?: AssetCondition;
+  delivery_completeness?: AssetCompleteness;
+  delivery_notes?: string;
+}
+
+export interface DeliverAssignmentData {
+  delivered_date?: string;
+  delivery_condition: AssetCondition;
+  delivery_completeness: AssetCompleteness;
+  delivery_notes?: string;
+}
+
+export interface ReturnAssignmentData {
+  returned_date?: string;
+  return_condition: AssetCondition;
+  return_completeness: AssetCompleteness;
+  return_notes?: string;
+  resulting_status?: 'available' | 'in_repair';
+}
+
+export class AssetAssignmentService {
+  static async getAll(params?: {
+    tool_id?: number; vehicle_id?: number; employee_id?: number; project_id?: number;
+    status?: AssetAssignmentStatus; active?: boolean;
+  }): Promise<AssetAssignment[]> {
+    let url = `${API_BASE_URL}/asset-assignments`;
+    if (params) {
+      const qs = new URLSearchParams();
+      if (params.tool_id) qs.append('tool_id', params.tool_id.toString());
+      if (params.vehicle_id) qs.append('vehicle_id', params.vehicle_id.toString());
+      if (params.employee_id) qs.append('employee_id', params.employee_id.toString());
+      if (params.project_id) qs.append('project_id', params.project_id.toString());
+      if (params.status) qs.append('status', params.status);
+      if (params.active) qs.append('active', 'true');
+      if (qs.toString()) url += `?${qs.toString()}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener las asignaciones');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async create(body: CreateAssetAssignmentData): Promise<AssetAssignment> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/asset-assignments`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear la asignación');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async deliver(id: number, body: DeliverAssignmentData): Promise<AssetAssignment> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/asset-assignments/${id}/deliver`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al confirmar la entrega');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async returnAssignment(id: number, body: ReturnAssignmentData): Promise<AssetAssignment> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/asset-assignments/${id}/return`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al registrar la devolución');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async cancel(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/asset-assignments/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al cancelar la reserva');
     }
   }
 }

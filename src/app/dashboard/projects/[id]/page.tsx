@@ -16,12 +16,15 @@ import {
 import { useAuth } from '../../../../utils/auth';
 import {
   Project, ProjectService, TimeEntry, TimeEntryService, BudgetCurrency,
-  WorkDayLog, WorkDayLogWeek,
+  WorkDayLog, WorkDayLogWeek, AssetAssignment, AssetAssignmentService, AssetAssignmentStatus,
 } from '../../../../utils/api';
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Borrador', active: 'Activo', paused: 'Pausado', completed: 'Completado', cancelled: 'Cancelado',
 };
+
+const ASSIGNMENT_STATUS_LABELS: Record<AssetAssignmentStatus, string> = { reserved: 'Reservada', delivered: 'Entregada', returned: 'Devuelta' };
+const ASSIGNMENT_STATUS_COLORS: Record<AssetAssignmentStatus, 'info' | 'warning' | 'success'> = { reserved: 'info', delivered: 'warning', returned: 'success' };
 
 const PRESET_SUSPENSION_REASONS = [
   'Lluvias',
@@ -93,6 +96,11 @@ export default function ProjectDetailPage() {
     : [];
   const hasBudgetsRead = permissions.includes('admin_granted') || permissions.includes('budgets_read');
   const hasPricesRead = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
+  const hasToolsRead = permissions.includes('admin_granted') || permissions.includes('asset_assignments_read');
+  // Mismo truco de "índice inalcanzable" que ya usa este archivo para Presupuesto (línea de
+  // abajo con hasBudgetsRead ? 4 : 99): evita romper la numeración de tabs cuando falta el
+  // permiso, sin tener que recalcular todos los índices a mano.
+  const panolTabIndex = hasToolsRead ? (hasBudgetsRead ? 5 : 4) : 99;
 
   const [project, setProject] = useState<Project | null>(null);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -110,6 +118,11 @@ export default function ProjectDetailPage() {
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
   });
+
+  // Pañol tab state
+  const [toolAssignments, setToolAssignments] = useState<AssetAssignment[]>([]);
+  const [vehicleAssignments, setVehicleAssignments] = useState<AssetAssignment[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
 
   // Print Dialog state
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
@@ -161,6 +174,19 @@ export default function ProjectDetailPage() {
       loadWeekLogs(selectedMonday);
     }
   }, [tab, project, selectedMonday, loadWeekLogs]);
+
+  // Load Pañol (herramientas/grúas asignadas) — historial completo, no solo lo activo.
+  useEffect(() => {
+    if (tab !== panolTabIndex || !project) return;
+    setLoadingAssignments(true);
+    AssetAssignmentService.getAll({ project_id: project.id })
+      .then(all => {
+        setToolAssignments(all.filter(a => !!a.tool_id));
+        setVehicleAssignments(all.filter(a => !!a.vehicle_id));
+      })
+      .catch(err => setSnackbar({ open: true, message: err instanceof Error ? err.message : 'Error al cargar el pañol del proyecto', severity: 'error' }))
+      .finally(() => setLoadingAssignments(false));
+  }, [tab, project, panolTabIndex]);
 
   // Save Planilla Diaria
   const handleSaveWeekLogs = async () => {
@@ -231,6 +257,7 @@ export default function ProjectDetailPage() {
     { label: 'Horas' },
     { label: 'Planilla Diaria' },
     ...(hasBudgetsRead ? [{ label: 'Presupuesto' }] : []),
+    ...(hasToolsRead ? [{ label: 'Pañol' }] : []),
   ];
 
   return (
@@ -630,6 +657,113 @@ export default function ProjectDetailPage() {
                 </>
               )}
             </Box>
+          )}
+        </Paper>
+      )}
+
+      {/* Tab Pañol: Herramientas y grúas/vehículos asignados a este proyecto */}
+      {tab === panolTabIndex && (
+        <Paper sx={{ p: 3 }}>
+          {loadingAssignments ? (
+            <Box display="flex" justifyContent="center" py={3}><CircularProgress size={24} /></Box>
+          ) : (
+            <>
+              <Typography variant="h6" fontWeight={700} mb={2}>Herramientas asignadas</Typography>
+              {toolAssignments.length === 0 ? (
+                <Typography color="text.secondary" mb={3}>No se asignó ninguna herramienta a este proyecto todavía.</Typography>
+              ) : (
+                <Box mb={4}>
+                  {/* Mobile Cards */}
+                  <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                    <Stack spacing={1}>
+                      {toolAssignments.map(a => (
+                        <Paper key={a.id} variant="outlined" sx={{ p: 1.5 }}>
+                          <Typography variant="body2" fontWeight={600}>{a.tool?.name} ({a.tool?.reference_code})</Typography>
+                          <Typography variant="body2">{a.employee ? `${a.employee.lastname}, ${a.employee.name}` : 'Sin responsable'}</Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Entrega: {a.delivered_date || '—'} · Devolución: {a.returned_date || '—'}
+                          </Typography>
+                          <Chip size="small" label={ASSIGNMENT_STATUS_LABELS[a.status]} color={ASSIGNMENT_STATUS_COLORS[a.status]} sx={{ mt: 0.5 }} />
+                        </Paper>
+                      ))}
+                    </Stack>
+                  </Box>
+                  {/* Desktop Table */}
+                  <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: 'grey.50' }}>
+                            <TableCell>Herramienta</TableCell><TableCell>Responsable</TableCell>
+                            <TableCell>Entrega</TableCell><TableCell>Devolución</TableCell><TableCell>Estado</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {toolAssignments.map(a => (
+                            <TableRow key={a.id} hover sx={{ cursor: a.tool ? 'pointer' : 'default' }} onClick={() => a.tool && router.push(`/dashboard/tools/${a.tool.id}`)}>
+                              <TableCell>{a.tool?.name} ({a.tool?.reference_code})</TableCell>
+                              <TableCell>{a.employee ? `${a.employee.lastname}, ${a.employee.name}` : '—'}</TableCell>
+                              <TableCell>{a.delivered_date || '—'}</TableCell>
+                              <TableCell>{a.returned_date || '—'}</TableCell>
+                              <TableCell><Chip size="small" label={ASSIGNMENT_STATUS_LABELS[a.status]} color={ASSIGNMENT_STATUS_COLORS[a.status]} /></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                </Box>
+              )}
+
+              <Divider sx={{ mb: 3 }} />
+
+              <Typography variant="h6" fontWeight={700} mb={2}>Grúas y vehículos asignados</Typography>
+              {vehicleAssignments.length === 0 ? (
+                <Typography color="text.secondary">No se asignó ninguna grúa/vehículo a este proyecto todavía.</Typography>
+              ) : (
+                <Box>
+                  {/* Mobile Cards */}
+                  <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                    <Stack spacing={1}>
+                      {vehicleAssignments.map(a => (
+                        <Paper key={a.id} variant="outlined" sx={{ p: 1.5 }}>
+                          <Typography variant="body2" fontWeight={600}>{[a.vehicle?.brand, a.vehicle?.model].filter(Boolean).join(' ')} — {a.vehicle?.plate}</Typography>
+                          <Typography variant="body2">{a.employee ? `${a.employee.lastname}, ${a.employee.name}` : 'Sin responsable'}</Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Entrega: {a.delivered_date || '—'} · Devolución: {a.returned_date || '—'}
+                          </Typography>
+                          <Chip size="small" label={ASSIGNMENT_STATUS_LABELS[a.status]} color={ASSIGNMENT_STATUS_COLORS[a.status]} sx={{ mt: 0.5 }} />
+                        </Paper>
+                      ))}
+                    </Stack>
+                  </Box>
+                  {/* Desktop Table */}
+                  <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: 'grey.50' }}>
+                            <TableCell>Grúa/Vehículo</TableCell><TableCell>Responsable</TableCell>
+                            <TableCell>Entrega</TableCell><TableCell>Devolución</TableCell><TableCell>Estado</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {vehicleAssignments.map(a => (
+                            <TableRow key={a.id} hover sx={{ cursor: a.vehicle ? 'pointer' : 'default' }} onClick={() => a.vehicle && router.push(`/dashboard/vehicles/${a.vehicle.id}`)}>
+                              <TableCell>{[a.vehicle?.brand, a.vehicle?.model].filter(Boolean).join(' ')} — {a.vehicle?.plate}</TableCell>
+                              <TableCell>{a.employee ? `${a.employee.lastname}, ${a.employee.name}` : '—'}</TableCell>
+                              <TableCell>{a.delivered_date || '—'}</TableCell>
+                              <TableCell>{a.returned_date || '—'}</TableCell>
+                              <TableCell><Chip size="small" label={ASSIGNMENT_STATUS_LABELS[a.status]} color={ASSIGNMENT_STATUS_COLORS[a.status]} /></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                </Box>
+              )}
+            </>
           )}
         </Paper>
       )}
