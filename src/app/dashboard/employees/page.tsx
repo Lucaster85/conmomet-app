@@ -47,6 +47,7 @@ export default function EmployeesPage() {
     name: '', lastname: '', dni: '', cuil: '', address: '', phone: '', email: '',
     position: '', hire_date: '', birth_date: '', hourly_rate: 0, pay_type: 'hourly', monthly_salary: 0, notes: '',
     shoe_size: '', shirt_size: '', pant_size: '', user_id: undefined, vacation_days_override: null, category_id: null,
+    biweekly_advance_enabled: false,
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -111,6 +112,7 @@ export default function EmployeesPage() {
       position: emp.position || '', hire_date: emp.hire_date, birth_date: emp.birth_date || '', hourly_rate: emp.hourly_rate,
       pay_type: emp.pay_type || 'hourly',
       monthly_salary: emp.monthly_salary || 0,
+      biweekly_advance_enabled: emp.biweekly_advance_enabled || false,
       notes: emp.notes || '', status: emp.status,
       shoe_size: emp.shoe_size || '', shirt_size: emp.shirt_size || '', pant_size: emp.pant_size || '',
       user_id: emp.user_id || undefined,
@@ -428,13 +430,25 @@ export default function EmployeesPage() {
               <DateField label="Fecha Ingreso *" fullWidth value={form.hire_date} onChange={(val) => setForm({ ...form, hire_date: val })} InputLabelProps={{ shrink: true }} />
               <DateField label="Fecha Nacimiento" fullWidth value={form.birth_date || ''} onChange={(val) => setForm({ ...form, birth_date: val })} InputLabelProps={{ shrink: true }} />
             </Box>
-            <TextField label="Tipo de Pago" select fullWidth value={form.pay_type || 'hourly'} onChange={(e) => setForm({ ...form, pay_type: e.target.value })}
+            <TextField label="Tipo de Pago" select fullWidth value={form.pay_type || 'hourly'}
+              onChange={(e) => setForm({ ...form, pay_type: e.target.value, biweekly_advance_enabled: e.target.value === 'monthly' ? form.biweekly_advance_enabled : false })}
               SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
               <option value="hourly">Jornalizado (por hora)</option>
               <option value="monthly">Mensualizado (sueldo fijo)</option>
             </TextField>
             {form.pay_type === 'monthly' ? (
-              <CurrencyInput label="Sueldo Mensual *" fullWidth value={form.monthly_salary || 0} onChange={(value) => setForm({ ...form, monthly_salary: value ?? 0 })} />
+              <>
+                <CurrencyInput label="Sueldo Mensual *" fullWidth value={form.monthly_salary || 0} onChange={(value) => setForm({ ...form, monthly_salary: value ?? 0 })} />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={!!form.biweekly_advance_enabled}
+                      onChange={(e) => setForm({ ...form, biweekly_advance_enabled: e.target.checked })}
+                    />
+                  }
+                  label="Adelanto quincenal automático (mitad del sueldo + horas extra al día 15)"
+                />
+              </>
             ) : (
               <CurrencyInput label="Arreglo Particular (valor hora) *" fullWidth value={form.hourly_rate} onChange={(value) => setForm({ ...form, hourly_rate: value ?? 0 })} helperText="Valor hora acordado con el empleado" />
             )}

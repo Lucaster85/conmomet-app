@@ -24,24 +24,10 @@ const formatPeriodLabel = (p: PayPeriod) => {
   return `${half} de ${month} ${p.year}`;
 };
 
-type AdvanceInfo = { payment_method: string; date: string };
-
-const formatAdvancesSummary = (advances?: AdvanceInfo[]) => {
-  if (!advances || advances.length === 0) return '';
-  return advances
-    .map((adv) => {
-      const method = adv.payment_method === 'efectivo' ? 'Efvo' : 'Transf';
-      const date = new Date(adv.date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
-      return `${method} ${date}`;
-    })
-    .join(', ');
-};
-
-type LoanInstallmentInfo = { installment_number: number };
-
-const formatLoanInstallmentsSummary = (items?: LoanInstallmentInfo[]) => {
-  if (!items || items.length === 0) return '';
-  return items.map((i) => `Cuota ${i.installment_number}`).join(', ');
+const formatAdvanceLabel = (adv: { payment_method?: string; date: string }) => {
+  const method = adv.payment_method === 'efectivo' ? 'Efvo' : adv.payment_method === 'transferencia' ? 'Transf' : '';
+  const date = new Date(adv.date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+  return method ? `${date}, ${method}` : date;
 };
 
 export default function PayrollPage() {
@@ -126,8 +112,12 @@ export default function PayrollPage() {
   const handleGenerate = async () => {
     try {
       setLoading(true);
-      await PayrollService.generate(payPeriodId);
-      setSuccess('Liquidación generada/actualizada');
+      const { biweeklyAdvances } = await PayrollService.generate(payPeriodId);
+      let message = 'Liquidación generada/actualizada';
+      if (biweeklyAdvances && (biweeklyAdvances.created > 0 || biweeklyAdvances.updated > 0)) {
+        message += ` — ${biweeklyAdvances.created} adelanto(s) automático(s) nuevo(s) y ${biweeklyAdvances.updated} actualizado(s), por ${formatCurrency(biweeklyAdvances.total)} en total`;
+      }
+      setSuccess(message);
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al generar');
@@ -1054,26 +1044,40 @@ export default function PayrollPage() {
                 <Typography variant="overline" color="text.secondary" fontWeight={600}>Deducciones</Typography>
                 <Stack spacing={0.5} mt={1} mb={1}>
                   {Number(detailEntry.advances_deducted) > 0 && (
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="body2" color="error.main">
-                        Adelantos
-                        {formatAdvancesSummary(detailEntry.advances) && (
-                          <Typography component="span" variant="caption" color="text.secondary"> ({formatAdvancesSummary(detailEntry.advances)})</Typography>
-                        )}
-                      </Typography>
-                      <Typography variant="body2" color="error.main">-{formatCurrency(detailEntry.advances_deducted)}</Typography>
-                    </Box>
+                    detailEntry.advances && detailEntry.advances.length > 0 ? (
+                      detailEntry.advances.map((adv: { id: number; amount: number; payment_method?: string; date: string }) => (
+                        <Box display="flex" justifyContent="space-between" key={adv.id}>
+                          <Typography variant="body2" color="error.main">
+                            Adelanto
+                            <Typography component="span" variant="caption" color="text.secondary"> ({formatAdvanceLabel(adv)})</Typography>
+                          </Typography>
+                          <Typography variant="body2" color="error.main">-{formatCurrency(adv.amount)}</Typography>
+                        </Box>
+                      ))
+                    ) : (
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="body2" color="error.main">Adelantos</Typography>
+                        <Typography variant="body2" color="error.main">-{formatCurrency(detailEntry.advances_deducted)}</Typography>
+                      </Box>
+                    )
                   )}
                   {Number(detailEntry.loan_installments_deducted) > 0 && (
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="body2" color="error.main">
-                        Cuota de Préstamo
-                        {formatLoanInstallmentsSummary(detailEntry.loanInstallments) && (
-                          <Typography component="span" variant="caption" color="text.secondary"> ({formatLoanInstallmentsSummary(detailEntry.loanInstallments)})</Typography>
-                        )}
-                      </Typography>
-                      <Typography variant="body2" color="error.main">-{formatCurrency(detailEntry.loan_installments_deducted)}</Typography>
-                    </Box>
+                    detailEntry.loanInstallments && detailEntry.loanInstallments.length > 0 ? (
+                      detailEntry.loanInstallments.map((inst: { id: number; installment_number: number; total_amount: number }) => (
+                        <Box display="flex" justifyContent="space-between" key={inst.id}>
+                          <Typography variant="body2" color="error.main">
+                            Cuota de Préstamo
+                            <Typography component="span" variant="caption" color="text.secondary"> (Cuota {inst.installment_number})</Typography>
+                          </Typography>
+                          <Typography variant="body2" color="error.main">-{formatCurrency(inst.total_amount)}</Typography>
+                        </Box>
+                      ))
+                    ) : (
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="body2" color="error.main">Cuota de Préstamo</Typography>
+                        <Typography variant="body2" color="error.main">-{formatCurrency(detailEntry.loan_installments_deducted)}</Typography>
+                      </Box>
+                    )
                   )}
                   {detailEntry.adjustments?.filter((a: { type: string; id: number; label: string; amount: number }) => a.type === 'deduction').map((a: { type: string; id: number; label: string; amount: number }) => (
                     <Box display="flex" justifyContent="space-between" key={a.id}>

@@ -404,6 +404,9 @@ export default function SalaryAdvancesPage() {
               <Card key={a.id} sx={{ p: 2 }}>
                 <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
                   <Typography variant="subtitle1" fontWeight="bold">{a.employee?.lastname}, {a.employee?.name}</Typography>
+                  {a.source === 'biweekly_auto' && (
+                    <Chip label="Automático" size="small" color="secondary" variant="outlined" />
+                  )}
                   {a.conflict_warning && (
                     <Tooltip title={a.conflict_warning}>
                       <ConflictIcon color="warning" fontSize="small" />
@@ -487,7 +490,14 @@ export default function SalaryAdvancesPage() {
                 filteredAdvances.map(a => (
                   <TableRow key={a.id} hover>
                     <TableCell>{formatDate(a.date)}</TableCell>
-                    <TableCell>{a.employee?.lastname}, {a.employee?.name}</TableCell>
+                    <TableCell>
+                      <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
+                        {a.employee?.lastname}, {a.employee?.name}
+                        {a.source === 'biweekly_auto' && (
+                          <Chip label="Automático" size="small" color="secondary" variant="outlined" />
+                        )}
+                      </Box>
+                    </TableCell>
                     <TableCell><Typography color="error.main" fontWeight="bold">{formatCurrency(a.amount)}</Typography></TableCell>
                     <TableCell>{renderPaymentMethodChip(a.payment_method)}</TableCell>
                     <TableCell>

@@ -32,4 +32,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
     file: 'carga-horas.md',
   },
+  {
+    id: 'liquidaciones',
+    category: 'Contabilidad',
+    title: 'Liquidaciones',
+    keywords: [
+      'liquidacion', 'liquidación', 'quincena', 'sueldo', 'jornalizado', 'mensualizado',
+      'confirmar', 'pagar', 'adelanto', 'prestamo', 'préstamo', 'retroactivo', 'pep',
+    ],
+    file: 'liquidaciones.md',
+  },
 ];
