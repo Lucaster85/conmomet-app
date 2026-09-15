@@ -59,3 +59,18 @@ Reglas concretas:
 1. ¿Existe el bloque `{ xs: 'block', md: 'none' }` con `Card` por ítem?
 2. ¿La tabla desktop está envuelta en `{ xs: 'none', md: 'block' }`?
 3. ¿Se probó visualmente en un viewport angosto (≈375–414px)?
+
+## Regla obligatoria: mantener actualizada la sección de Ayuda
+
+La app tiene un Centro de Ayuda en `/dashboard/help` (último ítem del menú lateral) que
+documenta, en lenguaje simple para el usuario final, el flujo correcto de cada operación
+importante (alta de usuarios, tarifas especiales, presupuestos, OCAs, etc.).
+
+El contenido vive en `src/content/help/*.md`, indexado en `src/content/help/helpTopics.ts`.
+Cada `.md` cierra con un comentario `<!-- ref: ... -->` que apunta a los archivos de
+frontend/backend reales que implementan ese flujo.
+
+**Cualquier cambio de comportamiento en un flujo ya documentado ahí debe reflejarse en su
+`.md` correspondiente, en el mismo commit/PR que hace el cambio de código.** Si se agrega un
+flujo nuevo digno de documentar, sumarlo como un tema más en `helpTopics.ts` (con su propio
+`.md`), no como excepción aparte.

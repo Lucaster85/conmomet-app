@@ -59,6 +59,7 @@ import {
   BuildOutlined as BuildIcon,
   SwapHorizOutlined as SwapHorizIcon,
   QrCodeScannerOutlined as QrCodeScannerIcon,
+  HelpOutlineOutlined as HelpIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
@@ -147,6 +148,12 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Conceptos de Liquidación', icon: <CategoryIcon />, path: '/dashboard/payroll-concepts', requiredPermission: 'payroll_concepts_read' },
       { text: 'Feriados', icon: <CalendarIcon />, path: '/dashboard/holidays', requiredPermission: 'holidays_read' },
       { text: 'Configuración General', icon: <SettingsIcon />, path: '/dashboard/system-settings', requiredPermission: 'system_settings_update' },
+    ]
+  },
+  {
+    title: '',
+    items: [
+      { text: 'Centro de Ayuda', icon: <HelpIcon />, path: '/dashboard/help', requiredPermission: null },
     ]
   },
 ];
