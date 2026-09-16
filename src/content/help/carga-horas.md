@@ -18,8 +18,8 @@ Al abrir **"Nuevo Registro"** hay dos modos:
 
 ## Los datos de un registro
 
-- **Trabajadores**: a quién corresponden las horas. Los empleados **mensualizados** aparecen
-  marcados aparte (ver más abajo).
+- **Trabajadores**: a quién corresponden las horas. Los empleados **mensualizados** y
+  **quincenales** aparecen marcados aparte (ver más abajo).
 - **Fecha**: el día trabajado. Determina en qué quincena de pago cae y si es feriado.
 - **Ingreso / Egreso**: las horas **regulares se calculan solas** (egreso menos ingreso), no
   hace falta cargarlas a mano.
@@ -76,12 +76,14 @@ Dos cosas a tener en cuenta al anular:
 - Si el registro ya estaba incluido en un **Remito/OCA**, anularlo lo **desvincula** de esa
   OCA — la OCA en sí queda como estaba, solo se libera esa línea de horas.
 
-## Empleados mensualizados
+## Empleados mensualizados y quincenales
 
-Los empleados con sueldo mensual se distinguen con la etiqueta **"(Mensualizado)"** en el
-selector de trabajadores. Como su sueldo no depende de las horas trabajadas, en el listado no
-se les muestra el detalle de ingreso/egreso/horas regulares — solo lo demás (recargos,
-proyecto, PEP, etc.).
+Los empleados con sueldo fijo (mensualizados o quincenales) se distinguen con la etiqueta
+**"(Mensualizado)"** o **"(Quincenal)"** en el selector de trabajadores. Como su sueldo no
+depende de las horas trabajadas, en el listado no se les muestra el detalle de
+ingreso/egreso/horas regulares — solo lo demás (recargos, proyecto, PEP, etc.). El comportamiento
+es el mismo para ambas figuras; la única diferencia entre ellas está en la liquidación (ver
+**Liquidación de Sueldos**).
 
 ## Filtros del listado
 

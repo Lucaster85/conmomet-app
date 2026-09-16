@@ -50,6 +50,7 @@ import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
 import InviteEmployeeDialog, { buildInviteMessage } from '@/components/InviteEmployeeDialog';
 import { buildWhatsAppLink } from '@/utils/whatsapp';
+import { isFixedSalaryPayType, payTypeLabel } from '@/utils/payType';
 
 const STATUS_CONFIG = {
   permanent: { label: 'Permanente', color: 'default', icon: <CheckCircleIcon fontSize="small" /> },
@@ -522,14 +523,14 @@ export default function EmployeeDetailPage() {
                   <Grid container spacing={2.5}>
                     <Grid size={{ xs: 12, sm: 6 }}>
                       <Typography variant="caption" color="text.secondary">Tipo de Pago</Typography>
-                      <Typography variant="body1" fontWeight={500}>{employee.pay_type === 'monthly' ? 'Mensual' : 'Por Hora'}</Typography>
+                      <Typography variant="body1" fontWeight={500}>{payTypeLabel(employee.pay_type)}</Typography>
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
                       <Typography variant="caption" color="text.secondary">
-                        {employee.pay_type === 'monthly' ? 'Sueldo Mensual' : 'Valor Hora'}
+                        {employee.pay_type === 'monthly' ? 'Sueldo Mensual' : employee.pay_type === 'biweekly_fixed' ? 'Sueldo Quincenal' : 'Valor Hora'}
                       </Typography>
                       <Typography variant="body1" fontWeight={600} color="primary">
-                        {employee.pay_type === 'monthly'
+                        {isFixedSalaryPayType(employee.pay_type)
                           ? `$${Number(employee.monthly_salary || 0).toLocaleString('es-AR')}`
                           : `$${Number(employee.hourly_rate).toLocaleString('es-AR')}/h`}
                       </Typography>
@@ -1026,11 +1027,11 @@ export default function EmployeeDetailPage() {
                 <Grid container spacing={2} alignItems="center">
                   <Grid size={{ xs: 12, md: 3 }}>
                     <Typography variant="caption" color="text.secondary">Modalidad</Typography>
-                    <Typography variant="body1" fontWeight="bold">{employee?.pay_type === 'monthly' ? 'Mensualizado' : 'Jornalizado'}</Typography>
+                    <Typography variant="body1" fontWeight="bold">{payTypeLabel(employee?.pay_type)}</Typography>
                   </Grid>
                   <Grid size={{ xs: 12, md: 3 }}>
-                    <Typography variant="caption" color="text.secondary">{employee?.pay_type === 'monthly' ? 'Sueldo Base' : 'Valor Hora Base'}</Typography>
-                    <Typography variant="body1" fontWeight="bold">${Number(employee?.pay_type === 'monthly' ? employee?.monthly_salary : employee?.hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                    <Typography variant="caption" color="text.secondary">{employee?.pay_type === 'monthly' ? 'Sueldo Base' : employee?.pay_type === 'biweekly_fixed' ? 'Sueldo Base Quincenal' : 'Valor Hora Base'}</Typography>
+                    <Typography variant="body1" fontWeight="bold">${Number(isFixedSalaryPayType(employee?.pay_type) ? employee?.monthly_salary : employee?.hourly_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
                     {/* Valor hora CCT si corresponde */}
                     {employee?.category && employee.category.guild_hourly_rate && (
                       <Box mt={1}>
@@ -1074,8 +1075,8 @@ export default function EmployeeDetailPage() {
                 }}>+ Agregar Tarifa</Button>
               </Box>
 
-              {employee?.pay_type === 'monthly' ? (
-                <Alert severity="info">Empleado mensualizado: aquí puedes configurar la tarifa de extras. La hora de gremio para licencia médica se toma de la Categoría (CCT) asignada en &quot;Editar Base&quot;.</Alert>
+              {isFixedSalaryPayType(employee?.pay_type) ? (
+                <Alert severity="info">Empleado {employee?.pay_type === 'biweekly_fixed' ? 'quincenal' : 'mensualizado'}: aquí puedes configurar la tarifa de extras. La hora de gremio para licencia médica se toma de la Categoría (CCT) asignada en &quot;Editar Base&quot;.</Alert>
               ) : (
                 <Alert severity="info">Empleado jornalizado: configurar tarifa por hora para cada tipo de trabajo (ej: Horas Grúa) y su tarifa de gremio (feriados).</Alert>
               )}
@@ -1090,11 +1091,11 @@ export default function EmployeeDetailPage() {
                     <TableHead>
                       <TableRow>
                         <TableCell><strong>Concepto</strong></TableCell>
-                        <TableCell align="right"><strong>{employee?.pay_type === 'monthly' ? 'Sueldo' : 'Tarifa'}</strong></TableCell>
-                        {employee?.pay_type !== 'monthly' && (
+                        <TableCell align="right"><strong>{isFixedSalaryPayType(employee?.pay_type) ? 'Sueldo' : 'Tarifa'}</strong></TableCell>
+                        {!isFixedSalaryPayType(employee?.pay_type) && (
                           <TableCell align="right"><strong>Tarifa Gremio</strong></TableCell>
                         )}
-                        {employee?.pay_type === 'monthly' && (
+                        {isFixedSalaryPayType(employee?.pay_type) && (
                           <TableCell align="right"><strong>Tarifa Extras</strong></TableCell>
                         )}
                         <TableCell align="right"><strong>Acciones</strong></TableCell>
@@ -1107,10 +1108,10 @@ export default function EmployeeDetailPage() {
                             <Chip label={r.concept?.name || 'General'} size="small" color="primary" variant="outlined" />
                           </TableCell>
                           <TableCell align="right">{'$' + Number(r.rate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
-                          {employee?.pay_type !== 'monthly' && (
+                          {!isFixedSalaryPayType(employee?.pay_type) && (
                             <TableCell align="right">{r.guild_rate ? '$' + Number(r.guild_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</TableCell>
                           )}
-                          {employee?.pay_type === 'monthly' && (
+                          {isFixedSalaryPayType(employee?.pay_type) && (
                             <TableCell align="right">{r.extras_rate ? '$' + Number(r.extras_rate).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</TableCell>
                           )}
                           <TableCell align="right">
@@ -1147,7 +1148,7 @@ export default function EmployeeDetailPage() {
               )}
 
               {/* Preview: cómo se verían las extras */}
-              {employee?.pay_type !== 'monthly' && (
+              {!isFixedSalaryPayType(employee?.pay_type) && (
                 <Paper sx={{ p: 2 }} variant="outlined">
                   <Typography variant="subtitle2" gutterBottom>Vista previa: Tarifas derivadas</Typography>
                   <Table size="small">
@@ -1177,7 +1178,7 @@ export default function EmployeeDetailPage() {
             <DialogTitle>{editingRate ? 'Editar Tarifa' : 'Agregar Tarifa'}</DialogTitle>
             <DialogContent>
               <Stack spacing={2} sx={{ mt: 1 }}>
-                {employee?.pay_type !== 'monthly' && (
+                {!isFixedSalaryPayType(employee?.pay_type) && (
                   <TextField label="Concepto" select fullWidth value={rateForm.concept_id}
                     onChange={(e) => setRateForm({ ...rateForm, concept_id: e.target.value ? Number(e.target.value) : '' })}
                     SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
@@ -1189,12 +1190,12 @@ export default function EmployeeDetailPage() {
                   </TextField>
                 )}
                 <CurrencyInput
-                  label={employee?.pay_type === 'monthly' ? 'Sueldo base *' : 'Tarifa por hora *'}
+                  label={isFixedSalaryPayType(employee?.pay_type) ? 'Sueldo base *' : 'Tarifa por hora *'}
                   fullWidth
                   value={rateForm.rate}
                   onChange={(v) => setRateForm({ ...rateForm, rate: v ?? 0 })}
                 />
-                {employee?.pay_type !== 'monthly' && (
+                {!isFixedSalaryPayType(employee?.pay_type) && (
                   <CurrencyInput
                     label="Tarifa Gremio (para feriados)"
                     fullWidth
@@ -1204,11 +1205,11 @@ export default function EmployeeDetailPage() {
                   />
                 )}
                 <CurrencyInput
-                  label="Tarifa de extras (Para mensualizados)"
+                  label="Tarifa de extras (Para mensualizados y quincenales)"
                     fullWidth
                     value={rateForm.extras_rate}
                     onChange={(v) => setRateForm({ ...rateForm, extras_rate: v ?? 0 })}
-                    helperText="Valor de la hora extra para mensualizados"
+                    helperText="Valor de la hora extra para mensualizados y quincenales"
                   />
               </Stack>
             </DialogContent>
@@ -1243,11 +1244,17 @@ export default function EmployeeDetailPage() {
                   onChange={(e) => setBaseConfigForm({ ...baseConfigForm, pay_type: e.target.value })}
                   SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
                   <option value="hourly">Jornalizado (Por Hora)</option>
-                  <option value="monthly">Mensualizado (Sueldo Fijo)</option>
+                  <option value="monthly">Mensualizado (Sueldo Fijo Mensual)</option>
+                  <option value="biweekly_fixed">Quincenal (Sueldo Fijo por Quincena)</option>
                 </TextField>
-                
-                {baseConfigForm.pay_type === 'monthly' ? (
-                  <CurrencyInput label="Sueldo Fijo Mensual" fullWidth value={baseConfigForm.monthly_salary} onChange={(v) => setBaseConfigForm({ ...baseConfigForm, monthly_salary: v ?? 0 })} />
+
+                {isFixedSalaryPayType(baseConfigForm.pay_type) ? (
+                  <CurrencyInput
+                    label={baseConfigForm.pay_type === 'biweekly_fixed' ? 'Sueldo Fijo Quincenal' : 'Sueldo Fijo Mensual'}
+                    fullWidth
+                    value={baseConfigForm.monthly_salary}
+                    onChange={(v) => setBaseConfigForm({ ...baseConfigForm, monthly_salary: v ?? 0 })}
+                  />
                 ) : (
                   <CurrencyInput label="Arreglo Particular (valor hora)" fullWidth value={baseConfigForm.hourly_rate} onChange={(v) => setBaseConfigForm({ ...baseConfigForm, hourly_rate: v ?? 0 })} helperText="Valor hora acordado con el empleado (puede diferir del gremio)" />
                 )}
@@ -1263,7 +1270,7 @@ export default function EmployeeDetailPage() {
                       onChange={(e) => setBaseConfigForm({ ...baseConfigForm, category_id: e.target.value ? Number(e.target.value) : null })}
                       SelectProps={{ native: true }}
                       InputLabelProps={{ shrink: true }}
-                      helperText={baseConfigForm.pay_type === 'monthly' ? 'Determina la hora de gremio usada para pagar la licencia médica' : 'Obligatorio. Determina los aumentos retroactivos y feriados'}
+                      helperText={isFixedSalaryPayType(baseConfigForm.pay_type) ? 'Determina la hora de gremio usada para pagar la licencia médica' : 'Obligatorio. Determina los aumentos retroactivos y feriados'}
                     >
                       <option value="">— Sin categoría —</option>
                       {categories.map(c => (
@@ -1288,7 +1295,7 @@ export default function EmployeeDetailPage() {
                   await EmployeeService.update(employeeId, {
                     pay_type: baseConfigForm.pay_type,
                     hourly_rate: baseConfigForm.pay_type === 'hourly' ? baseConfigForm.hourly_rate : 0,
-                    monthly_salary: baseConfigForm.pay_type === 'monthly' ? baseConfigForm.monthly_salary : 0,
+                    monthly_salary: isFixedSalaryPayType(baseConfigForm.pay_type) ? baseConfigForm.monthly_salary : 0,
                     category_id: baseConfigForm.category_id,
                   });
                   setSuccess('Configuración salarial base actualizada');

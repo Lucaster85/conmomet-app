@@ -4,17 +4,19 @@ Es el período de liquidación: **1º quincena** (día 1 al 15) y **2º quincena
 mes). Cada quincena pasa por tres estados: **Abierta** (se puede generar/regenerar la
 liquidación), **Cerrada** y **Pagada**. Se ubica en **Contabilidad → Quincenas y Pagos**.
 
-## Jornalizados vs. Mensualizados
+## Jornalizados, Mensualizados y Quincenales
 
-Los dos tipos de empleado se liquidan distinto:
+Las tres figuras de empleado se liquidan distinto:
 
 - **Jornalizados** (por hora): se liquidan en **cada quincena por separado**, con las horas
   trabajadas de esos 15 días.
-- **Mensualizados** (sueldo fijo): se liquidan **una sola vez al mes**, siempre en la **2º
-  quincena**, cubriendo el mes completo (sueldo, extras, vacaciones, licencias y faltas de
-  todo el mes). Por eso en la 1º quincena no aparecen en el listado de liquidación — salvo que
-  tengan activado el adelanto automático quincenal (ver más abajo), que es un adelanto, no una
-  liquidación.
+- **Mensualizados** (sueldo fijo mensual): se liquidan **una sola vez al mes**, siempre en la
+  **2º quincena**, cubriendo el mes completo (sueldo, extras, vacaciones, licencias y faltas de
+  todo el mes). Por eso en la 1º quincena no aparecen en el listado de liquidación.
+- **Quincenales** (sueldo fijo por quincena): se liquidan en **cada quincena por separado**,
+  igual que los jornalizados, pero cobrando siempre el mismo sueldo fijo definido en su tarifa
+  (no importa cuántos días tenga esa quincena). Las horas extra, licencias, vacaciones y
+  faltas de cada quincena se calculan solo con los datos de esos 15 días.
 
 ## Generar la liquidación
 
@@ -33,11 +35,12 @@ recalcularse.
   tarifa diaria.
 - **Licencia médica**: igual criterio que vacaciones — se descuenta y se paga aparte.
 - **Faltas injustificadas**: se descuentan. Las faltas **justificadas** solo aplican a
-  jornalizados (un mensualizado ya está cubierto por su sueldo fijo).
+  jornalizados (un mensualizado o quincenal ya está cubierto por su sueldo fijo).
 
-Cada uno de estos ítems se calcula distinto según el empleado sea jornalizado o mensualizado,
-pero conceptualmente es lo mismo: horas/días trabajados o no trabajados que impactan el monto
-final.
+Cada uno de estos ítems se calcula distinto según el empleado sea jornalizado, mensualizado o
+quincenal, pero conceptualmente es lo mismo: horas/días trabajados o no trabajados que impactan
+el monto final. Mensualizados y quincenales comparten la misma lógica de sueldo fijo — la
+diferencia es solo la frecuencia (una vez al mes vs. cada quincena).
 
 ## Descuentos automáticos
 
@@ -47,18 +50,6 @@ Al neto de la liquidación se le restan automáticamente:
   aprobados, tienen que estar marcados como pagados). Un adelanto pendiente de pago no se
   descuenta todavía.
 - **Cuotas de préstamo** que vencen en ese período.
-
-## Adelanto automático quincenal (mensualizados)
-
-Un empleado mensualizado puede tener activado un flag ("Adelanto quincenal automático") en su
-ficha. Si lo tiene, cada vez que se genera la **1º quincena** el sistema le crea (o actualiza,
-mientras siga sin pagar) un **Adelanto** — no una liquidación — por la mitad de su sueldo más
-el valor de las horas extra cargadas hasta el día 15. Ese adelanto queda aprobado y pendiente
-de pago, para pagarlo y subir el comprobante como cualquier otro adelanto.
-
-**Importante**: mientras ese adelanto no esté marcado como pagado, el sistema **no deja
-confirmar** la liquidación de la 2º quincena de ese empleado — es para evitar pagarle el mes
-completo sin haber descontado todavía el adelanto que ya recibió.
 
 ## Confirmar y Pagar
 

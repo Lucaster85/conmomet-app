@@ -16,6 +16,7 @@ import {
 } from '@mui/icons-material';
 import DateField from '../../../components/DateField';
 import { Attendance, AttendanceService, Employee, EmployeeService } from '../../../utils/api';
+import { isFixedSalaryPayType } from '../../../utils/payType';
 
 const STATUS_CONFIG: Record<string, { label: string; color: 'error' | 'warning' | 'info' | 'success' }> = {
   absent: { label: 'Injustificada', color: 'error' },
@@ -169,8 +170,8 @@ export default function AttendancePage() {
     setOpenDialog(true);
   };
 
-  const selectedEmployeeIsMonthly = employees.find(e => String(e.id) === form.employee_id)?.pay_type === 'monthly';
-  const showPartialHours = selectedEmployeeIsMonthly && (form.status === 'absent' || form.status === 'medical_leave');
+  const selectedEmployeeIsFixedSalary = isFixedSalaryPayType(employees.find(e => String(e.id) === form.employee_id)?.pay_type);
+  const showPartialHours = selectedEmployeeIsFixedSalary && (form.status === 'absent' || form.status === 'medical_leave');
 
   const handleSubmit = async () => {
     if (!form.employee_id || !form.date || !form.status) {

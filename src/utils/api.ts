@@ -667,9 +667,8 @@ export interface Employee {
   termination_date?: string;
   status: 'active' | 'inactive' | 'vacation' | 'medical_leave';
   hourly_rate: number;
-  pay_type: 'hourly' | 'monthly';
+  pay_type: 'hourly' | 'monthly' | 'biweekly_fixed';
   monthly_salary?: number;
-  biweekly_advance_enabled?: boolean;
   user_id?: number;
   category_id?: number | null;
   notes?: string;
@@ -697,7 +696,6 @@ export interface CreateEmployeeData {
   hourly_rate: number;
   pay_type?: string;
   monthly_salary?: number;
-  biweekly_advance_enabled?: boolean;
   user_id?: number;
   category_id?: number | null;
   notes?: string;
@@ -2308,13 +2306,6 @@ export interface PayrollEntry {
   rate_fallback_warnings?: { concept_id: number; label: string }[];
 }
 
-export interface BiweeklyAdvancesSummary {
-  created: number;
-  updated: number;
-  skipped: string[];
-  total: number;
-}
-
 export class PayrollService {
   // El status de PayPeriod es global — puede seguir "open" aunque la liquidación puntual de un
   // empleado ya esté confirmada/pagada. Esto devuelve, liviano, el status real por período de
@@ -2339,11 +2330,11 @@ export class PayrollService {
     return await response.json();
   }
 
-  static async generate(periodId: number): Promise<{ entries: PayrollEntry[]; biweeklyAdvances?: BiweeklyAdvancesSummary }> {
+  static async generate(periodId: number): Promise<{ entries: PayrollEntry[] }> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${periodId}/generate`, { method: 'POST' });
     if (!response.ok) throw new Error('Error al generar liquidación');
     const data = await response.json();
-    return { entries: data.data || [], biweeklyAdvances: data.biweekly_advances };
+    return { entries: data.data || [] };
   }
 
   static async update(id: number, payload: { extra_payments?: number; extra_payments_notes?: string; deductions?: number; deductions_notes?: string }): Promise<PayrollEntry> {

@@ -24,6 +24,7 @@ import {
   PayPeriod, PayPeriodService,
   Holiday, HolidayService
 } from '../../../utils/api';
+import { isFixedSalaryPayType } from '../../../utils/payType';
 
 const STATUS_COLORS: Record<string, 'success' | 'error' | 'warning' | 'default'> = {
   approved: 'success',
@@ -684,7 +685,7 @@ export default function TimeEntriesPage() {
                               />
                             )}
                           </Typography>
-                          {entry.employee?.pay_type !== 'monthly' && (
+                          {!isFixedSalaryPayType(entry.employee?.pay_type) && (
                             <Typography variant="body2">
                               🕐 {entry.check_in?.substring(0, 5)} → {entry.check_out?.substring(0, 5)} — <strong>{Number(entry.regular_hours).toFixed(1)}h</strong>
                             </Typography>
@@ -754,7 +755,7 @@ export default function TimeEntriesPage() {
                 <Autocomplete
                   multiple
                   options={employees}
-                  getOptionLabel={(e) => `${e.lastname}, ${e.name} ${e.pay_type === 'monthly' ? '(Mensualizado)' : ''}`}
+                  getOptionLabel={(e) => `${e.lastname}, ${e.name} ${e.pay_type === 'monthly' ? '(Mensualizado)' : e.pay_type === 'biweekly_fixed' ? '(Quincenal)' : ''}`}
                   value={selectedEmployees}
                   onChange={(_, val) => {
                     setSelectedEmployees(val);
@@ -764,7 +765,7 @@ export default function TimeEntriesPage() {
                   renderTags={(value, getTagProps) =>
                     value.map((option, index) => {
                       const { key, ...rest } = getTagProps({ index });
-                      return <Chip key={key} label={`${option.name} ${option.lastname}`} size="small" color={option.pay_type === 'monthly' ? 'secondary' : 'default'} {...rest} />;
+                      return <Chip key={key} label={`${option.name} ${option.lastname}`} size="small" color={isFixedSalaryPayType(option.pay_type) ? 'secondary' : 'default'} {...rest} />;
                     })
                   }
                 />

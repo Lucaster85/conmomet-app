@@ -12,6 +12,7 @@ import Divider from '@mui/material/Divider';
 import { TableChartOutlined as ExcelIcon } from '@mui/icons-material';
 import { PayrollEntry, PayrollService, PayPeriod, PayrollLine, PayrollAdjustment } from '../../../../../utils/api';
 import { TokenManager } from '../../../../../utils/auth';
+import { isFixedSalaryPayType, payTypeLabel } from '../../../../../utils/payType';
 import { useParams, useRouter } from 'next/navigation';
 import PayrollAdjustmentsModal from './PayrollAdjustmentsModal';
 import RateChangesModal from './RateChangesModal';
@@ -112,12 +113,8 @@ export default function PayrollPage() {
   const handleGenerate = async () => {
     try {
       setLoading(true);
-      const { biweeklyAdvances } = await PayrollService.generate(payPeriodId);
-      let message = 'Liquidación generada/actualizada';
-      if (biweeklyAdvances && (biweeklyAdvances.created > 0 || biweeklyAdvances.updated > 0)) {
-        message += ` — ${biweeklyAdvances.created} adelanto(s) automático(s) nuevo(s) y ${biweeklyAdvances.updated} actualizado(s), por ${formatCurrency(biweeklyAdvances.total)} en total`;
-      }
-      setSuccess(message);
+      await PayrollService.generate(payPeriodId);
+      setSuccess('Liquidación generada/actualizada');
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al generar');
@@ -183,7 +180,7 @@ export default function PayrollPage() {
           'Hs PEP', 'Hs PEP 50%', 'Hs PEP 100%'
         ],
         ...entries.map(e => {
-          const isMonthly = e.employee?.pay_type === 'monthly';
+          const isFixedSalary = isFixedSalaryPayType(e.employee?.pay_type);
           const rawReg = Number(e.total_regular_hours || 0);
           const ot50 = Number(e.total_overtime_50_hours || 0);
           const ot100 = Number(e.total_overtime_100_hours || 0);
@@ -193,7 +190,7 @@ export default function PayrollPage() {
           const baseOt50 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_50' && l.concept_id === null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
           const baseOt100 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_100' && l.concept_id === null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
 
-          const rowReg = isMonthly ? rawReg : Math.max(0, baseRegRaw - baseOt50 - baseOt100);
+          const rowReg = isFixedSalary ? rawReg : Math.max(0, baseRegRaw - baseOt50 - baseOt100);
           const rowOt50 = ot50;
           const rowOt100 = ot100;
 
@@ -201,7 +198,7 @@ export default function PayrollPage() {
           const diffRegRaw = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'regular' && l.concept_id !== null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
           const diffOt50 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_50' && l.concept_id !== null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
           const diffOt100 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_100' && l.concept_id !== null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
-          const rowEspecial = isMonthly ? 0 : Math.max(0, diffRegRaw - diffOt50 - diffOt100);
+          const rowEspecial = isFixedSalary ? 0 : Math.max(0, diffRegRaw - diffOt50 - diffOt100);
 
           // Hs Licencia/enfermedad: medical_leave + justified absences + holidays (both worked and non-worked)
           const rowLicencia = e.lines
@@ -218,14 +215,14 @@ export default function PayrollPage() {
             : 0;
 
           // PEP OCA net simple/regular hours
-          const ocaReg = isMonthly
+          const ocaReg = isFixedSalary
             ? Number(e.pep_summary?.pep_oca?.regular_hours || 0)
             : Number(e.pep_summary?.pep_oca?.regular_hours || 0) - Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0) - Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0);
           const oca50 = Number(e.pep_summary?.pep_oca?.overtime_50_hours || 0);
           const oca100 = Number(e.pep_summary?.pep_oca?.overtime_100_hours || 0);
 
           // PEP Regular net simple/regular hours
-          const rrReg = isMonthly
+          const rrReg = isFixedSalary
             ? Number(e.pep_summary?.pep_regular?.regular_hours || 0)
             : Number(e.pep_summary?.pep_regular?.regular_hours || 0) - Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0) - Number(e.pep_summary?.pep_regular?.overtime_100_hours || 0);
           const rr50 = Number(e.pep_summary?.pep_regular?.overtime_50_hours || 0);
@@ -365,11 +362,11 @@ export default function PayrollPage() {
                     <Typography variant="body1" fontWeight="bold">{(e.employee as Record<string, string>)?.lastname}, {(e.employee as Record<string, string>)?.name}</Typography>
                     <Box display="flex" alignItems="center" gap={0.5} mt={0.5}>
                       <Typography variant="caption" color="text.secondary">DNI: {(e.employee as Record<string, string>)?.dni}</Typography>
-                      <Chip 
-                        label={(e.employee as Record<string, string>)?.pay_type === 'monthly' ? 'Mensual' : 'Jornalizado'}
+                      <Chip
+                        label={payTypeLabel((e.employee as Record<string, string>)?.pay_type)}
                         size="small"
                         variant="outlined"
-                        color={(e.employee as Record<string, string>)?.pay_type === 'monthly' ? 'primary' : 'default'}
+                        color={isFixedSalaryPayType((e.employee as Record<string, string>)?.pay_type) ? 'primary' : 'default'}
                         sx={{ fontSize: '0.65rem', height: 20 }}
                       />
                     </Box>
@@ -406,8 +403,8 @@ export default function PayrollPage() {
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary" display="block">Base</Typography>
                     <Typography variant="body2" fontWeight="medium">
-                      {(e.employee as Record<string, string>)?.pay_type === 'monthly'
-                        ? 'Mensual'
+                      {isFixedSalaryPayType((e.employee as Record<string, string>)?.pay_type)
+                        ? 'Fijo'
                         : `${parseFloat((Number(e.total_regular_hours || 0) - Number(e.total_overtime_50_hours || 0) - Number(e.total_overtime_100_hours || 0)).toFixed(2))}h`}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" display="block">{formatCurrency(e.regular_amount)}</Typography>
@@ -539,11 +536,11 @@ export default function PayrollPage() {
                     <Typography variant="body2" fontWeight="bold">{(e.employee as Record<string, string>)?.lastname}, {(e.employee as Record<string, string>)?.name}</Typography>
                     <Box display="flex" alignItems="center" gap={0.5}>
                       <Typography variant="caption" color="text.secondary">DNI: {(e.employee as Record<string, string>)?.dni}</Typography>
-                      <Chip 
-                        label={(e.employee as Record<string, string>)?.pay_type === 'monthly' ? 'Mensual' : 'Jornalizado'}
+                      <Chip
+                        label={payTypeLabel((e.employee as Record<string, string>)?.pay_type)}
                         size="small"
                         variant="outlined"
-                        color={(e.employee as Record<string, string>)?.pay_type === 'monthly' ? 'primary' : 'default'}
+                        color={isFixedSalaryPayType((e.employee as Record<string, string>)?.pay_type) ? 'primary' : 'default'}
                         sx={{ fontSize: '0.65rem', height: 20 }}
                       />
                     </Box>
@@ -585,9 +582,9 @@ export default function PayrollPage() {
                     ))}
                   </TableCell>
                   <TableCell align="right">
-                    {(e.employee as Record<string, string>)?.pay_type === 'monthly' ? (
+                    {isFixedSalaryPayType((e.employee as Record<string, string>)?.pay_type) ? (
                       <>
-                        <Typography variant="body2">Sueldo Mensual</Typography>
+                        <Typography variant="body2">{(e.employee as Record<string, string>)?.pay_type === 'biweekly_fixed' ? 'Sueldo Quincenal' : 'Sueldo Mensual'}</Typography>
                         <Typography variant="caption" color="text.secondary">{formatCurrency(e.regular_amount as number)}</Typography>
                       </>
                     ) : (
@@ -749,9 +746,9 @@ export default function PayrollPage() {
                     <Typography variant="body2" color="text.secondary">{detailEntry.employee?.position || 'Sin cargo'}</Typography>
                     <Typography variant="body2" color="text.secondary">·</Typography>
                     <Chip
-                      label={detailEntry.employee?.pay_type === 'monthly' ? 'Mensual' : 'Jornalizado'}
+                      label={payTypeLabel(detailEntry.employee?.pay_type)}
                       size="small" variant="outlined"
-                      color={detailEntry.employee?.pay_type === 'monthly' ? 'primary' : 'default'}
+                      color={isFixedSalaryPayType(detailEntry.employee?.pay_type) ? 'primary' : 'default'}
                       sx={{ fontSize: '0.7rem', height: 20 }}
                     />
                     <Chip
@@ -809,17 +806,17 @@ export default function PayrollPage() {
                           </TableHead>
                           <TableBody>
                             {(() => {
-                              const isMonthly = detailEntry.employee?.pay_type === 'monthly';
-                              
+                              const isFixedSalary = isFixedSalaryPayType(detailEntry.employee?.pay_type);
+
                               const ocaReg = Number(detailEntry.pep_summary.pep_oca?.regular_hours || 0);
                               const oca50 = Number(detailEntry.pep_summary.pep_oca?.overtime_50_hours || 0);
                               const oca100 = Number(detailEntry.pep_summary.pep_oca?.overtime_100_hours || 0);
-                              const pepOcaSimples = isMonthly ? ocaReg : ocaReg - oca50 - oca100;
+                              const pepOcaSimples = isFixedSalary ? ocaReg : ocaReg - oca50 - oca100;
 
                               const regReg = Number(detailEntry.pep_summary.pep_regular?.regular_hours || 0);
                               const reg50 = Number(detailEntry.pep_summary.pep_regular?.overtime_50_hours || 0);
                               const reg100 = Number(detailEntry.pep_summary.pep_regular?.overtime_100_hours || 0);
-                              const pepRegSimples = isMonthly ? regReg : regReg - reg50 - reg100;
+                              const pepRegSimples = isFixedSalary ? regReg : regReg - reg50 - reg100;
 
                               const totalSimples = pepOcaSimples + pepRegSimples;
                               const total50 = oca50 + reg50;
@@ -863,10 +860,10 @@ export default function PayrollPage() {
                 <Stack spacing={0.5} mt={1} mb={1}>
                   {(() => {
                     if (detailEntry.lines && detailEntry.lines.length > 0) {
-                      const isMonthly = detailEntry.employee?.pay_type === 'monthly';
-                      
+                      const isFixedSalary = isFixedSalaryPayType(detailEntry.employee?.pay_type);
+
                       let displayLines = detailEntry.lines;
-                      if (!isMonthly) {
+                      if (!isFixedSalary) {
                         const extrasMap: Record<string, { ot50: number; ot100: number }> = {};
                         detailEntry.lines.forEach((l: PayrollLine) => {
                           if (l.line_type === 'extras_50' || l.line_type === 'extras_100') {
@@ -921,7 +918,7 @@ export default function PayrollPage() {
                         });
                       }
 
-                      const totalHours = isMonthly
+                      const totalHours = isFixedSalary
                         ? 0
                         : displayLines
                             .filter((l: PayrollLine) => ['regular', 'extras_50', 'extras_100', 'holiday', 'medical_leave', 'justified'].includes(l.line_type))
@@ -980,7 +977,7 @@ export default function PayrollPage() {
                                 </TableCell>
                                 <TableCell align="right">
                                   <Typography variant="body2" fontWeight={600}>
-                                    {isMonthly ? '—' : Number(totalHours).toFixed(1)}
+                                    {isFixedSalary ? '—' : Number(totalHours).toFixed(1)}
                                   </Typography>
                                 </TableCell>
                                 <TableCell align="right">
@@ -1001,8 +998,8 @@ export default function PayrollPage() {
                         <>
                           <Box display="flex" justifyContent="space-between">
                             <Typography variant="body2">
-                              {detailEntry.employee?.pay_type === 'monthly'
-                                ? 'Sueldo mensual'
+                              {isFixedSalaryPayType(detailEntry.employee?.pay_type)
+                                ? (detailEntry.employee?.pay_type === 'biweekly_fixed' ? 'Sueldo quincenal' : 'Sueldo mensual')
                                 : `Horas regulares (${parseFloat((Number(detailEntry.total_regular_hours || 0) - Number(detailEntry.total_overtime_50_hours || 0) - Number(detailEntry.total_overtime_100_hours || 0)).toFixed(2))}h)`}
                             </Typography>
                             <Typography variant="body2">{formatCurrency(detailEntry.regular_amount)}</Typography>
@@ -1160,7 +1157,7 @@ export default function PayrollPage() {
                   <Typography variant="caption" color="text.secondary">{entry.employee?.position || 'Sin cargo'}</Typography>
                   <Typography variant="caption" color="text.secondary">·</Typography>
                   <Chip
-                    label={entry.employee?.pay_type === 'monthly' ? 'Mensual' : 'Jornalizado'}
+                    label={payTypeLabel(entry.employee?.pay_type)}
                     size="small"
                     variant="outlined"
                     sx={{ fontSize: '0.65rem', height: 18 }}
@@ -1201,17 +1198,17 @@ export default function PayrollPage() {
                       </TableHead>
                       <TableBody>
                         {(() => {
-                          const isMonthly = entry.employee?.pay_type === 'monthly';
-                          
+                          const isFixedSalary = isFixedSalaryPayType(entry.employee?.pay_type);
+
                           const ocaReg = Number(entry.pep_summary.pep_oca?.regular_hours || 0);
                           const oca50 = Number(entry.pep_summary.pep_oca?.overtime_50_hours || 0);
                           const oca100 = Number(entry.pep_summary.pep_oca?.overtime_100_hours || 0);
-                          const pepOcaSimples = isMonthly ? ocaReg : ocaReg - oca50 - oca100;
+                          const pepOcaSimples = isFixedSalary ? ocaReg : ocaReg - oca50 - oca100;
 
                           const regReg = Number(entry.pep_summary.pep_regular?.regular_hours || 0);
                           const reg50 = Number(entry.pep_summary.pep_regular?.overtime_50_hours || 0);
                           const reg100 = Number(entry.pep_summary.pep_regular?.overtime_100_hours || 0);
-                          const pepRegSimples = isMonthly ? regReg : regReg - reg50 - reg100;
+                          const pepRegSimples = isFixedSalary ? regReg : regReg - reg50 - reg100;
 
                           const totalSimples = pepOcaSimples + pepRegSimples;
                           const total50 = oca50 + reg50;
@@ -1242,10 +1239,10 @@ export default function PayrollPage() {
                 </Typography>
                 {(() => {
                   if (entry.lines && entry.lines.length > 0) {
-                    const isMonthly = entry.employee?.pay_type === 'monthly';
-                    
+                    const isFixedSalary = isFixedSalaryPayType(entry.employee?.pay_type);
+
                     let displayLines = entry.lines;
-                    if (!isMonthly) {
+                    if (!isFixedSalary) {
                       const extrasMap: Record<string, { ot50: number; ot100: number }> = {};
                       entry.lines.forEach((l: PayrollLine) => {
                         if (l.line_type === 'extras_50' || l.line_type === 'extras_100') {
@@ -1300,7 +1297,7 @@ export default function PayrollPage() {
                       });
                     }
 
-                    const totalHours = isMonthly
+                    const totalHours = isFixedSalary
                       ? 0
                       : displayLines
                           .filter((l: PayrollLine) => ['regular', 'extras_50', 'extras_100', 'holiday', 'medical_leave', 'justified'].includes(l.line_type))
@@ -1356,7 +1353,7 @@ export default function PayrollPage() {
                               </TableCell>
                               <TableCell align="right" sx={{ py: 0.1, px: 0 }}>
                                 <Typography variant="caption" fontWeight={600}>
-                                  {isMonthly ? '—' : Number(totalHours).toFixed(1)}
+                                  {isFixedSalary ? '—' : Number(totalHours).toFixed(1)}
                                 </Typography>
                               </TableCell>
                               <TableCell align="right" sx={{ py: 0.1, px: 0 }}>
@@ -1377,8 +1374,8 @@ export default function PayrollPage() {
                       <Stack spacing={0.1} mb={0.5}>
                         <Box display="flex" justifyContent="space-between">
                           <Typography variant="caption">
-                            {entry.employee?.pay_type === 'monthly'
-                              ? 'Sueldo mensual'
+                            {isFixedSalaryPayType(entry.employee?.pay_type)
+                              ? (entry.employee?.pay_type === 'biweekly_fixed' ? 'Sueldo quincenal' : 'Sueldo mensual')
                               : `Horas regulares (${parseFloat((Number(entry.total_regular_hours || 0) - Number(entry.total_overtime_50_hours || 0) - Number(entry.total_overtime_100_hours || 0)).toFixed(2))}h)`}
                           </Typography>
                           <Typography variant="caption">{formatCurrency(entry.regular_amount)}</Typography>

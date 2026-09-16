@@ -20,6 +20,7 @@ import {
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { useRouter } from 'next/navigation';
 import { Employee, EmployeeService, CreateEmployeeData, User, UserService, CategoryService, Category } from '../../../utils/api';
+import { isFixedSalaryPayType } from '../../../utils/payType';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'success' | 'error' | 'warning' | 'info' }> = {
   active: { label: 'Activo', color: 'success' },
@@ -47,7 +48,6 @@ export default function EmployeesPage() {
     name: '', lastname: '', dni: '', cuil: '', address: '', phone: '', email: '',
     position: '', hire_date: '', birth_date: '', hourly_rate: 0, pay_type: 'hourly', monthly_salary: 0, notes: '',
     shoe_size: '', shirt_size: '', pant_size: '', user_id: undefined, vacation_days_override: null, category_id: null,
-    biweekly_advance_enabled: false,
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -112,7 +112,6 @@ export default function EmployeesPage() {
       position: emp.position || '', hire_date: emp.hire_date, birth_date: emp.birth_date || '', hourly_rate: emp.hourly_rate,
       pay_type: emp.pay_type || 'hourly',
       monthly_salary: emp.monthly_salary || 0,
-      biweekly_advance_enabled: emp.biweekly_advance_enabled || false,
       notes: emp.notes || '', status: emp.status,
       shoe_size: emp.shoe_size || '', shirt_size: emp.shirt_size || '', pant_size: emp.pant_size || '',
       user_id: emp.user_id || undefined,
@@ -123,17 +122,17 @@ export default function EmployeesPage() {
   };
 
   const handleSubmit = async () => {
-    const isMonthly = form.pay_type === 'monthly';
+    const isFixedSalary = isFixedSalaryPayType(form.pay_type);
     if (!form.name || !form.lastname || !form.dni || !form.cuil || !form.hire_date) {
       setError('Nombre, Apellido, DNI, CUIL y Fecha de ingreso son obligatorios');
       return;
     }
-    if (!isMonthly && !form.hourly_rate) {
+    if (!isFixedSalary && !form.hourly_rate) {
       setError('El valor hora es obligatorio para empleados por hora');
       return;
     }
-    if (isMonthly && !form.monthly_salary) {
-      setError('El sueldo mensual es obligatorio para empleados mensualizados');
+    if (isFixedSalary && !form.monthly_salary) {
+      setError(form.pay_type === 'biweekly_fixed' ? 'El sueldo quincenal es obligatorio para empleados quincenales' : 'El sueldo mensual es obligatorio para empleados mensualizados');
       return;
     }
     try {
@@ -249,7 +248,9 @@ export default function EmployeesPage() {
                     <Typography variant="body2" color="text.secondary">DNI: {emp.dni}</Typography>
                     {emp.position && <Typography variant="body2">{emp.position}</Typography>}
                     <Typography variant="body2" fontWeight="medium">
-                      {emp.pay_type === 'monthly' ? `${formatCurrency(emp.monthly_salary || 0)} /mes (Fijo)` : `${formatCurrency(emp.hourly_rate)} /hora`}
+                      {emp.pay_type === 'monthly' ? `${formatCurrency(emp.monthly_salary || 0)} /mes (Fijo)`
+                        : emp.pay_type === 'biweekly_fixed' ? `${formatCurrency(emp.monthly_salary || 0)} /quincena (Fijo)`
+                        : `${formatCurrency(emp.hourly_rate)} /hora`}
                     </Typography>
                     <Chip label={STATUS_LABELS[emp.status]?.label || emp.status} color={STATUS_LABELS[emp.status]?.color || 'default'} size="small" sx={{ mt: 0.5 }} />
                     {!emp.user_id && emp.invitation_status && (
@@ -317,8 +318,8 @@ export default function EmployeesPage() {
                     <TableCell>{emp.dni}</TableCell>
                     <TableCell>{emp.position || '—'}</TableCell>
                     <TableCell>
-                      <Typography variant="body2">{emp.pay_type === 'monthly' ? formatCurrency(emp.monthly_salary || 0) : formatCurrency(emp.hourly_rate)}</Typography>
-                      <Typography variant="caption" color="text.secondary">{emp.pay_type === 'monthly' ? 'por mes' : 'por hora'}</Typography>
+                      <Typography variant="body2">{isFixedSalaryPayType(emp.pay_type) ? formatCurrency(emp.monthly_salary || 0) : formatCurrency(emp.hourly_rate)}</Typography>
+                      <Typography variant="caption" color="text.secondary">{emp.pay_type === 'monthly' ? 'por mes' : emp.pay_type === 'biweekly_fixed' ? 'por quincena' : 'por hora'}</Typography>
                     </TableCell>
                     <TableCell>
                       <Chip label={STATUS_LABELS[emp.status]?.label || emp.status} color={STATUS_LABELS[emp.status]?.color || 'default'} size="small" />
@@ -431,24 +432,19 @@ export default function EmployeesPage() {
               <DateField label="Fecha Nacimiento" fullWidth value={form.birth_date || ''} onChange={(val) => setForm({ ...form, birth_date: val })} InputLabelProps={{ shrink: true }} />
             </Box>
             <TextField label="Tipo de Pago" select fullWidth value={form.pay_type || 'hourly'}
-              onChange={(e) => setForm({ ...form, pay_type: e.target.value, biweekly_advance_enabled: e.target.value === 'monthly' ? form.biweekly_advance_enabled : false })}
+              onChange={(e) => setForm({ ...form, pay_type: e.target.value })}
               SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
               <option value="hourly">Jornalizado (por hora)</option>
-              <option value="monthly">Mensualizado (sueldo fijo)</option>
+              <option value="monthly">Mensualizado (sueldo fijo mensual)</option>
+              <option value="biweekly_fixed">Quincenal (sueldo fijo por quincena)</option>
             </TextField>
-            {form.pay_type === 'monthly' ? (
-              <>
-                <CurrencyInput label="Sueldo Mensual *" fullWidth value={form.monthly_salary || 0} onChange={(value) => setForm({ ...form, monthly_salary: value ?? 0 })} />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={!!form.biweekly_advance_enabled}
-                      onChange={(e) => setForm({ ...form, biweekly_advance_enabled: e.target.checked })}
-                    />
-                  }
-                  label="Adelanto quincenal automático (mitad del sueldo + horas extra al día 15)"
-                />
-              </>
+            {isFixedSalaryPayType(form.pay_type) ? (
+              <CurrencyInput
+                label={form.pay_type === 'biweekly_fixed' ? 'Sueldo Quincenal (Fijo) *' : 'Sueldo Mensual *'}
+                fullWidth
+                value={form.monthly_salary || 0}
+                onChange={(value) => setForm({ ...form, monthly_salary: value ?? 0 })}
+              />
             ) : (
               <CurrencyInput label="Arreglo Particular (valor hora) *" fullWidth value={form.hourly_rate} onChange={(value) => setForm({ ...form, hourly_rate: value ?? 0 })} helperText="Valor hora acordado con el empleado" />
             )}
@@ -461,7 +457,7 @@ export default function EmployeesPage() {
                 onChange={(e) => setForm({ ...form, category_id: e.target.value ? Number(e.target.value) : null })}
                 SelectProps={{ native: true }}
                 InputLabelProps={{ shrink: true }}
-                helperText={form.pay_type === 'monthly' ? 'Categoría del convenio colectivo — su hora de gremio se usa para pagar la licencia médica' : 'Categoría del convenio colectivo de trabajo'}
+                helperText={isFixedSalaryPayType(form.pay_type) ? 'Categoría del convenio colectivo — su hora de gremio se usa para pagar la licencia médica' : 'Categoría del convenio colectivo de trabajo'}
               >
                 <option value="">— Sin categoría —</option>
                 {categories.map(c => (
