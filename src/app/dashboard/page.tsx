@@ -34,6 +34,7 @@ import { ClockIcon } from '@mui/x-date-pickers';
 import { useAuth } from '../../utils/auth';
 import IconTileGrid, { IconTileItem } from '../../components/common/IconTileGrid';
 import RepairToolsAlert from '../../components/common/RepairToolsAlert';
+import SalaryAdvanceDeletionAlert from '../../components/common/SalaryAdvanceDeletionAlert';
 
 // Accesos rápidos del home mobile: solo las 3 secciones de uso más frecuente, cada una
 // condicionada al permiso de lectura correspondiente (mismo criterio que el menú del drawer).
@@ -165,6 +166,7 @@ export default function DashboardPage() {
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
       <RepairToolsAlert />
+      <SalaryAdvanceDeletionAlert />
 
       {/* Accesos rápidos — prueba: solo mobile, en desktop ya está el menú del drawer siempre visible */}
       {quickAccessItems.length > 0 && (

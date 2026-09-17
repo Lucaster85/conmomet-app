@@ -25,13 +25,15 @@ import {
   DeleteOutline as DeleteIcon, SyncAltOutlined as ReassignIcon,
   DrawOutlined as SignatureIcon
 } from '@mui/icons-material';
-import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService, PayPeriod, PayPeriodService, PayrollService } from '../../../utils/api';
+import { SalaryAdvance, SalaryAdvanceService, DuplicateAdvanceError, DuplicateAdvanceConflict, Employee, EmployeeService, PayPeriod, PayPeriodService, PayrollService } from '../../../utils/api';
 import { buildWhatsAppLink } from '../../../utils/whatsapp';
+import Switch from '@mui/material/Switch';
 
-const STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success' | 'error' }> = {
+const STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success' | 'error' | 'default' }> = {
   pending: { label: 'Pendiente', color: 'warning' },
   approved: { label: 'Aprobado', color: 'success' },
   rejected: { label: 'Rechazado', color: 'error' },
+  cancelled: { label: 'Cancelado', color: 'default' },
 };
 
 export default function SalaryAdvancesPage() {
@@ -49,6 +51,10 @@ export default function SalaryAdvancesPage() {
   // Filters
   const [filterEmployee, setFilterEmployee] = useState<number | ''>('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'discounted'>('all');
+  const [showCancelled, setShowCancelled] = useState(false);
+
+  // Adelanto duplicado en la misma quincena (al crear/aprobar)
+  const [duplicateConflict, setDuplicateConflict] = useState<{ context: 'create' | 'approve'; conflicts: DuplicateAdvanceConflict[] } | null>(null);
 
   const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
   const [form, setForm] = useState<{ amount: number | null; date: string; notes: string; payment_method: 'efectivo' | 'transferencia'; mark_as_paid: boolean; pay_period_id: number | '' }>({
@@ -80,8 +86,9 @@ export default function SalaryAdvancesPage() {
   const [uploadProofFile, setUploadProofFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
 
-  // Eliminar / Reasignar quincena
+  // Anular / Reasignar quincena
   const [deleteTarget, setDeleteTarget] = useState<SalaryAdvance | null>(null);
+  const [deleteJustification, setDeleteJustification] = useState('');
   const [reassignTarget, setReassignTarget] = useState<SalaryAdvance | null>(null);
   const [reassignPeriodId, setReassignPeriodId] = useState<number | ''>('');
   // Períodos "open" en general que igual hay que sacar del combo porque ESTE empleado puntual
@@ -130,7 +137,7 @@ export default function SalaryAdvancesPage() {
   const showCreateProof = form.mark_as_paid;
   const showCreateSignature = form.mark_as_paid && selectedEmployees.length <= 1;
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (confirmDuplicate = false) => {
     if (selectedEmployees.length === 0 || !form.amount || !form.date) {
       setError('Campos obligatorios');
       return;
@@ -146,12 +153,17 @@ export default function SalaryAdvancesPage() {
         notes: form.notes,
         mark_as_paid: form.mark_as_paid,
         pay_period_id: form.pay_period_id || undefined,
+        confirmDuplicate,
       }, createProofFile, createSignatureFile);
       setSuccess(selectedEmployees.length > 1 ? 'Adelantos registrados en lote' : 'Adelanto registrado');
       setOpenDialog(false);
       loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar');
+      if (err instanceof DuplicateAdvanceError) {
+        setDuplicateConflict({ context: 'create', conflicts: err.conflicts });
+      } else {
+        setError(err instanceof Error ? err.message : 'Error al guardar');
+      }
     } finally {
       setProcessing(false);
     }
@@ -166,7 +178,7 @@ export default function SalaryAdvancesPage() {
     setApproveSignatureFile(null);
   };
 
-  const handleConfirmApprove = async () => {
+  const handleConfirmApprove = async (confirmDuplicate = false) => {
     if (!approveTarget || !approveAmount) return;
     setProcessing(true);
     try {
@@ -174,6 +186,7 @@ export default function SalaryAdvancesPage() {
         amount: approveAmount,
         payment_method: approvePaymentMethod,
         mark_as_paid: approveMarkAsPaid,
+        confirmDuplicate,
       }, approveProofFile, approveSignatureFile);
       setSuccess(approveMarkAsPaid ? 'Adelanto aprobado y marcado como pagado' : 'Adelanto aprobado — queda pendiente de pago');
       if (approveMarkAsPaid && approveTarget.employee?.phone) {
@@ -183,7 +196,11 @@ export default function SalaryAdvancesPage() {
       setApproveTarget(null);
       loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al aprobar');
+      if (err instanceof DuplicateAdvanceError) {
+        setDuplicateConflict({ context: 'approve', conflicts: err.conflicts });
+      } else {
+        setError(err instanceof Error ? err.message : 'Error al aprobar');
+      }
     } finally {
       setProcessing(false);
     }
@@ -247,16 +264,22 @@ export default function SalaryAdvancesPage() {
     }
   };
 
+  const handleOpenDelete = (advance: SalaryAdvance) => {
+    setDeleteTarget(advance);
+    setDeleteJustification('');
+  };
+
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setProcessing(true);
     try {
-      await SalaryAdvanceService.delete(deleteTarget.id);
-      setSuccess('Adelanto eliminado');
+      await SalaryAdvanceService.delete(deleteTarget.id, deleteTarget.paid_at ? deleteJustification.trim() : undefined);
+      setSuccess('Adelanto anulado');
       setDeleteTarget(null);
+      setDeleteJustification('');
       loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar');
+      setError(err instanceof Error ? err.message : 'Error al anular');
     } finally {
       setProcessing(false);
     }
@@ -331,6 +354,7 @@ export default function SalaryAdvancesPage() {
   };
 
   const filteredAdvances = advances.filter(a => {
+    if (!showCancelled && a.status === 'cancelled') return false;
     if (filterEmployee && a.employee_id !== filterEmployee) return false;
     if (filterStatus === 'pending' && a.pay_period_id) return false;
     if (filterStatus === 'discounted' && !a.pay_period_id) return false;
@@ -389,6 +413,12 @@ export default function SalaryAdvancesPage() {
               <option value="discounted">Descontado</option>
             </TextField>
           </Grid>
+          <Grid size={{ xs: 12 }}>
+            <FormControlLabel
+              control={<Switch checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />}
+              label="Ver cancelados"
+            />
+          </Grid>
         </Grid>
       </Paper>
 
@@ -421,6 +451,11 @@ export default function SalaryAdvancesPage() {
                     <strong>Motivo rechazo:</strong> {a.rejection_reason}
                   </Typography>
                 )}
+                {a.status === 'cancelled' && a.cancellation_reason && (
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                    <strong>Motivo anulación:</strong> {a.cancellation_reason}
+                  </Typography>
+                )}
                 <Box mt={1.5} display="flex" gap={1} flexWrap="wrap">
                   <Chip label={STATUS_LABEL[a.status]?.label || a.status} size="small" color={STATUS_LABEL[a.status]?.color || 'default'} />
                   {renderPaidChip(a)}
@@ -437,12 +472,13 @@ export default function SalaryAdvancesPage() {
                   <Box mt={1.5} display="flex" gap={1} flexWrap="wrap">
                     <Button size="small" variant="contained" color="info" startIcon={<PaidIcon />} onClick={() => handleOpenMarkPaid(a)} disabled={processing}>Marcar como pagado</Button>
                     <Button size="small" variant="outlined" startIcon={<ReassignIcon />} onClick={() => handleOpenReassign(a)} disabled={processing}>Reasignar quincena</Button>
-                    <Button size="small" variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteTarget(a)} disabled={processing}>Eliminar</Button>
+                    <Button size="small" variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleOpenDelete(a)} disabled={processing}>Anular</Button>
                   </Box>
                 )}
                 {a.status === 'approved' && a.paid_at && (
-                  <Box mt={1.5}>
+                  <Box mt={1.5} display="flex" gap={1} flexWrap="wrap">
                     <Button size="small" variant="outlined" startIcon={<ReassignIcon />} onClick={() => handleOpenReassign(a)} disabled={processing}>Reasignar quincena</Button>
+                    <Button size="small" variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleOpenDelete(a)} disabled={processing}>Anular</Button>
                   </Box>
                 )}
                 {a.paid_at && !a.payment_proof_url && (
@@ -514,6 +550,11 @@ export default function SalaryAdvancesPage() {
                           <strong>Motivo rechazo:</strong> {a.rejection_reason}
                         </Typography>
                       )}
+                      {a.status === 'cancelled' && a.cancellation_reason && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          <strong>Motivo anulación:</strong> {a.cancellation_reason}
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>{a.pay_period_id ? <Chip label="Descontado" size="small" color="success" /> : <Chip label="Pendiente de descuento" size="small" color="warning" />}</TableCell>
                     <TableCell>
@@ -546,8 +587,8 @@ export default function SalaryAdvancesPage() {
                           <Tooltip title="Reasignar quincena">
                             <IconButton size="small" onClick={() => handleOpenReassign(a)} disabled={processing}><ReassignIcon fontSize="small" /></IconButton>
                           </Tooltip>
-                          <Tooltip title="Eliminar">
-                            <IconButton size="small" color="error" onClick={() => setDeleteTarget(a)} disabled={processing}><DeleteIcon fontSize="small" /></IconButton>
+                          <Tooltip title="Anular">
+                            <IconButton size="small" color="error" onClick={() => handleOpenDelete(a)} disabled={processing}><DeleteIcon fontSize="small" /></IconButton>
                           </Tooltip>
                         </Box>
                       )}
@@ -555,6 +596,9 @@ export default function SalaryAdvancesPage() {
                         <Box display="flex" gap={0.5} justifyContent="flex-end">
                           <Tooltip title="Reasignar quincena">
                             <IconButton size="small" onClick={() => handleOpenReassign(a)} disabled={processing}><ReassignIcon fontSize="small" /></IconButton>
+                          </Tooltip>
+                          <Tooltip title="Anular">
+                            <IconButton size="small" color="error" onClick={() => handleOpenDelete(a)} disabled={processing}><DeleteIcon fontSize="small" /></IconButton>
                           </Tooltip>
                         </Box>
                       )}
@@ -679,7 +723,7 @@ export default function SalaryAdvancesPage() {
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button
-            onClick={handleSubmit}
+            onClick={() => handleSubmit()}
             variant="contained"
             disabled={processing || selectedEmployees.length === 0 || !form.amount || !form.date}
           >
@@ -746,7 +790,7 @@ export default function SalaryAdvancesPage() {
         <DialogActions>
           <Button onClick={() => setApproveTarget(null)}>Cancelar</Button>
           <Button
-            onClick={handleConfirmApprove}
+            onClick={() => handleConfirmApprove()}
             variant="contained"
             color="success"
             disabled={!approveAmount || processing}
@@ -846,19 +890,73 @@ export default function SalaryAdvancesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Eliminar adelanto */}
+      {/* Anular adelanto */}
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogTitle>{deleteTarget?.paid_at ? 'Anular Adelanto Pagado' : 'Confirmar Anulación'}</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary">
-            ¿Seguro que querés eliminar el adelanto de <strong>{deleteTarget?.employee?.lastname}, {deleteTarget?.employee?.name}</strong> por <strong>{deleteTarget ? formatCurrency(Number(deleteTarget.amount)) : ''}</strong> del {deleteTarget ? formatDate(deleteTarget.date) : ''}?
-            {deleteTarget?.pay_period_id && ' El descuento se recalculará en la liquidación correspondiente.'}
-          </Typography>
+          <Stack spacing={2} sx={{ mt: deleteTarget?.paid_at ? 1 : 0 }}>
+            <Typography variant="body2" color="text.secondary">
+              ¿Seguro que querés anular el adelanto de <strong>{deleteTarget?.employee?.lastname}, {deleteTarget?.employee?.name}</strong> por <strong>{deleteTarget ? formatCurrency(Number(deleteTarget.amount)) : ''}</strong> del {deleteTarget ? formatDate(deleteTarget.date) : ''}?
+              {deleteTarget?.pay_period_id && ' El descuento se recalculará en la liquidación correspondiente.'}
+            </Typography>
+            {deleteTarget?.paid_at && (
+              <>
+                <Alert severity="warning">
+                  Este adelanto ya figura pagado. Por favor, asegurate de justificar el motivo de la anulación.
+                </Alert>
+                <TextField
+                  label="Justificación *"
+                  fullWidth
+                  multiline
+                  rows={2}
+                  value={deleteJustification}
+                  onChange={(e) => setDeleteJustification(e.target.value)}
+                />
+              </>
+            )}
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteTarget(null)}>Cancelar</Button>
-          <Button onClick={handleConfirmDelete} variant="contained" color="error" disabled={processing}>
-            {processing ? 'Eliminando...' : 'Eliminar'}
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+            disabled={processing || (!!deleteTarget?.paid_at && !deleteJustification.trim())}
+          >
+            {processing ? 'Anulando...' : 'Anular'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Adelanto duplicado en la misma quincena */}
+      <Dialog open={!!duplicateConflict} onClose={() => setDuplicateConflict(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Adelanto duplicado</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+            <Alert severity="warning">Este empleado ya tiene otro adelanto en esta misma quincena.</Alert>
+            <Stack spacing={0.5}>
+              {duplicateConflict?.conflicts.map((c, i) => (
+                <Typography key={i} variant="body2">
+                  {formatCurrency(Number(c.existing.amount))} — {c.existing.status === 'pending' ? 'Pendiente' : c.existing.paid_at ? 'Ya pagado' : 'Aprobado, sin pagar'}
+                </Typography>
+              ))}
+            </Stack>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDuplicateConflict(null)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              const ctx = duplicateConflict?.context;
+              setDuplicateConflict(null);
+              if (ctx === 'create') handleSubmit(true);
+              else if (ctx === 'approve') handleConfirmApprove(true);
+            }}
+          >
+            {duplicateConflict?.context === 'create' ? 'Registrar igual' : 'Aprobar igual'}
           </Button>
         </DialogActions>
       </Dialog>

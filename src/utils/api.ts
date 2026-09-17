@@ -145,6 +145,18 @@ export class UserService {
     return response.json();
   }
 
+  static async setPermissions(id: number, permissionIds: number[]): Promise<User> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/users/${id}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissions: permissionIds }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al asignar permisos al usuario');
+    }
+    return (await response.json()).data;
+  }
+
   static async delete(id: number): Promise<void> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/users/${id}`, {
       method: 'DELETE',
@@ -2389,12 +2401,15 @@ export interface SalaryAdvance {
   pay_period_id?: number;
   notes?: string;
   rejection_reason?: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   requested_by?: number;
   approved_by?: number;
   approved_at?: string | null;
   paid_by?: number;
   paid_at?: string | null;
+  cancelled_at?: string | null;
+  cancelled_by?: number;
+  cancellation_reason?: string | null;
   payment_proof_url?: string | null;
   payment_proof_key?: string | null;
   payment_proof_name?: string | null;
@@ -2405,6 +2420,28 @@ export interface SalaryAdvance {
   source?: 'manual' | 'biweekly_auto';
   employee?: Employee;
   payPeriod?: PayPeriod;
+}
+
+export interface DuplicateAdvanceConflict {
+  employee_id: number;
+  existing: { id: number; amount: number; status: string; paid_at: string | null };
+}
+
+export class DuplicateAdvanceError extends Error {
+  conflicts: DuplicateAdvanceConflict[];
+  constructor(message: string, conflicts: DuplicateAdvanceConflict[]) {
+    super(message);
+    this.name = 'DuplicateAdvanceError';
+    this.conflicts = conflicts;
+  }
+}
+
+async function throwSalaryAdvanceError(response: Response, fallback: string): Promise<never> {
+  const err = await response.json().catch(() => ({}));
+  if (response.status === 409 && err.error === 'duplicate_advance') {
+    throw new DuplicateAdvanceError(err.message || fallback, err.conflicts || []);
+  }
+  throw new Error(err.error || fallback);
 }
 
 export class SalaryAdvanceService {
@@ -2420,12 +2457,13 @@ export class SalaryAdvanceService {
     return (await response.json()).data || [];
   }
 
-  static async approve(id: number, data?: { amount?: number; payment_method?: 'efectivo' | 'transferencia'; pay_period_id?: number; mark_as_paid?: boolean }, file?: File | null, signature?: File | null): Promise<SalaryAdvance> {
+  static async approve(id: number, data?: { amount?: number; payment_method?: 'efectivo' | 'transferencia'; pay_period_id?: number; mark_as_paid?: boolean; confirmDuplicate?: boolean }, file?: File | null, signature?: File | null): Promise<SalaryAdvance> {
     const formData = new FormData();
     if (data?.amount !== undefined) formData.append('amount', data.amount.toString());
     if (data?.payment_method) formData.append('payment_method', data.payment_method);
     if (data?.pay_period_id !== undefined) formData.append('pay_period_id', data.pay_period_id.toString());
     if (data?.mark_as_paid !== undefined) formData.append('mark_as_paid', data.mark_as_paid.toString());
+    if (data?.confirmDuplicate) formData.append('confirm_duplicate', 'true');
     if (file) formData.append('file', file);
     if (signature) formData.append('signature', signature);
 
@@ -2435,7 +2473,7 @@ export class SalaryAdvanceService {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
     });
-    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al aprobar adelanto');
+    if (!response.ok) return throwSalaryAdvanceError(response, 'Error al aprobar adelanto');
     return (await response.json()).data;
   }
 
@@ -2488,6 +2526,7 @@ export class SalaryAdvanceService {
     notes?: string;
     mark_as_paid?: boolean;
     pay_period_id?: number;
+    confirmDuplicate?: boolean;
   }, file?: File | null, signature?: File | null): Promise<SalaryAdvance | SalaryAdvance[]> {
     const formData = new FormData();
     if (payload.employee_id !== undefined) formData.append('employee_id', payload.employee_id.toString());
@@ -2498,6 +2537,7 @@ export class SalaryAdvanceService {
     if (payload.notes) formData.append('notes', payload.notes);
     if (payload.mark_as_paid !== undefined) formData.append('mark_as_paid', payload.mark_as_paid.toString());
     if (payload.pay_period_id !== undefined) formData.append('pay_period_id', payload.pay_period_id.toString());
+    if (payload.confirmDuplicate) formData.append('confirm_duplicate', 'true');
     if (file) formData.append('file', file);
     if (signature) formData.append('signature', signature);
 
@@ -2507,7 +2547,7 @@ export class SalaryAdvanceService {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
     });
-    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al crear adelanto(s)');
+    if (!response.ok) return throwSalaryAdvanceError(response, 'Error al crear adelanto(s)');
     return (await response.json()).data;
   }
 
@@ -2521,14 +2561,44 @@ export class SalaryAdvanceService {
     return (await response.json()).data;
   }
 
-  static async delete(id: number): Promise<void> {
+  static async delete(id: number, justification?: string): Promise<void> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advances/${id}`, {
       method: 'DELETE',
+      ...(justification ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ justification }) } : {}),
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || 'Error al eliminar adelanto');
+      throw new Error(err.error || 'Error al anular adelanto');
     }
+  }
+}
+
+export interface SalaryAdvanceDeletionAlert {
+  id: number;
+  employee_id: number;
+  pay_period_id: number | null;
+  amount: number;
+  payment_method: 'efectivo' | 'transferencia' | null;
+  justification: string;
+  deleted_by: number | null;
+  created_at: string;
+  employee?: Pick<Employee, 'id' | 'name' | 'lastname'>;
+  payPeriod?: Pick<PayPeriod, 'id' | 'month' | 'year' | 'type'>;
+  deletedBy?: { id: number; name: string; lastname: string };
+}
+
+export class SalaryAdvanceDeletionAlertService {
+  static async getAll(): Promise<SalaryAdvanceDeletionAlert[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advance-deletion-alerts`);
+    if (!response.ok) throw new Error('Error al obtener avisos');
+    return (await response.json()).data || [];
+  }
+
+  static async dismiss(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/salary-advance-deletion-alerts/${id}/dismiss`, {
+      method: 'PUT',
+    });
+    if (!response.ok) throw new Error('Error al descartar el aviso');
   }
 }
 

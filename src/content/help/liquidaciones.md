@@ -82,10 +82,29 @@ se puede hacer en el momento de pagar (si el empleado está presente) o más ade
 momento, sobre cualquier liquidación ya pagada. La firma queda guardada e incluida al ver el
 detalle o imprimir esa liquidación.
 
+## Adelanto duplicado en la misma quincena
+
+Un empleado puede tener válidamente varios adelantos en la misma quincena — no está prohibido.
+Pero al crear un adelanto nuevo desde el backoffice, o al aprobar uno pedido desde el portal, si
+el sistema detecta que ese empleado ya tiene otro adelanto (pendiente, aprobado o ya pagado) en
+esa misma quincena, se muestra una alerta y hay que confirmar explícitamente "Registrar/Aprobar
+igual" para continuar. La comparación es solo contra la quincena actual — no mira adelantos de
+quincenas ya cerradas.
+
+## Anular un adelanto ya pagado
+
+Si se cargó un adelanto duplicado por error y ya quedó marcado como pagado, se puede **anular**
+desde el listado (no se borra: queda en la tabla con estado "Cancelado", visible activando el
+switch **"Ver cancelados"**). Anular un adelanto ya pagado requiere cargar una **justificación
+obligatoria**, y genera un aviso en el dashboard visible solo para el rol **Socios Gerentes**, con
+el detalle de qué se anuló, por cuánto y por qué (el empleado que lo anuló no ve este aviso). Si
+la liquidación de ese empleado para esa quincena ya está Confirmada o Pagada, no se puede anular
+el adelanto — hay que esperar a que la corrección se pueda hacer sin tocar una liquidación cerrada.
+
 ## Retroactivos de gremio
 
 Si se aplica un aumento de Convenio Colectivo con fecha retroactiva, el sistema agrega
 automáticamente líneas de **"Retroactivo"** en la liquidación del período correspondiente, con
 la diferencia calculada sobre lo ya liquidado en los períodos anteriores afectados.
 
-<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx -->
+<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#delete, api_conmomet/controllers/salaryAdvanceController.js#findDuplicateAdvance, api_conmomet/controllers/salaryAdvanceDeletionAlertController.js, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/components/common/SalaryAdvanceDeletionAlert.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx -->

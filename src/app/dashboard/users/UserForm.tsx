@@ -194,10 +194,14 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
 
       if (isEditing && user) {
         await UserService.update(user.id, formData);
+        await UserService.setPermissions(user.id, formData.permissions || []);
         setSuccess('Usuario actualizado exitosamente');
         setTimeout(() => onSuccessAction(), 1000);
       } else {
         const result = await UserService.create(formData);
+        if (formData.permissions && formData.permissions.length > 0) {
+          await UserService.setPermissions(result.data.id, formData.permissions);
+        }
         if (result.generatedPassword) {
           // Se muestra una única vez: no queda guardada en ningún lado que se pueda volver a
           // consultar, así que no cerramos el formulario solos — que administración la copie.
