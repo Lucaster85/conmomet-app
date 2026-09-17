@@ -1251,6 +1251,8 @@ export interface Tool {
   serial_number?: string | null;
   status: ToolStatus;
   notes?: string | null;
+  repair_responsible_id?: number | null;
+  repairResponsible?: { id: number; name: string; lastname: string } | null;
 }
 
 export interface CreateToolData {
@@ -1276,6 +1278,8 @@ export interface ToolStatusLogEntry {
   changed_at: string;
   notes?: string;
   changedByUser?: { id: number; name: string; lastname: string };
+  responsible_employee_id?: number | null;
+  responsibleEmployee?: { id: number; name: string; lastname: string } | null;
 }
 
 export class ToolService {
@@ -1327,10 +1331,10 @@ export class ToolService {
     return data.data;
   }
 
-  static async changeStatus(id: number, status: ToolStatus, notes?: string): Promise<Tool> {
+  static async changeStatus(id: number, status: ToolStatus, notes?: string, responsibleEmployeeId?: number): Promise<Tool> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/tools/${id}/status`, {
       method: 'PUT',
-      body: JSON.stringify({ status, notes }),
+      body: JSON.stringify({ status, notes, responsible_employee_id: responsibleEmployeeId }),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -2761,6 +2765,12 @@ export class SelfService {
     return (await response.json()).data || [];
   }
 
+  static async getMyToolsInRepair(): Promise<Tool[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/tools-in-repair`);
+    if (!response.ok) throw new Error('Error al obtener mis herramientas en reparación');
+    return (await response.json()).data || [];
+  }
+
   static async getMyAdvances(): Promise<SalaryAdvance[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/salary-advances`);
     if (!response.ok) throw new Error('Error al obtener mis adelantos');
@@ -3754,11 +3764,48 @@ export interface Oca {
   rejected_by?: number;
   rejection_reason?: string;
   notes?: string;
+  hourly_rate?: number | null;
   client?: { id: number; razonSocial: string };
   supervisor?: { id: number; name: string; lastname: string; email?: string; phone?: string };
   project?: { id: number; name: string; code: string; plant_id?: number; plant?: { id: number; name: string; address?: string } };
   lines?: OcaLine[];
   logs?: OcaStatusLog[];
+}
+
+// Valor de referencia de la hora por cliente para presupuestos de OCA de horas hombre —
+// deliberadamente separado de ClientItemRate (tarifas de Presupuestos de obra): es un concepto
+// de precio distinto, no debe mezclarse ni aparecer como rubro seleccionable en Presupuestos.
+export interface OcaClientRate {
+  id: number;
+  client_id: number;
+  hourly_rate: number;
+  updated_by: number;
+  updatedAt: string;
+}
+
+export interface OcaClientRateHistoryEntry {
+  id: number;
+  client_id: number;
+  hourly_rate: number;
+  changed_by: number;
+  changedBy?: { id: number; name: string; lastname: string };
+  createdAt: string;
+}
+
+export class OcaClientRateService {
+  static async getByClient(clientId: number): Promise<OcaClientRate | null> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/client-rate/${clientId}`);
+    if (!response.ok) throw new Error('Error al obtener el valor de referencia del cliente');
+    const data = await response.json();
+    return data.data || null;
+  }
+
+  static async getHistory(clientId: number): Promise<OcaClientRateHistoryEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/client-rate/${clientId}/history`);
+    if (!response.ok) throw new Error('Error al obtener el historial del valor de referencia');
+    const data = await response.json();
+    return data.data || [];
+  }
 }
 
 export class ClientSupervisorService {
@@ -3947,6 +3994,7 @@ export interface ReturnAssignmentData {
   return_completeness: AssetCompleteness;
   return_notes?: string;
   resulting_status?: 'available' | 'in_repair';
+  responsible_employee_id?: number;
 }
 
 export class AssetAssignmentService {
@@ -4107,6 +4155,19 @@ export class OcaService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Error al corregir la OCA');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async setHourlyRate(id: number, hourly_rate: number): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/hourly-rate`, {
+      method: 'PUT',
+      body: JSON.stringify({ hourly_rate }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al guardar el valor de referencia');
     }
     const data = await response.json();
     return data.data || data;

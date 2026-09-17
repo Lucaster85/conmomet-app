@@ -71,9 +71,12 @@ export default function AssetAssignmentsPage() {
   const [deliverDialog, setDeliverDialog] = useState<{ open: boolean; item: AssetAssignment | null; delivered_date: string; delivery_condition: AssetCondition; delivery_completeness: AssetCompleteness; delivery_notes: string }>(
     { open: false, item: null, delivered_date: today(), delivery_condition: 'bueno', delivery_completeness: 'completo', delivery_notes: '' }
   );
-  const [returnDialog, setReturnDialog] = useState<{ open: boolean; item: AssetAssignment | null; returned_date: string; return_condition: AssetCondition; return_completeness: AssetCompleteness; return_notes: string; resulting_status: 'available' | 'in_repair' }>(
-    { open: false, item: null, returned_date: today(), return_condition: 'bueno', return_completeness: 'completo', return_notes: '', resulting_status: 'available' }
+  const [returnDialog, setReturnDialog] = useState<{ open: boolean; item: AssetAssignment | null; returned_date: string; return_condition: AssetCondition; return_completeness: AssetCompleteness; return_notes: string; resulting_status: 'available' | 'in_repair'; responsible_employee_id: number | null }>(
+    { open: false, item: null, returned_date: today(), return_condition: 'bueno', return_completeness: 'completo', return_notes: '', resulting_status: 'available', responsible_employee_id: null }
   );
+  // Solo empleados con usuario vinculado pueden ser responsables de reparación — son los únicos
+  // que van a poder loguearse y ver el aviso en su dashboard/portal.
+  const repairEligibleEmployees = employees.filter(e => e.user_id);
   const [cancelDialog, setCancelDialog] = useState<{ open: boolean; item: AssetAssignment | null }>({ open: false, item: null });
 
   const loadData = useCallback(async (params?: { status?: AssetAssignmentStatus }) => {
@@ -173,6 +176,11 @@ export default function AssetAssignmentsPage() {
 
   const handleSubmitReturn = async () => {
     if (!returnDialog.item) return;
+    const requiresResponsible = !!returnDialog.item.tool_id && returnDialog.resulting_status === 'in_repair';
+    if (requiresResponsible && !returnDialog.responsible_employee_id) {
+      setError('Debés asignar un responsable de la reparación.');
+      return;
+    }
     try {
       await AssetAssignmentService.returnAssignment(returnDialog.item.id, {
         returned_date: returnDialog.returned_date,
@@ -180,9 +188,10 @@ export default function AssetAssignmentsPage() {
         return_completeness: returnDialog.return_completeness,
         return_notes: returnDialog.return_notes || undefined,
         resulting_status: returnDialog.resulting_status,
+        responsible_employee_id: requiresResponsible ? returnDialog.responsible_employee_id ?? undefined : undefined,
       });
       setSuccess('Devolución registrada');
-      setReturnDialog({ open: false, item: null, returned_date: today(), return_condition: 'bueno', return_completeness: 'completo', return_notes: '', resulting_status: 'available' });
+      setReturnDialog({ open: false, item: null, returned_date: today(), return_condition: 'bueno', return_completeness: 'completo', return_notes: '', resulting_status: 'available', responsible_employee_id: null });
       loadData(statusFilter ? { status: statusFilter } : undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al registrar la devolución');
@@ -219,7 +228,7 @@ export default function AssetAssignmentsPage() {
       )}
       {item.status === 'delivered' && (
         <Tooltip title="Registrar devolución">
-          <IconButton size="small" color="primary" onClick={() => setReturnDialog({ open: true, item, returned_date: today(), return_condition: 'bueno', return_completeness: 'completo', return_notes: '', resulting_status: 'available' })}>
+          <IconButton size="small" color="primary" onClick={() => setReturnDialog({ open: true, item, returned_date: today(), return_condition: 'bueno', return_completeness: 'completo', return_notes: '', resulting_status: 'available', responsible_employee_id: null })}>
             <ReturnIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -470,6 +479,15 @@ export default function AssetAssignmentsPage() {
               <option value="available">Disponible</option>
               <option value="in_repair">En reparación</option>
             </TextField>
+            {returnDialog.resulting_status === 'in_repair' && returnDialog.item?.tool_id && (
+              <Autocomplete
+                options={repairEligibleEmployees}
+                getOptionLabel={(e) => `${e.lastname}, ${e.name}`}
+                value={repairEligibleEmployees.find(e => e.id === returnDialog.responsible_employee_id) || null}
+                onChange={(_, val) => setReturnDialog({ ...returnDialog, responsible_employee_id: val ? val.id : null })}
+                renderInput={(params) => <TextField {...params} label="Responsable de reparación *" placeholder="Buscar empleado..." helperText="Solo empleados con usuario del sistema vinculado — es quien va a ver el aviso" />}
+              />
+            )}
             <TextField label="Notas" fullWidth multiline rows={2} value={returnDialog.return_notes}
               onChange={(e) => setReturnDialog({ ...returnDialog, return_notes: e.target.value })} />
           </Stack>

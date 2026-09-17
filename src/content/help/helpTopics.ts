@@ -42,4 +42,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
     file: 'liquidaciones.md',
   },
+  {
+    id: 'herramientas-reparacion',
+    category: 'Pañol',
+    title: 'Reparación de Herramientas',
+    keywords: [
+      'herramienta', 'herramientas', 'reparacion', 'reparación', 'responsable',
+      'devolucion', 'devolución', 'pañol', 'aviso', 'notificacion', 'notificación',
+    ],
+    file: 'herramientas-reparacion.md',
+  },
 ];

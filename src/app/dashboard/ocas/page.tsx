@@ -76,8 +76,11 @@ import {
   ProjectService,
   ClientSupervisor,
   ClientSupervisorService,
+  OcaClientRateService,
+  OcaClientRateHistoryEntry,
 } from '../../../utils/api';
 import FeedbackModal from '../../../components/FeedbackModal';
+import { useAuth } from '../../../utils/auth';
 
 const STATUS_COLORS: Record<Oca['status'], 'warning' | 'info' | 'success' | 'error' | 'default'> = {
   pendiente: 'warning',
@@ -98,6 +101,11 @@ const STATUS_LABELS: Record<Oca['status'], string> = {
 export default function OcasPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { user } = useAuth();
+  const permissions: string[] = Array.isArray((user as unknown as Record<string, unknown>)?.permissions)
+    ? ((user as unknown as Record<string, unknown>).permissions as string[])
+    : [];
+  const canSetOcaPrice = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
 
   // Tab State: 0 = Horas Hombre (man_hours), 1 = Horas Grúa (crane_hours)
   const [tabValue, setTabValue] = useState(0);
@@ -150,6 +158,11 @@ export default function OcasPage() {
 
   // Print State
   const [printOca, setPrintOca] = useState<Oca | null>(null);
+  const [printBudgetOca, setPrintBudgetOca] = useState<Oca | null>(null);
+
+  // Valor de referencia de la hora (presupuesto de horas hombre) — dialog state
+  const [rateDialog, setRateDialog] = useState<{ open: boolean; oca: Oca | null; hourly_rate: string }>({ open: false, oca: null, hourly_rate: '' });
+  const [rateHistoryDialog, setRateHistoryDialog] = useState<{ open: boolean; entries: OcaClientRateHistoryEntry[] }>({ open: false, entries: [] });
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -763,6 +776,170 @@ export default function OcasPage() {
     XLSX.writeFile(wb, `${oca.number}.xlsx`);
   };
 
+  // Agrupa las líneas de una OCA de horas hombre por día — a diferencia del remito (una fila por
+  // OcaLine, es decir por empleado+día), el "presupuesto" que arma el cliente junta las horas de
+  // TODOS los empleados que trabajaron ese día en una sola fila.
+  type BudgetDayRow = {
+    date: string;
+    checkIn: string;
+    checkOut: string;
+    task: string;
+    simples: number;
+    ot50: number;
+    ot100: number;
+    people: number;
+  };
+
+  const buildBudgetDayRows = (oca: Oca): { rows: BudgetDayRow[]; simplesTotal: number; ot50Total: number; ot100Total: number } => {
+    const lines = sortManHourLines(oca.lines);
+    const byDate = new Map<string, OcaLine[]>();
+    lines.forEach((line) => {
+      const existing = byDate.get(line.date) || [];
+      existing.push(line);
+      byDate.set(line.date, existing);
+    });
+
+    const rows: BudgetDayRow[] = Array.from(byDate.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, dayLines]) => {
+        const checkIns = dayLines.map(l => l.check_in).filter(Boolean) as string[];
+        const checkOuts = dayLines.map(l => l.check_out).filter(Boolean) as string[];
+        const tasks = Array.from(new Set(
+          dayLines
+            .map(l => (modifiedLines[l.id] !== undefined ? modifiedLines[l.id] : l.task) || '')
+            .filter(t => t.trim() !== '')
+        ));
+        const simples = dayLines.reduce((acc, l) => acc + (Number(l.regular_hours || 0) - Number(l.overtime_50_hours || 0) - Number(l.overtime_100_hours || 0)), 0);
+        const ot50 = dayLines.reduce((acc, l) => acc + Number(l.overtime_50_hours || 0), 0);
+        const ot100 = dayLines.reduce((acc, l) => acc + Number(l.overtime_100_hours || 0), 0);
+        return {
+          date,
+          checkIn: checkIns.length ? checkIns.sort()[0].substring(0, 5) : '',
+          checkOut: checkOuts.length ? checkOuts.sort()[checkOuts.length - 1].substring(0, 5) : '',
+          task: tasks.join('; '),
+          simples,
+          ot50,
+          ot100,
+          people: new Set(dayLines.map(l => l.employee_id)).size,
+        };
+      });
+
+    return {
+      rows,
+      simplesTotal: rows.reduce((acc, r) => acc + r.simples, 0),
+      ot50Total: rows.reduce((acc, r) => acc + r.ot50, 0),
+      ot100Total: rows.reduce((acc, r) => acc + r.ot100, 0),
+    };
+  };
+
+  const budgetCost = (oca: Oca) => {
+    const rate = Number(oca.hourly_rate || 0);
+    const { simplesTotal, ot50Total, ot100Total } = buildBudgetDayRows(oca);
+    return simplesTotal * rate + ot50Total * rate * 1.5 + ot100Total * rate * 2;
+  };
+
+  const handleDownloadBudgetExcel = async (oca: Oca) => {
+    const XLSX = await import('xlsx');
+    const rate = Number(oca.hourly_rate || 0);
+    const { rows, simplesTotal, ot50Total, ot100Total } = buildBudgetDayRows(oca);
+    const totalCost = simplesTotal * rate + ot50Total * rate * 1.5 + ot100Total * rate * 2;
+
+    const excelRows: (string | number)[][] = [
+      ['CONMOMET S.A.'],
+      ['Servicios Metalúrgicos e Industriales'],
+      ['PRESUPUESTO DE MANO DE OBRA'],
+      [`OCA Nº: ${oca.number}`],
+      [''],
+      ['Cliente:', oca.client?.razonSocial || ''],
+      ['Sector / Planta:', oca.project?.plant?.name || ''],
+      ['Solicitante (Supervisor):', `${oca.supervisor?.lastname || ''}, ${oca.supervisor?.name || ''}`],
+      ['Fecha de Presentación:', new Date(oca.date).toLocaleDateString('es-AR')],
+      [''],
+      ['Valor hora de referencia:', Number(rate.toFixed(2)), 'Valor hora 50%:', Number((rate * 1.5).toFixed(2)), 'Valor hora 100%:', Number((rate * 2).toFixed(2))],
+      [''],
+      ['Fecha', 'Entrada', 'Salida', 'Detalle de Tarea', 'Hs Simples', 'Hs 50%', 'Hs 100%', 'Cant. Personas'],
+    ];
+
+    rows.forEach((row) => {
+      excelRows.push([
+        new Date(row.date + 'T12:00:00').toLocaleDateString('es-AR'),
+        row.checkIn,
+        row.checkOut,
+        row.task,
+        Number(row.simples.toFixed(1)),
+        Number(row.ot50.toFixed(1)),
+        Number(row.ot100.toFixed(1)),
+        row.people,
+      ]);
+    });
+
+    excelRows.push(
+      [''],
+      ['TOTALES', '', '', '', Number(simplesTotal.toFixed(1)), Number(ot50Total.toFixed(1)), Number(ot100Total.toFixed(1)), ''],
+      [''],
+      ['COSTO TOTAL', Number(totalCost.toFixed(2))],
+    );
+
+    const ws = XLSX.utils.aoa_to_sheet(excelRows);
+    ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 35 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Presupuesto');
+    XLSX.writeFile(wb, `${oca.number}-presupuesto.xlsx`);
+  };
+
+  const handlePrintBudgetOca = () => {
+    if (!printBudgetOca) return;
+    const originalTitle = document.title;
+    document.title = `${printBudgetOca.number}-presupuesto`;
+    const restoreTitle = () => {
+      document.title = originalTitle;
+      window.removeEventListener('afterprint', restoreTitle);
+    };
+    window.addEventListener('afterprint', restoreTitle);
+    window.print();
+  };
+
+  const handleOpenRateDialog = async (oca: Oca) => {
+    let suggested = oca.hourly_rate ? String(oca.hourly_rate) : '';
+    if (!suggested) {
+      try {
+        const current = await OcaClientRateService.getByClient(oca.client_id);
+        if (current) suggested = String(current.hourly_rate);
+      } catch {
+        // sin sugerencia si falla — no bloquea la carga manual
+      }
+    }
+    setRateDialog({ open: true, oca, hourly_rate: suggested });
+  };
+
+  const handleSubmitRate = async () => {
+    if (!rateDialog.oca) return;
+    const rate = Number(rateDialog.hourly_rate);
+    if (!rate || rate <= 0) {
+      setError('El valor de la hora debe ser mayor a cero.');
+      return;
+    }
+    try {
+      await OcaService.setHourlyRate(rateDialog.oca.id, rate);
+      setSuccess('Valor de referencia guardado');
+      setRateDialog({ open: false, oca: null, hourly_rate: '' });
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar el valor de referencia');
+    }
+  };
+
+  const handleOpenRateHistory = async () => {
+    if (!rateDialog.oca) return;
+    try {
+      const entries = await OcaClientRateService.getHistory(rateDialog.oca.client_id);
+      setRateHistoryDialog({ open: true, entries });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al obtener el historial');
+    }
+  };
+
   // Filter OCAs
   const filteredOcas = ocas.filter(oca => {
     const matchesClient = filterClient === '' || oca.client_id === filterClient;
@@ -997,6 +1174,111 @@ export default function OcasPage() {
             </DialogActions>
           </>
         )}
+      </Dialog>
+
+      {/* Dialog de Vista Previa e Impresión de Presupuesto (agrupado por día) */}
+      <Dialog open={!!printBudgetOca} onClose={() => setPrintBudgetOca(null)} maxWidth="md" fullWidth>
+        {printBudgetOca && (() => {
+          const rate = Number(printBudgetOca.hourly_rate || 0);
+          const { rows, simplesTotal, ot50Total, ot100Total } = buildBudgetDayRows(printBudgetOca);
+          const totalCost = budgetCost(printBudgetOca);
+          return (
+            <>
+              <DialogTitle className="no-print" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" fontWeight="bold">Vista Previa de Presupuesto</Typography>
+                <IconButton onClick={() => setPrintBudgetOca(null)} size="small">
+                  <CloseIcon />
+                </IconButton>
+              </DialogTitle>
+              <DialogContent dividers>
+                <Box className="print-area" sx={{ bgcolor: 'white', color: 'black', p: { xs: 1, sm: 1.5 }, fontFamily: 'sans-serif' }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={2}>
+                    <Box>
+                      <Typography variant="h5" fontWeight="bold" sx={{ color: 'black' }}>CONMOMET S.A.</Typography>
+                      <Typography variant="caption" sx={{ color: 'black' }}>Servicios Metalúrgicos e Industriales</Typography>
+                    </Box>
+                    <Box textAlign="right">
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: 'black' }}>PRESUPUESTO DE MANO DE OBRA</Typography>
+                      <Typography variant="subtitle1" fontWeight="bold" sx={{ fontFamily: 'monospace', color: 'black' }}>OCA Nº: {printBudgetOca.number}</Typography>
+                    </Box>
+                  </Box>
+
+                  <Grid container spacing={2} sx={{ mb: 2 }}>
+                    <Grid size={{ xs: 6 }}>
+                      <Typography variant="body2" sx={{ color: 'black' }}><strong>Cliente:</strong> {printBudgetOca.client?.razonSocial}</Typography>
+                      <Typography variant="body2" sx={{ color: 'black' }}><strong>Sector / Planta:</strong> {printBudgetOca.project?.plant?.name || '—'}</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 6 }} sx={{ textAlign: 'right' }}>
+                      <Typography variant="body2" sx={{ color: 'black' }}><strong>Solicitante (Supervisor):</strong> {printBudgetOca.supervisor?.lastname}, {printBudgetOca.supervisor?.name}</Typography>
+                      <Typography variant="body2" sx={{ color: 'black' }}><strong>Fecha de Presentación:</strong> {new Date(printBudgetOca.date).toLocaleDateString('es-AR')}</Typography>
+                    </Grid>
+                  </Grid>
+
+                  <Card variant="outlined" sx={{ borderRadius: 0, p: 1, mb: 2, bgcolor: '#fafafa', border: '1px solid black' }}>
+                    <Typography variant="body2" sx={{ color: 'black' }}>
+                      <strong>Valor hora de referencia:</strong> ${rate.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      &nbsp;·&nbsp; <strong>Valor hora 50%:</strong> ${(rate * 1.5).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      &nbsp;·&nbsp; <strong>Valor hora 100%:</strong> ${(rate * 2).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Card>
+
+                  <TableContainer component={Paper} variant="outlined" sx={{ mb: 1.5, borderRadius: 0 }}>
+                    <Table size="small" sx={{ '& .MuiTableCell-root': { padding: '2px 6px', fontSize: '0.72rem', lineHeight: 1.25 } }}>
+                      <TableHead>
+                        <TableRow sx={{ borderBottom: '2px solid black' }}>
+                          <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Fecha</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Entrada</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Salida</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Detalle de Tarea</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>Hs Simples</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>50%</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>100%</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>Cant. Personas</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {rows.map((row) => (
+                          <TableRow key={row.date} sx={{ borderBottom: '1px solid grey' }}>
+                            <TableCell sx={{ color: 'black', whiteSpace: 'nowrap' }}>{new Date(row.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                            <TableCell sx={{ color: 'black' }}>{row.checkIn || '—'}</TableCell>
+                            <TableCell sx={{ color: 'black' }}>{row.checkOut || '—'}</TableCell>
+                            <TableCell sx={{ color: 'black' }}>{row.task || '—'}</TableCell>
+                            <TableCell align="center" sx={{ color: 'black' }}>{row.simples.toFixed(1)}</TableCell>
+                            <TableCell align="center" sx={{ color: 'black' }}>{row.ot50.toFixed(1)}</TableCell>
+                            <TableCell align="center" sx={{ color: 'black' }}>{row.ot100.toFixed(1)}</TableCell>
+                            <TableCell align="center" sx={{ color: 'black' }}>{row.people}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow sx={{ borderTop: '2px solid black' }}>
+                          <TableCell colSpan={4} sx={{ fontWeight: 'bold', color: 'black' }}>TOTALES</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>{simplesTotal.toFixed(1)}</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>{ot50Total.toFixed(1)}</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>{ot100Total.toFixed(1)}</TableCell>
+                          <TableCell />
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+
+                  <Box display="flex" justifyContent="flex-end">
+                    <Typography variant="h6" fontWeight="bold" sx={{ color: 'black' }}>
+                      COSTO TOTAL: ${totalCost.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                </Box>
+              </DialogContent>
+              <DialogActions className="no-print">
+                <Button onClick={() => setPrintBudgetOca(null)}>Cerrar</Button>
+                <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={() => handleDownloadBudgetExcel(printBudgetOca)}>
+                  Descargar Excel
+                </Button>
+                <Button variant="contained" startIcon={<PrintIcon />} onClick={handlePrintBudgetOca}>
+                  Imprimir
+                </Button>
+              </DialogActions>
+            </>
+          );
+        })()}
       </Dialog>
 
       {/* Main Screen Layout (hides when printing) */}
@@ -1292,6 +1574,31 @@ export default function OcasPage() {
                         >
                           Imprimir Remito
                         </Button>
+                        {oca.type === 'man_hours' && canSetOcaPrice && (
+                          <>
+                            <Button
+                              variant="outlined"
+                              startIcon={<EditIcon />}
+                              onClick={() => handleOpenRateDialog(oca)}
+                              size="small"
+                            >
+                              Cargar Precio
+                            </Button>
+                            <Tooltip title={!oca.hourly_rate ? 'Cargá el valor de la hora primero' : ''}>
+                              <span>
+                                <Button
+                                  variant="outlined"
+                                  startIcon={<PrintIcon />}
+                                  onClick={() => setPrintBudgetOca(oca)}
+                                  disabled={!oca.hourly_rate}
+                                  size="small"
+                                >
+                                  Imprimir Presupuesto
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          </>
+                        )}
                       </Stack>
                       {oca.status === 'pendiente' && (
                         <Stack direction="row" spacing={1}>
@@ -2238,6 +2545,61 @@ export default function OcasPage() {
           <DialogActions>
             <Button onClick={() => setAnnulDialog({ open: false, ocaId: null })}>Cancelar</Button>
             <Button onClick={handleAnnul} variant="contained" color="error">Anular Remito</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Cargar Precio (valor de referencia OCA) Dialog */}
+        <Dialog open={rateDialog.open} onClose={() => setRateDialog({ open: false, oca: null, hourly_rate: '' })} maxWidth="xs" fullWidth>
+          <DialogTitle>Valor de referencia de la hora</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Se usa para armar el &quot;Presupuesto&quot; de esta OCA — un valor de referencia
+                independiente del que se usa en el módulo de Presupuestos de obra.
+              </Typography>
+              <TextField
+                label="Valor hora ($)"
+                type="number"
+                fullWidth
+                value={rateDialog.hourly_rate}
+                onChange={(e) => setRateDialog({ ...rateDialog, hourly_rate: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+              />
+              {rateDialog.oca && (
+                <Button size="small" onClick={handleOpenRateHistory} sx={{ alignSelf: 'flex-start' }}>
+                  Ver historial de este cliente
+                </Button>
+              )}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setRateDialog({ open: false, oca: null, hourly_rate: '' })}>Cancelar</Button>
+            <Button onClick={handleSubmitRate} variant="contained">Guardar</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Historial del valor de referencia por cliente */}
+        <Dialog open={rateHistoryDialog.open} onClose={() => setRateHistoryDialog({ open: false, entries: [] })} maxWidth="xs" fullWidth>
+          <DialogTitle>Historial de valor de referencia</DialogTitle>
+          <DialogContent dividers>
+            {rateHistoryDialog.entries.length === 0 ? (
+              <Typography color="text.secondary">Sin cambios registrados todavía.</Typography>
+            ) : (
+              <Stack spacing={1}>
+                {rateHistoryDialog.entries.map((entry) => (
+                  <Box key={entry.id} display="flex" justifyContent="space-between">
+                    <Typography variant="body2">
+                      {new Date(entry.createdAt).toLocaleDateString('es-AR')}
+                      {entry.changedBy ? ` — ${entry.changedBy.lastname}, ${entry.changedBy.name}` : ''}
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">${Number(entry.hourly_rate).toLocaleString('es-AR')}</Typography>
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setRateHistoryDialog({ open: false, entries: [] })}>Cerrar</Button>
           </DialogActions>
         </Dialog>
 

@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   Box, Typography, Paper, Chip, Button, CircularProgress, Divider, Stack, Grid, Card,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField, Autocomplete,
 } from '@mui/material';
 import { ArrowBackOutlined as BackIcon, PrintOutlined as PrintIcon, SwapHorizOutlined as StatusIcon, OpenInNewOutlined as OpenIcon } from '@mui/icons-material';
 import { QRCodeSVG } from 'qrcode.react';
@@ -12,6 +12,7 @@ import FeedbackModal from '../../../../components/FeedbackModal';
 import {
   Tool, ToolService, ToolStatus, ToolStatusLogEntry,
   AssetAssignment, AssetAssignmentService, AssetAssignmentStatus, AssetCondition, AssetCompleteness,
+  Employee, EmployeeService,
 } from '../../../../utils/api';
 
 const STATUS_LABELS: Record<ToolStatus, string> = {
@@ -35,25 +36,32 @@ export default function ToolDetailPage() {
   const [tool, setTool] = useState<Tool | null>(null);
   const [statusLogs, setStatusLogs] = useState<ToolStatusLogEntry[]>([]);
   const [assignments, setAssignments] = useState<AssetAssignment[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [qrUrl, setQrUrl] = useState('');
 
-  const [statusDialog, setStatusDialog] = useState<{ open: boolean; status: ToolStatus; notes: string }>({ open: false, status: 'available', notes: '' });
+  // Solo empleados con usuario vinculado pueden ser responsables de reparación — son los únicos
+  // que van a poder loguearse y ver el aviso en su dashboard/portal.
+  const repairEligibleEmployees = employees.filter(e => e.user_id);
+
+  const [statusDialog, setStatusDialog] = useState<{ open: boolean; status: ToolStatus; notes: string; responsible_employee_id: number | null }>({ open: false, status: 'available', notes: '', responsible_employee_id: null });
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [t, logs, assigns] = await Promise.all([
+      const [t, logs, assigns, emps] = await Promise.all([
         ToolService.getById(id),
         ToolService.getStatusHistory(id),
         AssetAssignmentService.getAll({ tool_id: id }),
+        EmployeeService.getAll(),
       ]);
       setTool(t);
       setStatusLogs(logs);
       setAssignments(assigns);
+      setEmployees(Array.isArray(emps) ? emps : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar la herramienta');
     } finally {
@@ -66,15 +74,24 @@ export default function ToolDetailPage() {
 
   const handleOpenStatus = () => {
     if (!tool) return;
-    setStatusDialog({ open: true, status: tool.status === 'delivered' ? 'available' : tool.status, notes: '' });
+    setStatusDialog({
+      open: true,
+      status: tool.status === 'delivered' ? 'available' : tool.status,
+      notes: '',
+      responsible_employee_id: tool.repair_responsible_id ?? null,
+    });
   };
 
   const handleSubmitStatus = async () => {
     if (!tool) return;
+    if (statusDialog.status === 'in_repair' && !statusDialog.responsible_employee_id) {
+      setError('Debés asignar un responsable de la reparación.');
+      return;
+    }
     try {
-      await ToolService.changeStatus(tool.id, statusDialog.status, statusDialog.notes || undefined);
+      await ToolService.changeStatus(tool.id, statusDialog.status, statusDialog.notes || undefined, statusDialog.responsible_employee_id ?? undefined);
       setSuccess('Estado actualizado');
-      setStatusDialog({ open: false, status: 'available', notes: '' });
+      setStatusDialog({ open: false, status: 'available', notes: '', responsible_employee_id: null });
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cambiar el estado');
@@ -108,6 +125,11 @@ export default function ToolDetailPage() {
                 </Button>
               </Box>
             </Box>
+            {tool.status === 'in_repair' && tool.repairResponsible && (
+              <Typography variant="body2" color="text.secondary" mt={1}>
+                Responsable de la reparación: <strong>{tool.repairResponsible.lastname}, {tool.repairResponsible.name}</strong>
+              </Typography>
+            )}
             <Divider sx={{ my: 2 }} />
             <Grid container spacing={2}>
               <Grid size={{ xs: 6, sm: 4 }}>
@@ -149,6 +171,11 @@ export default function ToolDetailPage() {
                         <Typography variant="caption" color="text.secondary" display="block">
                           {new Date(log.changed_at).toLocaleString('es-AR')} · {log.changedByUser ? `${log.changedByUser.lastname}, ${log.changedByUser.name}` : '—'}
                         </Typography>
+                        {log.responsibleEmployee && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Responsable: {log.responsibleEmployee.lastname}, {log.responsibleEmployee.name}
+                          </Typography>
+                        )}
                         {log.notes && <Typography variant="body2">{log.notes}</Typography>}
                       </Card>
                     ))}
@@ -167,7 +194,14 @@ export default function ToolDetailPage() {
                             <TableCell>{new Date(log.changed_at).toLocaleString('es-AR')}</TableCell>
                             <TableCell>{log.from_status ? `${STATUS_LABELS[log.from_status as ToolStatus] || log.from_status} → ` : ''}{STATUS_LABELS[log.to_status as ToolStatus] || log.to_status}</TableCell>
                             <TableCell>{log.changedByUser ? `${log.changedByUser.lastname}, ${log.changedByUser.name}` : '—'}</TableCell>
-                            <TableCell>{log.notes || '—'}</TableCell>
+                            <TableCell>
+                              {log.notes || '—'}
+                              {log.responsibleEmployee && (
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  Responsable: {log.responsibleEmployee.lastname}, {log.responsibleEmployee.name}
+                                </Typography>
+                              )}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -264,7 +298,7 @@ export default function ToolDetailPage() {
         </Grid>
       </Grid>
 
-      <Dialog open={statusDialog.open} onClose={() => setStatusDialog({ open: false, status: 'available', notes: '' })} maxWidth="xs" fullWidth>
+      <Dialog open={statusDialog.open} onClose={() => setStatusDialog({ open: false, status: 'available', notes: '', responsible_employee_id: null })} maxWidth="xs" fullWidth>
         <DialogTitle>Cambiar estado</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -273,12 +307,21 @@ export default function ToolDetailPage() {
               SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
               {CHANGEABLE_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </TextField>
+            {statusDialog.status === 'in_repair' && (
+              <Autocomplete
+                options={repairEligibleEmployees}
+                getOptionLabel={(e) => `${e.lastname}, ${e.name}`}
+                value={repairEligibleEmployees.find(e => e.id === statusDialog.responsible_employee_id) || null}
+                onChange={(_, val) => setStatusDialog({ ...statusDialog, responsible_employee_id: val ? val.id : null })}
+                renderInput={(params) => <TextField {...params} label="Responsable de reparación *" placeholder="Buscar empleado..." helperText="Solo empleados con usuario del sistema vinculado — es quien va a ver el aviso" />}
+              />
+            )}
             <TextField label="Notas" fullWidth multiline rows={2} value={statusDialog.notes}
               onChange={(e) => setStatusDialog({ ...statusDialog, notes: e.target.value })} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setStatusDialog({ open: false, status: 'available', notes: '' })}>Cancelar</Button>
+          <Button onClick={() => setStatusDialog({ open: false, status: 'available', notes: '', responsible_employee_id: null })}>Cancelar</Button>
           <Button onClick={handleSubmitStatus} variant="contained">Guardar</Button>
         </DialogActions>
       </Dialog>

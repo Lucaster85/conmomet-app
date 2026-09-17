@@ -3,6 +3,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import PortalHomeGrid from '@/components/portal/PortalHomeGrid';
 import MyLegajoContent from '@/components/portal/MyLegajoContent';
+import RepairToolsAlert from '@/components/common/RepairToolsAlert';
 
 export default function PortalRootPage() {
   const theme = useTheme();
@@ -10,5 +11,10 @@ export default function PortalRootPage() {
   // a la vez dispararía el fetch de MyLegajoContent aunque quede oculto en mobile.
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  return isMobile ? <PortalHomeGrid /> : <MyLegajoContent />;
+  return (
+    <>
+      <RepairToolsAlert />
+      {isMobile ? <PortalHomeGrid /> : <MyLegajoContent />}
+    </>
+  );
 }

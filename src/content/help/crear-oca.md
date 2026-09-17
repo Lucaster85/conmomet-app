@@ -68,6 +68,28 @@ líneas pero ya **desvinculadas** de sus registros de horas originales. Gracias 
 nueva OCA sí se pueden editar libremente las horas, fechas y tareas antes de volver a
 presentarla.
 
+## Presupuesto de horas hombre (con precio)
+
+Además del Remito, en OCAs de **Horas Hombre** hay dos botones extra —visibles solo para quien
+tenga permiso de precios de Presupuestos— para armarle al cliente el mismo detalle pero con
+costo:
+
+- **"Cargar Precio"**: define el **valor de referencia de la hora** para esa OCA. Se sugiere
+  automáticamente el último valor cargado para ese cliente, pero se puede cambiar libremente.
+  Cada cambio queda guardado en un historial por cliente (accesible desde "Ver historial" en el
+  mismo diálogo). Es opcional — si no se carga, el remito común sigue funcionando igual.
+  **Importante**: este valor es independiente del que se usa en el módulo de Presupuestos de
+  obra — son dos conceptos de precio distintos que no se mezclan.
+- **"Imprimir Presupuesto"**: genera el mismo tipo de documento que el Remito, pero **agrupado
+  por día** (no por empleado) — una fila por fecha con la entrada más temprana, la salida más
+  tardía, y las horas simples/50%/100% sumadas entre todos los empleados que trabajaron ese día,
+  más la cantidad de personas. El valor de la hora (y sus derivados al 50%/100%) se muestra
+  aparte, y al final se calcula el costo total. Queda deshabilitado hasta que se cargue el
+  precio.
+
+El precio de una OCA queda **congelado** en el momento de cargarlo — si más adelante se actualiza
+el valor de referencia del cliente, los presupuestos ya generados no cambian.
+
 ## Anular una OCA
 
 **"Anular OCA"** solo está disponible mientras el remito está en **Pendiente** o
