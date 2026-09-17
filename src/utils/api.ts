@@ -2379,6 +2379,9 @@ export interface SalaryAdvance {
   payment_proof_url?: string | null;
   payment_proof_key?: string | null;
   payment_proof_name?: string | null;
+  signature_url?: string | null;
+  signature_key?: string | null;
+  signature_name?: string | null;
   conflict_warning?: string | null;
   source?: 'manual' | 'biweekly_auto';
   employee?: Employee;
@@ -2398,13 +2401,14 @@ export class SalaryAdvanceService {
     return (await response.json()).data || [];
   }
 
-  static async approve(id: number, data?: { amount?: number; payment_method?: 'efectivo' | 'transferencia'; pay_period_id?: number; mark_as_paid?: boolean }, file?: File | null): Promise<SalaryAdvance> {
+  static async approve(id: number, data?: { amount?: number; payment_method?: 'efectivo' | 'transferencia'; pay_period_id?: number; mark_as_paid?: boolean }, file?: File | null, signature?: File | null): Promise<SalaryAdvance> {
     const formData = new FormData();
     if (data?.amount !== undefined) formData.append('amount', data.amount.toString());
     if (data?.payment_method) formData.append('payment_method', data.payment_method);
     if (data?.pay_period_id !== undefined) formData.append('pay_period_id', data.pay_period_id.toString());
     if (data?.mark_as_paid !== undefined) formData.append('mark_as_paid', data.mark_as_paid.toString());
     if (file) formData.append('file', file);
+    if (signature) formData.append('signature', signature);
 
     const token = TokenManager.getToken();
     const response = await fetch(`${API_BASE_URL}/salary-advances/${id}/approve`, {
@@ -2426,10 +2430,11 @@ export class SalaryAdvanceService {
     return (await response.json()).data;
   }
 
-  static async markAsPaid(id: number, data: { payment_method: 'efectivo' | 'transferencia' }, file?: File | null): Promise<SalaryAdvance> {
+  static async markAsPaid(id: number, data: { payment_method: 'efectivo' | 'transferencia' }, file?: File | null, signature?: File | null): Promise<SalaryAdvance> {
     const formData = new FormData();
     formData.append('payment_method', data.payment_method);
     if (file) formData.append('file', file);
+    if (signature) formData.append('signature', signature);
 
     const token = TokenManager.getToken();
     const response = await fetch(`${API_BASE_URL}/salary-advances/${id}/mark-paid`, {
@@ -2464,7 +2469,7 @@ export class SalaryAdvanceService {
     notes?: string;
     mark_as_paid?: boolean;
     pay_period_id?: number;
-  }, file?: File | null): Promise<SalaryAdvance | SalaryAdvance[]> {
+  }, file?: File | null, signature?: File | null): Promise<SalaryAdvance | SalaryAdvance[]> {
     const formData = new FormData();
     if (payload.employee_id !== undefined) formData.append('employee_id', payload.employee_id.toString());
     if (payload.employee_ids) formData.append('employee_ids', JSON.stringify(payload.employee_ids));
@@ -2475,6 +2480,7 @@ export class SalaryAdvanceService {
     if (payload.mark_as_paid !== undefined) formData.append('mark_as_paid', payload.mark_as_paid.toString());
     if (payload.pay_period_id !== undefined) formData.append('pay_period_id', payload.pay_period_id.toString());
     if (file) formData.append('file', file);
+    if (signature) formData.append('signature', signature);
 
     const token = TokenManager.getToken();
     const response = await fetch(`${API_BASE_URL}/salary-advances`, {
@@ -3238,6 +3244,9 @@ export interface Loan {
   payment_proof_url?: string | null;
   payment_proof_key?: string | null;
   payment_proof_name?: string | null;
+  signature_url?: string | null;
+  signature_key?: string | null;
+  signature_name?: string | null;
   conflict_warning?: string | null;
   created_by?: number;
   updated_by?: number;
@@ -3338,7 +3347,7 @@ export class LoanService {
     return response.json();
   }
 
-  static async create(data: CreateLoanData, file?: File | null): Promise<Loan> {
+  static async create(data: CreateLoanData, file?: File | null, signature?: File | null): Promise<Loan> {
     const formData = new FormData();
     formData.append('employee_id', data.employee_id.toString());
     formData.append('start_date', data.start_date);
@@ -3349,6 +3358,7 @@ export class LoanService {
     if (data.notes) formData.append('notes', data.notes);
     if (data.mark_as_paid !== undefined) formData.append('mark_as_paid', data.mark_as_paid.toString());
     if (file) formData.append('file', file);
+    if (signature) formData.append('signature', signature);
 
     const token = TokenManager.getToken();
     const response = await fetch(`${API_BASE_URL}/loans`, {
@@ -3385,7 +3395,7 @@ export class LoanService {
     notes?: string;
     start_date?: string;
     mark_as_paid?: boolean;
-  }, file?: File | null): Promise<Loan> {
+  }, file?: File | null, signature?: File | null): Promise<Loan> {
     const formData = new FormData();
     if (data?.amount !== undefined) formData.append('amount', data.amount.toString());
     if (data?.num_installments !== undefined) formData.append('num_installments', data.num_installments.toString());
@@ -3395,6 +3405,7 @@ export class LoanService {
     if (data?.start_date) formData.append('start_date', data.start_date);
     if (data?.mark_as_paid !== undefined) formData.append('mark_as_paid', data.mark_as_paid.toString());
     if (file) formData.append('file', file);
+    if (signature) formData.append('signature', signature);
 
     const token = TokenManager.getToken();
     const response = await fetch(`${API_BASE_URL}/loans/${id}/approve`, {
@@ -3406,10 +3417,11 @@ export class LoanService {
     return response.json();
   }
 
-  static async markAsPaid(id: number, data: { payment_method: 'efectivo' | 'transferencia' }, file?: File | null): Promise<Loan> {
+  static async markAsPaid(id: number, data: { payment_method: 'efectivo' | 'transferencia' }, file?: File | null, signature?: File | null): Promise<Loan> {
     const formData = new FormData();
     formData.append('payment_method', data.payment_method);
     if (file) formData.append('file', file);
+    if (signature) formData.append('signature', signature);
 
     const token = TokenManager.getToken();
     const response = await fetch(`${API_BASE_URL}/loans/${id}/mark-paid`, {

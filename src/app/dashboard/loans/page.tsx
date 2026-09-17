@@ -13,6 +13,7 @@ import {
   WarningAmberOutlined as ConflictIcon, PercentOutlined as InterestIcon,
   LocalAtmOutlined as CashIcon, AccountBalanceOutlined as BankIcon,
   PaymentsOutlined as PaidIcon, AttachFileOutlined as ProofIcon,
+  DrawOutlined as SignatureIcon,
   WhatsApp as WhatsAppIcon, AssignmentReturnOutlined as SettleIcon
 } from '@mui/icons-material';
 import Chip from '@mui/material/Chip';
@@ -21,6 +22,8 @@ import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
+import SignaturePad from '@/components/SignaturePad';
+import PaymentReceiptDialog from '@/components/PaymentReceiptDialog';
 import { Loan, Employee, LoanPayment, LoanInterestApplication, LoanInstallment, PayPeriod, LoanService, EmployeeService } from '@/utils/api';
 import { buildWhatsAppLink } from '@/utils/whatsapp';
 import { computeFrenchSchedule } from '@/utils/loanAmortization';
@@ -79,11 +82,14 @@ export default function LoansPage() {
 
   const [approvingLoan, setApprovingLoan] = useState<Loan | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Loan | null>(null);
   const [rejectNotes, setRejectNotes] = useState('');
   const [markPaidTarget, setMarkPaidTarget] = useState<Loan | null>(null);
   const [markPaidMethod, setMarkPaidMethod] = useState<'efectivo' | 'transferencia'>('transferencia');
   const [markPaidProofFile, setMarkPaidProofFile] = useState<File | null>(null);
+  const [markPaidSignatureFile, setMarkPaidSignatureFile] = useState<File | null>(null);
+  const [receiptLoan, setReceiptLoan] = useState<Loan | null>(null);
   const [interestTarget, setInterestTarget] = useState<Loan | null>(null);
   const [interestRate, setInterestRate] = useState<number | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -114,6 +120,7 @@ export default function LoansPage() {
     setApprovingLoan(null);
     setForm({ ...emptyForm, start_date: new Date().toISOString().slice(0, 10) });
     setProofFile(null);
+    setSignatureFile(null);
     setOpenDialog(true);
   };
 
@@ -122,7 +129,7 @@ export default function LoansPage() {
     setApprovingLoan(null);
   };
 
-  const isProofRequired = form.payment_method === 'transferencia' && form.mark_as_paid;
+  const showPaymentFields = form.mark_as_paid;
 
   const notifyLoanApprovedByWhatsApp = (employee: Employee | undefined, loan: Loan) => {
     if (!employee?.phone) return;
@@ -137,7 +144,6 @@ export default function LoansPage() {
     if (!form.amount || form.amount <= 0) return setError('El monto debe ser mayor a 0');
     if (!form.num_installments || form.num_installments <= 0) return setError('La cantidad de cuotas debe ser mayor a 0');
     if (!form.payment_method) return setError('El método de pago es obligatorio');
-    if (isProofRequired && !proofFile) return setError('El comprobante de pago es obligatorio para transferencias.');
 
     const employee = employees.find(e => e.id === form.employee_id);
 
@@ -151,7 +157,7 @@ export default function LoansPage() {
           notes: form.notes || undefined,
           start_date: form.start_date,
           mark_as_paid: form.mark_as_paid,
-        }, proofFile);
+        }, proofFile, signatureFile);
         setSuccess(form.mark_as_paid ? 'Préstamo aprobado y marcado como pagado' : 'Préstamo aprobado — queda pendiente de pago');
         if (form.mark_as_paid) notifyLoanApprovedByWhatsApp(approvingLoan.employee || employee, updatedLoan);
       } else if (editing) {
@@ -168,7 +174,7 @@ export default function LoansPage() {
           notes: form.notes || undefined,
           mark_as_paid: form.mark_as_paid,
         };
-        const createdLoan = await LoanService.create(createData, proofFile);
+        const createdLoan = await LoanService.create(createData, proofFile, signatureFile);
         setSuccess('Préstamo registrado exitosamente');
         if (form.mark_as_paid) notifyLoanApprovedByWhatsApp(employee, createdLoan);
       }
@@ -219,6 +225,7 @@ export default function LoansPage() {
       mark_as_paid: true,
     });
     setProofFile(null);
+    setSignatureFile(null);
     setOpenDialog(true);
   };
 
@@ -226,19 +233,14 @@ export default function LoansPage() {
     setMarkPaidTarget(loan);
     setMarkPaidMethod(loan.payment_method || 'transferencia');
     setMarkPaidProofFile(null);
+    setMarkPaidSignatureFile(null);
   };
-
-  const isMarkPaidProofRequired = markPaidMethod === 'transferencia';
 
   const handleConfirmMarkPaid = async () => {
     if (!markPaidTarget) return;
-    if (isMarkPaidProofRequired && !markPaidProofFile) {
-      setError('El comprobante de pago es obligatorio para transferencias.');
-      return;
-    }
     setProcessing(true);
     try {
-      await LoanService.markAsPaid(markPaidTarget.id, { payment_method: markPaidMethod }, markPaidProofFile);
+      await LoanService.markAsPaid(markPaidTarget.id, { payment_method: markPaidMethod }, markPaidProofFile, markPaidSignatureFile);
       setSuccess('Préstamo marcado como pagado');
       setMarkPaidTarget(null);
       loadData();
@@ -333,6 +335,17 @@ export default function LoansPage() {
       <Tooltip title="Ver comprobante de pago">
         <IconButton size="small" color="primary" component="a" href={loan.payment_proof_url} target="_blank" rel="noopener noreferrer">
           <ProofIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    );
+  };
+
+  const renderSignatureLink = (loan: Loan) => {
+    if (!loan.signature_url) return null;
+    return (
+      <Tooltip title="Ver recibo de pago">
+        <IconButton size="small" color="primary" onClick={() => setReceiptLoan(loan)}>
+          <SignatureIcon fontSize="small" />
         </IconButton>
       </Tooltip>
     );
@@ -452,6 +465,7 @@ export default function LoansPage() {
                   )}
                   {renderPaymentMethodChip(loan.payment_method)}
                   {renderProofLink(loan)}
+                  {renderSignatureLink(loan)}
                 </Box>
 
                 <Box mt={1.5} display="flex" gap={1} flexWrap="wrap">
@@ -544,6 +558,7 @@ export default function LoansPage() {
                       <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
                         {renderPaymentMethodChip(loan.payment_method)}
                         {renderProofLink(loan)}
+                        {renderSignatureLink(loan)}
                       </Box>
                     </TableCell>
                     <TableCell align="center">
@@ -738,14 +753,20 @@ export default function LoansPage() {
                 El préstamo quedará como &quot;Aprobado — pend. de pago&quot;. Cuando se le entregue el dinero, marcalo como pagado desde la tabla.
               </Alert>
             )}
-            {isProofRequired && (
+            {showPaymentFields && (
               <Box>
-                <Typography variant="subtitle2" gutterBottom>Comprobante de Pago *</Typography>
+                <Typography variant="subtitle2" gutterBottom>Comprobante de Pago (opcional)</Typography>
                 <Button variant="outlined" component="label" fullWidth color={proofFile ? 'success' : 'primary'}>
-                  {proofFile ? proofFile.name : 'Seleccionar Archivo (Requerido)'}
+                  {proofFile ? proofFile.name : 'Seleccionar Archivo'}
                   <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setProofFile(e.target.files?.[0] || null)} />
                 </Button>
               </Box>
+            )}
+            {showPaymentFields && (
+              <SignaturePad
+                label="Firma del empleado (opcional)"
+                onChange={setSignatureFile}
+              />
             )}
 
           </Stack>
@@ -756,7 +777,6 @@ export default function LoansPage() {
             onClick={handleSubmit}
             variant="contained"
             color={approvingLoan ? 'success' : 'primary'}
-            disabled={isProofRequired && !proofFile}
           >
             {approvingLoan ? 'Aprobar Préstamo' : 'Registrar Préstamo'}
           </Button>
@@ -793,6 +813,7 @@ export default function LoansPage() {
               )}
               {detailLoan.paid_at && renderPaymentMethodChip(detailLoan.payment_method)}
               {detailLoan.paid_at && renderProofLink(detailLoan)}
+              {detailLoan.paid_at && renderSignatureLink(detailLoan)}
               {detailLoan.employee.phone && detailLoan.plan_type === 'fixed_installments' && (
                 <Tooltip title="Reenviar aviso por WhatsApp">
                   <IconButton size="small" color="success" onClick={() => notifyLoanApprovedByWhatsApp(detailLoan.employee, detailLoan)}>
@@ -995,15 +1016,17 @@ export default function LoansPage() {
               <option value="transferencia">Transferencia bancaria</option>
               <option value="efectivo">Efectivo</option>
             </TextField>
-            {isMarkPaidProofRequired && (
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>Comprobante de Pago *</Typography>
-                <Button variant="outlined" component="label" fullWidth color={markPaidProofFile ? 'success' : 'primary'}>
-                  {markPaidProofFile ? markPaidProofFile.name : 'Seleccionar Archivo (Requerido)'}
-                  <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setMarkPaidProofFile(e.target.files?.[0] || null)} />
-                </Button>
-              </Box>
-            )}
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>Comprobante de Pago (opcional)</Typography>
+              <Button variant="outlined" component="label" fullWidth color={markPaidProofFile ? 'success' : 'primary'}>
+                {markPaidProofFile ? markPaidProofFile.name : 'Seleccionar Archivo'}
+                <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setMarkPaidProofFile(e.target.files?.[0] || null)} />
+              </Button>
+            </Box>
+            <SignaturePad
+              label="Firma del empleado (opcional)"
+              onChange={setMarkPaidSignatureFile}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -1012,7 +1035,7 @@ export default function LoansPage() {
             onClick={handleConfirmMarkPaid}
             variant="contained"
             color="success"
-            disabled={processing || (isMarkPaidProofRequired && !markPaidProofFile)}
+            disabled={processing}
           >
             {processing ? 'Confirmando...' : 'Confirmar Pago'}
           </Button>
@@ -1093,6 +1116,21 @@ export default function LoansPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {receiptLoan && receiptLoan.signature_url && (
+        <PaymentReceiptDialog
+          open={!!receiptLoan}
+          onClose={() => setReceiptLoan(null)}
+          concept="Préstamo"
+          employeeName={receiptLoan.employee ? `${receiptLoan.employee.lastname}, ${receiptLoan.employee.name}` : ''}
+          amount={Number(receiptLoan.amount)}
+          paidAt={receiptLoan.paid_at}
+          paymentMethod={receiptLoan.payment_method}
+          signatureUrl={receiptLoan.signature_url}
+          numInstallments={receiptLoan.num_installments}
+          monthlyInterestPercent={receiptLoan.monthly_interest_percent}
+        />
+      )}
     </Box>
   );
 }

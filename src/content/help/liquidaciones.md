@@ -51,6 +51,17 @@ Al neto de la liquidación se le restan automáticamente:
   descuenta todavía.
 - **Cuotas de préstamo** que vencen en ese período.
 
+## Firma y comprobante al marcar un adelanto/préstamo como pagado
+
+Al aprobar, crear con pago inmediato o marcar como pagado un adelanto o un préstamo, además del
+método de pago se puede adjuntar el comprobante de la transferencia y/o capturar en pantalla la
+firma del empleado (con el dedo o el mouse) como constancia de que recibió el dinero. Por ahora
+ninguno de los dos es obligatorio, sin importar el método elegido — quedan disponibles para
+usarlos cuando convenga.
+
+La firma y el comprobante guardados quedan disponibles para consultar después desde el listado
+de préstamos/adelantos.
+
 ## Confirmar y Pagar
 
 Cada liquidación individual pasa por: **Borrador → Confirmada → Pagada**.
@@ -64,3 +75,5 @@ Cada liquidación individual pasa por: **Borrador → Confirmada → Pagada**.
 Si se aplica un aumento de Convenio Colectivo con fecha retroactiva, el sistema agrega
 automáticamente líneas de **"Retroactivo"** en la liquidación del período correspondiente, con
 la diferencia calculada sobre lo ya liquidado en los períodos anteriores afectados.
+
+<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx -->

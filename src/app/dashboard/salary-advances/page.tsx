@@ -8,6 +8,8 @@ import {
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import CurrencyInput from '../../../components/CurrencyInput';
+import SignaturePad from '../../../components/SignaturePad';
+import PaymentReceiptDialog from '../../../components/PaymentReceiptDialog';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import Alert from '@mui/material/Alert';
@@ -19,7 +21,8 @@ import {
   CheckCircleOutlined as ApproveIcon, CancelOutlined as RejectIcon,
   WarningAmberOutlined as ConflictIcon, PaymentsOutlined as PaidIcon,
   AttachFileOutlined as ProofIcon, UploadFileOutlined as UploadProofIcon,
-  DeleteOutline as DeleteIcon, SyncAltOutlined as ReassignIcon
+  DeleteOutline as DeleteIcon, SyncAltOutlined as ReassignIcon,
+  DrawOutlined as SignatureIcon
 } from '@mui/icons-material';
 import { SalaryAdvance, SalaryAdvanceService, Employee, EmployeeService, PayPeriod, PayPeriodService, PayrollService } from '../../../utils/api';
 import { buildWhatsAppLink } from '../../../utils/whatsapp';
@@ -56,6 +59,7 @@ export default function SalaryAdvancesPage() {
     pay_period_id: '',
   });
   const [createProofFile, setCreateProofFile] = useState<File | null>(null);
+  const [createSignatureFile, setCreateSignatureFile] = useState<File | null>(null);
 
   // Aprobación / rechazo
   const [approveTarget, setApproveTarget] = useState<SalaryAdvance | null>(null);
@@ -63,11 +67,14 @@ export default function SalaryAdvancesPage() {
   const [approvePaymentMethod, setApprovePaymentMethod] = useState<'efectivo' | 'transferencia'>('transferencia');
   const [approveMarkAsPaid, setApproveMarkAsPaid] = useState(true);
   const [approveProofFile, setApproveProofFile] = useState<File | null>(null);
+  const [approveSignatureFile, setApproveSignatureFile] = useState<File | null>(null);
   const [rejectTarget, setRejectTarget] = useState<SalaryAdvance | null>(null);
   const [rejectNotes, setRejectNotes] = useState('');
   const [markPaidTarget, setMarkPaidTarget] = useState<SalaryAdvance | null>(null);
   const [markPaidMethod, setMarkPaidMethod] = useState<'efectivo' | 'transferencia'>('transferencia');
   const [markPaidProofFile, setMarkPaidProofFile] = useState<File | null>(null);
+  const [markPaidSignatureFile, setMarkPaidSignatureFile] = useState<File | null>(null);
+  const [receiptAdvance, setReceiptAdvance] = useState<SalaryAdvance | null>(null);
   const [uploadProofTarget, setUploadProofTarget] = useState<SalaryAdvance | null>(null);
   const [uploadProofFile, setUploadProofFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -115,18 +122,16 @@ export default function SalaryAdvancesPage() {
       pay_period_id: '',
     });
     setCreateProofFile(null);
+    setCreateSignatureFile(null);
     setOpenDialog(true);
   };
 
-  const isCreateProofRequired = form.payment_method === 'transferencia' && form.mark_as_paid && selectedEmployees.length <= 1;
+  const showCreateProof = form.mark_as_paid;
+  const showCreateSignature = form.mark_as_paid && selectedEmployees.length <= 1;
 
   const handleSubmit = async () => {
     if (selectedEmployees.length === 0 || !form.amount || !form.date) {
       setError('Campos obligatorios');
-      return;
-    }
-    if (isCreateProofRequired && !createProofFile) {
-      setError('El comprobante de pago es obligatorio para transferencias.');
       return;
     }
     try {
@@ -138,7 +143,7 @@ export default function SalaryAdvancesPage() {
         notes: form.notes,
         mark_as_paid: form.mark_as_paid,
         pay_period_id: form.pay_period_id || undefined,
-      }, createProofFile);
+      }, createProofFile, createSignatureFile);
       setSuccess(selectedEmployees.length > 1 ? 'Adelantos registrados en lote' : 'Adelanto registrado');
       setOpenDialog(false);
       loadData();
@@ -153,23 +158,18 @@ export default function SalaryAdvancesPage() {
     setApprovePaymentMethod(advance.payment_method || 'transferencia');
     setApproveMarkAsPaid(true);
     setApproveProofFile(null);
+    setApproveSignatureFile(null);
   };
-
-  const isApproveProofRequired = approveMarkAsPaid && approvePaymentMethod === 'transferencia';
 
   const handleConfirmApprove = async () => {
     if (!approveTarget || !approveAmount) return;
-    if (isApproveProofRequired && !approveProofFile) {
-      setError('El comprobante de pago es obligatorio para transferencias.');
-      return;
-    }
     setProcessing(true);
     try {
       await SalaryAdvanceService.approve(approveTarget.id, {
         amount: approveAmount,
         payment_method: approvePaymentMethod,
         mark_as_paid: approveMarkAsPaid,
-      }, approveProofFile);
+      }, approveProofFile, approveSignatureFile);
       setSuccess(approveMarkAsPaid ? 'Adelanto aprobado y marcado como pagado' : 'Adelanto aprobado — queda pendiente de pago');
       if (approveMarkAsPaid && approveTarget.employee?.phone) {
         const message = `Hola ${approveTarget.employee.name}, tu adelanto de ${formatCurrency(approveAmount)} fue aprobado.`;
@@ -188,19 +188,14 @@ export default function SalaryAdvancesPage() {
     setMarkPaidTarget(advance);
     setMarkPaidMethod(advance.payment_method || 'transferencia');
     setMarkPaidProofFile(null);
+    setMarkPaidSignatureFile(null);
   };
-
-  const isMarkPaidProofRequired = markPaidMethod === 'transferencia';
 
   const handleConfirmMarkPaid = async () => {
     if (!markPaidTarget) return;
-    if (isMarkPaidProofRequired && !markPaidProofFile) {
-      setError('El comprobante de pago es obligatorio para transferencias.');
-      return;
-    }
     setProcessing(true);
     try {
-      await SalaryAdvanceService.markAsPaid(markPaidTarget.id, { payment_method: markPaidMethod }, markPaidProofFile);
+      await SalaryAdvanceService.markAsPaid(markPaidTarget.id, { payment_method: markPaidMethod }, markPaidProofFile, markPaidSignatureFile);
       setSuccess('Adelanto marcado como pagado');
       setMarkPaidTarget(null);
       loadData();
@@ -457,6 +452,13 @@ export default function SalaryAdvancesPage() {
                     </Button>
                   </Box>
                 )}
+                {a.signature_url && (
+                  <Box mt={1.5}>
+                    <Button size="small" variant="outlined" startIcon={<SignatureIcon />} onClick={() => setReceiptAdvance(a)}>
+                      Ver recibo de pago
+                    </Button>
+                  </Box>
+                )}
               </Card>
             ))}
           </Stack>
@@ -567,6 +569,15 @@ export default function SalaryAdvancesPage() {
                           </Tooltip>
                         </Box>
                       )}
+                      {a.signature_url && (
+                        <Box display="flex" gap={0.5} justifyContent="flex-end">
+                          <Tooltip title="Ver recibo de pago">
+                            <IconButton size="small" color="primary" onClick={() => setReceiptAdvance(a)}>
+                              <SignatureIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -635,10 +646,10 @@ export default function SalaryAdvancesPage() {
                 Quedará como &quot;Pendiente de pago&quot;. Cuando se le pague, marcalo como pagado desde la tabla.
               </Alert>
             )}
-            {form.payment_method === 'transferencia' && form.mark_as_paid && (
+            {showCreateProof && (
               <Box>
                 <Typography variant="subtitle2" gutterBottom>
-                  Comprobante de Pago {selectedEmployees.length > 1 ? '(opcional para carga en lote)' : '*'}
+                  Comprobante de Pago (opcional{selectedEmployees.length > 1 ? ', para carga en lote' : ''})
                 </Typography>
                 <Button variant="outlined" component="label" fullWidth color={createProofFile ? 'success' : 'primary'}>
                   {createProofFile ? createProofFile.name : 'Seleccionar Archivo'}
@@ -651,6 +662,12 @@ export default function SalaryAdvancesPage() {
                 )}
               </Box>
             )}
+            {showCreateSignature && (
+              <SignaturePad
+                label="Firma del empleado (opcional)"
+                onChange={setCreateSignatureFile}
+              />
+            )}
             <TextField label="Notas" fullWidth multiline rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </Stack>
         </DialogContent>
@@ -659,7 +676,7 @@ export default function SalaryAdvancesPage() {
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={selectedEmployees.length === 0 || !form.amount || !form.date || (isCreateProofRequired && !createProofFile)}
+            disabled={selectedEmployees.length === 0 || !form.amount || !form.date}
           >
             Registrar {selectedEmployees.length > 1 ? `(${selectedEmployees.length})` : ''}
           </Button>
@@ -704,14 +721,20 @@ export default function SalaryAdvancesPage() {
                 El adelanto quedará como &quot;Pendiente de pago&quot;. Cuando se le pague, marcalo como pagado desde la tabla.
               </Alert>
             )}
-            {isApproveProofRequired && (
+            {approveMarkAsPaid && (
               <Box>
-                <Typography variant="subtitle2" gutterBottom>Comprobante de Pago *</Typography>
+                <Typography variant="subtitle2" gutterBottom>Comprobante de Pago (opcional)</Typography>
                 <Button variant="outlined" component="label" fullWidth color={approveProofFile ? 'success' : 'primary'}>
-                  {approveProofFile ? approveProofFile.name : 'Seleccionar Archivo (Requerido)'}
+                  {approveProofFile ? approveProofFile.name : 'Seleccionar Archivo'}
                   <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setApproveProofFile(e.target.files?.[0] || null)} />
                 </Button>
               </Box>
+            )}
+            {approveMarkAsPaid && (
+              <SignaturePad
+                label="Firma del empleado (opcional)"
+                onChange={setApproveSignatureFile}
+              />
             )}
           </Stack>
         </DialogContent>
@@ -721,7 +744,7 @@ export default function SalaryAdvancesPage() {
             onClick={handleConfirmApprove}
             variant="contained"
             color="success"
-            disabled={!approveAmount || processing || (isApproveProofRequired && !approveProofFile)}
+            disabled={!approveAmount || processing}
           >
             {processing ? 'Aprobando...' : 'Aprobar'}
           </Button>
@@ -767,15 +790,17 @@ export default function SalaryAdvancesPage() {
               <option value="transferencia">Transferencia bancaria</option>
               <option value="efectivo">Efectivo</option>
             </TextField>
-            {isMarkPaidProofRequired && (
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>Comprobante de Pago *</Typography>
-                <Button variant="outlined" component="label" fullWidth color={markPaidProofFile ? 'success' : 'primary'}>
-                  {markPaidProofFile ? markPaidProofFile.name : 'Seleccionar Archivo (Requerido)'}
-                  <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setMarkPaidProofFile(e.target.files?.[0] || null)} />
-                </Button>
-              </Box>
-            )}
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>Comprobante de Pago (opcional)</Typography>
+              <Button variant="outlined" component="label" fullWidth color={markPaidProofFile ? 'success' : 'primary'}>
+                {markPaidProofFile ? markPaidProofFile.name : 'Seleccionar Archivo'}
+                <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setMarkPaidProofFile(e.target.files?.[0] || null)} />
+              </Button>
+            </Box>
+            <SignaturePad
+              label="Firma del empleado (opcional)"
+              onChange={setMarkPaidSignatureFile}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -784,7 +809,7 @@ export default function SalaryAdvancesPage() {
             onClick={handleConfirmMarkPaid}
             variant="contained"
             color="info"
-            disabled={processing || (isMarkPaidProofRequired && !markPaidProofFile)}
+            disabled={processing}
           >
             {processing ? 'Confirmando...' : 'Confirmar Pago'}
           </Button>
@@ -868,6 +893,19 @@ export default function SalaryAdvancesPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {receiptAdvance && receiptAdvance.signature_url && (
+        <PaymentReceiptDialog
+          open={!!receiptAdvance}
+          onClose={() => setReceiptAdvance(null)}
+          concept="Adelanto de sueldo"
+          employeeName={receiptAdvance.employee ? `${receiptAdvance.employee.lastname}, ${receiptAdvance.employee.name}` : ''}
+          amount={Number(receiptAdvance.amount)}
+          paidAt={receiptAdvance.paid_at}
+          paymentMethod={receiptAdvance.payment_method}
+          signatureUrl={receiptAdvance.signature_url}
+        />
+      )}
     </Box>
   );
 }
