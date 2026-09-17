@@ -202,7 +202,7 @@ export default function OcasPage() {
       setLoading(true);
       setError('');
       const [clis, list, emps, vehs] = await Promise.all([
-        ClientService.getAll(),
+        ClientService.getAll({ is_active: true }),
         OcaService.getAll({ type: typeKey, include_anuladas: showAnuladas }),
         EmployeeService.getAll('active'),
         VehicleService.getAll({ is_active: true }),
@@ -976,8 +976,9 @@ export default function OcasPage() {
                     {/* Header */}
                     <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={2}>
                       <Box>
-                        <Typography variant="h5" fontWeight="bold" sx={{ color: 'black' }}>CONMOMET S.A.</Typography>
-                        <Typography variant="caption" sx={{ color: 'black' }}>Servicios Metalúrgicos e Industriales</Typography>
+                        {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
+                        <img src="/img/logos/logo-conmomet-ROJO.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
+                        <Typography variant="caption" sx={{ color: 'black', display: 'block', mt: 0.5 }}>Servicios Metalúrgicos e Industriales</Typography>
                       </Box>
                       <Box textAlign="right">
                         <Typography variant="h6" fontWeight="bold" sx={{ color: 'black' }}>PARTE DIARIO DE PERSONAL</Typography>
@@ -1070,8 +1071,9 @@ export default function OcasPage() {
                         {/* Header */}
                         <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={0.5} mb={1}>
                           <Box>
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: 'black' }}>CONMOMET S.A.</Typography>
-                            <Typography variant="caption" sx={{ color: 'black', fontSize: '0.65rem' }}>Servicios Metalúrgicos e Industriales</Typography>
+                            {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
+                            <img src="/img/logos/logo-conmomet-ROJO.png" alt="Conmomet" style={{ height: 38, objectFit: 'contain' }} />
+                            <Typography variant="caption" sx={{ color: 'black', fontSize: '0.65rem', display: 'block', mt: 0.25 }}>Servicios Metalúrgicos e Industriales</Typography>
                           </Box>
                           <Box textAlign="right">
                             <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'black' }}>REMITO DE SERVICIO DE GRÚA</Typography>
@@ -1194,8 +1196,9 @@ export default function OcasPage() {
                 <Box className="print-area" sx={{ bgcolor: 'white', color: 'black', p: { xs: 1, sm: 1.5 }, fontFamily: 'sans-serif' }}>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={2}>
                     <Box>
-                      <Typography variant="h5" fontWeight="bold" sx={{ color: 'black' }}>CONMOMET S.A.</Typography>
-                      <Typography variant="caption" sx={{ color: 'black' }}>Servicios Metalúrgicos e Industriales</Typography>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
+                      <img src="/img/logos/logo-conmomet-ROJO.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
+                      <Typography variant="caption" sx={{ color: 'black', display: 'block', mt: 0.5 }}>Servicios Metalúrgicos e Industriales</Typography>
                     </Box>
                     <Box textAlign="right">
                       <Typography variant="h6" fontWeight="bold" sx={{ color: 'black' }}>PRESUPUESTO DE MANO DE OBRA</Typography>

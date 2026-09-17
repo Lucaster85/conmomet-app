@@ -195,7 +195,7 @@ function BudgetsPageContent() {
         BudgetItemTypeService.getAll(true),
         MaterialUnitService.getAll(true),
         MaterialService.getAll({ is_active: true }),
-        ClientService.getAll(),
+        ClientService.getAll({ is_active: true }),
         PlantService.getAll(),
         ProjectService.getAll(),
         ProjectService.getAll({ without_budget: true }),

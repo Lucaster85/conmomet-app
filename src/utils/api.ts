@@ -62,6 +62,7 @@ export interface Client {
   razonSocial: string;
   email: string;
   phone?: string;
+  is_active: boolean;
   createdAt: string;
   updatedAt?: string;
 }
@@ -70,6 +71,7 @@ export interface CreateClientData {
   razonSocial: string;
   email: string;
   phone?: string;
+  is_active?: boolean;
 }
 
 export interface Provider {
@@ -312,13 +314,15 @@ export class PermissionService {
   }
 }
   export class ClientService {
-  static async getAll(): Promise<Client[]> {
-    
-    try {
-      const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients`);
-      
+  static async getAll(params?: { is_active?: boolean }): Promise<Client[]> {
+    let url = `${API_BASE_URL}/clients`;
+    if (params?.is_active !== undefined) url += `?is_active=${params.is_active}`;
 
-      
+    try {
+      const response = await TokenManager.authenticatedFetch(url);
+
+
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Clients error response:', errorText);
@@ -367,16 +371,6 @@ export class PermissionService {
       throw new Error(error.error || 'Error al actualizar cliente');
     }
     return response.json();
-  }
-
-  static async delete(id: number): Promise<void> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al eliminar cliente');
-    }
   }
 }
 

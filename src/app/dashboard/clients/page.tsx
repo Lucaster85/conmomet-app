@@ -22,11 +22,13 @@ import {
   TextField,
   InputAdornment,
   Stack,
+  Chip,
 } from '@mui/material';
 import {
   AddOutlined as AddIcon,
   EditOutlined as EditIcon,
-  DeleteOutlined as DeleteIcon,
+  BlockOutlined as DeactivateIcon,
+  CheckCircleOutlined as ActivateIcon,
   RefreshOutlined as RefreshIcon,
   SearchOutlined as SearchIcon,
   SupervisorAccountOutlined as SupervisorAccountIcon,
@@ -51,7 +53,7 @@ export default function ClientsPage() {
   const [search, setSearch] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [deleteDialog, setDeleteDialog] = useState<{open: boolean, client: Client | null}>({
+  const [deactivateDialog, setDeactivateDialog] = useState<{open: boolean, client: Client | null}>({
     open: false,
     client: null
   });
@@ -110,16 +112,30 @@ export default function ClientsPage() {
     setOpenDialog(true);
   };
 
-  // Manejar eliminación
-  const handleDeleteClient = async () => {
-    if (!deleteDialog.client) return;
-
+  // Activar/desactivar un cliente — nunca se elimina, un cliente inactivo simplemente deja de
+  // aparecer como opción en los selectores de otros módulos (OCAs, Presupuestos, Proyectos, Plantas).
+  const handleToggleActive = async (client: Client) => {
+    if (client.is_active) {
+      setDeactivateDialog({ open: true, client });
+      return;
+    }
     try {
-      await ClientService.delete(deleteDialog.client.id);
-      setDeleteDialog({ open: false, client: null });
+      await ClientService.update(client.id, { is_active: true });
       loadClients();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar cliente');
+      setError(err instanceof Error ? err.message : 'Error al reactivar cliente');
+    }
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!deactivateDialog.client) return;
+
+    try {
+      await ClientService.update(deactivateDialog.client.id, { is_active: false });
+      setDeactivateDialog({ open: false, client: null });
+      loadClients();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al desactivar cliente');
     }
   };
 
@@ -203,12 +219,15 @@ export default function ClientsPage() {
         ) : (
           <Stack spacing={2}>
             {filteredClients.map((client) => (
-              <Card key={client.id} sx={{ p: 2, borderRadius: 2 }}>
+              <Card key={client.id} sx={{ p: 2, borderRadius: 2, opacity: client.is_active ? 1 : 0.6 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                   <Box flex={1}>
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {client.razonSocial}
-                    </Typography>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Typography variant="subtitle1" fontWeight="bold">
+                        {client.razonSocial}
+                      </Typography>
+                      {!client.is_active && <Chip label="Inactivo" size="small" color="default" />}
+                    </Box>
                     <Typography variant="body2" color="text.secondary">
                       {client.email}
                     </Typography>
@@ -233,8 +252,8 @@ export default function ClientsPage() {
                     <IconButton size="small" color="primary" onClick={() => handleOpenEdit(client)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, client })}>
-                      <DeleteIcon fontSize="small" />
+                    <IconButton size="small" color={client.is_active ? 'error' : 'success'} onClick={() => handleToggleActive(client)}>
+                      {client.is_active ? <DeactivateIcon fontSize="small" /> : <ActivateIcon fontSize="small" />}
                     </IconButton>
                   </Box>
                 </Box>
@@ -255,13 +274,14 @@ export default function ClientsPage() {
                 <TableCell><strong>Email</strong></TableCell>
                 <TableCell><strong>Teléfono</strong></TableCell>
                 <TableCell><strong>Fecha Creación</strong></TableCell>
+                <TableCell><strong>Estado</strong></TableCell>
                 <TableCell align="center"><strong>Acciones</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredClients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                     <Typography variant="body2" color="text.secondary">
                       No hay clientes registrados
                     </Typography>
@@ -269,7 +289,7 @@ export default function ClientsPage() {
                 </TableRow>
               ) : (
                 filteredClients.map((client) => (
-                  <TableRow key={client.id} hover>
+                  <TableRow key={client.id} hover sx={{ opacity: client.is_active ? 1 : 0.6 }}>
                     <TableCell>{client.id}</TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight="medium">
@@ -279,6 +299,9 @@ export default function ClientsPage() {
                     <TableCell>{client.email}</TableCell>
                     <TableCell>{client.phone || '—'}</TableCell>
                     <TableCell>{formatDate(client.createdAt)}</TableCell>
+                    <TableCell>
+                      <Chip label={client.is_active ? 'Activo' : 'Inactivo'} size="small" color={client.is_active ? 'success' : 'default'} />
+                    </TableCell>
                     <TableCell align="center">
                       <Box display="flex" justifyContent="center" gap={0.5}>
                         <Tooltip title="Supervisores">
@@ -302,13 +325,13 @@ export default function ClientsPage() {
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Eliminar">
+                        <Tooltip title={client.is_active ? 'Desactivar' : 'Activar'}>
                           <IconButton
                             size="small"
-                            color="error"
-                            onClick={() => setDeleteDialog({ open: true, client })}
+                            color={client.is_active ? 'error' : 'success'}
+                            onClick={() => handleToggleActive(client)}
                           >
-                            <DeleteIcon fontSize="small" />
+                            {client.is_active ? <DeactivateIcon fontSize="small" /> : <ActivateIcon fontSize="small" />}
                           </IconButton>
                         </Tooltip>
                       </Box>
@@ -338,33 +361,34 @@ export default function ClientsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de confirmación para eliminar */}
-      <Dialog 
-        open={deleteDialog.open} 
-        onClose={() => setDeleteDialog({ open: false, client: null })}
+      {/* Dialog de confirmación para desactivar */}
+      <Dialog
+        open={deactivateDialog.open}
+        onClose={() => setDeactivateDialog({ open: false, client: null })}
       >
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogTitle>Confirmar Desactivación</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Estás seguro de que deseas eliminar al cliente{' '}
-            <strong>{deleteDialog.client?.razonSocial}</strong>?
+            ¿Estás seguro de que deseas desactivar al cliente{' '}
+            <strong>{deactivateDialog.client?.razonSocial}</strong>?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Esta acción no se puede deshacer.
+            Dejará de aparecer como opción en OCAs, Presupuestos, Proyectos y Plantas — se puede
+            reactivar en cualquier momento desde este mismo listado.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button 
-            onClick={() => setDeleteDialog({ open: false, client: null })}
+          <Button
+            onClick={() => setDeactivateDialog({ open: false, client: null })}
           >
             Cancelar
           </Button>
-          <Button 
-            onClick={handleDeleteClient} 
-            color="error" 
+          <Button
+            onClick={handleConfirmDeactivate}
+            color="error"
             variant="contained"
           >
-            Eliminar
+            Desactivar
           </Button>
         </DialogActions>
       </Dialog>

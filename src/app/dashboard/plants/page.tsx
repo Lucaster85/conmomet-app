@@ -74,7 +74,7 @@ export default function PlantsPage() {
 
   const loadClients = async () => {
     try {
-      const data = await ClientService.getAll();
+      const data = await ClientService.getAll({ is_active: true });
       setClients(Array.isArray(data) ? data : []);
     } catch { /* ignore */ }
   };

@@ -87,7 +87,7 @@ export default function ProjectsPage() {
       setError('');
       const [projs, clis, plts] = await Promise.all([
         ProjectService.getAll(),
-        ClientService.getAll(),
+        ClientService.getAll({ is_active: true }),
         PlantService.getAll(),
       ]);
       
