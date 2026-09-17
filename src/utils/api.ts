@@ -2292,6 +2292,11 @@ export interface PayrollEntry {
   late_count: number;
   absent_count: number;
   status: 'draft' | 'confirmed' | 'paid';
+  paid_at?: string | null;
+  signature_url?: string | null;
+  signature_key?: string | null;
+  signature_name?: string | null;
+  signed_at?: string | null;
   payPeriod?: {
     id: number;
     name: string;
@@ -2355,6 +2360,20 @@ export class PayrollService {
   static async pay(id: number): Promise<PayrollEntry> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${id}/pay`, { method: 'PUT' });
     if (!response.ok) throw new Error('Error al marcar liquidación como pagada');
+    return (await response.json()).data;
+  }
+
+  static async attachSignature(id: number, signature: File): Promise<PayrollEntry> {
+    const formData = new FormData();
+    formData.append('signature', signature);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/payroll/${id}/signature`, {
+      method: 'PUT',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al guardar la firma');
     return (await response.json()).data;
   }
 }

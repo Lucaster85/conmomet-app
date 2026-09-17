@@ -8,10 +8,11 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../../../components/FeedbackModal';
 import GearSpinner from '../../../../../components/GearSpinner';
-import { RefreshOutlined as RefreshIcon, EditOutlined as EditIcon, CheckCircleOutlined as ConfirmIcon, CalculateOutlined as CalcIcon, ArrowBackOutlined as BackIcon, PaymentOutlined as PaymentIcon, VisibilityOutlined as ViewIcon, PrintOutlined as PrintIcon } from '@mui/icons-material';
+import { RefreshOutlined as RefreshIcon, EditOutlined as EditIcon, CheckCircleOutlined as ConfirmIcon, CalculateOutlined as CalcIcon, ArrowBackOutlined as BackIcon, PaymentOutlined as PaymentIcon, VisibilityOutlined as ViewIcon, PrintOutlined as PrintIcon, DrawOutlined as SignatureIcon } from '@mui/icons-material';
 import Divider from '@mui/material/Divider';
 import { TableChartOutlined as ExcelIcon } from '@mui/icons-material';
 import { PayrollEntry, PayrollService, PayPeriod, PayrollLine, PayrollAdjustment } from '../../../../../utils/api';
+import SignaturePad from '../../../../../components/SignaturePad';
 import { TokenManager } from '../../../../../utils/auth';
 import { isFixedSalaryPayType, payTypeLabel } from '../../../../../utils/payType';
 import { useParams, useRouter } from 'next/navigation';
@@ -55,6 +56,11 @@ export default function PayrollPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [detailEntry, setDetailEntry] = useState<any>(null);
   const [isPrintingAll, setIsPrintingAll] = useState(false);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [signEntry, setSignEntry] = useState<any>(null);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [savingSignature, setSavingSignature] = useState(false);
 
   useEffect(() => {
     const handleAfterPrint = () => {
@@ -101,8 +107,10 @@ export default function PayrollPage() {
       });
       setEntries(data);
       setPeriod(json.period || null);
+      return data;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -137,9 +145,27 @@ export default function PayrollPage() {
     try {
       await PayrollService.pay(id);
       setSuccess('Liquidación pagada');
-      loadData();
+      const refreshed = await loadData();
+      // Ofrecemos firmar en el momento por si el empleado está presente; es opcional.
+      setSignEntry(refreshed.find((e: PayrollEntry) => e.id === id) || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al pagar');
+    }
+  };
+
+  const handleAttachSignature = async () => {
+    if (!signEntry || !signatureFile) return;
+    try {
+      setSavingSignature(true);
+      await PayrollService.attachSignature(signEntry.id, signatureFile);
+      setSuccess('Firma guardada');
+      setSignEntry(null);
+      setSignatureFile(null);
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar la firma');
+    } finally {
+      setSavingSignature(false);
     }
   };
 
@@ -504,6 +530,13 @@ export default function PayrollPage() {
                         </IconButton>
                       </Tooltip>
                     )}
+                    {e.status === 'paid' && (
+                      <Tooltip title={e.signature_url ? 'Volver a firmar recibo' : 'Firmar recibo'}>
+                        <IconButton size="small" color={e.signature_url ? 'default' : 'warning'} onClick={() => setSignEntry(e)}>
+                          <SignatureIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                   </Box>
                 </Box>
               </CardContent>
@@ -716,6 +749,13 @@ export default function PayrollPage() {
                       )}
                       {e.status === 'confirmed' && (
                         <Tooltip title="Marcar como pagado"><IconButton size="small" color="info" onClick={() => handlePayItem(e.id as number)}><PaymentIcon fontSize="small" /></IconButton></Tooltip>
+                      )}
+                      {e.status === 'paid' && (
+                        <Tooltip title={e.signature_url ? 'Volver a firmar recibo' : 'Firmar recibo'}>
+                          <IconButton size="small" color={e.signature_url ? 'default' : 'warning'} onClick={() => setSignEntry(e)}>
+                            <SignatureIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       )}
                     </Box>
                   </TableCell>
@@ -1097,14 +1137,62 @@ export default function PayrollPage() {
                   <Typography variant="subtitle1" fontWeight={700}>Neto a cobrar</Typography>
                   <Typography variant="h6" fontWeight={700} color="success.dark">{formatCurrency(detailEntry.net_amount)}</Typography>
                 </Box>
+
+                {/* Firma de conformidad */}
+                {detailEntry.signature_url && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <Typography variant="body2" textAlign="center" sx={{ mb: 1 }}>
+                      Recibí de conformidad la liquidación detallada arriba.
+                    </Typography>
+                    <Box display="flex" justifyContent="center" py={1}>
+                      <img src={detailEntry.signature_url} alt="Firma del empleado" style={{ maxHeight: 120, maxWidth: '100%' }} />
+                    </Box>
+                    <Typography variant="body2" fontWeight={700} textAlign="center">
+                      {detailEntry.employee?.lastname}, {detailEntry.employee?.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" textAlign="center" display="block">
+                      Firma del empleado
+                    </Typography>
+                  </>
+                )}
               </Box>
             </DialogContent>
             <DialogActions className="no-print">
               <Button onClick={() => setOpenDetail(false)}>Cerrar</Button>
+              {detailEntry.status === 'paid' && (
+                <Button
+                  variant="outlined"
+                  color={detailEntry.signature_url ? 'inherit' : 'warning'}
+                  startIcon={<SignatureIcon />}
+                  onClick={() => setSignEntry(detailEntry)}
+                >
+                  {detailEntry.signature_url ? 'Volver a firmar' : 'Firmar recibo'}
+                </Button>
+              )}
               <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Imprimir</Button>
             </DialogActions>
           </>
         )}
+      </Dialog>
+
+      {/* Sign Dialog */}
+      <Dialog open={!!signEntry} onClose={() => { setSignEntry(null); setSignatureFile(null); }} maxWidth="xs" fullWidth>
+        <DialogTitle>Firmar recibo</DialogTitle>
+        <DialogContent>
+          {signEntry && (
+            <Typography variant="body2" color="text.secondary" mb={2}>
+              {signEntry.employee?.lastname}, {signEntry.employee?.name} — Neto {formatCurrency(signEntry.net_amount)}
+            </Typography>
+          )}
+          <SignaturePad label="Firma del empleado" onChange={setSignatureFile} disabled={savingSignature} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setSignEntry(null); setSignatureFile(null); }} disabled={savingSignature}>Cancelar</Button>
+          <Button variant="contained" onClick={handleAttachSignature} disabled={!signatureFile || savingSignature}>
+            Guardar firma
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Edit Adjustments Dialog */}

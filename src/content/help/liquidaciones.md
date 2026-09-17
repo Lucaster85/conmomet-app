@@ -68,7 +68,19 @@ Cada liquidación individual pasa por: **Borrador → Confirmada → Pagada**.
 
 - **Confirmada**: deja de recalcularse automáticamente al tocar "Generar" — a partir de acá
   cualquier ajuste se hace a mano.
-- **Pagada**: la liquidación queda cerrada, ya no se puede editar.
+- **Pagada**: la liquidación queda cerrada, ya no se puede editar (tampoco se le pueden agregar
+  o quitar bonos/descuentos manuales). Si algo se liquidó mal, se compensa en la liquidación del
+  mes siguiente — no se reabre la ya pagada.
+
+## Firma del recibo de liquidación
+
+Una vez que una liquidación individual queda **Pagada** (ya sea pagándola una por una, o pagando
+toda la quincena de una vez desde "Cerrar"/"Pagar" quincena), aparece la acción **"Firmar
+recibo"** en el listado y en el detalle. Ahí se puede capturar en pantalla la firma del empleado
+(con el dedo o el mouse) como constancia de que recibió su recibo de conformidad. Es opcional y
+se puede hacer en el momento de pagar (si el empleado está presente) o más adelante, en cualquier
+momento, sobre cualquier liquidación ya pagada. La firma queda guardada e incluida al ver el
+detalle o imprimir esa liquidación.
 
 ## Retroactivos de gremio
 
@@ -76,4 +88,4 @@ Si se aplica un aumento de Convenio Colectivo con fecha retroactiva, el sistema 
 automáticamente líneas de **"Retroactivo"** en la liquidación del período correspondiente, con
 la diferencia calculada sobre lo ya liquidado en los períodos anteriores afectados.
 
-<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx -->
+<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx -->
