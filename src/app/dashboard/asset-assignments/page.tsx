@@ -485,7 +485,7 @@ export default function AssetAssignmentsPage() {
                 getOptionLabel={(e) => `${e.lastname}, ${e.name}`}
                 value={repairEligibleEmployees.find(e => e.id === returnDialog.responsible_employee_id) || null}
                 onChange={(_, val) => setReturnDialog({ ...returnDialog, responsible_employee_id: val ? val.id : null })}
-                renderInput={(params) => <TextField {...params} label="Responsable de reparación *" placeholder="Buscar empleado..." helperText="Solo empleados con usuario del sistema vinculado — es quien va a ver el aviso" />}
+                renderInput={(params) => <TextField {...params} label="Responsable de reparación *" placeholder="Buscar empleado..." helperText="Solo empleados con acceso al tablero" />}
               />
             )}
             <TextField label="Notas" fullWidth multiline rows={2} value={returnDialog.return_notes}

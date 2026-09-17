@@ -232,7 +232,6 @@ export default function VehicleDetailPage() {
             <Box display="flex" justifyContent="center" py={2}>
               {qrUrl && <QRCodeSVG value={qrUrl} size={180} />}
             </Box>
-            <Typography fontWeight={700}>{vehicle.brand} {vehicle.model}</Typography>
             <Typography variant="body2" color="text.secondary">{vehicle.plate}</Typography>
             <Button className="no-print" fullWidth variant="outlined" startIcon={<PrintIcon />} sx={{ mt: 2 }} onClick={() => window.print()}>
               Imprimir etiqueta

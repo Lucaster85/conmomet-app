@@ -528,8 +528,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             bgcolor: 'background.default',
           }}
         >
-          <Toolbar sx={{ minHeight: HEADER_MIN_HEIGHT }} />
-          <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 2 }}>
+          <Toolbar className="no-print" sx={{ minHeight: HEADER_MIN_HEIGHT }} />
+          <Box className="no-print" sx={{ display: { xs: 'block', md: 'none' }, mb: 2 }}>
             <Typography variant="body2" color="text.secondary">
               Hola, {getUserDisplayName()}!
             </Typography>

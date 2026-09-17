@@ -75,4 +75,10 @@ body {
   .print-area thead {
     display: table-header-group;
   }
+  /* Los Paper con print-area usan la elevación por defecto de MUI (box-shadow),
+     que se ve como un marco/borde gris al imprimir */
+  .print-area {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
 }

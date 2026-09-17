@@ -289,7 +289,6 @@ export default function ToolDetailPage() {
             <Box display="flex" justifyContent="center" py={2}>
               {qrUrl && <QRCodeSVG value={qrUrl} size={180} />}
             </Box>
-            <Typography fontWeight={700}>{tool.name}</Typography>
             <Typography variant="body2" color="text.secondary">{tool.reference_code}</Typography>
             <Button className="no-print" fullWidth variant="outlined" startIcon={<PrintIcon />} sx={{ mt: 2 }} onClick={() => window.print()}>
               Imprimir etiqueta
@@ -313,7 +312,7 @@ export default function ToolDetailPage() {
                 getOptionLabel={(e) => `${e.lastname}, ${e.name}`}
                 value={repairEligibleEmployees.find(e => e.id === statusDialog.responsible_employee_id) || null}
                 onChange={(_, val) => setStatusDialog({ ...statusDialog, responsible_employee_id: val ? val.id : null })}
-                renderInput={(params) => <TextField {...params} label="Responsable de reparación *" placeholder="Buscar empleado..." helperText="Solo empleados con usuario del sistema vinculado — es quien va a ver el aviso" />}
+                renderInput={(params) => <TextField {...params} label="Responsable de reparación *" placeholder="Buscar empleado..." helperText="Solo empleados con acceso al tablero" />}
               />
             )}
             <TextField label="Notas" fullWidth multiline rows={2} value={statusDialog.notes}
