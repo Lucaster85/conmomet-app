@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, CircularProgress, Select, InputLabel, FormControl, FormControlLabel, Checkbox, Divider, useTheme, useMediaQuery, Stack
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, Select, InputLabel, FormControl, FormControlLabel, Checkbox, Divider, useTheme, useMediaQuery, Stack
 } from '@mui/material';
 import { DeleteOutlined as DeleteIcon, AddOutlined as AddIcon } from '@mui/icons-material';
 import { PayrollAdjustment, PayrollAdjustmentService, CreatePayrollAdjustmentData, Loan, LoanService } from '../../../../../utils/api';
 import CurrencyInput from '../../../../../components/CurrencyInput';
+import GearSpinner from '../../../../../components/GearSpinner';
 
 interface Props {
   open: boolean;
@@ -303,7 +304,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
         <Typography variant="subtitle2" mb={1}>Ajustes Registrados (impactarán al generar la liquidación)</Typography>
 
         {loading && adjustments.length === 0 ? (
-          <Box display="flex" justifyContent="center" p={3}><CircularProgress /></Box>
+          <Box display="flex" justifyContent="center" p={3}><GearSpinner /></Box>
         ) : (
           <TableContainer component={Paper} variant="outlined">
             <Table size="small">

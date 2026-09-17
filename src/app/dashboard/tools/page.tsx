@@ -4,10 +4,11 @@ import { useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, TextField, Stack, Chip, Autocomplete,
+  DialogActions, Tooltip, TextField, Stack, Chip, Autocomplete,
   InputAdornment,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, HistoryOutlined as HistoryIcon,
@@ -51,6 +52,7 @@ export default function ToolsPage() {
   const [toolTypes, setToolTypes] = useState<ToolType[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -135,6 +137,8 @@ export default function ToolsPage() {
       setError('El código de referencia es obligatorio');
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       if (editingItem) {
         const { reference_code: _referenceCode, ...updateData } = form;
@@ -149,6 +153,8 @@ export default function ToolsPage() {
       loadData(search || undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -192,7 +198,7 @@ export default function ToolsPage() {
   };
 
   if (loading && items.length === 0) {
-    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
   }
 
   const renderActions = (item: Tool) => (
@@ -350,7 +356,7 @@ export default function ToolsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">{editingItem ? 'Guardar' : 'Crear'}</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingItem ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -391,7 +397,7 @@ export default function ToolsPage() {
         <DialogTitle>Historial de estados — {historyDialog.item?.name}</DialogTitle>
         <DialogContent>
           {historyDialog.loading ? (
-            <Box display="flex" justifyContent="center" py={3}><CircularProgress size={24} /></Box>
+            <Box display="flex" justifyContent="center" py={3}><GearSpinner size={24} /></Box>
           ) : historyDialog.entries.length === 0 ? (
             <Typography color="text.secondary" textAlign="center" py={3}>Sin cambios de estado registrados todavía.</Typography>
           ) : (

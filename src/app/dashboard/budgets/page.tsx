@@ -4,10 +4,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, TextField, Stack, Chip, Divider, Grid,
+  DialogActions, Tooltip, TextField, Stack, Chip, Divider, Grid,
   Autocomplete, createFilterOptions, useMediaQuery, useTheme,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon,
   ContentCopyOutlined as DuplicateIcon, VisibilityOutlined as ViewIcon, PlayArrowOutlined as GenerateIcon,
@@ -123,7 +124,7 @@ function daysExpired(budget: Budget): number | null {
 
 export default function BudgetsPage() {
   return (
-    <Suspense fallback={<Box display="flex" justifyContent="center" py={8}><CircularProgress /></Box>}>
+    <Suspense fallback={<Box display="flex" justifyContent="center" py={8}><GearSpinner /></Box>}>
       <BudgetsPageContent />
     </Suspense>
   );
@@ -156,6 +157,7 @@ function BudgetsPageContent() {
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [processing, setProcessing] = useState(false);
   const [form, setForm] = useState(emptyForm());
 
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; budget: Budget | null }>({ open: false, budget: null });
@@ -609,6 +611,8 @@ function BudgetsPageContent() {
       setError(`El material "${unpriceable.description || 'sin descripción'}" no tiene costo cargado en el catálogo. Cárguelo antes de presupuestarlo.`);
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       const payload: CreateBudgetData = {
         title: form.title,
@@ -637,6 +641,8 @@ function BudgetsPageContent() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -773,7 +779,7 @@ function BudgetsPageContent() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }
@@ -1286,7 +1292,9 @@ function BudgetsPageContent() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">{editingBudget ? 'Guardar' : 'Crear'}</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>
+            {processing ? <GearSpinner size={20} /> : (editingBudget ? 'Guardar' : 'Crear')}
+          </Button>
         </DialogActions>
       </Dialog>
 

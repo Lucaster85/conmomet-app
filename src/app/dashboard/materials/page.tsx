@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, TextField, Stack, Chip, Switch, FormControlLabel,
+  DialogActions, Tooltip, TextField, Stack, Chip, Switch, FormControlLabel,
   InputAdornment,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon,
   SearchOutlined as SearchIcon, UploadFileOutlined as UploadIcon, HistoryOutlined as HistoryIcon,
@@ -31,6 +32,7 @@ export default function MaterialsPage() {
   const [units, setUnits] = useState<MaterialUnit[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -104,6 +106,8 @@ export default function MaterialsPage() {
       setError('Descripción y unidad son obligatorias');
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       if (editingItem) {
         await MaterialService.update(editingItem.id, form);
@@ -116,6 +120,8 @@ export default function MaterialsPage() {
       loadData(search || undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -198,7 +204,7 @@ export default function MaterialsPage() {
   };
 
   if (loading && items.length === 0) {
-    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
   }
 
   return (
@@ -347,7 +353,7 @@ export default function MaterialsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">{editingItem ? 'Guardar' : 'Crear'}</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingItem ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -398,7 +404,7 @@ export default function MaterialsPage() {
         <DialogTitle>Historial de costos — {historyDialog.item?.description}</DialogTitle>
         <DialogContent>
           {historyDialog.loading ? (
-            <Box display="flex" justifyContent="center" py={3}><CircularProgress size={24} /></Box>
+            <Box display="flex" justifyContent="center" py={3}><GearSpinner size={24} /></Box>
           ) : historyDialog.entries.length === 0 ? (
             <Typography color="text.secondary" textAlign="center" py={3}>Sin cambios de costo registrados todavía.</Typography>
           ) : (

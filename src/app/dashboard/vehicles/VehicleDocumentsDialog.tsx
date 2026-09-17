@@ -17,7 +17,6 @@ import {
   Box,
   Tooltip,
   Alert,
-  CircularProgress,
   Switch,
   FormControlLabel,
   Paper, Card,
@@ -48,6 +47,7 @@ import {
   DocumentCategory,
   DocumentCategoryService,
 } from '../../../utils/api';
+import GearSpinner from '../../../components/GearSpinner';
 
 interface VehicleDocumentsDialogProps {
   open: boolean;
@@ -479,7 +479,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
           <DialogTitle>Historial de Renovaciones</DialogTitle>
           <DialogContent dividers>
             {loadingHistory ? (
-              <Box display="flex" justifyContent="center" py={3}><CircularProgress /></Box>
+              <Box display="flex" justifyContent="center" py={3}><GearSpinner /></Box>
             ) : (
               <TableContainer>
                 <Table size="small">
@@ -516,7 +516,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
 
         {/* Table legajo */}
         {loading && documents.length === 0 ? (
-          <Box display="flex" justifyContent="center" py={5}><CircularProgress /></Box>
+          <Box display="flex" justifyContent="center" py={5}><GearSpinner /></Box>
         ) : (
           !isMobile ? (
             <TableContainer component={Paper} elevation={1} sx={{ borderRadius: 2 }}>

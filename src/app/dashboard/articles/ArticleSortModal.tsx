@@ -10,7 +10,6 @@ import {
   Box,
   Typography,
   IconButton,
-  CircularProgress,
   Alert,
 } from '@mui/material';
 import { CloseOutlined as CloseIcon, DragIndicatorOutlined as DragIndicatorIcon } from '@mui/icons-material';
@@ -32,6 +31,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MediaService, Media } from '@/utils/api';
+import GearSpinner from '@/components/GearSpinner';
 
 // ── Item sortable individual ──────────────────────────────────────────────────
 function SortableItem({ item, index }: { item: Media; index: number }) {
@@ -260,7 +260,7 @@ export default function ArticleSortModal({
           disabled={saving || !dirty}
           sx={{ borderRadius: '10px', textTransform: 'none', minWidth: 130 }}
         >
-          {saving ? <CircularProgress size={18} color="inherit" /> : 'Guardar orden'}
+          {saving ? <GearSpinner size={18} /> : 'Guardar orden'}
         </Button>
       </DialogActions>
     </Dialog>

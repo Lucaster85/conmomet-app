@@ -1,11 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Card, CircularProgress, TextField, Stack,
+  Box, Typography, Button, Paper, Card, TextField, Stack,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   IconButton, Tooltip, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, EditOutlined as EditIcon,
   DeleteOutlined as DeleteIcon, CategoryOutlined as TitleIcon,
@@ -20,6 +21,7 @@ export default function PayrollConceptsPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editing, setEditing] = useState<PayrollConcept | null>(null);
   const [form, setForm] = useState<{ name: string; code: string; calc_type: 'hourly' | 'fixed'; sort_order: number }>({ name: '', code: '', calc_type: 'hourly', sort_order: 0 });
+  const [processing, setProcessing] = useState(false);
 
   const loadData = async () => {
     try {
@@ -47,11 +49,13 @@ export default function PayrollConceptsPage() {
   };
 
   const handleSave = async () => {
+    if (!form.name || !form.code) {
+      setError('Nombre y código son obligatorios');
+      return;
+    }
+    if (processing) return;
+    setProcessing(true);
     try {
-      if (!form.name || !form.code) {
-        setError('Nombre y código son obligatorios');
-        return;
-      }
       if (editing) {
         await PayrollConceptService.update(editing.id, form);
         setSuccess('Concepto actualizado');
@@ -63,6 +67,8 @@ export default function PayrollConceptsPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -80,7 +86,7 @@ export default function PayrollConceptsPage() {
     return name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
   };
 
-  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
 
   return (
     <Box>
@@ -223,7 +229,7 @@ export default function PayrollConceptsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">{editing ? 'Guardar' : 'Crear'}</Button>
+          <Button onClick={handleSave} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editing ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

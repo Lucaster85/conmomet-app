@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, CircularProgress, Select, InputLabel, FormControl, Chip, Tooltip
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, Select, InputLabel, FormControl, Chip, Tooltip
 } from '@mui/material';
 import { DeleteOutlined as DeleteIcon, AddOutlined as AddIcon } from '@mui/icons-material';
 import { RateChange, RateChangeService, CreateRateChangeData, Guild, GuildService, PayPeriod, PayPeriodService, PayrollConcept, PayrollConceptService } from '../../../../../utils/api';
+import GearSpinner from '../../../../../components/GearSpinner';
 
 interface Props {
   open: boolean;
@@ -168,7 +169,7 @@ export default function RateChangesModal({ open, onClose, payPeriodId }: Props) 
         <Typography variant="subtitle2" mb={1}>Aumentos / Retroactivos definidos en esta liquidación</Typography>
         
         {loading && rateChanges.length === 0 ? (
-          <Box display="flex" justifyContent="center" p={3}><CircularProgress /></Box>
+          <Box display="flex" justifyContent="center" p={3}><GearSpinner /></Box>
         ) : (
           <TableContainer component={Paper} variant="outlined">
             <Table size="small">

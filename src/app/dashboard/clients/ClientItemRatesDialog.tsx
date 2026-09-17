@@ -17,7 +17,6 @@ import {
   Box,
   Tooltip,
   Alert,
-  CircularProgress,
   Paper,
   Divider,
 } from '@mui/material';
@@ -28,6 +27,7 @@ import {
   CancelOutlined as CancelIcon,
   HistoryOutlined as HistoryIcon,
 } from '@mui/icons-material';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   Client, BudgetItemType, BudgetItemTypeService, BudgetCurrency,
   ClientItemRate, ClientItemRateService, ClientItemRateHistoryEntry,
@@ -141,7 +141,7 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
           </Typography>
 
           {loading ? (
-            <Box display="flex" justifyContent="center" py={5}><CircularProgress size={30} /></Box>
+            <Box display="flex" justifyContent="center" py={5}><GearSpinner size={30} /></Box>
           ) : (
             <TableContainer component={Paper} elevation={1} sx={{ borderRadius: 2 }}>
               <Table size="small">
@@ -207,7 +207,7 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
         <DialogTitle>Historial — {historyDialog.itemType?.name}</DialogTitle>
         <DialogContent>
           {historyDialog.loading ? (
-            <Box display="flex" justifyContent="center" py={3}><CircularProgress size={24} /></Box>
+            <Box display="flex" justifyContent="center" py={3}><GearSpinner size={24} /></Box>
           ) : historyDialog.entries.length === 0 ? (
             <Typography variant="body2" color="text.secondary">Sin historial.</Typography>
           ) : (

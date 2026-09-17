@@ -1,7 +1,8 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Box, Container, Typography, CircularProgress } from '@mui/material';
+import { Box, Container, Typography } from '@mui/material';
 import CardSlider from '../CardSlider';
+import GearSpinner from '../GearSpinner';
 
 const API_BASE_URL =
   (typeof window !== 'undefined' && (window as { __ENV__?: { API_BASE_URL?: string } }).__ENV__?.API_BASE_URL) ||
@@ -50,7 +51,7 @@ export default function ArticlesSection() {
         </Typography>
         {loading ? (
           <Box display="flex" justifyContent="center" py={6}>
-            <CircularProgress />
+            <GearSpinner />
           </Box>
         ) : cards.length > 0 ? (
           <CardSlider cards={cards} visibleCards={3} />

@@ -3,10 +3,11 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
   Stack, Box, Typography, Checkbox, FormGroup, FormControlLabel,
-  CircularProgress, Alert, Divider, Paper, Table, TableBody, TableCell,
+  Alert, Divider, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow
 } from '@mui/material';
 import { Guild, Category, Employee, EmployeeRate, GuildService, CategoryService, EmployeeService, EmployeeRateService } from '@/utils/api';
+import GearSpinner from '@/components/GearSpinner';
 
 interface ApplyIncreaseModalProps {
   open: boolean;
@@ -188,7 +189,7 @@ export default function ApplyIncreaseModal({ open, guild, onClose, onSuccess }: 
       <DialogContent dividers>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
+            <GearSpinner />
           </Box>
         ) : (
           <Stack spacing={3}>
@@ -339,7 +340,7 @@ export default function ApplyIncreaseModal({ open, guild, onClose, onSuccess }: 
                     )}
                     {loadingRates && (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                        <CircularProgress size={16} />
+                        <GearSpinner size={16} />
                         <Typography variant="caption" color="textSecondary">
                           Cargando tarifas especiales...
                         </Typography>

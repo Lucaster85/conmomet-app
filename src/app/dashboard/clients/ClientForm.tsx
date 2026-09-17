@@ -6,15 +6,15 @@ import {
   Button,
   Typography,
   Alert,
-  CircularProgress,
   Divider,
 } from '@mui/material';
 import { SaveOutlined as SaveIcon } from '@mui/icons-material';
-import { 
-  ClientService, 
+import {
+  ClientService,
   CreateClientData,
   Client
 } from '../../../utils/api';
+import GearSpinner from '../../../components/GearSpinner';
 
 interface ClientFormProps {
   client?: Client;
@@ -178,7 +178,7 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
           <Button
             type="submit"
             variant="contained"
-            startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+            startIcon={loading ? <GearSpinner size={20} /> : <SaveIcon />}
             disabled={loading}
             size="large"
           >

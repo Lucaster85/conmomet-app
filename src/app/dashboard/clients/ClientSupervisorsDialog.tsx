@@ -17,7 +17,6 @@ import {
   Box,
   Tooltip,
   Alert,
-  CircularProgress,
   Switch,
   FormControlLabel,
   Paper,
@@ -34,6 +33,7 @@ import {
   CancelOutlined as CancelIcon,
 } from '@mui/icons-material';
 import { Client, ClientSupervisor, ClientSupervisorService } from '../../../utils/api';
+import GearSpinner from '../../../components/GearSpinner';
 
 interface ClientSupervisorsDialogProps {
   open: boolean;
@@ -290,7 +290,7 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
         {/* Loading Spinner */}
         {loading && supervisors.length === 0 ? (
           <Box display="flex" justifyContent="center" alignItems="center" py={5}>
-            <CircularProgress size={30} />
+            <GearSpinner size={30} />
           </Box>
         ) : (
           /* Table of Supervisors */

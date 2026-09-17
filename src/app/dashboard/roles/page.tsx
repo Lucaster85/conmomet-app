@@ -10,7 +10,6 @@ import {
   CardActions,
   IconButton,
   Chip,
-  CircularProgress,
   Alert,
   Dialog,
   DialogTitle,
@@ -36,6 +35,7 @@ import {
   AdminPanelSettingsOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { RoleService, PermissionService, Role, Permission } from '@/utils/api';
+import GearSpinner from '@/components/GearSpinner';
 
 function toErrorMsg(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -301,7 +301,7 @@ export default function RolesPage() {
 
       {loading ? (
         <Box display="flex" justifyContent="center" py={8}>
-          <CircularProgress />
+          <GearSpinner />
         </Box>
       ) : (
         <Grid container spacing={3}>
@@ -459,7 +459,7 @@ export default function RolesPage() {
             disabled={!roleName.trim() || savingRole}
             sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
           >
-            {savingRole ? <CircularProgress size={18} color="inherit" /> : 'Guardar'}
+            {savingRole ? <GearSpinner size={18} /> : 'Guardar'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -484,7 +484,7 @@ export default function RolesPage() {
             disabled={deleting}
             sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
           >
-            {deleting ? <CircularProgress size={18} color="inherit" /> : 'Eliminar'}
+            {deleting ? <GearSpinner size={18} /> : 'Eliminar'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -568,7 +568,7 @@ export default function RolesPage() {
             disabled={savingPerms}
             sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
           >
-            {savingPerms ? <CircularProgress size={18} color="inherit" /> : 'Guardar'}
+            {savingPerms ? <GearSpinner size={18} /> : 'Guardar'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -602,7 +602,7 @@ export default function RolesPage() {
             disabled={!newPermName.trim() || creatingPerm}
             sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
           >
-            {creatingPerm ? <CircularProgress size={18} color="inherit" /> : 'Crear'}
+            {creatingPerm ? <GearSpinner size={18} /> : 'Crear'}
           </Button>
         </DialogActions>
       </Dialog>

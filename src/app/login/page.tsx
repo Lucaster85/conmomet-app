@@ -14,6 +14,7 @@ import {
 import { VisibilityOutlined as Visibility, VisibilityOffOutlined as VisibilityOff, ArrowBackOutlined as ArrowBack } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import GearSpinner from '@/components/GearSpinner';
 import { useAuth, TokenManager } from '../../utils/auth';
 
 export default function LoginPage() {
@@ -228,7 +229,7 @@ export default function LoginPage() {
                 },
               }}
             >
-              {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+              {loading ? <GearSpinner size={24} /> : 'Iniciar Sesión'}
             </Button>
           </Box>
         </Paper>

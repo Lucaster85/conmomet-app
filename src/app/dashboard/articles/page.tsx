@@ -11,7 +11,6 @@ import {
   CardActions,
   IconButton,
   Chip,
-  CircularProgress,
   Alert,
   Tooltip,
   Dialog,
@@ -30,6 +29,7 @@ import {
   ArticleOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { MediaService, Media } from '@/utils/api';
+import GearSpinner from '@/components/GearSpinner';
 import ArticleForm from './ArticleForm';
 import ArticleSortModal from './ArticleSortModal';
 
@@ -160,7 +160,7 @@ export default function ArticlesPage() {
       {/* Loading */}
       {loading ? (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight={300}>
-          <CircularProgress />
+          <GearSpinner />
         </Box>
       ) : articles.length === 0 ? (
         <Box
@@ -330,7 +330,7 @@ export default function ArticlesPage() {
             disabled={deleting}
             sx={{ borderRadius: '10px', textTransform: 'none', minWidth: 100 }}
           >
-            {deleting ? <CircularProgress size={18} color="inherit" /> : 'Eliminar'}
+            {deleting ? <GearSpinner size={18} /> : 'Eliminar'}
           </Button>
         </DialogActions>
       </Dialog>

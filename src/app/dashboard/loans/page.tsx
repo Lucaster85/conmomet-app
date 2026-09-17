@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, Stack, TextField, InputAdornment,
+  DialogActions, Tooltip, Stack, TextField, InputAdornment,
   MenuItem, FormControl, InputLabel, Select
 } from '@mui/material';
 import {
@@ -23,6 +23,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
 import SignaturePad from '@/components/SignaturePad';
+import GearSpinner from '@/components/GearSpinner';
 import PaymentReceiptDialog from '@/components/PaymentReceiptDialog';
 import { Loan, Employee, LoanPayment, LoanInterestApplication, LoanInstallment, PayPeriod, LoanService, EmployeeService } from '@/utils/api';
 import { buildWhatsAppLink } from '@/utils/whatsapp';
@@ -147,6 +148,8 @@ export default function LoansPage() {
 
     const employee = employees.find(e => e.id === form.employee_id);
 
+    if (processing) return;
+    setProcessing(true);
     try {
       if (approvingLoan) {
         const updatedLoan = await LoanService.approve(approvingLoan.id, {
@@ -182,6 +185,8 @@ export default function LoansPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -361,7 +366,7 @@ export default function LoansPage() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }
@@ -777,8 +782,9 @@ export default function LoansPage() {
             onClick={handleSubmit}
             variant="contained"
             color={approvingLoan ? 'success' : 'primary'}
+            disabled={processing}
           >
-            {approvingLoan ? 'Aprobar Préstamo' : 'Registrar Préstamo'}
+            {processing ? <GearSpinner size={20} /> : (approvingLoan ? 'Aprobar Préstamo' : 'Registrar Préstamo')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -827,7 +833,7 @@ export default function LoansPage() {
         <DialogContent>
           {detailLoading ? (
             <Box display="flex" justifyContent="center" py={4}>
-              <CircularProgress size={28} />
+              <GearSpinner size={28} />
             </Box>
           ) : (
             <Stack spacing={3}>

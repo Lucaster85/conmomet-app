@@ -4,10 +4,11 @@ import { useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, TextField, Stack, LinearProgress,
+  DialogActions, Tooltip, TextField, Stack, LinearProgress,
   Grid, Divider, Chip,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, OpenInNewOutlined as DetailIcon,
   RefreshOutlined as RefreshIcon, GroupsOutlined as TeamIcon, CheckCircleOutlined as CompleteIcon,
@@ -56,6 +57,7 @@ export default function ProjectsPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; project: Project | null }>({ open: false, project: null });
+  const [processing, setProcessing] = useState(false);
   const [completeDialog, setCompleteDialog] = useState<{ open: boolean; project: Project | null }>({ open: false, project: null });
 
   // Team state
@@ -186,6 +188,8 @@ export default function ProjectsPage() {
       setError('El nombre y el cliente son obligatorios');
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       const payload: Partial<CreateProjectData> & { name: string; client_id: number } = {
         name: form.name,
@@ -216,6 +220,8 @@ export default function ProjectsPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -294,7 +300,7 @@ export default function ProjectsPage() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }
@@ -581,7 +587,7 @@ export default function ProjectsPage() {
                   Supervisores Asignados ({selectedSupervisorIds.length})
                 </Typography>
                 {loadingSupervisors ? (
-                  <CircularProgress size={20} />
+                  <GearSpinner size={20} />
                 ) : clientSupervisors.length === 0 ? (
                   <Typography variant="caption" color="text.secondary">
                     No hay supervisores registrados para este cliente. Configúrelos en la sección Clientes.
@@ -617,7 +623,7 @@ export default function ProjectsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">{editingProject ? 'Guardar' : 'Crear'}</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingProject ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -652,7 +658,7 @@ export default function ProjectsPage() {
         <DialogTitle>Equipo — {teamDialog.project?.name}</DialogTitle>
         <DialogContent>
           {loadingTeam ? (
-            <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+            <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>
           ) : !teamData || teamData.team.length === 0 ? (
             <Typography color="text.secondary" textAlign="center" py={3}>No hay empleados con horas registradas en este proyecto.</Typography>
           ) : (

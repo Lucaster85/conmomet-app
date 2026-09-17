@@ -3,11 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, TextField, Stack,
+  DialogActions, Tooltip, TextField, Stack,
   Chip, Link, Grid, useTheme, useMediaQuery
 } from '@mui/material';
 import dayjs from 'dayjs';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon,
   RefreshOutlined as RefreshIcon,
@@ -35,6 +36,7 @@ export default function AttendancePage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null);
 
   // Filters
@@ -183,6 +185,8 @@ export default function AttendancePage() {
       return;
     }
     const hours = showPartialHours && form.hours ? Number(form.hours) : null;
+    if (processing) return;
+    setProcessing(true);
     try {
       if (editingAttendance) {
         await AttendanceService.update(editingAttendance.id, {
@@ -207,6 +211,8 @@ export default function AttendancePage() {
       loadAttendances();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -214,7 +220,7 @@ export default function AttendancePage() {
     return new Date(d + 'T12:00:00').toLocaleDateString('es-AR');
   };
 
-  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
 
   return (
     <Box>
@@ -419,7 +425,7 @@ export default function AttendancePage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">{editingAttendance ? 'Guardar' : 'Registrar'}</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingAttendance ? 'Guardar' : 'Registrar')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

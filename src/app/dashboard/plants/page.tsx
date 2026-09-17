@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, TextField, Switch,
+  DialogActions, Tooltip, TextField, Switch,
   FormControlLabel, Stack, Chip, Divider,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
@@ -40,6 +41,7 @@ export default function PlantsPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingPlant, setEditingPlant] = useState<Plant | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; plant: Plant | null }>({ open: false, plant: null });
+  const [processing, setProcessing] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
 
   // Requirements state
@@ -107,6 +109,8 @@ export default function PlantsPage() {
       setError('El nombre es obligatorio');
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       const payload = {
         name: form.name,
@@ -127,6 +131,8 @@ export default function PlantsPage() {
       loadPlants();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -208,7 +214,7 @@ export default function PlantsPage() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }
@@ -323,7 +329,7 @@ export default function PlantsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">{editingPlant ? 'Guardar' : 'Crear'}</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingPlant ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -343,7 +349,7 @@ export default function PlantsPage() {
         <DialogTitle>Requisitos de Ingreso — {reqDialog.plant?.name}</DialogTitle>
         <DialogContent>
           {loadingReqs ? (
-            <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+            <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>
           ) : (
             <Box>
               {/* Current requirements */}
@@ -418,7 +424,7 @@ export default function PlantsPage() {
         <DialogTitle>Habilitaciones — {compDialog.plant?.name}</DialogTitle>
         <DialogContent>
           {loadingComp ? (
-            <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+            <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>
           ) : !compData || compData.requirements.length === 0 ? (
             <Typography color="text.secondary" textAlign="center" py={3}>Esta planta no tiene requisitos definidos. Configurá los requisitos primero.</Typography>
           ) : (

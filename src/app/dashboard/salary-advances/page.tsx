@@ -3,13 +3,14 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, TextField, Stack, Chip, Autocomplete, Grid, useTheme, useMediaQuery
+  DialogActions, TextField, Stack, Chip, Autocomplete, Grid, useTheme, useMediaQuery
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import CurrencyInput from '../../../components/CurrencyInput';
 import SignaturePad from '../../../components/SignaturePad';
 import PaymentReceiptDialog from '../../../components/PaymentReceiptDialog';
+import GearSpinner from '../../../components/GearSpinner';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import Alert from '@mui/material/Alert';
@@ -134,6 +135,8 @@ export default function SalaryAdvancesPage() {
       setError('Campos obligatorios');
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       await SalaryAdvanceService.create({
         employee_ids: selectedEmployees.map(e => e.id),
@@ -149,6 +152,8 @@ export default function SalaryAdvancesPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -332,7 +337,7 @@ export default function SalaryAdvancesPage() {
     return true;
   });
 
-  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
 
   return (
     <Box>
@@ -676,9 +681,9 @@ export default function SalaryAdvancesPage() {
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={selectedEmployees.length === 0 || !form.amount || !form.date}
+            disabled={processing || selectedEmployees.length === 0 || !form.amount || !form.date}
           >
-            Registrar {selectedEmployees.length > 1 ? `(${selectedEmployees.length})` : ''}
+            {processing ? <GearSpinner size={20} /> : `Registrar ${selectedEmployees.length > 1 ? `(${selectedEmployees.length})` : ''}`}
           </Button>
         </DialogActions>
       </Dialog>

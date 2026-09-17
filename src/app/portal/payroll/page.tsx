@@ -6,13 +6,13 @@ import {
   Card,
   CardContent,
   Grid,
-  CircularProgress,
   Alert,
   Chip,
   Divider,
 } from '@mui/material';
 import { PaymentsOutlined as TitleIcon } from '@mui/icons-material';
 import { SelfService, PayrollEntry, PayrollAdjustment } from '@/utils/api';
+import GearSpinner from '@/components/GearSpinner';
 import dayjs from 'dayjs';
 
 export default function PortalPayroll() {
@@ -38,7 +38,7 @@ export default function PortalPayroll() {
     fetchPayroll();
   }, []);
 
-  if (loading) return <Box display="flex" justifyContent="center" mt={8}><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" mt={8}><GearSpinner /></Box>;
   if (error) return <Alert severity="error" sx={{ mt: 4 }}>{error}</Alert>;
 
   return (

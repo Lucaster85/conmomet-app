@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { TextField, TextFieldProps, InputAdornment, CircularProgress } from '@mui/material';
+import { TextField, TextFieldProps, InputAdornment } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOnOutlined';
+import GearSpinner from './GearSpinner';
 
 type AddressAutocompleteProps = Omit<TextFieldProps, 'onChange' | 'value'> & {
   value: string;
@@ -125,7 +126,7 @@ export default function AddressAutocomplete({ value, onChange, ...textFieldProps
           ),
           endAdornment: showSpinner ? (
             <InputAdornment position="end">
-              <CircularProgress size={16} />
+              <GearSpinner size={16} />
             </InputAdornment>
           ) : undefined,
         },

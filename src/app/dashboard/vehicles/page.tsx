@@ -17,7 +17,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress,
   Tooltip,
   TextField,
   Stack,
@@ -34,6 +33,7 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon,
   EditOutlined as EditIcon,
@@ -357,7 +357,7 @@ export default function VehiclesPage() {
       {/* Vehicles list */}
       {loading ? (
         <Box display="flex" justifyContent="center" py={8}>
-          <CircularProgress />
+          <GearSpinner />
         </Box>
       ) : filteredVehicles.length === 0 ? (
         <Paper sx={{ p: 5, textAlign: 'center', borderRadius: 2 }} elevation={1}>
@@ -727,7 +727,7 @@ export default function VehiclesPage() {
         <DialogTitle>Historial de estados — {historyDialog.vehicle?.brand} {historyDialog.vehicle?.model} ({historyDialog.vehicle?.plate})</DialogTitle>
         <DialogContent>
           {historyDialog.loading ? (
-            <Box display="flex" justifyContent="center" py={3}><CircularProgress size={24} /></Box>
+            <Box display="flex" justifyContent="center" py={3}><GearSpinner size={24} /></Box>
           ) : historyDialog.entries.length === 0 ? (
             <Typography color="text.secondary" textAlign="center" py={3}>Sin cambios de estado registrados todavía.</Typography>
           ) : (

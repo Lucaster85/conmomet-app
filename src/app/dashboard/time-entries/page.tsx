@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Card, CircularProgress, TextField, Stack,
+  Box, Typography, Button, Paper, Card, TextField, Stack,
   Chip, Checkbox, FormControlLabel, Autocomplete, Dialog, DialogTitle,
   DialogContent, DialogActions, Divider, IconButton, Tooltip, Switch, Grid, Alert
 } from '@mui/material';
@@ -9,6 +9,7 @@ import dayjs from 'dayjs';
 import { TimeField } from '@mui/x-date-pickers/TimeField';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, BlockOutlined as VoidIcon,
   CheckCircleOutlined as ApproveIcon, DeleteOutlined as DeleteIcon,
@@ -76,6 +77,7 @@ export default function TimeEntriesPage() {
   const [filterEmployee, setFilterEmployee] = useState<number | ''>('');
   const [filterPreset, setFilterPreset] = useState('this_fortnight');
   const [showVoided, setShowVoided] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [filterDateFrom, setFilterDateFrom] = useState(() => {
     const today = dayjs();
     return today.date() <= 15 
@@ -343,7 +345,9 @@ export default function TimeEntriesPage() {
   const handleCreate = async () => {
     if (selectedEmployees.length === 0) { setError('Seleccioná al menos un empleado'); return; }
     if (!formDate) { setError('Fecha obligatoria'); return; }
+    if (processing) return;
 
+    setProcessing(true);
     try {
       // Build payloads depending on mode
       const payloads: CreateTimeEntryData[] = [];
@@ -434,6 +438,8 @@ export default function TimeEntriesPage() {
       loadEntries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -544,7 +550,7 @@ export default function TimeEntriesPage() {
   const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
   if (loading) {
-    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
   }
 
   return (
@@ -1154,7 +1160,7 @@ export default function TimeEntriesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenCreateDialog(false)}>Cancelar</Button>
-          <Button onClick={handleCreate} variant="contained" size="large">Guardar Registro</Button>
+          <Button onClick={handleCreate} variant="contained" size="large" disabled={processing}>{processing ? <GearSpinner size={20} /> : 'Guardar Registro'}</Button>
         </DialogActions>
       </Dialog>
 

@@ -5,7 +5,6 @@ import {
   Typography,
   Card,
   CardContent,
-  CircularProgress,
   Alert,
   Divider,
   Grid,
@@ -27,6 +26,7 @@ import {
   EventAvailableOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { SelfService, LeaveRequest, LeaveBalance, Attendance } from '@/utils/api';
+import GearSpinner from '@/components/GearSpinner';
 import dayjs from 'dayjs';
 
 export default function PortalAttendance() {
@@ -85,7 +85,7 @@ export default function PortalAttendance() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" mt={8}>
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }

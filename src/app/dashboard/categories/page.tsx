@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, Stack, TextField, InputAdornment,
+  DialogActions, Tooltip, Stack, TextField, InputAdornment,
 } from '@mui/material';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
@@ -12,6 +12,7 @@ import {
 } from '@mui/icons-material';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
+import GearSpinner from '@/components/GearSpinner';
 import { Category, CategoryService, Guild, GuildService, ApplyCategoryBonusResponse } from '@/utils/api';
 import { Select, MenuItem, InputLabel, FormControl } from '@mui/material';
 import ApplyCategoryBonusModal from './ApplyCategoryBonusModal';
@@ -30,6 +31,7 @@ export default function CategoriesPage() {
   const [form, setForm] = useState(emptyForm);
   const [guilds, setGuilds] = useState<Guild[]>([]);
   const [bonusModal, setBonusModal] = useState<{ open: boolean; category: Category | null }>({ open: false, category: null });
+  const [processing, setProcessing] = useState(false);
 
   const handleBonusSuccess = (result: ApplyCategoryBonusResponse) => {
     const lines = [result.message];
@@ -74,6 +76,9 @@ export default function CategoriesPage() {
     if (!form.name.trim()) return setError('El nombre es obligatorio');
     if (!form.guild_hourly_rate || form.guild_hourly_rate <= 0) return setError('El valor hora gremio debe ser mayor a 0');
     if (!form.guild_id) return setError('Debe seleccionar un gremio');
+    if (processing) return;
+
+    setProcessing(true);
     try {
       if (editing) {
         await CategoryService.update(editing.id, form);
@@ -86,6 +91,8 @@ export default function CategoriesPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -111,7 +118,7 @@ export default function CategoriesPage() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }
@@ -282,8 +289,8 @@ export default function CategoriesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editing ? 'Guardar' : 'Crear'}
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>
+            {processing ? <GearSpinner size={20} /> : (editing ? 'Guardar' : 'Crear')}
           </Button>
         </DialogActions>
       </Dialog>

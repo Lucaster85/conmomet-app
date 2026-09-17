@@ -11,11 +11,11 @@ import {
   Box,
   Typography,
   IconButton,
-  CircularProgress,
   Alert,
 } from '@mui/material';
 import { CloseOutlined as CloseIcon, CloudUploadOutlined as CloudUploadIcon, ImageOutlined as ImageIcon } from '@mui/icons-material';
 import { MediaService, Media, CreateMediaData, UpdateMediaData } from '@/utils/api';
+import GearSpinner from '@/components/GearSpinner';
 
 interface ArticleFormProps {
   open: boolean;
@@ -228,7 +228,7 @@ export default function ArticleForm({ open, onClose, onSuccess, editItem }: Arti
           disabled={loading}
           sx={{ borderRadius: '10px', textTransform: 'none', minWidth: 120 }}
         >
-          {loading ? <CircularProgress size={20} color="inherit" /> : isEditing ? 'Guardar cambios' : 'Crear artículo'}
+          {loading ? <GearSpinner size={20} /> : isEditing ? 'Guardar cambios' : 'Crear artículo'}
         </Button>
       </DialogActions>
     </Dialog>

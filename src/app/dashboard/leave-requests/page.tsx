@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, TextField, Stack,
+  DialogActions, Tooltip, TextField, Stack,
   Chip, MenuItem, Select, FormControl, InputLabel,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import DateField from '../../../components/DateField';
 import {
   AddOutlined as AddIcon,
@@ -241,7 +242,7 @@ export default function LeaveRequestsPage() {
 
       {/* Content */}
       {loading ? (
-        <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>
+        <Box display="flex" justifyContent="center" p={4}><GearSpinner /></Box>
       ) : (
         <TableContainer component={Paper}>
           <Table>
@@ -417,7 +418,7 @@ export default function LeaveRequestsPage() {
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)} disabled={submitting}>Cancelar</Button>
           <Button onClick={handleCreate} variant="contained" disabled={submitting}>
-            {submitting ? <CircularProgress size={24} /> : 'Crear Solicitud'}
+            {submitting ? <GearSpinner size={24} /> : 'Crear Solicitud'}
           </Button>
         </DialogActions>
       </Dialog>

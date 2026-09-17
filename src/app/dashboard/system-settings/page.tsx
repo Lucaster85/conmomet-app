@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Card, CardContent, Stack, Button, CircularProgress, InputAdornment } from '@mui/material';
+import { Box, Typography, Card, CardContent, Stack, Button, InputAdornment } from '@mui/material';
+import GearSpinner from '@/components/GearSpinner';
 import { SettingsOutlined as TitleIcon } from '@mui/icons-material';
 import CurrencyInput from '@/components/CurrencyInput';
 import FeedbackModal from '@/components/FeedbackModal';
@@ -38,7 +39,7 @@ export default function SystemSettingsPage() {
   };
 
   if (loading) {
-    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
   }
 
   return (

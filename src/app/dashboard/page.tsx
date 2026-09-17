@@ -7,7 +7,6 @@ import {
   Typography,
   Paper,
   Stack,
-  CircularProgress,
   Chip,
   Button,
   IconButton,
@@ -28,6 +27,7 @@ import {
   RequestQuoteOutlined as RequestQuoteIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '../../components/FeedbackModal';
+import GearSpinner from '../../components/GearSpinner';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import DateField from '../../components/DateField';
 import { ClockIcon } from '@mui/x-date-pickers';
@@ -201,7 +201,7 @@ export default function DashboardPage() {
           </Box>
 
           {loadingDocs ? (
-            <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+            <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>
           ) : expiringDocs.length === 0 ? (
             <Box textAlign="center" py={4} bgcolor="grey.50" borderRadius={2}>
               <Typography color="text.secondary">¡Todo al día! No hay documentos por vencer.</Typography>
@@ -356,7 +356,7 @@ export default function DashboardPage() {
           </Box>
 
           {loadingRequests ? (
-            <Box display="flex" justifyContent="center" py={2}><CircularProgress size={28} /></Box>
+            <Box display="flex" justifyContent="center" py={2}><GearSpinner size={28} /></Box>
           ) : (
             <Stack spacing={2.5}>
               <Box onClick={() => router.push('/dashboard/salary-advances')} sx={{ cursor: 'pointer', p: 1.5, borderRadius: 2, '&:hover': { bgcolor: 'grey.50' } }}>

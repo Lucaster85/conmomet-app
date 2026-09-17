@@ -10,13 +10,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  CircularProgress,
   TextField,
   Button,
   Stack
 } from '@mui/material';
 import { SearchOutlined as SearchIcon, AccessTimeOutlined as TitleIcon } from '@mui/icons-material';
 import { SelfService, TimeEntry } from '@/utils/api';
+import GearSpinner from '@/components/GearSpinner';
 import dayjs from 'dayjs';
 
 export default function PortalTimeEntries() {
@@ -94,7 +94,7 @@ export default function PortalTimeEntries() {
       {/* Mobile Cards */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
         {loading ? (
-          <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+          <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>
         ) : error ? (
           <Typography color="error" textAlign="center" py={2}>{error}</Typography>
         ) : entries.length === 0 ? (
@@ -160,7 +160,7 @@ export default function PortalTimeEntries() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
-                      <CircularProgress size={30} />
+                      <GearSpinner size={30} />
                     </TableCell>
                   </TableRow>
                 ) : error ? (

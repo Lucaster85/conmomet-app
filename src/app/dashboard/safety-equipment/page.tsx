@@ -3,9 +3,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, TextField, Stack, Chip, IconButton, Tooltip
+  DialogActions, TextField, Stack, Chip, IconButton, Tooltip
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, SettingsOutlined as SettingsIcon,
   EditOutlined as EditIcon, ToggleOnOutlined as ToggleOnIcon, ToggleOffOutlined as ToggleOffIcon,
@@ -54,6 +55,7 @@ export default function SafetyEquipmentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [processing, setProcessing] = useState(false);
 
   // Delivery dialog
   const [openDialog, setOpenDialog] = useState(false);
@@ -132,6 +134,8 @@ export default function SafetyEquipmentPage() {
       setError('Empleado, artículo y fecha son obligatorios');
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       await SafetyEquipmentService.create({
         employee_id: Number(form.employee_id),
@@ -151,6 +155,8 @@ export default function SafetyEquipmentPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -174,6 +180,8 @@ export default function SafetyEquipmentPage() {
       setError('Nombre y categoría son obligatorios');
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       if (editingCatalogItem) {
         await EppItemService.update(editingCatalogItem.id, catalogForm);
@@ -191,6 +199,8 @@ export default function SafetyEquipmentPage() {
       setEppItems(items);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar artículo');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -208,7 +218,7 @@ export default function SafetyEquipmentPage() {
 
   const formatDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-AR');
 
-  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
 
   return (
     <Box>
@@ -347,7 +357,9 @@ export default function SafetyEquipmentPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">Registrar</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>
+            {processing ? <GearSpinner size={20} /> : 'Registrar'}
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -438,7 +450,9 @@ export default function SafetyEquipmentPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCatalogDialogOpen(false)}>Cancelar</Button>
-          <Button onClick={handleCatalogSubmit} variant="contained">{editingCatalogItem ? 'Guardar' : 'Crear'}</Button>
+          <Button onClick={handleCatalogSubmit} variant="contained" disabled={processing}>
+            {processing ? <GearSpinner size={20} /> : (editingCatalogItem ? 'Guardar' : 'Crear')}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

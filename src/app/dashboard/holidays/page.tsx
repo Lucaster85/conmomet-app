@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, CircularProgress, TextField, Stack,
+  Box, Typography, Button, Paper, TextField, Stack,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions,
   Chip,
@@ -12,6 +12,7 @@ import {
   DeleteOutlined as DeleteIcon, CalendarMonthOutlined as TitleIcon,
 } from '@mui/icons-material';
 import DateField from '../../../components/DateField';
+import GearSpinner from '../../../components/GearSpinner';
 import { Holiday, HolidayService } from '../../../utils/api';
 
 export default function HolidaysPage() {
@@ -23,6 +24,7 @@ export default function HolidaysPage() {
   const [editing, setEditing] = useState<Holiday | null>(null);
   const [form, setForm] = useState({ date: '', name: '' });
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear());
+  const [processing, setProcessing] = useState(false);
 
   const loadData = async () => {
     try {
@@ -51,6 +53,8 @@ export default function HolidaysPage() {
   };
 
   const handleSave = async () => {
+    if (processing) return;
+    setProcessing(true);
     try {
       if (!form.date || !form.name) {
         setError('Fecha y nombre son obligatorios');
@@ -67,6 +71,8 @@ export default function HolidaysPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -84,7 +90,7 @@ export default function HolidaysPage() {
 
   const isPast = (d: string) => new Date(d) < new Date(new Date().toISOString().split('T')[0]);
 
-  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
 
   return (
     <Box>
@@ -172,7 +178,7 @@ export default function HolidaysPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">{editing ? 'Guardar' : 'Crear'}</Button>
+          <Button onClick={handleSave} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editing ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

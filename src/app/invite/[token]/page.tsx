@@ -10,8 +10,8 @@ import {
   Alert,
   IconButton,
   InputAdornment,
-  CircularProgress,
 } from '@mui/material';
+import GearSpinner from '@/components/GearSpinner';
 import { VisibilityOutlined as Visibility, VisibilityOffOutlined as VisibilityOff } from '@mui/icons-material';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -111,7 +111,7 @@ export default function InviteAcceptPage() {
 
           {stage === 'validating' && (
             <Box display="flex" flexDirection="column" alignItems="center" py={4} gap={2}>
-              <CircularProgress />
+              <GearSpinner />
               <Typography color="text.secondary">Validando invitación…</Typography>
             </Box>
           )}
@@ -180,7 +180,7 @@ export default function InviteAcceptPage() {
                     },
                   }}
                 >
-                  {stage === 'submitting' ? 'Creando cuenta…' : 'Crear mi cuenta'}
+                  {stage === 'submitting' ? <GearSpinner size={24} /> : 'Crear mi cuenta'}
                 </Button>
               </Box>
             </>

@@ -17,7 +17,6 @@ import {
   DialogContent,
   DialogActions,
   Alert,
-  CircularProgress,
   Tooltip,
   TextField,
   InputAdornment,
@@ -40,6 +39,7 @@ import ClientForm from './ClientForm';
 import ClientSupervisorsDialog from './ClientSupervisorsDialog';
 import ClientItemRatesDialog from './ClientItemRatesDialog';
 import { useAuth } from '../../../utils/auth';
+import GearSpinner from '../../../components/GearSpinner';
 
 export default function ClientsPage() {
   const { user } = useAuth();
@@ -151,7 +151,7 @@ export default function ClientsPage() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }

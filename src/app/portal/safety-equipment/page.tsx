@@ -10,12 +10,12 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  CircularProgress,
   Alert,
   Chip
 } from '@mui/material';
 import { SecurityOutlined as TitleIcon } from '@mui/icons-material';
 import { SelfService, SafetyEquipment } from '@/utils/api';
+import GearSpinner from '@/components/GearSpinner';
 import dayjs from 'dayjs';
 
 export default function PortalSafetyEquipment() {
@@ -41,7 +41,7 @@ export default function PortalSafetyEquipment() {
     fetchEpp();
   }, []);
 
-  if (loading) return <Box display="flex" justifyContent="center" mt={8}><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" mt={8}><GearSpinner /></Box>;
   if (error) return <Alert severity="error" sx={{ mt: 4 }}>{error}</Alert>;
 
   return (

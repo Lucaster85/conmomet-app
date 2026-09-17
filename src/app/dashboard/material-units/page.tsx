@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, TextField, Stack, Chip, Switch, FormControlLabel,
+  DialogActions, Tooltip, TextField, Stack, Chip, Switch, FormControlLabel,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import { AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon, CategoryOutlined as TitleIcon } from '@mui/icons-material';
 import { MaterialUnit, MaterialUnitService, CreateMaterialUnitData } from '../../../utils/api';
 
@@ -21,6 +22,7 @@ export default function MaterialUnitsPage() {
   const [editingItem, setEditingItem] = useState<MaterialUnit | null>(null);
   const [form, setForm] = useState<CreateMaterialUnitData>(emptyForm());
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: MaterialUnit | null }>({ open: false, item: null });
+  const [processing, setProcessing] = useState(false);
 
   const loadData = async () => {
     try {
@@ -54,6 +56,8 @@ export default function MaterialUnitsPage() {
       setError('La etiqueta es obligatoria');
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       if (editingItem) {
         await MaterialUnitService.update(editingItem.id, form);
@@ -66,6 +70,8 @@ export default function MaterialUnitsPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -82,7 +88,7 @@ export default function MaterialUnitsPage() {
   };
 
   if (loading) {
-    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
   }
 
   return (
@@ -179,7 +185,9 @@ export default function MaterialUnitsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">{editingItem ? 'Guardar' : 'Crear'}</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>
+            {processing ? <GearSpinner size={20} /> : (editingItem ? 'Guardar' : 'Crear')}
+          </Button>
         </DialogActions>
       </Dialog>
 

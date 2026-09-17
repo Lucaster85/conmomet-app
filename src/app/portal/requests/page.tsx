@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   Grid,
-  CircularProgress,
   Divider,
   Chip,
   TextField,
@@ -21,6 +20,7 @@ import {
 import { SelfService, Employee, SalaryAdvance, Loan } from '@/utils/api';
 import CurrencyInput from '@/components/CurrencyInput';
 import FeedbackModal from '@/components/FeedbackModal';
+import GearSpinner from '@/components/GearSpinner';
 import dayjs from 'dayjs';
 
 const MIN_LOAN_SENIORITY_YEARS = 1;
@@ -169,7 +169,7 @@ export default function PortalRequestsPage() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" mt={8}>
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }

@@ -11,12 +11,12 @@ import {
   FormControlLabel,
   Checkbox,
   Typography,
-  CircularProgress,
   FormGroup,
   Paper,
   Divider,
   Alert,
 } from '@mui/material';
+import GearSpinner from '../../../components/GearSpinner';
 import { SaveOutlined as SaveIcon, ContentCopyOutlined as ContentCopyIcon } from '@mui/icons-material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import { 
@@ -217,7 +217,7 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
   if (loadingData) {
     return (
       <Box display="flex" justifyContent="center" p={4}>
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }
@@ -438,7 +438,7 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
           <Button
             type="submit"
             variant="contained"
-            startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+            startIcon={loading ? <GearSpinner size={20} /> : <SaveIcon />}
             disabled={loading}
             size="large"
           >

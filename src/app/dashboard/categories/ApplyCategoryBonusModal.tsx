@@ -2,10 +2,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
-  Stack, Box, Typography, CircularProgress, Alert, Divider, Paper,
+  Stack, Box, Typography, Alert, Divider, Paper,
   Select, MenuItem, InputLabel, FormControl,
 } from '@mui/material';
 import CurrencyInput from '@/components/CurrencyInput';
+import GearSpinner from '@/components/GearSpinner';
 import {
   Category, Employee, EmployeeService, PayPeriod, PayPeriodService,
   CategoryService, ApplyCategoryBonusResponse,
@@ -96,7 +97,7 @@ export default function ApplyCategoryBonusModal({ open, category, onClose, onSuc
       </DialogTitle>
       <DialogContent dividers>
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><GearSpinner /></Box>
         ) : (
           <Stack spacing={3}>
             {error && <Alert severity="error">{error}</Alert>}

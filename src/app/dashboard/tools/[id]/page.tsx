@@ -2,13 +2,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  Box, Typography, Paper, Chip, Button, CircularProgress, Divider, Stack, Grid, Card,
+  Box, Typography, Paper, Chip, Button, Divider, Stack, Grid, Card,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, Autocomplete,
 } from '@mui/material';
 import { ArrowBackOutlined as BackIcon, PrintOutlined as PrintIcon, SwapHorizOutlined as StatusIcon, OpenInNewOutlined as OpenIcon } from '@mui/icons-material';
 import { QRCodeSVG } from 'qrcode.react';
 import FeedbackModal from '../../../../components/FeedbackModal';
+import GearSpinner from '../../../../components/GearSpinner';
 import {
   Tool, ToolService, ToolStatus, ToolStatusLogEntry,
   AssetAssignment, AssetAssignmentService, AssetAssignmentStatus, AssetCondition, AssetCompleteness,
@@ -98,7 +99,7 @@ export default function ToolDetailPage() {
     }
   };
 
-  if (loading) return <Box display="flex" justifyContent="center" py={8}><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" py={8}><GearSpinner /></Box>;
   if (!tool) return <Typography color="text.secondary" textAlign="center" py={8}>Herramienta no encontrada.</Typography>;
 
   return (

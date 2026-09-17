@@ -10,7 +10,6 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  CircularProgress,
   Tooltip,
   TextField,
   Stack,
@@ -80,6 +79,7 @@ import {
   OcaClientRateHistoryEntry,
 } from '../../../utils/api';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import { useAuth } from '../../../utils/auth';
 
 const STATUS_COLORS: Record<Oca['status'], 'warning' | 'info' | 'success' | 'error' | 'default'> = {
@@ -1386,7 +1386,7 @@ export default function OcasPage() {
         {/* OCA List */}
         {loading ? (
           <Box display="flex" justifyContent="center" py={8}>
-            <CircularProgress />
+            <GearSpinner />
           </Box>
         ) : filteredOcas.length === 0 ? (
           <Paper sx={{ p: 5, textAlign: 'center', borderRadius: 2 }} elevation={1}>
@@ -2059,7 +2059,7 @@ export default function OcasPage() {
 
                 {loadingPending ? (
                   <Box display="flex" justifyContent="center" py={4}>
-                    <CircularProgress />
+                    <GearSpinner />
                   </Box>
                 ) : createClientId && pendingEntries.length === 0 && typeKey === 'man_hours' ? (
                   <Alert severity="info">
@@ -2273,7 +2273,7 @@ export default function OcasPage() {
           <DialogTitle>Agregar Horas al Remito {addEntriesOca?.number}</DialogTitle>
           <DialogContent dividers>
             {loadingPending ? (
-              <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+              <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>
             ) : pendingEntries.length === 0 ? (
               <Alert severity="info">No se encontraron más horas compatibles pendientes de facturación para este cliente/supervisor.</Alert>
             ) : (

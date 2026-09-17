@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, TextField, Stack, Chip,
+  DialogActions, Tooltip, TextField, Stack, Chip,
   FormControlLabel, Switch,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   RefreshOutlined as RefreshIcon, FolderSpecialOutlined as TitleIcon,
@@ -35,6 +36,7 @@ export default function DocumentCategoriesPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<DocumentCategory | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; category: DocumentCategory | null }>({ open: false, category: null });
+  const [processing, setProcessing] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
@@ -80,6 +82,8 @@ export default function DocumentCategoriesPage() {
       setError('El nombre es obligatorio');
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       const payload: CreateDocumentCategoryData = {
         name: form.name,
@@ -99,6 +103,8 @@ export default function DocumentCategoriesPage() {
       loadCategories();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -117,7 +123,7 @@ export default function DocumentCategoriesPage() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }
@@ -248,7 +254,7 @@ export default function DocumentCategoriesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">{editingCategory ? 'Guardar' : 'Crear'}</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingCategory ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
       </Dialog>
 

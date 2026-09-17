@@ -4,10 +4,11 @@ import { useSearchParams } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, TextField, Stack, Chip, ToggleButtonGroup, ToggleButton,
+  DialogActions, Tooltip, TextField, Stack, Chip, ToggleButtonGroup, ToggleButton,
   Autocomplete,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, CheckCircleOutlined as DeliverIcon,
   AssignmentReturnOutlined as ReturnIcon, CancelOutlined as CancelIcon, SwapHorizOutlined as TitleIcon,
@@ -237,7 +238,7 @@ export default function AssetAssignmentsPage() {
   );
 
   if (loading && items.length === 0) {
-    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
   }
 
   return (

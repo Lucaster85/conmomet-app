@@ -17,7 +17,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress,
   Tooltip,
   TextField,
   InputAdornment,
@@ -33,6 +32,7 @@ import {
 } from '@mui/icons-material';
 import { User, UserService } from '../../../utils/api';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import UserForm from './UserForm';
 
 export default function UsersPage() {
@@ -125,7 +125,7 @@ export default function UsersPage() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }

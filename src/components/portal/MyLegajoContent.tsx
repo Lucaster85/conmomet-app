@@ -6,11 +6,11 @@ import {
   Card,
   CardContent,
   Grid,
-  CircularProgress,
   Alert,
   Divider,
   Chip
 } from '@mui/material';
+import GearSpinner from '@/components/GearSpinner';
 import {
   BadgeOutlined as BadgeIcon,
   WorkOutlined as WorkIcon,
@@ -47,7 +47,7 @@ export default function MyLegajoContent() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" mt={8}>
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }

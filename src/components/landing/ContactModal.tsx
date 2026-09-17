@@ -4,7 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -15,6 +14,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { CloseOutlined as CloseIcon, SendOutlined as SendIcon } from '@mui/icons-material';
+import GearSpinner from '../GearSpinner';
 
 const API_BASE_URL =
   (typeof window !== 'undefined' && (window as { __ENV__?: { API_BASE_URL?: string } }).__ENV__?.API_BASE_URL) ||
@@ -199,7 +199,7 @@ export default function ContactModal({ open, onClose }: ContactModalProps) {
                 type="submit"
                 variant="contained"
                 size="large"
-                endIcon={loading ? <CircularProgress size={18} color="inherit" /> : <SendIcon />}
+                endIcon={loading ? <GearSpinner size={18} /> : <SendIcon />}
                 disabled={loading || success}
                 sx={{
                   borderRadius: '10px',

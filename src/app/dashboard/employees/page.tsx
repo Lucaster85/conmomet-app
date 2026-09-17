@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, TextField, Stack,
+  DialogActions, Tooltip, TextField, Stack,
   Chip, InputAdornment, Divider, MenuItem, Select, FormControl, InputLabel,
   FormHelperText, Switch, FormControlLabel
 } from '@mui/material';
@@ -12,6 +12,7 @@ import DateField from '../../../components/DateField';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import CurrencyInput from '../../../components/CurrencyInput';
 import InviteEmployeeDialog from '../../../components/InviteEmployeeDialog';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, VisibilityOutlined as VisibilityIcon,
@@ -40,6 +41,7 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
   const [inviteTarget, setInviteTarget] = useState<Employee | null>(null);
@@ -135,6 +137,8 @@ export default function EmployeesPage() {
       setError(form.pay_type === 'biweekly_fixed' ? 'El sueldo quincenal es obligatorio para empleados quincenales' : 'El sueldo mensual es obligatorio para empleados mensualizados');
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       if (editingEmployee) {
         await EmployeeService.update(editingEmployee.id, form);
@@ -147,6 +151,8 @@ export default function EmployeesPage() {
       loadEmployees();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -192,7 +198,7 @@ export default function EmployeesPage() {
   const formatCurrency = (val: number) => `$${Number(val).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
   if (loading) {
-    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
   }
 
   return (
@@ -512,7 +518,7 @@ export default function EmployeesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">{editingEmployee ? 'Guardar' : 'Crear'}</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingEmployee ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
       </Dialog>
 

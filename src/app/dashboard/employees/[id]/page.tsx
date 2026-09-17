@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  Box, Typography, Paper, CircularProgress, Tabs, Tab,
+  Box, Typography, Paper, Tabs, Tab,
   Button, IconButton, Chip, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Tooltip, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   Switch, FormControlLabel, Card, CardContent, Divider, Grid,
   LinearProgress, Alert
 } from '@mui/material';
+import GearSpinner from '@/components/GearSpinner';
 import DateField from '../../../../components/DateField';
 import ArrowBackIcon from '@mui/icons-material/ArrowBackOutlined';
 import CloudUploadIcon from '@mui/icons-material/CloudUploadOutlined';
@@ -409,7 +410,7 @@ export default function EmployeeDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabValue]);
 
-  if (loading) return <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>;
   if (!employee) return <Typography color="error">Empleado no encontrado.</Typography>;
 
   return (
@@ -826,7 +827,7 @@ export default function EmployeeDetailPage() {
               <Divider sx={{ mb: 2 }} />
 
               {loadingAttendance ? (
-                <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+                <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>
               ) : attendances.length === 0 ? (
                 <Alert severity="success">No hay ausencias registradas en el período seleccionado.</Alert>
               ) : (
@@ -881,7 +882,7 @@ export default function EmployeeDetailPage() {
       {tabValue === 3 && (
         <Box>
           {loadingLeave ? (
-            <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
+            <Box display="flex" justifyContent="center" py={6}><GearSpinner /></Box>
           ) : (
             <Grid container spacing={3}>
               {/* Balance de vacaciones */}
@@ -1017,7 +1018,7 @@ export default function EmployeeDetailPage() {
       {tabValue === 4 && (
         <Box>
           {loadingRates ? (
-            <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
+            <Box display="flex" justifyContent="center" py={6}><GearSpinner /></Box>
           ) : (
             <Stack spacing={3}>
               <Box display="flex" justifyContent="space-between" alignItems="center">
@@ -1460,7 +1461,7 @@ export default function EmployeeDetailPage() {
         <DialogTitle>Historial de Renovaciones</DialogTitle>
         <DialogContent>
           {loadingHistory ? (
-             <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+             <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>
           ) : (
             <TableContainer>
               <Table size="small">

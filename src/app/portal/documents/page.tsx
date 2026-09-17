@@ -10,7 +10,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  CircularProgress,
   Alert,
   Chip,
   IconButton,
@@ -18,6 +17,7 @@ import {
 } from '@mui/material';
 import { VisibilityOutlined as ViewIcon, ArticleOutlined as TitleIcon } from '@mui/icons-material';
 import { SelfService, EntityDocument } from '@/utils/api';
+import GearSpinner from '@/components/GearSpinner';
 import dayjs from 'dayjs';
 
 export default function PortalDocuments() {
@@ -64,7 +64,7 @@ export default function PortalDocuments() {
     return <Chip label="Vigente" color="success" size="small" />;
   };
 
-  if (loading) return <Box display="flex" justifyContent="center" mt={8}><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" mt={8}><GearSpinner /></Box>;
   if (error) return <Alert severity="error" sx={{ mt: 4 }}>{error}</Alert>;
 
   return (

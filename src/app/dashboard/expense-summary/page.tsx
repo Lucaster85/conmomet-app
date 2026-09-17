@@ -7,7 +7,6 @@ import {
   Card,
   CardContent,
   Grid,
-  CircularProgress,
   Alert,
   Tabs,
   Tab,
@@ -43,6 +42,7 @@ import {
   ExpenseSummaryMonthly,
   ExpenseSummaryAnnual,
 } from '../../../utils/api';
+import GearSpinner from '../../../components/GearSpinner';
 
 const currentYear = new Date().getFullYear();
 const currentMonth = new Date().getMonth() + 1;
@@ -434,7 +434,7 @@ export default function ExpenseSummaryPage() {
 
       {loading ? (
         <Box display="flex" justifyContent="center" p={5}>
-          <CircularProgress />
+          <GearSpinner />
         </Box>
       ) : error ? (
         <Alert severity="error">{error}</Alert>

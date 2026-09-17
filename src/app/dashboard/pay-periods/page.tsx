@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, TextField, Stack,
+  DialogActions, TextField, Stack,
   Chip, Grid
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, PaymentOutlined as PaymentIcon,
   CheckCircleOutlined as ConfirmIcon, AttachMoneyOutlined as MoneyIcon,
@@ -27,6 +28,7 @@ export default function PayPeriodsPage() {
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ message: string; action: () => void } | null>(null);
+  const [processing, setProcessing] = useState(false);
   const router = useRouter();
 
   const currentDate = new Date();
@@ -51,6 +53,8 @@ export default function PayPeriodsPage() {
   useEffect(() => { loadPeriods(); }, []);
 
   const handleCreate = async () => {
+    if (processing) return;
+    setProcessing(true);
     try {
       await PayPeriodService.create({
         month: Number(form.month),
@@ -62,6 +66,8 @@ export default function PayPeriodsPage() {
       loadPeriods();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -105,7 +111,7 @@ export default function PayPeriodsPage() {
 
   const formatDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-AR');
 
-  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
 
   return (
     <Box>
@@ -199,7 +205,9 @@ export default function PayPeriodsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleCreate} variant="contained">Abrir Quincena</Button>
+          <Button onClick={handleCreate} variant="contained" disabled={processing}>
+            {processing ? <GearSpinner size={20} /> : 'Abrir Quincena'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

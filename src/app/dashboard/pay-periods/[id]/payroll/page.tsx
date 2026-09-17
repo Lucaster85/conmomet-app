@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Stack, Chip, Tooltip, Badge,
+  DialogActions, Stack, Chip, Tooltip, Badge,
   Card, CardContent, Grid, useTheme, useMediaQuery,
 } from '@mui/material';
 import FeedbackModal from '../../../../../components/FeedbackModal';
+import GearSpinner from '../../../../../components/GearSpinner';
 import { RefreshOutlined as RefreshIcon, EditOutlined as EditIcon, CheckCircleOutlined as ConfirmIcon, CalculateOutlined as CalcIcon, ArrowBackOutlined as BackIcon, PaymentOutlined as PaymentIcon, VisibilityOutlined as ViewIcon, PrintOutlined as PrintIcon } from '@mui/icons-material';
 import Divider from '@mui/material/Divider';
 import { TableChartOutlined as ExcelIcon } from '@mui/icons-material';
@@ -272,7 +273,7 @@ export default function PayrollPage() {
     }
   };
 
-  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
 
   return (
     <Box className={!openDetail && !openEdit && !openRateChanges && !isPrintingAll ? "print-area" : ""}>

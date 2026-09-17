@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  Box, Typography, Paper, Card, Tabs, Tab, CircularProgress, Chip, LinearProgress,
+  Box, Typography, Paper, Card, Tabs, Tab, Chip, LinearProgress,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button,
   Grid, Divider, Stack, TextField, Autocomplete, Tooltip, Alert, Snackbar,
   Dialog, DialogTitle, DialogContent, DialogActions, RadioGroup, Radio,
@@ -17,6 +17,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../../../utils/auth';
 import IconTileGrid, { IconTileItem } from '../../../../components/common/IconTileGrid';
+import GearSpinner from '../../../../components/GearSpinner';
 import {
   Project, ProjectService, TimeEntry, TimeEntryService, BudgetCurrency,
   WorkDayLog, WorkDayLogWeek, AssetAssignment, AssetAssignmentService, AssetAssignmentStatus,
@@ -251,7 +252,7 @@ export default function ProjectDetailPage() {
   };
 
   if (loading || !project) {
-    return <Box display="flex" justifyContent="center" py={8}><CircularProgress /></Box>;
+    return <Box display="flex" justifyContent="center" py={8}><GearSpinner /></Box>;
   }
 
   const tabs = [
@@ -520,7 +521,7 @@ export default function ProjectDetailPage() {
               </Button>
               <Button
                 variant="contained"
-                startIcon={savingLogs ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                startIcon={savingLogs ? <GearSpinner size={20} /> : <SaveIcon />}
                 onClick={handleSaveWeekLogs}
                 disabled={savingLogs || loadingLogs}
                 sx={{ width: { xs: '100%', sm: 'auto' } }}
@@ -531,7 +532,7 @@ export default function ProjectDetailPage() {
           </Stack>
 
           {loadingLogs ? (
-            <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
+            <Box display="flex" justifyContent="center" py={6}><GearSpinner /></Box>
           ) : (
             <>
               {/* Mobile Cards — un Card por día */}
@@ -846,7 +847,7 @@ export default function ProjectDetailPage() {
       {tab === panolTabIndex && (
         <Paper sx={{ p: 3 }}>
           {loadingAssignments ? (
-            <Box display="flex" justifyContent="center" py={3}><CircularProgress size={24} /></Box>
+            <Box display="flex" justifyContent="center" py={3}><GearSpinner size={24} /></Box>
           ) : (
             <>
               <Typography variant="h6" fontWeight={700} mb={2}>Herramientas asignadas</Typography>
@@ -1052,7 +1053,7 @@ export default function ProjectDetailPage() {
           {/* Printable Container matching client's paper design */}
           {loadingPrint ? (
             <Box display="flex" justifyContent="center" py={6} className="no-print">
-              <CircularProgress />
+              <GearSpinner />
             </Box>
           ) : printWeeks.length === 0 ? (
             <Typography color="text.secondary" textAlign="center" py={4} className="no-print">

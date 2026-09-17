@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, Stack, TextField, InputAdornment,
+  DialogActions, Tooltip, Stack, TextField, InputAdornment,
   Switch, FormControlLabel
 } from '@mui/material';
 import {
@@ -11,6 +11,7 @@ import {
   RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, DomainOutlined as TitleIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '@/components/FeedbackModal';
+import GearSpinner from '@/components/GearSpinner';
 import { Guild, GuildService } from '@/utils/api';
 import ApplyIncreaseModal from './ApplyIncreaseModal';
 
@@ -27,6 +28,7 @@ export default function GuildsPage() {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Guild | null }>({ open: false, item: null });
   const [increaseDialog, setIncreaseDialog] = useState<{ open: boolean; item: Guild | null }>({ open: false, item: null });
   const [form, setForm] = useState(emptyForm);
+  const [processing, setProcessing] = useState(false);
 
   const loadData = async () => {
     try {
@@ -57,7 +59,9 @@ export default function GuildsPage() {
   const handleSubmit = async () => {
     if (!form.name.trim()) return setError('El nombre es obligatorio');
     if (!form.code.trim()) return setError('El código es obligatorio');
-    
+    if (processing) return;
+
+    setProcessing(true);
     try {
       if (editing) {
         await GuildService.update(editing.id, form);
@@ -70,6 +74,8 @@ export default function GuildsPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -92,7 +98,7 @@ export default function GuildsPage() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }
@@ -278,8 +284,8 @@ export default function GuildsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editing ? 'Guardar' : 'Crear'}
+          <Button onClick={handleSubmit} variant="contained" disabled={processing}>
+            {processing ? <GearSpinner size={20} /> : (editing ? 'Guardar' : 'Crear')}
           </Button>
         </DialogActions>
       </Dialog>

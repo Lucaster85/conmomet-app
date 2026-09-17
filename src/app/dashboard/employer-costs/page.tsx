@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Tooltip, Stack, TextField, InputAdornment,
+  DialogActions, Tooltip, Stack, TextField, InputAdornment,
   MenuItem, FormControl, InputLabel, Select
 } from '@mui/material';
 import {
@@ -12,6 +12,7 @@ import {
   OpenInNewOutlined as OpenInNewIcon, AccountBalanceOutlined as TitleIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '@/components/FeedbackModal';
+import GearSpinner from '@/components/GearSpinner';
 import CurrencyInput from '@/components/CurrencyInput';
 import { EmployerCost, EmployerCostCategory, EmployerCostService, EmployerCostCategoryService } from '@/utils/api';
 
@@ -21,6 +22,7 @@ export default function EmployerCostsPage() {
   const [costs, setCosts] = useState<EmployerCost[]>([]);
   const [categories, setCategories] = useState<EmployerCostCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
@@ -73,6 +75,8 @@ export default function EmployerCostsPage() {
     if (!form.month || !form.year) return setError('El período es obligatorio');
     if (!form.amount || form.amount <= 0) return setError('El monto debe ser mayor a 0');
     
+    if (processing) return;
+    setProcessing(true);
     try {
       if (editing) {
         await EmployerCostService.update(editing.id, form, file);
@@ -85,6 +89,8 @@ export default function EmployerCostsPage() {
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -113,7 +119,7 @@ export default function EmployerCostsPage() {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <GearSpinner />
       </Box>
     );
   }
@@ -345,8 +351,8 @@ export default function EmployerCostsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={loading}>
-            {editing ? 'Guardar' : 'Registrar'}
+          <Button onClick={handleSubmit} variant="contained" disabled={loading || processing}>
+            {processing ? <GearSpinner size={20} /> : (editing ? 'Guardar' : 'Registrar')}
           </Button>
         </DialogActions>
       </Dialog>

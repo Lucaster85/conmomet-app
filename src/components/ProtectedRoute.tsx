@@ -1,8 +1,9 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { TokenManager } from '../utils/auth';
+import GearSpinner from './GearSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -42,7 +43,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
           gap: 2,
         }}
       >
-        <CircularProgress size={40} />
+        <GearSpinner size={40} />
         <Typography variant="body1" color="text.secondary">
           Verificando autenticación...
         </Typography>
