@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Box,
   Typography,
@@ -39,6 +40,8 @@ import {
   useMediaQuery,
   Switch,
   FormControlLabel,
+  Autocomplete,
+  createFilterOptions,
 } from '@mui/material';
 import {
   ExpandMoreOutlined as ExpandMoreIcon,
@@ -82,6 +85,16 @@ import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import { useAuth } from '../../../utils/auth';
 
+// Mismo patrón "creatable" que budgets/page.tsx para elegir el contacto de administración del
+// cliente que aprueba el presupuesto — dar de alta uno nuevo pide más de un dato (nombre y
+// apellido por separado), así que la opción sintética abre un mini diálogo en vez de crear directo.
+interface AdminContactOption {
+  id?: number;
+  label: string;
+  inputValue?: string;
+}
+const adminContactFilter = createFilterOptions<AdminContactOption>();
+
 const STATUS_COLORS: Record<Oca['status'], 'warning' | 'info' | 'success' | 'error' | 'default'> = {
   pendiente: 'warning',
   presentado: 'info',
@@ -102,6 +115,11 @@ export default function OcasPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  type BudgetFilter = 'all' | 'pendiente' | 'presentado' | 'aprobado';
+  const [budgetFilter, setBudgetFilter] = useState<BudgetFilter>(
+    (searchParams.get('budget_filter') as BudgetFilter) || 'all'
+  );
   const permissions: string[] = Array.isArray((user as unknown as Record<string, unknown>)?.permissions)
     ? ((user as unknown as Record<string, unknown>).permissions as string[])
     : [];
@@ -138,10 +156,11 @@ export default function OcasPage() {
   const [notes, setNotes] = useState('');
 
   // Dialog Action States
-  const [rejectDialog, setRejectDialog] = useState<{ open: boolean; ocaId: number | null }>({ open: false, ocaId: null });
+  const [rejectDialog, setRejectDialog] = useState<{ open: boolean; ocaId: number | null; kind: 'remito' | 'presupuesto' }>({ open: false, ocaId: null, kind: 'remito' });
   const [rejectionReason, setRejectionReason] = useState('');
-  const [approveDialog, setApproveDialog] = useState<{ open: boolean; ocaId: number | null }>({ open: false, ocaId: null });
+  const [approveDialog, setApproveDialog] = useState<{ open: boolean; ocaId: number | null; ocaType: Oca['type'] | null }>({ open: false, ocaId: null, ocaType: null });
   const [signedFile, setSignedFile] = useState<File | null>(null);
+  const [approveRequiresBudget, setApproveRequiresBudget] = useState(false);
   const [annulDialog, setAnnulDialog] = useState<{ open: boolean; ocaId: number | null }>({ open: false, ocaId: null });
   const [annulReason, setAnnulReason] = useState('');
 
@@ -163,6 +182,16 @@ export default function OcasPage() {
   // Valor de referencia de la hora (presupuesto de horas hombre) — dialog state
   const [rateDialog, setRateDialog] = useState<{ open: boolean; oca: Oca | null; hourly_rate: string }>({ open: false, oca: null, hourly_rate: '' });
   const [rateHistoryDialog, setRateHistoryDialog] = useState<{ open: boolean; entries: OcaClientRateHistoryEntry[] }>({ open: false, entries: [] });
+
+  // Aprobación del presupuesto por administración del cliente
+  const [approveBudgetDialog, setApproveBudgetDialog] = useState<{ open: boolean; oca: Oca | null; supervisors: ClientSupervisor[]; approvedBySupervisorId: number | '' }>(
+    { open: false, oca: null, supervisors: [], approvedBySupervisorId: '' }
+  );
+  // Alta rápida de contacto de administración (ClientSupervisor type='administracion') al
+  // aprobar el presupuesto — mismo criterio que budgets/page.tsx.
+  const [adminContactQuickAdd, setAdminContactQuickAdd] = useState<{ open: boolean; name: string; lastname: string; email: string; phone: string }>(
+    { open: false, name: '', lastname: '', email: '', phone: '' }
+  );
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -252,7 +281,7 @@ export default function OcasPage() {
             console.error('Error fetching projects:', err);
             return [];
           }),
-          ClientSupervisorService.getAll(clientId).catch((err) => {
+          ClientSupervisorService.getAll(clientId, 'obra').catch((err) => {
             console.error('Error fetching supervisors:', err);
             return [];
           })
@@ -392,9 +421,9 @@ export default function OcasPage() {
     });
   };
 
-  const handleOpenReject = (id: number) => {
+  const handleOpenReject = (id: number, kind: 'remito' | 'presupuesto' = 'remito') => {
     setRejectionReason('');
-    setRejectDialog({ open: true, ocaId: id });
+    setRejectDialog({ open: true, ocaId: id, kind });
   };
 
   const handleReject = async () => {
@@ -406,17 +435,18 @@ export default function OcasPage() {
       setError('');
       setSuccess('');
       await OcaService.reject(rejectDialog.ocaId, rejectionReason.trim());
-      setSuccess('Remito rechazado correctamente');
-      setRejectDialog({ open: false, ocaId: null });
+      setSuccess(rejectDialog.kind === 'presupuesto' ? 'Presupuesto rechazado — OCA reabierta para corrección' : 'Remito rechazado correctamente');
+      setRejectDialog({ open: false, ocaId: null, kind: 'remito' });
       loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al rechazar el remito');
+      setError(err instanceof Error ? err.message : 'Error al rechazar');
     }
   };
 
-  const handleOpenApprove = (id: number) => {
+  const handleOpenApprove = (oca: Oca) => {
     setSignedFile(null);
-    setApproveDialog({ open: true, ocaId: id });
+    setApproveRequiresBudget(false);
+    setApproveDialog({ open: true, ocaId: oca.id, ocaType: oca.type });
   };
 
   const handleApprove = async () => {
@@ -424,12 +454,22 @@ export default function OcasPage() {
     try {
       setError('');
       setSuccess('');
-      await OcaService.approve(approveDialog.ocaId, signedFile || undefined);
+      const requiresBudget = approveDialog.ocaType === 'man_hours' ? approveRequiresBudget : undefined;
+      await OcaService.approve(approveDialog.ocaId, signedFile || undefined, requiresBudget);
       setSuccess('Remito aprobado y cerrado correctamente');
-      setApproveDialog({ open: false, ocaId: null });
+      setApproveDialog({ open: false, ocaId: null, ocaType: null });
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al aprobar el remito');
+    }
+  };
+
+  const handleToggleRequiresBudget = async (oca: Oca) => {
+    try {
+      await OcaService.setRequiresBudget(oca.id, !oca.requires_budget);
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al actualizar si requiere presupuesto');
     }
   };
 
@@ -940,11 +980,77 @@ export default function OcasPage() {
     }
   };
 
+  const handlePresentBudget = async (oca: Oca) => {
+    try {
+      await OcaService.presentBudget(oca.id);
+      setSuccess('Presupuesto presentado a administración del cliente');
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al presentar el presupuesto');
+    }
+  };
+
+  const handleOpenApproveBudget = async (oca: Oca) => {
+    setApproveBudgetDialog({ open: true, oca, supervisors: [], approvedBySupervisorId: '' });
+    try {
+      const supervisors = await ClientSupervisorService.getAll(oca.client_id, 'administracion');
+      setApproveBudgetDialog(prev => ({ ...prev, supervisors: Array.isArray(supervisors) ? supervisors : [] }));
+    } catch {
+      // sin lista de supervisores no bloquea la aprobación — el campo es opcional
+    }
+  };
+
+  const handleAdminContactSelectChange = (newValue: AdminContactOption | null) => {
+    if (!newValue) { setApproveBudgetDialog(prev => ({ ...prev, approvedBySupervisorId: '' })); return; }
+    if (newValue.inputValue) {
+      setAdminContactQuickAdd({ open: true, name: newValue.inputValue, lastname: '', email: '', phone: '' });
+      return;
+    }
+    if (newValue.id) setApproveBudgetDialog(prev => ({ ...prev, approvedBySupervisorId: newValue.id as number }));
+  };
+
+  const handleConfirmAdminContactQuickAdd = async () => {
+    if (!approveBudgetDialog.oca || !adminContactQuickAdd.name.trim() || !adminContactQuickAdd.lastname.trim()) {
+      setError('Nombre y apellido son obligatorios');
+      return;
+    }
+    try {
+      const created = await ClientSupervisorService.create({
+        client_id: approveBudgetDialog.oca.client_id,
+        name: adminContactQuickAdd.name,
+        lastname: adminContactQuickAdd.lastname,
+        email: adminContactQuickAdd.email || undefined,
+        phone: adminContactQuickAdd.phone || undefined,
+        type: 'administracion',
+      });
+      setApproveBudgetDialog(prev => ({ ...prev, supervisors: [...prev.supervisors, created], approvedBySupervisorId: created.id }));
+      setAdminContactQuickAdd({ open: false, name: '', lastname: '', email: '', phone: '' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear el contacto');
+    }
+  };
+
+  const handleApproveBudget = async () => {
+    if (!approveBudgetDialog.oca) return;
+    try {
+      await OcaService.approveBudget(approveBudgetDialog.oca.id, approveBudgetDialog.approvedBySupervisorId || undefined);
+      setSuccess('Presupuesto aprobado por administración del cliente');
+      setApproveBudgetDialog({ open: false, oca: null, supervisors: [], approvedBySupervisorId: '' });
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al aprobar el presupuesto');
+    }
+  };
+
   // Filter OCAs
   const filteredOcas = ocas.filter(oca => {
     const matchesClient = filterClient === '' || oca.client_id === filterClient;
     const matchesStatus = filterStatus === 'all' || oca.status === filterStatus;
-    return matchesClient && matchesStatus;
+    const matchesBudget = budgetFilter === 'all'
+      || (budgetFilter === 'pendiente' && oca.requires_budget && oca.status === 'aprobado' && (!oca.budget_status || oca.budget_status === 'pendiente'))
+      || (budgetFilter === 'presentado' && oca.budget_status === 'presentado')
+      || (budgetFilter === 'aprobado' && oca.budget_status === 'aprobado');
+    return matchesClient && matchesStatus && matchesBudget;
   });
 
   return (
@@ -1358,6 +1464,23 @@ export default function OcasPage() {
                   </Select>
                 </FormControl>
               </Grid>
+              {tabValue === 0 && (
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Filtrar Presupuesto</InputLabel>
+                    <Select
+                      value={budgetFilter}
+                      label="Filtrar Presupuesto"
+                      onChange={(e) => setBudgetFilter(e.target.value as BudgetFilter)}
+                    >
+                      <MenuItem value="all">Todos</MenuItem>
+                      <MenuItem value="pendiente">Pendiente de generar/presentar</MenuItem>
+                      <MenuItem value="presentado">Presentado — pendiente de revisión</MenuItem>
+                      <MenuItem value="aprobado">Aprobado</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
               <Grid size={{ xs: 12, sm: 4 }} display="flex" alignItems="center" gap={2} justifyContent="flex-end">
                 <FormControlLabel
                   control={
@@ -1520,7 +1643,7 @@ export default function OcasPage() {
                               variant="contained"
                               color="success"
                               startIcon={<ApproveIcon />}
-                              onClick={() => handleOpenApprove(oca.id)}
+                              onClick={() => handleOpenApprove(oca)}
                               size="small"
                             >
                               Aprobar / Cargar Remito
@@ -1569,6 +1692,15 @@ export default function OcasPage() {
                             Ver Comprobante
                           </Button>
                         )}
+                        {oca.status === 'aprobado' && oca.type === 'man_hours' && (
+                          <Button
+                            variant="text"
+                            size="small"
+                            onClick={() => handleToggleRequiresBudget(oca)}
+                          >
+                            {oca.requires_budget ? 'Requiere Presupuesto: Sí' : 'Requiere Presupuesto: No'}
+                          </Button>
+                        )}
                         <Button
                           variant="outlined"
                           startIcon={<PrintIcon />}
@@ -1600,6 +1732,42 @@ export default function OcasPage() {
                                 </Button>
                               </span>
                             </Tooltip>
+                            {oca.status === 'aprobado' && oca.requires_budget && oca.hourly_rate && (!oca.budget_status || oca.budget_status === 'pendiente') && (
+                              <Button
+                                variant="contained"
+                                color="info"
+                                startIcon={<PresentIcon />}
+                                onClick={() => handlePresentBudget(oca)}
+                                size="small"
+                              >
+                                Presentar Presupuesto
+                              </Button>
+                            )}
+                            {oca.status === 'aprobado' && oca.requires_budget && oca.budget_status === 'presentado' && (
+                              <>
+                                <Button
+                                  variant="contained"
+                                  color="success"
+                                  startIcon={<ApproveIcon />}
+                                  onClick={() => handleOpenApproveBudget(oca)}
+                                  size="small"
+                                >
+                                  Aprobar Presupuesto
+                                </Button>
+                                <Button
+                                  variant="contained"
+                                  color="error"
+                                  startIcon={<RejectIcon />}
+                                  onClick={() => handleOpenReject(oca.id, 'presupuesto')}
+                                  size="small"
+                                >
+                                  Rechazar Presupuesto
+                                </Button>
+                              </>
+                            )}
+                            {oca.status === 'aprobado' && oca.requires_budget && oca.budget_status === 'aprobado' && (
+                              <Chip label="Presupuesto aprobado" color="success" size="small" />
+                            )}
                           </>
                         )}
                       </Stack>
@@ -2480,12 +2648,14 @@ export default function OcasPage() {
         </Dialog>
 
         {/* Reject Dialog */}
-        <Dialog open={rejectDialog.open} onClose={() => setRejectDialog({ open: false, ocaId: null })} maxWidth="xs" fullWidth>
-          <DialogTitle>Rechazar Remito / OCA</DialogTitle>
+        <Dialog open={rejectDialog.open} onClose={() => setRejectDialog({ open: false, ocaId: null, kind: 'remito' })} maxWidth="xs" fullWidth>
+          <DialogTitle>{rejectDialog.kind === 'presupuesto' ? 'Rechazar Presupuesto' : 'Rechazar Remito / OCA'}</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2}>
               <Typography variant="body2" color="text.secondary">
-                Por favor, ingrese el motivo del rechazo del supervisor de cliente. Esto liberará los registros de horas del remito para que puedan ser modificados si fuera necesario.
+                {rejectDialog.kind === 'presupuesto'
+                  ? 'Administración del cliente objetó la cantidad de horas declaradas. Esto rechaza toda la OCA (aunque ya esté aprobada) y libera los registros de horas para poder corregirlas — vas a tener que volver a presentarla al supervisor y volver a presentar el presupuesto.'
+                  : 'Por favor, ingrese el motivo del rechazo del supervisor de cliente. Esto liberará los registros de horas del remito para que puedan ser modificados si fuera necesario.'}
               </Typography>
               <TextField
                 label="Motivo del Rechazo *"
@@ -2499,13 +2669,13 @@ export default function OcasPage() {
             </Stack>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setRejectDialog({ open: false, ocaId: null })}>Cancelar</Button>
+            <Button onClick={() => setRejectDialog({ open: false, ocaId: null, kind: 'remito' })}>Cancelar</Button>
             <Button onClick={handleReject} variant="contained" color="error">Rechazar</Button>
           </DialogActions>
         </Dialog>
 
         {/* Approve Dialog */}
-        <Dialog open={approveDialog.open} onClose={() => setApproveDialog({ open: false, ocaId: null })} maxWidth="xs" fullWidth>
+        <Dialog open={approveDialog.open} onClose={() => setApproveDialog({ open: false, ocaId: null, ocaType: null })} maxWidth="xs" fullWidth>
           <DialogTitle>Aprobar y Registrar Remito Firmado</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2}>
@@ -2518,10 +2688,21 @@ export default function OcasPage() {
                   <input type="file" hidden onChange={(e) => setSignedFile(e.target.files?.[0] || null)} />
                 </Button>
               </Box>
+              {approveDialog.ocaType === 'man_hours' && (
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={approveRequiresBudget}
+                      onChange={(e) => setApproveRequiresBudget(e.target.checked)}
+                    />
+                  }
+                  label="Requiere presupuesto (se le va a presentar a administración del cliente)"
+                />
+              )}
             </Stack>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setApproveDialog({ open: false, ocaId: null })}>Cancelar</Button>
+            <Button onClick={() => setApproveDialog({ open: false, ocaId: null, ocaType: null })}>Cancelar</Button>
             <Button onClick={handleApprove} variant="contained" color="success">Aprobar Remito</Button>
           </DialogActions>
         </Dialog>
@@ -2603,6 +2784,63 @@ export default function OcasPage() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setRateHistoryDialog({ open: false, entries: [] })}>Cerrar</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Aprobar Presupuesto (administración del cliente) Dialog */}
+        <Dialog open={approveBudgetDialog.open} onClose={() => setApproveBudgetDialog({ open: false, oca: null, supervisors: [], approvedBySupervisorId: '' })} maxWidth="xs" fullWidth>
+          <DialogTitle>Aprobar Presupuesto</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Confirma que administración del cliente dio conformidad al presupuesto presentado.
+              </Typography>
+              <Autocomplete<AdminContactOption>
+                options={approveBudgetDialog.supervisors.map(s => ({ id: s.id, label: `${s.lastname}, ${s.name}` }))}
+                value={(() => {
+                  const s = approveBudgetDialog.supervisors.find(sup => sup.id === approveBudgetDialog.approvedBySupervisorId);
+                  return s ? { id: s.id, label: `${s.lastname}, ${s.name}` } : null;
+                })()}
+                onChange={(_, val) => handleAdminContactSelectChange(val)}
+                getOptionLabel={(option) => option.label}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                filterOptions={(options, params) => {
+                  const filtered = adminContactFilter(options, params);
+                  const { inputValue } = params;
+                  const exists = options.some((o) => o.label.toLowerCase() === inputValue.toLowerCase());
+                  if (inputValue !== '' && !exists) {
+                    filtered.push({ label: `Agregar "${inputValue}"`, inputValue });
+                  }
+                  return filtered;
+                }}
+                renderInput={(params) => <TextField {...params} label="Contacto de administración (opcional)" placeholder="Buscar..." />}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setApproveBudgetDialog({ open: false, oca: null, supervisors: [], approvedBySupervisorId: '' })}>Cancelar</Button>
+            <Button onClick={handleApproveBudget} variant="contained" color="success">Aprobar Presupuesto</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Alta rápida de contacto de administración — abierta desde el Autocomplete de arriba */}
+        <Dialog open={adminContactQuickAdd.open} onClose={() => setAdminContactQuickAdd({ ...adminContactQuickAdd, open: false })} maxWidth="xs" fullWidth>
+          <DialogTitle>Nuevo Contacto de Administración</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField label="Nombre *" fullWidth value={adminContactQuickAdd.name}
+                onChange={(e) => setAdminContactQuickAdd({ ...adminContactQuickAdd, name: e.target.value })} />
+              <TextField label="Apellido *" fullWidth value={adminContactQuickAdd.lastname}
+                onChange={(e) => setAdminContactQuickAdd({ ...adminContactQuickAdd, lastname: e.target.value })} />
+              <TextField label="Email" fullWidth value={adminContactQuickAdd.email}
+                onChange={(e) => setAdminContactQuickAdd({ ...adminContactQuickAdd, email: e.target.value })} />
+              <TextField label="Teléfono" fullWidth value={adminContactQuickAdd.phone}
+                onChange={(e) => setAdminContactQuickAdd({ ...adminContactQuickAdd, phone: e.target.value })} />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAdminContactQuickAdd({ ...adminContactQuickAdd, open: false })}>Cancelar</Button>
+            <Button onClick={handleConfirmAdminContactQuickAdd} variant="contained">Crear y usar</Button>
           </DialogActions>
         </Dialog>
 

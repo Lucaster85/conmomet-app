@@ -32,7 +32,7 @@ import {
   SaveOutlined as SaveIcon,
   CancelOutlined as CancelIcon,
 } from '@mui/icons-material';
-import { Client, ClientSupervisor, ClientSupervisorService } from '../../../utils/api';
+import { Client, ClientSupervisor, ClientSupervisorService, ClientSupervisorType } from '../../../utils/api';
 import GearSpinner from '../../../components/GearSpinner';
 
 interface ClientSupervisorsDialogProps {
@@ -55,6 +55,7 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [type, setType] = useState<ClientSupervisorType>('obra');
 
   // Load supervisors
   const loadSupervisors = useCallback(async () => {
@@ -87,6 +88,7 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
     setEmail('');
     setPhone('');
     setIsActive(true);
+    setType('obra');
     setError('');
   };
 
@@ -103,6 +105,7 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
     setEmail(supervisor.email || '');
     setPhone(supervisor.phone || '');
     setIsActive(supervisor.is_active);
+    setType(supervisor.type);
     setIsFormOpen(true);
   };
 
@@ -125,6 +128,7 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
           email: email || undefined,
           phone: phone || undefined,
           is_active: isActive,
+          type,
         });
         setSuccess('Supervisor actualizado correctamente.');
       } else {
@@ -136,6 +140,7 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
           email: email || undefined,
           phone: phone || undefined,
           is_active: isActive,
+          type,
         });
         setSuccess('Supervisor creado correctamente.');
       }
@@ -252,6 +257,20 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
                   onChange={(e) => setPhone(e.target.value)}
                 />
               </Stack>
+              <TextField
+                select
+                label="Tipo de contacto"
+                size="small"
+                fullWidth
+                value={type}
+                onChange={(e) => setType(e.target.value as ClientSupervisorType)}
+                SelectProps={{ native: true }}
+                sx={{ mt: 2 }}
+                helperText="Obra: aprueba remitos de OCA. Administración: aprueba el presupuesto."
+              >
+                <option value="obra">Obra</option>
+                <option value="administracion">Administración</option>
+              </TextField>
               <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} flexWrap="wrap" gap={1}>
                 <FormControlLabel
                   control={
@@ -299,6 +318,7 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
               <TableHead>
                 <TableRow sx={{ bgcolor: 'grey.50' }}>
                   <TableCell><strong>Supervisor</strong></TableCell>
+                  <TableCell><strong>Tipo</strong></TableCell>
                   <TableCell><strong>Email</strong></TableCell>
                   <TableCell><strong>Teléfono</strong></TableCell>
                   <TableCell align="center"><strong>Estado</strong></TableCell>
@@ -308,7 +328,7 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
               <TableBody>
                 {supervisors.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
                       <Typography variant="body2" color="text.secondary">
                         No hay supervisores registrados para este cliente.
                       </Typography>
@@ -322,6 +342,7 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
                           {supervisor.lastname}, {supervisor.name}
                         </Typography>
                       </TableCell>
+                      <TableCell>{supervisor.type === 'administracion' ? 'Administración' : 'Obra'}</TableCell>
                       <TableCell>{supervisor.email || '—'}</TableCell>
                       <TableCell>{supervisor.phone || '—'}</TableCell>
                       <TableCell align="center">

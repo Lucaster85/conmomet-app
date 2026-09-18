@@ -90,6 +90,33 @@ costo:
 El precio de una OCA queda **congelado** en el momento de cargarlo — si más adelante se actualiza
 el valor de referencia del cliente, los presupuestos ya generados no cambian.
 
+## Presentar el presupuesto a administración del cliente
+
+No todas las OCAs llevan presupuesto. Al aprobar una OCA de horas hombre se puede tildar
+**"Requiere presupuesto"** — por defecto viene destildado. Si te olvidaste o te equivocaste, se
+puede corregir después con el botón "Requiere Presupuesto: Sí/No" en la ficha de la OCA.
+
+Una vez marcada, el ciclo es:
+
+1. **Cargar Precio** (ver arriba) — obligatorio antes de poder presentar.
+2. **Presentar Presupuesto** — lo manda a administración del cliente (un contacto distinto del
+   supervisor de obra que aprobó el remito).
+3. Administración lo **aprueba** o lo **rechaza**.
+
+**Si administración rechaza el presupuesto** (por ejemplo, porque no está de acuerdo con la
+cantidad de horas declaradas), se rechaza **toda la OCA** — aunque ya estuviera aprobada por el
+supervisor de obra. El sistema usa el mismo mecanismo de "Corregir y Duplicar" que ya conocés
+para remitos rechazados: se genera una OCA nueva con las horas desvinculadas para poder editarlas,
+y hay que volver a presentarla al supervisor **y** volver a presentar su presupuesto desde cero.
+El presupuesto rechazado queda guardado como historial en la OCA vieja.
+
+### Aviso de presupuestos pendientes
+
+Un usuario configurado en **Configuración General → OCAs — Presupuestos** ve, arriba de todo en su
+dashboard, un aviso con la cantidad de OCAs aprobadas que requieren presupuesto y todavía no se
+presentaron a administración — el aviso no desaparece con solo cargar el precio, hace falta
+presentarlo.
+
 ## Anular una OCA
 
 **"Anular OCA"** solo está disponible mientras el remito está en **Pendiente** o

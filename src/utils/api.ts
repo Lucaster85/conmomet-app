@@ -3559,6 +3559,8 @@ export class LoanService {
 export interface SystemSetting {
   id: number;
   max_loan_amount_ars: number;
+  oca_budget_notification_user_id?: number | null;
+  ocaBudgetNotificationUser?: { id: number; name: string; lastname: string };
 }
 
 export class SystemSettingService {
@@ -3569,7 +3571,7 @@ export class SystemSettingService {
     return data.data;
   }
 
-  static async update(data: { max_loan_amount_ars: number }): Promise<SystemSetting> {
+  static async update(data: { max_loan_amount_ars?: number; oca_budget_notification_user_id?: number | null }): Promise<SystemSetting> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -3751,6 +3753,8 @@ export class ExpenseSummaryService {
 
 // ==================== VEHICLES, SUPERVISORS & OCAS MODULES ====================
 
+export type ClientSupervisorType = 'obra' | 'administracion';
+
 export interface ClientSupervisor {
   id: number;
   client_id: number;
@@ -3759,6 +3763,7 @@ export interface ClientSupervisor {
   email?: string;
   phone?: string;
   is_active: boolean;
+  type: ClientSupervisorType;
   createdAt: string;
   updatedAt?: string;
 }
@@ -3770,6 +3775,7 @@ export interface CreateClientSupervisorData {
   email?: string;
   phone?: string;
   is_active?: boolean;
+  type?: ClientSupervisorType;
 }
 
 // Independiente de is_active a propósito — is_active sigue gateando los selects de carga de
@@ -3860,6 +3866,12 @@ export interface Oca {
   rejection_reason?: string;
   notes?: string;
   hourly_rate?: number | null;
+  requires_budget: boolean;
+  budget_status?: 'pendiente' | 'presentado' | 'aprobado' | null;
+  budget_approved_at?: string | null;
+  budget_approved_by?: number | null;
+  budget_approved_by_supervisor_id?: number | null;
+  budgetApprovedBySupervisor?: { id: number; name: string; lastname: string };
   client?: { id: number; razonSocial: string };
   supervisor?: { id: number; name: string; lastname: string; email?: string; phone?: string };
   project?: { id: number; name: string; code: string; plant_id?: number; plant?: { id: number; name: string; address?: string } };
@@ -3904,11 +3916,12 @@ export class OcaClientRateService {
 }
 
 export class ClientSupervisorService {
-  static async getAll(clientId?: number): Promise<ClientSupervisor[]> {
+  static async getAll(clientId?: number, type?: ClientSupervisorType): Promise<ClientSupervisor[]> {
     let url = `${API_BASE_URL}/client-supervisors`;
-    if (clientId) {
-      url += `?client_id=${clientId}`;
-    }
+    const qs = new URLSearchParams();
+    if (clientId) qs.append('client_id', String(clientId));
+    if (type) qs.append('type', type);
+    if (qs.toString()) url += `?${qs.toString()}`;
     const response = await TokenManager.authenticatedFetch(url);
     if (!response.ok) throw new Error('Error al obtener los supervisores del cliente');
     const data = await response.json();
@@ -4213,10 +4226,13 @@ export class OcaService {
     }
   }
 
-  static async approve(id: number, file?: File): Promise<void> {
+  static async approve(id: number, file?: File, requiresBudget?: boolean): Promise<void> {
     const formData = new FormData();
     if (file) {
       formData.append('file', file);
+    }
+    if (requiresBudget !== undefined) {
+      formData.append('requires_budget', String(requiresBudget));
     }
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/approve`, {
       method: 'PUT',
@@ -4230,6 +4246,44 @@ export class OcaService {
       const error = await response.json();
       throw new Error(error.error || 'Error al aprobar la OCA');
     }
+  }
+
+  static async setRequiresBudget(id: number, requires_budget: boolean): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/requires-budget`, {
+      method: 'PUT',
+      body: JSON.stringify({ requires_budget }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar si requiere presupuesto');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async presentBudget(id: number): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/budget/present`, {
+      method: 'PUT',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al presentar el presupuesto');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async approveBudget(id: number, approvedBySupervisorId?: number): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/budget/approve`, {
+      method: 'PUT',
+      body: JSON.stringify({ approved_by_supervisor_id: approvedBySupervisorId }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al aprobar el presupuesto');
+    }
+    const data = await response.json();
+    return data.data;
   }
 
   static async reject(id: number, reason: string): Promise<void> {

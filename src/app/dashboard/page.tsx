@@ -34,6 +34,7 @@ import { ClockIcon } from '@mui/x-date-pickers';
 import { useAuth } from '../../utils/auth';
 import IconTileGrid, { IconTileItem } from '../../components/common/IconTileGrid';
 import RepairToolsAlert from '../../components/common/RepairToolsAlert';
+import OcaBudgetAlert from '../../components/common/OcaBudgetAlert';
 import SalaryAdvanceDeletionAlert from '../../components/common/SalaryAdvanceDeletionAlert';
 
 // Accesos rápidos del home mobile: solo las 3 secciones de uso más frecuente, cada una
@@ -165,6 +166,7 @@ export default function DashboardPage() {
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
+      <OcaBudgetAlert />
       <RepairToolsAlert />
       <SalaryAdvanceDeletionAlert />
 
