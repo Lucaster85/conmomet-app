@@ -19,17 +19,20 @@ import {
 import GearSpinner from '../../../components/GearSpinner';
 import { SaveOutlined as SaveIcon, ContentCopyOutlined as ContentCopyIcon } from '@mui/icons-material';
 import FeedbackModal from '../../../components/FeedbackModal';
-import { 
-  UserService, 
-  RoleService, 
-  PermissionService, 
-  Role, 
-  Permission, 
+import {
+  UserService,
+  LookupService,
+  PermissionService,
+  Role,
+  Permission,
   CreateUserData,
   User,
   EmployeeService,
   Employee,
 } from '../../../utils/api';
+
+// Solo lo que expone GET /lookup/roles (filtrado por jerarquía): nunca `permissions` ni `key`.
+type AssignableRole = Pick<Role, 'id' | 'name' | 'level' | 'has_dashboard_access'>;
 
 interface UserFormProps {
   user?: User;
@@ -52,7 +55,7 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
     employee_id: undefined as number | undefined,
   });
 
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [roles, setRoles] = useState<AssignableRole[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [availableEmployees, setAvailableEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,19 +64,16 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
   const [success, setSuccess] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
 
-  // Cargar roles y permisos al montar el componente
-  // TODO: [LOOKUP ENDPOINTS] Reemplazar RoleService.getAll() y PermissionService.getAll()
-  // por endpoints "lookup" livianos (GET /lookup/roles, GET /lookup/permissions) que solo
-  // requieran verifyToken (usuario autenticado) sin necesitar roles_read ni permissions_read.
-  // Esto permite que un "Administrador" con users_write pueda crear usuarios y asignar roles
-  // sin tener acceso al menú de gestión de Roles y Permisos.
-  // Ver: api_conmomet/routes/index.js (sección ROLE, comentario TODO LOOKUP ENDPOINTS)
+  // GET /lookup/roles: solo verifyToken (no roles_read), y ya viene filtrado por jerarquía
+  // (solo roles de nivel menor al del usuario logueado) — así un "Administrador" con
+  // users_write puede crear usuarios y asignar roles sin acceso al menú "Roles y Permisos",
+  // y sin poder asignar un rol de igual o mayor privilegio que el propio.
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoadingData(true);
         const [rolesData, permissionsData, employeesData] = await Promise.all([
-          RoleService.getAll(),
+          LookupService.getRoles(),
           PermissionService.getAll(),
           EmployeeService.getAll(),
         ]);

@@ -9,6 +9,9 @@ export interface UserData {
   role_id?: number;
   roleName?: string;
   role?: string;
+  // Nivel de jerarquía del rol propio (ver Role.level en el backend). Usado en el frontend
+  // solo como UX (acotar selects/inputs) — la validación real siempre la hace el backend.
+  roleLevel?: number;
   employee_id?: number | null;
   has_dashboard_access?: boolean;
   must_change_password?: boolean;
@@ -20,7 +23,7 @@ interface RawAuthUser {
   name: string;
   lastname: string;
   email: string;
-  role?: { name?: string; permissions?: { name: string }[] };
+  role?: { name?: string; level?: number; permissions?: { name: string }[] };
   permissions?: { name: string }[];
   employee_id?: number | null;
   has_dashboard_access?: boolean;
@@ -42,6 +45,7 @@ export function buildCleanUser(user: RawAuthUser): UserData {
     email: user.email,
     role: user.role?.name || 'Usuario',
     roleName: user.role?.name || 'Usuario',
+    roleLevel: user.role?.level,
     permissions: allPermissions,
     fullName: `${user.name} ${user.lastname}`.trim(),
     employee_id: user.employee_id || null,

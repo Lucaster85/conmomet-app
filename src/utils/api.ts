@@ -32,6 +32,12 @@ export interface Role {
   id: number;
   name: string;
   has_dashboard_access?: boolean;
+  // Identificador interno inmutable (superadmin/admin/operario), nunca editable desde la UI.
+  key?: string;
+  // Jerarquía numérica (1-100, mayor = más privilegio).
+  level?: number;
+  // Roles técnicos: protegidos contra edición/borrado/cambio de permisos.
+  is_system?: boolean;
   createdAt: string;
   updatedAt: string;
   permissions?: Permission[];
@@ -214,10 +220,10 @@ export class RoleService {
     return response.json();
   }
 
-  static async create(name: string, has_dashboard_access: boolean = true): Promise<Role> {
+  static async create(name: string, has_dashboard_access: boolean = true, level?: number): Promise<Role> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/roles`, {
       method: 'POST',
-      body: JSON.stringify({ name, has_dashboard_access }),
+      body: JSON.stringify({ name, has_dashboard_access, ...(level !== undefined && { level }) }),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -227,10 +233,10 @@ export class RoleService {
     return data.role || data.data || data;
   }
 
-  static async update(id: number, name: string, has_dashboard_access: boolean = true): Promise<Role> {
+  static async update(id: number, name: string, has_dashboard_access: boolean = true, level?: number): Promise<Role> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/roles/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ name, has_dashboard_access }),
+      body: JSON.stringify({ name, has_dashboard_access, ...(level !== undefined && { level }) }),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -261,6 +267,21 @@ export class RoleService {
     }
     const data = await response.json();
     return data.data || data;
+  }
+}
+
+// Endpoints "lite" de solo lectura (GET /lookup/*), solo requieren estar logueado — no el
+// permiso de gestión completa del recurso (roles_read). Sirven para poblar selects, como el
+// de rol en UserForm.tsx, sin dar acceso al menú "Roles y Permisos". /lookup/roles ya viene
+// filtrado por jerarquía desde el backend (solo roles de nivel menor al del usuario logueado).
+export class LookupService {
+  static async getRoles(): Promise<Pick<Role, 'id' | 'name' | 'level' | 'has_dashboard_access'>[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/roles`);
+    if (!response.ok) {
+      throw new Error('Error al obtener los roles disponibles');
+    }
+    const data = await response.json();
+    return data.data || [];
   }
 }
 

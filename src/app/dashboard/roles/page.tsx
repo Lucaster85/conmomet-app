@@ -35,6 +35,7 @@ import {
   AdminPanelSettingsOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { RoleService, PermissionService, Role, Permission } from '@/utils/api';
+import { TokenManager } from '@/utils/auth';
 import GearSpinner from '@/components/GearSpinner';
 
 function toErrorMsg(err: unknown): string {
@@ -60,11 +61,18 @@ export default function RolesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Nivel del usuario logueado: acota el input de `level` en el diálogo (UX — la validación
+  // real la hace siempre el backend). Si la sesión es de antes de este cambio y todavía no
+  // tiene `roleLevel` guardado, no lo limitamos acá: el backend igual rechaza si corresponde.
+  const currentUserLevel = TokenManager.getUser()?.roleLevel;
+  const maxAssignableLevel = currentUserLevel !== undefined ? currentUserLevel - 1 : 99;
+
   // Create / Edit role dialog
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [roleName, setRoleName] = useState('');
   const [roleHasDashboardAccess, setRoleHasDashboardAccess] = useState(true);
+  const [roleLevel, setRoleLevel] = useState(10);
   const [savingRole, setSavingRole] = useState(false);
 
   // Delete role dialog
@@ -121,13 +129,16 @@ export default function RolesPage() {
     setEditingRole(null);
     setRoleName('');
     setRoleHasDashboardAccess(true);
+    setRoleLevel(Math.min(10, maxAssignableLevel));
     setRoleDialogOpen(true);
   };
 
   const handleOpenEdit = (role: Role) => {
+    if (role.is_system) return;
     setEditingRole(role);
     setRoleName(role.name);
     setRoleHasDashboardAccess(role.has_dashboard_access ?? true);
+    setRoleLevel(role.level ?? 10);
     setRoleDialogOpen(true);
   };
 
@@ -136,9 +147,9 @@ export default function RolesPage() {
     setSavingRole(true);
     try {
       if (editingRole) {
-        await RoleService.update(editingRole.id, roleName.trim(), roleHasDashboardAccess);
+        await RoleService.update(editingRole.id, roleName.trim(), roleHasDashboardAccess, roleLevel);
       } else {
-        await RoleService.create(roleName.trim(), roleHasDashboardAccess);
+        await RoleService.create(roleName.trim(), roleHasDashboardAccess, roleLevel);
       }
       setRoleDialogOpen(false);
       fetchData();
@@ -150,6 +161,7 @@ export default function RolesPage() {
   };
 
   const handleOpenDelete = (role: Role) => {
+    if (role.is_system) return;
     setDeleteTarget(role);
     setDeleteDialogOpen(true);
   };
@@ -173,6 +185,7 @@ export default function RolesPage() {
 
   // --- Permissions management ---
   const handleOpenPerms = (role: Role) => {
+    if (role.is_system) return;
     setPermTarget(role);
     const currentIds = new Set((role.permissions || []).map(p => p.id));
     setSelectedPermIds(currentIds);
@@ -323,6 +336,12 @@ export default function RolesPage() {
                     {role.has_dashboard_access === false && (
                        <Chip label="Solo Portal" size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem' }} />
                     )}
+                    {role.is_system && (
+                       <Chip label="Sistema" size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: 'rgba(100,116,139,0.15)', color: '#475569', fontWeight: 700 }} />
+                    )}
+                    {role.level !== undefined && (
+                       <Chip label={`Nivel ${role.level}`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                    )}
                   </Stack>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, minHeight: 32 }}>
                     {(role.permissions || []).length === 0 ? (
@@ -352,20 +371,25 @@ export default function RolesPage() {
                     size="small"
                     startIcon={<KeyIcon fontSize="small" />}
                     onClick={() => handleOpenPerms(role)}
+                    disabled={role.is_system}
                     sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.8rem' }}
                   >
                     Permisos
                   </Button>
                   <Box sx={{ flex: 1 }} />
-                  <Tooltip title="Editar nombre">
-                    <IconButton size="small" onClick={() => handleOpenEdit(role)}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
+                  <Tooltip title={role.is_system ? 'Rol de sistema: no editable' : 'Editar rol'}>
+                    <span>
+                      <IconButton size="small" onClick={() => handleOpenEdit(role)} disabled={role.is_system}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </span>
                   </Tooltip>
-                  <Tooltip title="Eliminar rol">
-                    <IconButton size="small" color="error" onClick={() => handleOpenDelete(role)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                  <Tooltip title={role.is_system ? 'Rol de sistema: no se puede eliminar' : 'Eliminar rol'}>
+                    <span>
+                      <IconButton size="small" color="error" onClick={() => handleOpenDelete(role)} disabled={role.is_system}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </span>
                   </Tooltip>
                 </CardActions>
               </Card>
@@ -445,9 +469,18 @@ export default function RolesPage() {
             control={<Switch checked={roleHasDashboardAccess} onChange={e => setRoleHasDashboardAccess(e.target.checked)} color="primary" />}
             label={<Typography fontWeight={600}>Acceso al Dashboard</Typography>}
           />
-          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, ml: 4 }}>
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, ml: 4, mb: 3 }}>
             Si se desactiva, los usuarios con este rol solo podrán acceder a su Portal del Empleado (útil para operarios).
           </Typography>
+          <TextField
+            fullWidth
+            type="number"
+            label="Nivel de jerarquía"
+            value={roleLevel}
+            onChange={e => setRoleLevel(Number(e.target.value))}
+            inputProps={{ min: 1, max: maxAssignableLevel }}
+            helperText={`Un rol solo puede gestionar roles de nivel menor al propio. Máximo asignable: ${maxAssignableLevel}.`}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setRoleDialogOpen(false)} sx={{ textTransform: 'none' }}>
@@ -456,7 +489,7 @@ export default function RolesPage() {
           <Button
             variant="contained"
             onClick={handleSaveRole}
-            disabled={!roleName.trim() || savingRole}
+            disabled={!roleName.trim() || savingRole || roleLevel < 1 || roleLevel > maxAssignableLevel}
             sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
           >
             {savingRole ? <GearSpinner size={18} /> : 'Guardar'}
