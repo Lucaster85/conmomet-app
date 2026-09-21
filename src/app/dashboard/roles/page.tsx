@@ -35,7 +35,7 @@ import {
   AdminPanelSettingsOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { RoleService, PermissionService, Role, Permission } from '@/utils/api';
-import { TokenManager } from '@/utils/auth';
+import { TokenManager, userHasPermission } from '@/utils/auth';
 import GearSpinner from '@/components/GearSpinner';
 
 function toErrorMsg(err: unknown): string {
@@ -62,10 +62,21 @@ export default function RolesPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Nivel del usuario logueado: acota el input de `level` en el diálogo (UX — la validación
-  // real la hace siempre el backend). Si la sesión es de antes de este cambio y todavía no
-  // tiene `roleLevel` guardado, no lo limitamos acá: el backend igual rechaza si corresponde.
-  const currentUserLevel = TokenManager.getUser()?.roleLevel;
-  const maxAssignableLevel = currentUserLevel !== undefined ? currentUserLevel - 1 : 99;
+  // real la hace siempre el backend). Mismo nivel que el actor está permitido (no es
+  // escalación: el rol nuevo queda con el mismo techo de permisos, no uno mayor). Si la
+  // sesión es de antes de este cambio y todavía no tiene `roleLevel` guardado, no lo
+  // limitamos acá: el backend igual rechaza si corresponde.
+  const currentUser = TokenManager.getUser();
+  const currentUserLevel = currentUser?.roleLevel;
+  const maxAssignableLevel = currentUserLevel !== undefined ? currentUserLevel : 99;
+
+  // Gating por permiso real del usuario logueado — el backend ya lo valida (403 si falta),
+  // esto es para no dejar avanzar a un diálogo/acción que después va a fallar.
+  const canCreateRoles = userHasPermission(currentUser, 'roles_write');
+  const canUpdateRoles = userHasPermission(currentUser, 'roles_update');
+  const canDeleteRoles = userHasPermission(currentUser, 'roles_delete');
+  const canWritePermissions = userHasPermission(currentUser, 'permissions_write');
+  const canDeletePermissions = userHasPermission(currentUser, 'permissions_delete');
 
   // Create / Edit role dialog
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
@@ -126,6 +137,7 @@ export default function RolesPage() {
 
   // --- Role CRUD ---
   const handleOpenCreate = () => {
+    if (!canCreateRoles) return;
     setEditingRole(null);
     setRoleName('');
     setRoleHasDashboardAccess(true);
@@ -134,7 +146,7 @@ export default function RolesPage() {
   };
 
   const handleOpenEdit = (role: Role) => {
-    if (role.is_system) return;
+    if (role.is_system || !canUpdateRoles) return;
     setEditingRole(role);
     setRoleName(role.name);
     setRoleHasDashboardAccess(role.has_dashboard_access ?? true);
@@ -161,7 +173,7 @@ export default function RolesPage() {
   };
 
   const handleOpenDelete = (role: Role) => {
-    if (role.is_system) return;
+    if (role.is_system || !canDeleteRoles) return;
     setDeleteTarget(role);
     setDeleteDialogOpen(true);
   };
@@ -185,7 +197,7 @@ export default function RolesPage() {
 
   // --- Permissions management ---
   const handleOpenPerms = (role: Role) => {
-    if (role.is_system) return;
+    if (role.is_system || !canUpdateRoles) return;
     setPermTarget(role);
     const currentIds = new Set((role.permissions || []).map(p => p.id));
     setSelectedPermIds(currentIds);
@@ -218,7 +230,7 @@ export default function RolesPage() {
 
   // --- Create permission ---
   const handleCreatePerm = async () => {
-    if (!newPermName.trim()) return;
+    if (!newPermName.trim() || !canWritePermissions) return;
     setCreatingPerm(true);
     setCreatePermError(null);
     try {
@@ -238,6 +250,7 @@ export default function RolesPage() {
   };
 
   const handleDeletePerm = async (perm: Permission) => {
+    if (!canDeletePermissions) return;
     try {
       await PermissionService.delete(perm.id);
       setPermissions(prev => prev.filter(p => p.id !== perm.id));
@@ -256,7 +269,7 @@ export default function RolesPage() {
   );
 
   const handleCreateSuggestedBulk = async () => {
-    if (missingSuggested.length === 0) return;
+    if (missingSuggested.length === 0 || !canWritePermissions) return;
     try {
       const created = await PermissionService.create(missingSuggested);
       setPermissions(prev => [...prev, ...created]);
@@ -280,14 +293,19 @@ export default function RolesPage() {
             Gestioná los roles y sus permisos de acceso
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenCreate}
-          sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 600 }}
-        >
-          Nuevo rol
-        </Button>
+        <Tooltip title={canCreateRoles ? '' : 'No tenés permiso para crear roles'}>
+          <span>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpenCreate}
+              disabled={!canCreateRoles}
+              sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 600 }}
+            >
+              Nuevo rol
+            </Button>
+          </span>
+        </Tooltip>
       </Box>
 
       {error && (
@@ -302,10 +320,12 @@ export default function RolesPage() {
           severity="warning"
           sx={{ mb: 3, borderRadius: '10px' }}
           action={
-            <Button color="inherit" size="small" onClick={handleCreateSuggestedBulk}
-              sx={{ textTransform: 'none', fontWeight: 600 }}>
-              Crear todos
-            </Button>
+            canWritePermissions ? (
+              <Button color="inherit" size="small" onClick={handleCreateSuggestedBulk}
+                sx={{ textTransform: 'none', fontWeight: 600 }}>
+                Crear todos
+              </Button>
+            ) : undefined
           }
         >
           Faltan {missingSuggested.length} permisos del sistema ({missingSuggested.slice(0, 3).join(', ')}{missingSuggested.length > 3 ? '...' : ''}). Creá los permisos sugeridos para habilitar el acceso.
@@ -367,26 +387,30 @@ export default function RolesPage() {
                   </Box>
                 </CardContent>
                 <CardActions sx={{ px: 2, pb: 2, pt: 0.5 }}>
-                  <Button
-                    size="small"
-                    startIcon={<KeyIcon fontSize="small" />}
-                    onClick={() => handleOpenPerms(role)}
-                    disabled={role.is_system}
-                    sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.8rem' }}
-                  >
-                    Permisos
-                  </Button>
-                  <Box sx={{ flex: 1 }} />
-                  <Tooltip title={role.is_system ? 'Rol de sistema: no editable' : 'Editar rol'}>
+                  <Tooltip title={role.is_system ? 'Rol de sistema: sin permisos editables' : (!canUpdateRoles ? 'No tenés permiso para editar permisos de roles' : '')}>
                     <span>
-                      <IconButton size="small" onClick={() => handleOpenEdit(role)} disabled={role.is_system}>
+                      <Button
+                        size="small"
+                        startIcon={<KeyIcon fontSize="small" />}
+                        onClick={() => handleOpenPerms(role)}
+                        disabled={role.is_system || !canUpdateRoles}
+                        sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.8rem' }}
+                      >
+                        Permisos
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <Box sx={{ flex: 1 }} />
+                  <Tooltip title={role.is_system ? 'Rol de sistema: no editable' : (!canUpdateRoles ? 'No tenés permiso para editar roles' : 'Editar rol')}>
+                    <span>
+                      <IconButton size="small" onClick={() => handleOpenEdit(role)} disabled={role.is_system || !canUpdateRoles}>
                         <EditIcon fontSize="small" />
                       </IconButton>
                     </span>
                   </Tooltip>
-                  <Tooltip title={role.is_system ? 'Rol de sistema: no se puede eliminar' : 'Eliminar rol'}>
+                  <Tooltip title={role.is_system ? 'Rol de sistema: no se puede eliminar' : (!canDeleteRoles ? 'No tenés permiso para eliminar roles' : 'Eliminar rol')}>
                     <span>
-                      <IconButton size="small" color="error" onClick={() => handleOpenDelete(role)} disabled={role.is_system}>
+                      <IconButton size="small" color="error" onClick={() => handleOpenDelete(role)} disabled={role.is_system || !canDeleteRoles}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </span>
@@ -415,22 +439,27 @@ export default function RolesPage() {
             <Typography variant="h6" fontWeight={600} color="#1E293B">
               Permisos disponibles ({permissions.length})
             </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<AddIcon />}
-              onClick={() => { setNewPermName(''); setCreatePermError(null); setCreatePermOpen(true); }}
-              sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
-            >
-              Nuevo permiso
-            </Button>
+            <Tooltip title={canWritePermissions ? '' : 'No tenés permiso para crear permisos'}>
+              <span>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() => { setNewPermName(''); setCreatePermError(null); setCreatePermOpen(true); }}
+                  disabled={!canWritePermissions}
+                  sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+                >
+                  Nuevo permiso
+                </Button>
+              </span>
+            </Tooltip>
           </Stack>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             {permissions.map(p => (
               <Chip
                 key={p.id}
                 label={p.name}
-                onDelete={() => handleDeletePerm(p)}
+                onDelete={canDeletePermissions ? () => handleDeletePerm(p) : undefined}
                 sx={{
                   bgcolor: p.name === 'admin_granted' ? 'rgba(25,118,210,0.1)' : 'rgba(100,116,139,0.08)',
                   color: p.name === 'admin_granted' ? '#1976d2' : '#475569',
@@ -578,15 +607,19 @@ export default function RolesPage() {
             </Box>
           )}
 
-          <Divider sx={{ my: 2 }} />
-          <Button
-            size="small"
-            startIcon={<AddIcon />}
-            onClick={() => { setNewPermName(''); setCreatePermError(null); setCreatePermOpen(true); }}
-            sx={{ textTransform: 'none', fontSize: '0.8rem' }}
-          >
-            Crear nuevo permiso
-          </Button>
+          {canWritePermissions && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Button
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => { setNewPermName(''); setCreatePermError(null); setCreatePermOpen(true); }}
+                sx={{ textTransform: 'none', fontSize: '0.8rem' }}
+              >
+                Crear nuevo permiso
+              </Button>
+            </>
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Typography variant="caption" color="#64748B" sx={{ flex: 1 }}>

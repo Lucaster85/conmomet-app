@@ -12,6 +12,10 @@ export interface UserData {
   // Nivel de jerarquía del rol propio (ver Role.level en el backend). Usado en el frontend
   // solo como UX (acotar selects/inputs) — la validación real siempre la hace el backend.
   roleLevel?: number;
+  // Nombres de permisos (rol + individuales, ya aplanados por buildCleanUser). Usado en el
+  // frontend solo como UX (ocultar/deshabilitar controles) — la validación real la hace
+  // siempre el backend vía authPermission.
+  permissions?: string[];
   employee_id?: number | null;
   has_dashboard_access?: boolean;
   must_change_password?: boolean;
@@ -52,6 +56,14 @@ export function buildCleanUser(user: RawAuthUser): UserData {
     has_dashboard_access: user.has_dashboard_access !== undefined ? user.has_dashboard_access : true,
     must_change_password: !!user.must_change_password,
   };
+}
+
+// Chequeo de permiso en el frontend, mismo criterio que el backend (helpers/permissions.js):
+// `admin_granted` es un bypass total. Solo para UX (ocultar/deshabilitar controles) — la
+// validación real siempre la hace el backend.
+export function userHasPermission(user: UserData | null, permission: string): boolean {
+  const perms = user?.permissions || [];
+  return perms.includes('admin_granted') || perms.includes(permission);
 }
 
 export class TokenManager {

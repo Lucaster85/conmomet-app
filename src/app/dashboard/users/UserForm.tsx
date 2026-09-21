@@ -15,6 +15,7 @@ import {
   Paper,
   Divider,
   Alert,
+  Chip,
 } from '@mui/material';
 import GearSpinner from '../../../components/GearSpinner';
 import { SaveOutlined as SaveIcon, ContentCopyOutlined as ContentCopyIcon } from '@mui/icons-material';
@@ -30,9 +31,13 @@ import {
   EmployeeService,
   Employee,
 } from '../../../utils/api';
+import { TokenManager, userHasPermission } from '../../../utils/auth';
 
 // Solo lo que expone GET /lookup/roles (filtrado por jerarquía): nunca `permissions` ni `key`.
-type AssignableRole = Pick<Role, 'id' | 'name' | 'level' | 'has_dashboard_access'>;
+// `currentOnly` marca el rol ya asignado al usuario que se edita cuando el lookup lo excluyó
+// (por ser is_system o de nivel fuera de rango) — se inyecta localmente solo para poder
+// mostrarlo seleccionado, no significa que se pueda reasignar a otro usuario.
+type AssignableRole = Pick<Role, 'id' | 'name' | 'level' | 'has_dashboard_access'> & { currentOnly?: boolean };
 
 interface UserFormProps {
   user?: User;
@@ -42,6 +47,12 @@ interface UserFormProps {
 
 export default function UserForm({ user, onSuccessAction, onCancel }: UserFormProps) {
   const isEditing = !!user;
+
+  // Gating por permiso real del usuario logueado: PUT /users/:id/permissions requiere
+  // users_update tanto en alta como en edición (es la misma llamada en los dos flujos). El
+  // backend ya lo valida (403 si falta) — esto es para no mostrar/dejar tildar algo que
+  // después va a fallar.
+  const canAssignPermissions = userHasPermission(TokenManager.getUser(), 'users_update');
   
   const [formData, setFormData] = useState<CreateUserData>({
     name: user?.name || '',
@@ -78,7 +89,20 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
           EmployeeService.getAll(),
         ]);
         
-        setRoles(Array.isArray(rolesData) ? rolesData : []);
+        // El lookup excluye roles is_system y de nivel fuera de rango — pero si se está
+        // editando a alguien que ya tiene uno de esos roles (ej. "Operario"), igual hay que
+        // poder mostrarlo seleccionado en el select, aunque no sea reasignable a otro usuario.
+        const rolesList: AssignableRole[] = Array.isArray(rolesData) ? [...rolesData] : [];
+        if (isEditing && user?.role && !rolesList.some(r => r.id === user.role!.id)) {
+          rolesList.unshift({
+            id: user.role.id,
+            name: user.role.name,
+            level: user.role.level,
+            has_dashboard_access: user.role.has_dashboard_access,
+            currentOnly: true,
+          });
+        }
+        setRoles(rolesList);
         setPermissions(Array.isArray(permissionsData) ? permissionsData : []);
 
         if (Array.isArray(employeesData)) {
@@ -98,6 +122,7 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
     };
 
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Manejar cambios en los campos del formulario
@@ -194,12 +219,14 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
 
       if (isEditing && user) {
         await UserService.update(user.id, formData);
-        await UserService.setPermissions(user.id, formData.permissions || []);
+        if (canAssignPermissions) {
+          await UserService.setPermissions(user.id, formData.permissions || []);
+        }
         setSuccess('Usuario actualizado exitosamente');
         setTimeout(() => onSuccessAction(), 1000);
       } else {
         const result = await UserService.create(formData);
-        if (formData.permissions && formData.permissions.length > 0) {
+        if (canAssignPermissions && formData.permissions && formData.permissions.length > 0) {
           await UserService.setPermissions(result.data.id, formData.permissions);
         }
         if (result.generatedPassword) {
@@ -363,7 +390,7 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
               </MenuItem>
               {Array.isArray(roles) && roles.map((role) => (
                 <MenuItem key={role.id} value={role.id}>
-                  {role.name}
+                  {role.name}{role.currentOnly ? ' (rol actual)' : ''}
                 </MenuItem>
               ))}
             </Select>
@@ -400,37 +427,60 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
           />
         </Box>
 
-        {/* Permisos Adicionales */}
-        <Divider sx={{ my: 2 }} />
-        <Typography variant="h6" gutterBottom>
-          Permisos Adicionales (Opcional)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          Los permisos del rol se asignan automáticamente. Aquí puede agregar permisos adicionales.
-        </Typography>
+        {/* Permisos Adicionales: solo si el usuario logueado puede realmente asignarlos
+            (users_update). Si no, a lo sumo mostramos de solo lectura los que ya tiene el
+            usuario que se está editando — nunca el catálogo completo para tildar. */}
+        {canAssignPermissions ? (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="h6" gutterBottom>
+              Permisos Adicionales (Opcional)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Los permisos del rol se asignan automáticamente. Aquí puede agregar permisos adicionales.
+            </Typography>
 
-        <Paper variant="outlined" sx={{ p: 2, maxHeight: 200, overflow: 'auto' }}>
-          <FormGroup>
-            {Array.isArray(permissions) && permissions.length > 0 ? (
-              permissions.map((permission) => (
-                <FormControlLabel
-                  key={permission.id}
-                  control={
-                    <Checkbox
-                      checked={formData.permissions?.includes(permission.id) || false}
-                      onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
+            <Paper variant="outlined" sx={{ p: 2, maxHeight: 200, overflow: 'auto' }}>
+              <FormGroup>
+                {Array.isArray(permissions) && permissions.length > 0 ? (
+                  permissions.map((permission) => (
+                    <FormControlLabel
+                      key={permission.id}
+                      control={
+                        <Checkbox
+                          checked={formData.permissions?.includes(permission.id) || false}
+                          onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
+                        />
+                      }
+                      label={permission.name}
                     />
-                  }
-                  label={permission.name}
-                />
-              ))
-            ) : (
-              <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                No hay permisos disponibles
-              </Typography>
-            )}
-          </FormGroup>
-        </Paper>
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                    No hay permisos disponibles
+                  </Typography>
+                )}
+              </FormGroup>
+            </Paper>
+          </>
+        ) : isEditing && user?.permissions && user.permissions.length > 0 ? (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="h6" gutterBottom>
+              Permisos Adicionales
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Permisos especiales ya asignados a este usuario. No tenés permiso para modificarlos.
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {user.permissions.map((permission) => (
+                  <Chip key={permission.id} label={permission.name} size="small" />
+                ))}
+              </Box>
+            </Paper>
+          </>
+        ) : null}
 
         {/* Botones */}
         <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>

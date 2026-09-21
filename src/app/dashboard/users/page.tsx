@@ -31,11 +31,21 @@ import {
   PeopleOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { User, UserService } from '../../../utils/api';
+import { TokenManager } from '../../../utils/auth';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import UserForm from './UserForm';
 
 export default function UsersPage() {
+  // Gating por jerarquía: no se puede editar/eliminar un usuario con rol de nivel SUPERIOR al
+  // propio (el backend ya lo valida en update/destroy — esto es para no dejar avanzar a algo
+  // que después va a fallar). Mismo nivel sí está permitido: no es escalación. Si no hay
+  // `roleLevel`/`role.level` disponible (sesión vieja o dato faltante), no se restringe en
+  // el front.
+  const currentUserLevel = TokenManager.getUser()?.roleLevel;
+  const canManageUser = (target: User) =>
+    currentUserLevel === undefined || target.role?.level === undefined || target.role.level <= currentUserLevel;
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -95,8 +105,14 @@ export default function UsersPage() {
   };
 
   const handleOpenEdit = (user: User) => {
+    if (!canManageUser(user)) return;
     setEditingUser(user);
     setOpenDialog(true);
+  };
+
+  const handleOpenDelete = (user: User) => {
+    if (!canManageUser(user)) return;
+    setDeleteDialog({ open: true, user });
   };
 
   // Manejar eliminación
@@ -217,12 +233,20 @@ export default function UsersPage() {
                     </Box>
                   </Box>
                   <Box display="flex" flexDirection="column" gap={0.5}>
-                    <IconButton size="small" color="primary" onClick={() => handleOpenEdit(user)}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, user })}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    <Tooltip title={canManageUser(user) ? 'Editar' : 'No podés gestionar un usuario con rol de nivel superior al tuyo'}>
+                      <span>
+                        <IconButton size="small" color="primary" onClick={() => handleOpenEdit(user)} disabled={!canManageUser(user)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title={canManageUser(user) ? 'Eliminar' : 'No podés gestionar un usuario con rol de nivel superior al tuyo'}>
+                      <span>
+                        <IconButton size="small" color="error" onClick={() => handleOpenDelete(user)} disabled={!canManageUser(user)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
                   </Box>
                 </Box>
               </Card>
@@ -283,19 +307,24 @@ export default function UsersPage() {
                     <TableCell>{formatDate(user.createdAt)}</TableCell>
                     <TableCell align="center">
                       <Box display="flex" justifyContent="center" gap={0.5}>
-                        <Tooltip title="Editar">
-                          <IconButton size="small" color="primary" onClick={() => handleOpenEdit(user)}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
+                        <Tooltip title={canManageUser(user) ? 'Editar' : 'No podés gestionar un usuario con rol de nivel superior al tuyo'}>
+                          <span>
+                            <IconButton size="small" color="primary" onClick={() => handleOpenEdit(user)} disabled={!canManageUser(user)}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </span>
                         </Tooltip>
-                        <Tooltip title="Eliminar">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => setDeleteDialog({ open: true, user })}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
+                        <Tooltip title={canManageUser(user) ? 'Eliminar' : 'No podés gestionar un usuario con rol de nivel superior al tuyo'}>
+                          <span>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleOpenDelete(user)}
+                              disabled={!canManageUser(user)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                       </Box>
                     </TableCell>
