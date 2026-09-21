@@ -24,4 +24,7 @@ o **no habilitado** para entrar a esa planta, según los Requisitos configurados
 documentos que tenga cargados. Se puede expandir cada empleado para ver el detalle documento
 por documento.
 
+Para el detalle de cómo se cargan, renuevan o resuelven esos documentos, ver el tema
+**Documentación y Vencimientos**.
+
 <!-- ref: conmomet-app/src/app/dashboard/plants/page.tsx, api_conmomet/controllers/plantController.js, api_conmomet/controllers/plantRequirementController.js, api_conmomet/controllers/complianceController.js -->

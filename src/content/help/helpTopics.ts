@@ -129,4 +129,17 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
     file: 'presupuestos.md',
   },
+  {
+    // Categoría propia a propósito, mismo criterio que "Flota": el sistema de documentos es
+    // transversal (Empleados, Vehículos, Inicio), no vive en un único grupo de menú.
+    id: 'documentacion',
+    category: 'Documentación',
+    title: 'Documentación y Vencimientos',
+    keywords: [
+      'documento', 'documentos', 'vencimiento', 'vencimientos', 'renovar', 'renovacion',
+      'renovación', 'resolver', 'categoria de documento', 'categoría de documento', 'legajo',
+      'alerta', 'alertas', 'vence', 'vencido', 'habilitacion', 'habilitación',
+    ],
+    file: 'documentacion.md',
+  },
 ];

@@ -43,27 +43,35 @@ export default function PortalDocuments() {
     fetchDocs();
   }, []);
 
+  // Deriva el chip solo de `computed_status` + `is_renewable` — sin flags inventados. Un
+  // documento sin vencimiento queda "Activo" para siempre; uno no renovable (ej. una multa)
+  // se resuelve con un comprobante y pasa a "Pendiente"/"Resuelto"; uno renovable sigue el
+  // ciclo Vigente/Por Vencer/Vencido, y si ya se renovó (queda como historial) se ve "Renovado".
   const getStatusChip = (doc: EntityDocument) => {
-    if (!doc.is_renewable && !doc.is_transactional) {
-      return <Chip label="Activo" color="success" size="small" />;
+    switch (doc.computed_status) {
+      case 'permanent':
+        return <Chip label="Activo" color="success" size="small" />;
+      case 'resolved':
+        return doc.is_renewable
+          ? <Chip label="Renovado" size="small" />
+          : <Chip label="Resuelto" color="success" size="small" />;
+      case 'expired':
+        return doc.is_renewable
+          ? <Chip label="Vencido" color="error" size="small" />
+          : <Chip label="Pendiente" color="warning" size="small" />;
+      case 'expiring_soon':
+        return doc.is_renewable
+          ? <Chip label="Por Vencer" color="warning" size="small" />
+          : <Chip label="Pendiente" color="warning" size="small" />;
+      default:
+        return <Chip label="Vigente" color="success" size="small" />;
     }
-
-    if (doc.is_transactional) {
-      if (doc.computed_status === 'resolved') {
-        return <Chip label="Resuelto" color="success" size="small" />;
-      }
-      return <Chip label="Pendiente" color="warning" size="small" />;
-    }
-
-    if (doc.computed_status === 'expired') {
-      return <Chip label="Vencido" color="error" size="small" />;
-    }
-    if (doc.computed_status === 'expiring_soon') {
-      return <Chip label="Por Vencer" color="warning" size="small" />;
-    }
-    return <Chip label="Vigente" color="success" size="small" />;
   };
 
+  // TODO: más adelante agregar acá un switch — no "ver solo vencidos", sino "también ver
+  // vencidos" (la lista pasaría a ocultarlos por defecto, análogo al switch "Mostrar
+  // resueltos" que ya existe en Empleados/Vehículos). Por ahora se muestra todo sin filtrar,
+  // a propósito, para salir rápido con esta versión.
   if (loading) return <Box display="flex" justifyContent="center" mt={8}><GearSpinner /></Box>;
   if (error) return <Alert severity="error" sx={{ mt: 4 }}>{error}</Alert>;
 
@@ -88,7 +96,7 @@ export default function PortalDocuments() {
                   <Box flex={1}>
                     <Typography variant="subtitle1" fontWeight={600} gutterBottom>{doc.title}</Typography>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
-                      Tipo: {doc.is_transactional ? 'Transaccional' : doc.is_renewable ? 'Renovable' : 'Informativo'}
+                      Tipo: {doc.is_renewable ? 'Renovable' : 'Informativo'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
                       Creado: {dayjs(doc.created_at).format('DD/MM/YYYY')}
@@ -141,7 +149,7 @@ export default function PortalDocuments() {
                     <TableRow key={doc.id} hover>
                       <TableCell sx={{ fontWeight: 500 }}>{doc.title}</TableCell>
                       <TableCell>
-                        {doc.is_transactional ? 'Transaccional' : doc.is_renewable ? 'Renovable' : 'Informativo'}
+                        {doc.is_renewable ? 'Renovable' : 'Informativo'}
                       </TableCell>
                       <TableCell>{dayjs(doc.created_at).format('DD/MM/YYYY')}</TableCell>
                       <TableCell>
