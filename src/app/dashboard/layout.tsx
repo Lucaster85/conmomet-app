@@ -115,7 +115,6 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Proyectos', icon: <AssignmentIcon />, path: '/dashboard/projects', requiredPermission: 'projects_read' },
       { text: 'Presupuestos', icon: <RequestQuoteIcon />, path: '/dashboard/budgets', requiredPermission: 'budgets_read' },
       { text: 'Remitos / OCAs', icon: <ReceiptLongIcon />, path: '/dashboard/ocas', requiredPermission: 'ocas_read' },
-      { text: 'Vehículos / Flota', icon: <LocalShippingIcon />, path: '/dashboard/vehicles', requiredPermission: 'vehicles_read' },
     ]
   },
   {
@@ -127,6 +126,12 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Herramientas', icon: <BuildIcon />, path: '/dashboard/tools', requiredPermission: 'tools_read' },
       { text: 'Asignaciones', icon: <SwapHorizIcon />, path: '/dashboard/asset-assignments', requiredPermission: 'asset_assignments_read' },
       { text: 'Escanear QR', icon: <QrCodeScannerIcon />, path: '/dashboard/scan', requiredPermission: null },
+    ]
+  },
+  {
+    title: 'Flota',
+    items: [
+      { text: 'Vehículos', icon: <LocalShippingIcon />, path: '/dashboard/vehicles', requiredPermission: 'vehicles_read' },
     ]
   },
   {

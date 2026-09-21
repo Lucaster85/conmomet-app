@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import Image from 'next/image';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Divider } from '@mui/material';
 import { PrintOutlined as PrintIcon } from '@mui/icons-material';
 
@@ -34,7 +35,13 @@ export default function PaymentReceiptDialog({
       <DialogContent>
         <Box className="print-area" sx={{ p: 2 }}>
           <Box display="flex" justifyContent="center" mb={2}>
-            <img src="/img/logos/logo-conmomet-ROJO.png" alt="Conmomet" style={{ height: 56, objectFit: 'contain' }} />
+            <Image
+              src="/img/logos/logo-conmomet-ROJO.png"
+              alt="Conmomet"
+              width={192}
+              height={58}
+              style={{ objectFit: 'contain', width: 'auto', maxHeight: 56 }}
+            />
           </Box>
           <Typography variant="h6" fontWeight={700} textAlign="center" gutterBottom>
             Recibo de Pago
@@ -82,6 +89,9 @@ export default function PaymentReceiptDialog({
             Recibí de Conmomet la suma de <strong>{formatCurrency(amount)}</strong> en concepto de {concept.toLowerCase()}.
           </Typography>
           <Box display="flex" justifyContent="center" py={1}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- URL dinámica de R2 (dominio
+                distinto por ambiente) dentro de un recibo solo para imprimir: no es parte del
+                render crítico, next/image no aporta nada acá. */}
             <img src={signatureUrl} alt="Firma del empleado" style={{ maxHeight: 120, maxWidth: '100%' }} />
           </Box>
           <Typography variant="body2" fontWeight={700} textAlign="center">

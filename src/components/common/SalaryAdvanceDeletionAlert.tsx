@@ -30,7 +30,6 @@ export default function SalaryAdvanceDeletionAlertWidget() {
       .then(setAlerts)
       .catch(() => setAlerts([]))
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasAccess]);
 
   const handleDismiss = async (id: number) => {

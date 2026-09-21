@@ -1146,6 +1146,9 @@ export default function PayrollPage() {
                       Recibí de conformidad la liquidación detallada arriba.
                     </Typography>
                     <Box display="flex" justifyContent="center" py={1}>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- URL dinámica de R2
+                          (dominio distinto por ambiente), no es parte del render crítico de la
+                          página, next/image no aporta nada acá. */}
                       <img src={detailEntry.signature_url} alt="Firma del empleado" style={{ maxHeight: 120, maxWidth: '100%' }} />
                     </Box>
                     <Typography variant="body2" fontWeight={700} textAlign="center">
