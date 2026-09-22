@@ -126,7 +126,7 @@ export default function OcasPage() {
   const canSetOcaPrice = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
 
   // Tab State: 0 = Horas Hombre (man_hours), 1 = Horas Grúa (crane_hours)
-  const [tabValue, setTabValue] = useState(0);
+  const [tabValue, setTabValue] = useState(searchParams.get('type') === 'crane_hours' ? 1 : 0);
   const typeKey: Oca['type'] = tabValue === 0 ? 'man_hours' : 'crane_hours';
 
   const [ocas, setOcas] = useState<Oca[]>([]);
@@ -180,7 +180,8 @@ export default function OcasPage() {
   const [printBudgetOca, setPrintBudgetOca] = useState<Oca | null>(null);
 
   // Valor de referencia de la hora (presupuesto de horas hombre) — dialog state
-  const [rateDialog, setRateDialog] = useState<{ open: boolean; oca: Oca | null; hourly_rate: string }>({ open: false, oca: null, hourly_rate: '' });
+  type VehicleRateRow = { vehicle_id: number; label: string; hourly_rate: string };
+  const [rateDialog, setRateDialog] = useState<{ open: boolean; oca: Oca | null; hourly_rate: string; vehicleRates: VehicleRateRow[] }>({ open: false, oca: null, hourly_rate: '', vehicleRates: [] });
   const [rateHistoryDialog, setRateHistoryDialog] = useState<{ open: boolean; entries: OcaClientRateHistoryEntry[] }>({ open: false, entries: [] });
 
   // Aprobación del presupuesto por administración del cliente
@@ -454,7 +455,7 @@ export default function OcasPage() {
     try {
       setError('');
       setSuccess('');
-      const requiresBudget = approveDialog.ocaType === 'man_hours' ? approveRequiresBudget : undefined;
+      const requiresBudget = approveRequiresBudget;
       await OcaService.approve(approveDialog.ocaId, signedFile || undefined, requiresBudget);
       setSuccess('Remito aprobado y cerrado correctamente');
       setApproveDialog({ open: false, ocaId: null, ocaType: null });
@@ -878,16 +879,85 @@ export default function OcasPage() {
     return simplesTotal * rate + ot50Total * rate * 1.5 + ot100Total * rate * 2;
   };
 
+  // Presupuesto de OCA de grúa: más simple que el de horas hombre — no hay recargos por hora
+  // extra, es horas totales de grúa (sin distinguir simples/50%/100%) por valor hora. A
+  // diferencia de horas hombre, cada vehículo puede tener un precio distinto (ver
+  // OcaLine.hourly_rate), así que se agrupa por día Y vehículo, no solo por día.
+  type CraneBudgetDayRow = {
+    date: string;
+    vehicleId: number;
+    vehicleLabel: string;
+    plate: string;
+    checkIn: string;
+    checkOut: string;
+    task: string;
+    hours: number;
+    rate: number;
+    subtotal: number;
+  };
+
+  const buildCraneBudgetDayRows = (oca: Oca): { rows: CraneBudgetDayRow[]; total: number } => {
+    const lines = [...(oca.lines || [])].filter(l => l.vehicle_id).sort((a, b) => a.date.localeCompare(b.date));
+    const byDayVehicle = new Map<string, OcaLine[]>();
+    lines.forEach((line) => {
+      const key = `${line.date}|${line.vehicle_id}`;
+      const existing = byDayVehicle.get(key) || [];
+      existing.push(line);
+      byDayVehicle.set(key, existing);
+    });
+
+    const rows: CraneBudgetDayRow[] = Array.from(byDayVehicle.values())
+      .map((groupLines) => {
+        const first = groupLines[0];
+        const checkIns = groupLines.map(l => l.check_in).filter(Boolean) as string[];
+        const checkOuts = groupLines.map(l => l.check_out).filter(Boolean) as string[];
+        const tasks = Array.from(new Set(
+          groupLines
+            .map(l => (modifiedLines[l.id] !== undefined ? modifiedLines[l.id] : l.task) || '')
+            .filter(t => t.trim() !== '')
+        ));
+        const hours = groupLines.reduce((acc, l) => acc + Number(l.regular_hours || 0) + Number(l.overtime_50_hours || 0) + Number(l.overtime_100_hours || 0), 0);
+        const rate = Number(groupLines.find(l => l.hourly_rate)?.hourly_rate || 0);
+        return {
+          date: first.date,
+          vehicleId: first.vehicle_id as number,
+          vehicleLabel: `${first.vehicle?.brand || ''} ${first.vehicle?.model || ''}`.trim(),
+          plate: first.vehicle?.plate || '',
+          checkIn: checkIns.length ? checkIns.sort()[0].substring(0, 5) : '',
+          checkOut: checkOuts.length ? checkOuts.sort()[checkOuts.length - 1].substring(0, 5) : '',
+          task: tasks.join('; '),
+          hours,
+          rate,
+          subtotal: hours * rate,
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date) || a.vehicleLabel.localeCompare(b.vehicleLabel));
+
+    return {
+      rows,
+      total: rows.reduce((acc, r) => acc + r.subtotal, 0),
+    };
+  };
+
+  const craneBudgetCost = (oca: Oca) => buildCraneBudgetDayRows(oca).total;
+
+  // man_hours: un único Oca.hourly_rate. crane_hours: precio por vehículo (OcaLine.hourly_rate) —
+  // "cargado" significa que todos los vehículos de la OCA ya tienen su valor.
+  const isPriceLoaded = (oca: Oca) => {
+    if (oca.type === 'man_hours') return !!oca.hourly_rate;
+    const lines = (oca.lines || []).filter(l => l.vehicle_id);
+    return lines.length > 0 && lines.every(l => !!l.hourly_rate);
+  };
+
   const handleDownloadBudgetExcel = async (oca: Oca) => {
     const XLSX = await import('xlsx');
     const rate = Number(oca.hourly_rate || 0);
-    const { rows, simplesTotal, ot50Total, ot100Total } = buildBudgetDayRows(oca);
-    const totalCost = simplesTotal * rate + ot50Total * rate * 1.5 + ot100Total * rate * 2;
+    const isManHours = oca.type === 'man_hours';
 
     const excelRows: (string | number)[][] = [
       ['CONMOMET S.A.'],
       ['Servicios Metalúrgicos e Industriales'],
-      ['PRESUPUESTO DE MANO DE OBRA'],
+      [isManHours ? 'PRESUPUESTO DE MANO DE OBRA' : 'PRESUPUESTO DE SERVICIO DE GRÚA'],
       [`OCA Nº: ${oca.number}`],
       [''],
       ['Cliente:', oca.client?.razonSocial || ''],
@@ -895,33 +965,62 @@ export default function OcasPage() {
       ['Solicitante (Supervisor):', `${oca.supervisor?.lastname || ''}, ${oca.supervisor?.name || ''}`],
       ['Fecha de Presentación:', new Date(oca.date).toLocaleDateString('es-AR')],
       [''],
-      ['Valor hora de referencia:', Number(rate.toFixed(2)), 'Valor hora 50%:', Number((rate * 1.5).toFixed(2)), 'Valor hora 100%:', Number((rate * 2).toFixed(2))],
-      [''],
-      ['Fecha', 'Entrada', 'Salida', 'Detalle de Tarea', 'Hs Simples', 'Hs 50%', 'Hs 100%', 'Cant. Personas'],
     ];
 
-    rows.forEach((row) => {
-      excelRows.push([
-        new Date(row.date + 'T12:00:00').toLocaleDateString('es-AR'),
-        row.checkIn,
-        row.checkOut,
-        row.task,
-        Number(row.simples.toFixed(1)),
-        Number(row.ot50.toFixed(1)),
-        Number(row.ot100.toFixed(1)),
-        row.people,
-      ]);
-    });
-
-    excelRows.push(
-      [''],
-      ['TOTALES', '', '', '', Number(simplesTotal.toFixed(1)), Number(ot50Total.toFixed(1)), Number(ot100Total.toFixed(1)), ''],
-      [''],
-      ['COSTO TOTAL', Number(totalCost.toFixed(2))],
-    );
+    if (isManHours) {
+      const { rows, simplesTotal, ot50Total, ot100Total } = buildBudgetDayRows(oca);
+      const totalCost = budgetCost(oca);
+      excelRows.push(
+        ['Valor hora de referencia:', Number(rate.toFixed(2)), 'Valor hora 50%:', Number((rate * 1.5).toFixed(2)), 'Valor hora 100%:', Number((rate * 2).toFixed(2))],
+        [''],
+        ['Fecha', 'Entrada', 'Salida', 'Detalle de Tarea', 'Hs Simples', 'Hs 50%', 'Hs 100%', 'Cant. Personas']
+      );
+      rows.forEach((row) => {
+        excelRows.push([
+          new Date(row.date + 'T12:00:00').toLocaleDateString('es-AR'),
+          row.checkIn,
+          row.checkOut,
+          row.task,
+          Number(row.simples.toFixed(1)),
+          Number(row.ot50.toFixed(1)),
+          Number(row.ot100.toFixed(1)),
+          row.people,
+        ]);
+      });
+      excelRows.push(
+        [''],
+        ['TOTALES', '', '', '', Number(simplesTotal.toFixed(1)), Number(ot50Total.toFixed(1)), Number(ot100Total.toFixed(1)), ''],
+        [''],
+        ['COSTO TOTAL', Number(totalCost.toFixed(2))],
+      );
+    } else {
+      const { rows, total } = buildCraneBudgetDayRows(oca);
+      excelRows.push(
+        ['Fecha', 'Vehículo', 'Patente', 'Entrada', 'Salida', 'Detalle de Tarea', 'Hs', 'Valor Hora', 'Subtotal']
+      );
+      rows.forEach((row) => {
+        excelRows.push([
+          new Date(row.date + 'T12:00:00').toLocaleDateString('es-AR'),
+          row.vehicleLabel,
+          row.plate,
+          row.checkIn,
+          row.checkOut,
+          row.task,
+          Number(row.hours.toFixed(1)),
+          Number(row.rate.toFixed(2)),
+          Number(row.subtotal.toFixed(2)),
+        ]);
+      });
+      excelRows.push(
+        [''],
+        ['COSTO TOTAL', Number(total.toFixed(2))],
+      );
+    }
 
     const ws = XLSX.utils.aoa_to_sheet(excelRows);
-    ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 35 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }];
+    ws['!cols'] = isManHours
+      ? [{ wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 35 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }]
+      : [{ wch: 12 }, { wch: 22 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 35 }, { wch: 10 }, { wch: 12 }, { wch: 14 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Presupuesto');
@@ -940,40 +1039,91 @@ export default function OcasPage() {
     window.print();
   };
 
+  const vehicleRateLabel = (vehicle?: OcaLine['vehicle']) =>
+    vehicle ? `${vehicle.brand || ''} ${vehicle.model || ''}`.trim() + (vehicle.plate ? ` - ${vehicle.plate}` : '') : 'Vehículo';
+
   const handleOpenRateDialog = async (oca: Oca) => {
-    let suggested = oca.hourly_rate ? String(oca.hourly_rate) : '';
-    if (!suggested) {
-      try {
-        const current = await OcaClientRateService.getByClient(oca.client_id);
-        if (current) suggested = String(current.hourly_rate);
-      } catch {
-        // sin sugerencia si falla — no bloquea la carga manual
+    if (oca.type === 'man_hours') {
+      let suggested = oca.hourly_rate ? String(oca.hourly_rate) : '';
+      if (!suggested) {
+        try {
+          const current = await OcaClientRateService.getByClient(oca.client_id, oca.type);
+          if (current) suggested = String(current.hourly_rate);
+        } catch {
+          // sin sugerencia si falla — no bloquea la carga manual
+        }
       }
+      setRateDialog({ open: true, oca, hourly_rate: suggested, vehicleRates: [] });
+      return;
     }
-    setRateDialog({ open: true, oca, hourly_rate: suggested });
+
+    // crane_hours: un valor por cada vehículo distinto que aparezca en la OCA.
+    const vehiclesById = new Map<number, OcaLine['vehicle']>();
+    (oca.lines || []).forEach((line) => {
+      if (line.vehicle_id && !vehiclesById.has(line.vehicle_id)) vehiclesById.set(line.vehicle_id, line.vehicle);
+    });
+    const linesByVehicle = (vehicleId: number) => (oca.lines || []).filter((l) => l.vehicle_id === vehicleId);
+
+    const vehicleRates: VehicleRateRow[] = await Promise.all(
+      Array.from(vehiclesById.entries()).map(async ([vehicleId, vehicle]) => {
+        const existingRate = linesByVehicle(vehicleId).find((l) => l.hourly_rate)?.hourly_rate;
+        let suggested = existingRate ? String(existingRate) : '';
+        if (!suggested) {
+          try {
+            const current = await OcaClientRateService.getByClient(oca.client_id, oca.type, vehicleId);
+            if (current) suggested = String(current.hourly_rate);
+          } catch {
+            // sin sugerencia si falla — no bloquea la carga manual
+          }
+        }
+        return { vehicle_id: vehicleId, label: vehicleRateLabel(vehicle), hourly_rate: suggested };
+      })
+    );
+
+    setRateDialog({ open: true, oca, hourly_rate: '', vehicleRates });
   };
 
   const handleSubmitRate = async () => {
     if (!rateDialog.oca) return;
-    const rate = Number(rateDialog.hourly_rate);
-    if (!rate || rate <= 0) {
-      setError('El valor de la hora debe ser mayor a cero.');
+
+    if (rateDialog.oca.type === 'man_hours') {
+      const rate = Number(rateDialog.hourly_rate);
+      if (!rate || rate <= 0) {
+        setError('El valor de la hora debe ser mayor a cero.');
+        return;
+      }
+      try {
+        await OcaService.setHourlyRate(rateDialog.oca.id, rate);
+        setSuccess('Valor de referencia guardado');
+        setRateDialog({ open: false, oca: null, hourly_rate: '', vehicleRates: [] });
+        loadData();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al guardar el valor de referencia');
+      }
+      return;
+    }
+
+    if (rateDialog.vehicleRates.some((v) => !Number(v.hourly_rate) || Number(v.hourly_rate) <= 0)) {
+      setError('El valor de la hora de cada vehículo debe ser mayor a cero.');
       return;
     }
     try {
-      await OcaService.setHourlyRate(rateDialog.oca.id, rate);
-      setSuccess('Valor de referencia guardado');
-      setRateDialog({ open: false, oca: null, hourly_rate: '' });
+      await OcaService.setVehicleRates(
+        rateDialog.oca.id,
+        rateDialog.vehicleRates.map((v) => ({ vehicle_id: v.vehicle_id, hourly_rate: Number(v.hourly_rate) }))
+      );
+      setSuccess('Valores de referencia guardados');
+      setRateDialog({ open: false, oca: null, hourly_rate: '', vehicleRates: [] });
       loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar el valor de referencia');
+      setError(err instanceof Error ? err.message : 'Error al guardar los valores de referencia');
     }
   };
 
-  const handleOpenRateHistory = async () => {
+  const handleOpenRateHistory = async (vehicleId?: number) => {
     if (!rateDialog.oca) return;
     try {
-      const entries = await OcaClientRateService.getHistory(rateDialog.oca.client_id);
+      const entries = await OcaClientRateService.getHistory(rateDialog.oca.client_id, rateDialog.oca.type, vehicleId);
       setRateHistoryDialog({ open: true, entries });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al obtener el historial');
@@ -1288,8 +1438,10 @@ export default function OcasPage() {
       <Dialog open={!!printBudgetOca} onClose={() => setPrintBudgetOca(null)} maxWidth="md" fullWidth>
         {printBudgetOca && (() => {
           const rate = Number(printBudgetOca.hourly_rate || 0);
-          const { rows, simplesTotal, ot50Total, ot100Total } = buildBudgetDayRows(printBudgetOca);
-          const totalCost = budgetCost(printBudgetOca);
+          const isManHours = printBudgetOca.type === 'man_hours';
+          const manHoursData = isManHours ? buildBudgetDayRows(printBudgetOca) : null;
+          const craneData = !isManHours ? buildCraneBudgetDayRows(printBudgetOca) : null;
+          const totalCost = isManHours ? budgetCost(printBudgetOca) : craneBudgetCost(printBudgetOca);
           return (
             <>
               <DialogTitle className="no-print" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1307,7 +1459,7 @@ export default function OcasPage() {
                       <Typography variant="caption" sx={{ color: 'black', display: 'block', mt: 0.5 }}>Servicios Metalúrgicos e Industriales</Typography>
                     </Box>
                     <Box textAlign="right">
-                      <Typography variant="h6" fontWeight="bold" sx={{ color: 'black' }}>PRESUPUESTO DE MANO DE OBRA</Typography>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: 'black' }}>{isManHours ? 'PRESUPUESTO DE MANO DE OBRA' : 'PRESUPUESTO DE SERVICIO DE GRÚA'}</Typography>
                       <Typography variant="subtitle1" fontWeight="bold" sx={{ fontFamily: 'monospace', color: 'black' }}>OCA Nº: {printBudgetOca.number}</Typography>
                     </Box>
                   </Box>
@@ -1323,49 +1475,86 @@ export default function OcasPage() {
                     </Grid>
                   </Grid>
 
-                  <Card variant="outlined" sx={{ borderRadius: 0, p: 1, mb: 2, bgcolor: '#fafafa', border: '1px solid black' }}>
-                    <Typography variant="body2" sx={{ color: 'black' }}>
-                      <strong>Valor hora de referencia:</strong> ${rate.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                      &nbsp;·&nbsp; <strong>Valor hora 50%:</strong> ${(rate * 1.5).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                      &nbsp;·&nbsp; <strong>Valor hora 100%:</strong> ${(rate * 2).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Card>
+                  {isManHours && (
+                    <Card variant="outlined" sx={{ borderRadius: 0, p: 1, mb: 2, bgcolor: '#fafafa', border: '1px solid black' }}>
+                      <Typography variant="body2" sx={{ color: 'black' }}>
+                        <strong>Valor hora de referencia:</strong> ${rate.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        &nbsp;·&nbsp; <strong>Valor hora 50%:</strong> ${(rate * 1.5).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        &nbsp;·&nbsp; <strong>Valor hora 100%:</strong> ${(rate * 2).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </Typography>
+                    </Card>
+                  )}
 
                   <TableContainer component={Paper} variant="outlined" sx={{ mb: 1.5, borderRadius: 0 }}>
                     <Table size="small" sx={{ '& .MuiTableCell-root': { padding: '2px 6px', fontSize: '0.72rem', lineHeight: 1.25 } }}>
-                      <TableHead>
-                        <TableRow sx={{ borderBottom: '2px solid black' }}>
-                          <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Fecha</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Entrada</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Salida</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Detalle de Tarea</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>Hs Simples</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>50%</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>100%</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>Cant. Personas</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {rows.map((row) => (
-                          <TableRow key={row.date} sx={{ borderBottom: '1px solid grey' }}>
-                            <TableCell sx={{ color: 'black', whiteSpace: 'nowrap' }}>{new Date(row.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
-                            <TableCell sx={{ color: 'black' }}>{row.checkIn || '—'}</TableCell>
-                            <TableCell sx={{ color: 'black' }}>{row.checkOut || '—'}</TableCell>
-                            <TableCell sx={{ color: 'black' }}>{row.task || '—'}</TableCell>
-                            <TableCell align="center" sx={{ color: 'black' }}>{row.simples.toFixed(1)}</TableCell>
-                            <TableCell align="center" sx={{ color: 'black' }}>{row.ot50.toFixed(1)}</TableCell>
-                            <TableCell align="center" sx={{ color: 'black' }}>{row.ot100.toFixed(1)}</TableCell>
-                            <TableCell align="center" sx={{ color: 'black' }}>{row.people}</TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow sx={{ borderTop: '2px solid black' }}>
-                          <TableCell colSpan={4} sx={{ fontWeight: 'bold', color: 'black' }}>TOTALES</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>{simplesTotal.toFixed(1)}</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>{ot50Total.toFixed(1)}</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>{ot100Total.toFixed(1)}</TableCell>
-                          <TableCell />
-                        </TableRow>
-                      </TableBody>
+                      {isManHours && manHoursData ? (
+                        <>
+                          <TableHead>
+                            <TableRow sx={{ borderBottom: '2px solid black' }}>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Fecha</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Entrada</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Salida</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Detalle de Tarea</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>Hs Simples</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>50%</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>100%</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>Cant. Personas</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {manHoursData.rows.map((row) => (
+                              <TableRow key={row.date} sx={{ borderBottom: '1px solid grey' }}>
+                                <TableCell sx={{ color: 'black', whiteSpace: 'nowrap' }}>{new Date(row.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                                <TableCell sx={{ color: 'black' }}>{row.checkIn || '—'}</TableCell>
+                                <TableCell sx={{ color: 'black' }}>{row.checkOut || '—'}</TableCell>
+                                <TableCell sx={{ color: 'black' }}>{row.task || '—'}</TableCell>
+                                <TableCell align="center" sx={{ color: 'black' }}>{row.simples.toFixed(1)}</TableCell>
+                                <TableCell align="center" sx={{ color: 'black' }}>{row.ot50.toFixed(1)}</TableCell>
+                                <TableCell align="center" sx={{ color: 'black' }}>{row.ot100.toFixed(1)}</TableCell>
+                                <TableCell align="center" sx={{ color: 'black' }}>{row.people}</TableCell>
+                              </TableRow>
+                            ))}
+                            <TableRow sx={{ borderTop: '2px solid black' }}>
+                              <TableCell colSpan={4} sx={{ fontWeight: 'bold', color: 'black' }}>TOTALES</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>{manHoursData.simplesTotal.toFixed(1)}</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>{manHoursData.ot50Total.toFixed(1)}</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>{manHoursData.ot100Total.toFixed(1)}</TableCell>
+                              <TableCell />
+                            </TableRow>
+                          </TableBody>
+                        </>
+                      ) : craneData ? (
+                        <>
+                          <TableHead>
+                            <TableRow sx={{ borderBottom: '2px solid black' }}>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Fecha</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Vehículo</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Patente</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Entrada</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Salida</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Detalle de Tarea</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>Hs</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>Valor Hora</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>Subtotal</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {craneData.rows.map((row) => (
+                              <TableRow key={`${row.date}-${row.vehicleId}`} sx={{ borderBottom: '1px solid grey' }}>
+                                <TableCell sx={{ color: 'black', whiteSpace: 'nowrap' }}>{new Date(row.date + 'T12:00:00').toLocaleDateString('es-AR')}</TableCell>
+                                <TableCell sx={{ color: 'black' }}>{row.vehicleLabel || '—'}</TableCell>
+                                <TableCell sx={{ color: 'black' }}>{row.plate || '—'}</TableCell>
+                                <TableCell sx={{ color: 'black' }}>{row.checkIn || '—'}</TableCell>
+                                <TableCell sx={{ color: 'black' }}>{row.checkOut || '—'}</TableCell>
+                                <TableCell sx={{ color: 'black' }}>{row.task || '—'}</TableCell>
+                                <TableCell align="center" sx={{ color: 'black' }}>{row.hours.toFixed(1)}</TableCell>
+                                <TableCell align="center" sx={{ color: 'black' }}>${row.rate.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
+                                <TableCell align="center" sx={{ color: 'black' }}>${row.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </>
+                      ) : null}
                     </Table>
                   </TableContainer>
 
@@ -1692,7 +1881,7 @@ export default function OcasPage() {
                             Ver Comprobante
                           </Button>
                         )}
-                        {oca.status === 'aprobado' && oca.type === 'man_hours' && (
+                        {oca.status === 'aprobado' && (
                           <Button
                             variant="text"
                             size="small"
@@ -1709,7 +1898,7 @@ export default function OcasPage() {
                         >
                           Imprimir Remito
                         </Button>
-                        {oca.type === 'man_hours' && canSetOcaPrice && (
+                        {canSetOcaPrice && (
                           <>
                             <Button
                               variant="outlined"
@@ -1719,20 +1908,20 @@ export default function OcasPage() {
                             >
                               Cargar Precio
                             </Button>
-                            <Tooltip title={!oca.hourly_rate ? 'Cargá el valor de la hora primero' : ''}>
+                            <Tooltip title={!isPriceLoaded(oca) ? 'Cargá el valor de la hora primero' : ''}>
                               <span>
                                 <Button
                                   variant="outlined"
                                   startIcon={<PrintIcon />}
                                   onClick={() => setPrintBudgetOca(oca)}
-                                  disabled={!oca.hourly_rate}
+                                  disabled={!isPriceLoaded(oca)}
                                   size="small"
                                 >
                                   Imprimir Presupuesto
                                 </Button>
                               </span>
                             </Tooltip>
-                            {oca.status === 'aprobado' && oca.requires_budget && oca.hourly_rate && (!oca.budget_status || oca.budget_status === 'pendiente') && (
+                            {oca.status === 'aprobado' && oca.requires_budget && isPriceLoaded(oca) && (!oca.budget_status || oca.budget_status === 'pendiente') && (
                               <Button
                                 variant="contained"
                                 color="info"
@@ -2688,17 +2877,15 @@ export default function OcasPage() {
                   <input type="file" hidden onChange={(e) => setSignedFile(e.target.files?.[0] || null)} />
                 </Button>
               </Box>
-              {approveDialog.ocaType === 'man_hours' && (
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={approveRequiresBudget}
-                      onChange={(e) => setApproveRequiresBudget(e.target.checked)}
-                    />
-                  }
-                  label="Requiere presupuesto (se le va a presentar a administración del cliente)"
-                />
-              )}
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={approveRequiresBudget}
+                    onChange={(e) => setApproveRequiresBudget(e.target.checked)}
+                  />
+                }
+                label="Requiere presupuesto (se le va a presentar a administración del cliente)"
+              />
             </Stack>
           </DialogContent>
           <DialogActions>
@@ -2733,7 +2920,7 @@ export default function OcasPage() {
         </Dialog>
 
         {/* Cargar Precio (valor de referencia OCA) Dialog */}
-        <Dialog open={rateDialog.open} onClose={() => setRateDialog({ open: false, oca: null, hourly_rate: '' })} maxWidth="xs" fullWidth>
+        <Dialog open={rateDialog.open} onClose={() => setRateDialog({ open: false, oca: null, hourly_rate: '', vehicleRates: [] })} maxWidth="xs" fullWidth>
           <DialogTitle>Valor de referencia de la hora</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -2741,23 +2928,56 @@ export default function OcasPage() {
                 Se usa para armar el &quot;Presupuesto&quot; de esta OCA — un valor de referencia
                 independiente del que se usa en el módulo de Presupuestos de obra.
               </Typography>
-              <TextField
-                label="Valor hora ($)"
-                type="number"
-                fullWidth
-                value={rateDialog.hourly_rate}
-                onChange={(e) => setRateDialog({ ...rateDialog, hourly_rate: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
-              {rateDialog.oca && (
-                <Button size="small" onClick={handleOpenRateHistory} sx={{ alignSelf: 'flex-start' }}>
-                  Ver historial de este cliente
-                </Button>
+              {rateDialog.oca?.type === 'man_hours' ? (
+                <>
+                  <TextField
+                    label="Valor hora ($)"
+                    type="number"
+                    fullWidth
+                    value={rateDialog.hourly_rate}
+                    onChange={(e) => setRateDialog({ ...rateDialog, hourly_rate: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  {rateDialog.oca && (
+                    <Button size="small" onClick={() => handleOpenRateHistory()} sx={{ alignSelf: 'flex-start' }}>
+                      Ver historial de este cliente
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Stack spacing={2}>
+                  {rateDialog.vehicleRates.map((vr, idx) => (
+                    <Box key={vr.vehicle_id}>
+                      <Typography variant="body2" fontWeight="bold">{vr.label}</Typography>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <TextField
+                          label="Valor hora ($)"
+                          type="number"
+                          fullWidth
+                          size="small"
+                          value={vr.hourly_rate}
+                          onChange={(e) => {
+                            const vehicleRates = [...rateDialog.vehicleRates];
+                            vehicleRates[idx] = { ...vehicleRates[idx], hourly_rate: e.target.value };
+                            setRateDialog({ ...rateDialog, vehicleRates });
+                          }}
+                          InputLabelProps={{ shrink: true }}
+                        />
+                        <Button size="small" onClick={() => handleOpenRateHistory(vr.vehicle_id)}>
+                          Historial
+                        </Button>
+                      </Stack>
+                    </Box>
+                  ))}
+                  {rateDialog.vehicleRates.length === 0 && (
+                    <Typography color="text.secondary">Esta OCA no tiene vehículos cargados.</Typography>
+                  )}
+                </Stack>
               )}
             </Stack>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setRateDialog({ open: false, oca: null, hourly_rate: '' })}>Cancelar</Button>
+            <Button onClick={() => setRateDialog({ open: false, oca: null, hourly_rate: '', vehicleRates: [] })}>Cancelar</Button>
             <Button onClick={handleSubmitRate} variant="contained">Guardar</Button>
           </DialogActions>
         </Dialog>

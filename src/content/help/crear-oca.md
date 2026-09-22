@@ -68,31 +68,45 @@ líneas pero ya **desvinculadas** de sus registros de horas originales. Gracias 
 nueva OCA sí se pueden editar libremente las horas, fechas y tareas antes de volver a
 presentarla.
 
-## Presupuesto de horas hombre (con precio)
+## Presupuesto de OCA (con precio)
 
-Además del Remito, en OCAs de **Horas Hombre** hay dos botones extra —visibles solo para quien
-tenga permiso de precios de Presupuestos— para armarle al cliente el mismo detalle pero con
-costo:
+Además del Remito, en **cualquier tipo de OCA** (Horas Hombre o Grúa) hay dos botones extra
+—visibles solo para quien tenga permiso de precios de Presupuestos— para armarle al cliente el
+mismo detalle pero con costo. El valor de referencia se guarda por cliente **y por tipo de
+OCA** (y, en Grúa, también por vehículo — ver abajo): un mismo cliente puede tener una tarifa de
+horas hombre y otra de horas de grúa al mismo tiempo, sin pisarse.
 
-- **"Cargar Precio"**: define el **valor de referencia de la hora** para esa OCA. Se sugiere
-  automáticamente el último valor cargado para ese cliente, pero se puede cambiar libremente.
-  Cada cambio queda guardado en un historial por cliente (accesible desde "Ver historial" en el
-  mismo diálogo). Es opcional — si no se carga, el remito común sigue funcionando igual.
-  **Importante**: este valor es independiente del que se usa en el módulo de Presupuestos de
-  obra — son dos conceptos de precio distintos que no se mezclan.
+- **"Cargar Precio"**: define el **valor de referencia de la hora**.
+  - **Horas Hombre**: un único valor para toda la OCA. Se sugiere automáticamente el último
+    valor cargado para ese cliente, pero se puede cambiar libremente.
+  - **Grúa**: como una OCA puede tener **varios vehículos con precios distintos**, el diálogo
+    pide un valor por cada vehículo que aparezca en la OCA (sugerido desde el último precio
+    cargado para ese cliente **y ese vehículo puntual**). Hay que completar todos para poder
+    guardar.
+  - En ambos casos cada cambio queda guardado en un historial (por cliente, o por cliente +
+    vehículo en Grúa — botón "Ver historial"/"Historial" en el mismo diálogo). Es opcional — si
+    no se carga, el remito común sigue funcionando igual. **Importante**: este valor es
+    independiente del que se usa en el módulo de Presupuestos de obra — son dos conceptos de
+    precio distintos que no se mezclan.
 - **"Imprimir Presupuesto"**: genera el mismo tipo de documento que el Remito, pero **agrupado
-  por día** (no por empleado) — una fila por fecha con la entrada más temprana, la salida más
-  tardía, y las horas simples/50%/100% sumadas entre todos los empleados que trabajaron ese día,
-  más la cantidad de personas. El valor de la hora (y sus derivados al 50%/100%) se muestra
-  aparte, y al final se calcula el costo total. Queda deshabilitado hasta que se cargue el
-  precio.
+  por día**. Queda deshabilitado hasta que se cargue el precio (en Grúa, hasta que **todos** los
+  vehículos de la OCA tengan su valor). El cálculo difiere según el tipo:
+  - **Horas Hombre**: una fila por fecha con la entrada más temprana, la salida más tardía, y
+    las horas simples/50%/100% sumadas entre todos los empleados que trabajaron ese día, más la
+    cantidad de personas. El valor de la hora (y sus derivados al 50%/100%) se muestra aparte.
+  - **Grúa**: una fila por **día y por vehículo** (no se mezclan vehículos distintos en una
+    misma fila, porque cada uno puede tener su propio precio), con el detalle de la tarea
+    realizada, las horas totales de ese día (sin distinguir simples/extra — la grúa no tiene
+    recargo por hora extra), el valor hora de ese vehículo y el subtotal.
+  - En ambos casos, al final se calcula el costo total.
 
 El precio de una OCA queda **congelado** en el momento de cargarlo — si más adelante se actualiza
-el valor de referencia del cliente, los presupuestos ya generados no cambian.
+el valor de referencia del cliente (o de un vehículo puntual, en Grúa), los presupuestos ya
+generados no cambian.
 
 ## Presentar el presupuesto a administración del cliente
 
-No todas las OCAs llevan presupuesto. Al aprobar una OCA de horas hombre se puede tildar
+No todas las OCAs llevan presupuesto. Al aprobar una OCA (de cualquier tipo) se puede tildar
 **"Requiere presupuesto"** — por defecto viene destildado. Si te olvidaste o te equivocaste, se
 puede corregir después con el botón "Requiere Presupuesto: Sí/No" en la ficha de la OCA.
 
@@ -114,7 +128,8 @@ El presupuesto rechazado queda guardado como historial en la OCA vieja.
 
 Un usuario configurado en **Configuración General → OCAs — Presupuestos** ve, arriba de todo en su
 dashboard, un aviso con la cantidad de OCAs aprobadas que requieren presupuesto y todavía no se
-presentaron a administración — el aviso no desaparece con solo cargar el precio, hace falta
+presentaron a administración — separado por tipo (Horas Hombre / Grúa), cada uno con su propio
+link a la pestaña correspondiente. El aviso no desaparece con solo cargar el precio, hace falta
 presentarlo.
 
 ## Anular una OCA

@@ -3851,6 +3851,7 @@ export interface OcaLine {
   type: 'man_hours' | 'crane_hours';
   task?: string;
   notes?: string;
+  hourly_rate?: number | null;
   employee?: { id: number; name: string; lastname: string };
   vehicle?: { id: number; brand: string; model: string; plate: string; type: string };
   project?: { id: number; name: string; code: string; plant?: { id: number; name: string } };
@@ -3899,12 +3900,15 @@ export interface Oca {
   logs?: OcaStatusLog[];
 }
 
-// Valor de referencia de la hora por cliente para presupuestos de OCA de horas hombre —
-// deliberadamente separado de ClientItemRate (tarifas de Presupuestos de obra): es un concepto
-// de precio distinto, no debe mezclarse ni aparecer como rubro seleccionable en Presupuestos.
+// Valor de referencia de la hora por cliente para presupuestos de OCA (man_hours y crane_hours,
+// discriminado por oca_type) — deliberadamente separado de ClientItemRate (tarifas de
+// Presupuestos de obra): es un concepto de precio distinto, no debe mezclarse ni aparecer como
+// rubro seleccionable en Presupuestos.
 export interface OcaClientRate {
   id: number;
   client_id: number;
+  oca_type: Oca['type'];
+  vehicle_id?: number | null;
   hourly_rate: number;
   updated_by: number;
   updatedAt: string;
@@ -3913,6 +3917,8 @@ export interface OcaClientRate {
 export interface OcaClientRateHistoryEntry {
   id: number;
   client_id: number;
+  oca_type: Oca['type'];
+  vehicle_id?: number | null;
   hourly_rate: number;
   changed_by: number;
   changedBy?: { id: number; name: string; lastname: string };
@@ -3920,15 +3926,17 @@ export interface OcaClientRateHistoryEntry {
 }
 
 export class OcaClientRateService {
-  static async getByClient(clientId: number): Promise<OcaClientRate | null> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/client-rate/${clientId}`);
+  static async getByClient(clientId: number, ocaType: Oca['type'], vehicleId?: number): Promise<OcaClientRate | null> {
+    const qs = vehicleId ? `&vehicle_id=${vehicleId}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/client-rate/${clientId}?oca_type=${ocaType}${qs}`);
     if (!response.ok) throw new Error('Error al obtener el valor de referencia del cliente');
     const data = await response.json();
     return data.data || null;
   }
 
-  static async getHistory(clientId: number): Promise<OcaClientRateHistoryEntry[]> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/client-rate/${clientId}/history`);
+  static async getHistory(clientId: number, ocaType: Oca['type'], vehicleId?: number): Promise<OcaClientRateHistoryEntry[]> {
+    const qs = vehicleId ? `&vehicle_id=${vehicleId}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/client-rate/${clientId}/history?oca_type=${ocaType}${qs}`);
     if (!response.ok) throw new Error('Error al obtener el historial del valor de referencia');
     const data = await response.json();
     return data.data || [];
@@ -4333,6 +4341,20 @@ export class OcaService {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/hourly-rate`, {
       method: 'PUT',
       body: JSON.stringify({ hourly_rate }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al guardar el valor de referencia');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  // OCAs de grúa: un valor de referencia por vehículo, no uno solo para toda la OCA.
+  static async setVehicleRates(id: number, rates: { vehicle_id: number; hourly_rate: number }[]): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/hourly-rate`, {
+      method: 'PUT',
+      body: JSON.stringify({ rates }),
     });
     if (!response.ok) {
       const error = await response.json();
