@@ -117,6 +117,9 @@ export default function ProjectDetailPage() {
   const [weekLogs, setWeekLogs] = useState<WorkDayLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [savingLogs, setSavingLogs] = useState(false);
+  // Fila de "Detalles / Observaciones" con foco en la tabla desktop — se expande a textarea
+  // mientras se edita (el texto de tareas concatenado no entra cómodo en un input de una línea).
+  const [focusedObsRow, setFocusedObsRow] = useState<number | null>(null);
 
   // Toast notification
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
@@ -433,6 +436,11 @@ export default function ProjectDetailPage() {
                         <Typography variant="body2">50%: <strong>{e.overtime_50_hours}</strong></Typography>
                         <Typography variant="body2">100%: <strong>{e.overtime_100_hours}</strong></Typography>
                       </Stack>
+                      {e.notes && (
+                        <Typography variant="body2" color="text.secondary" mt={1}>
+                          <strong>Tarea:</strong> {e.notes}
+                        </Typography>
+                      )}
                     </Card>
                   ))}
                 </Stack>
@@ -449,6 +457,7 @@ export default function ProjectDetailPage() {
                         <TableCell align="right"><strong>Reg.</strong></TableCell>
                         <TableCell align="right"><strong>50%</strong></TableCell>
                         <TableCell align="right"><strong>100%</strong></TableCell>
+                        <TableCell><strong>Tarea</strong></TableCell>
                         <TableCell><strong>Estado</strong></TableCell>
                       </TableRow>
                     </TableHead>
@@ -461,6 +470,7 @@ export default function ProjectDetailPage() {
                           <TableCell align="right">{e.regular_hours}</TableCell>
                           <TableCell align="right">{e.overtime_50_hours}</TableCell>
                           <TableCell align="right">{e.overtime_100_hours}</TableCell>
+                          <TableCell>{e.notes || '—'}</TableCell>
                           <TableCell>{e.status}</TableCell>
                         </TableRow>
                       ))}
@@ -708,7 +718,8 @@ export default function ProjectDetailPage() {
                           />
                         </TableCell>
 
-                        {/* Detalles / Observaciones */}
+                        {/* Detalles / Observaciones — se expande a textarea al hacer foco, para
+                            editar cómodo el texto de tareas concatenado (puede ser largo) */}
                         <TableCell>
                           <TextField
                             size="small"
@@ -716,6 +727,11 @@ export default function ProjectDetailPage() {
                             placeholder="Observaciones..."
                             value={log.observations || ''}
                             onChange={(e) => handleLogChange(index, 'observations', e.target.value || null)}
+                            onFocus={() => setFocusedObsRow(index)}
+                            onBlur={() => setFocusedObsRow(null)}
+                            multiline={focusedObsRow === index}
+                            minRows={focusedObsRow === index ? 3 : 1}
+                            maxRows={focusedObsRow === index ? 8 : 1}
                           />
                         </TableCell>
                       </TableRow>
