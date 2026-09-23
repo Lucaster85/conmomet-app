@@ -32,8 +32,9 @@ Desde **Rechazado** se puede **corregir**, y desde **Pendiente** o **Presentado*
      de la OCA tienen que pertenecer al mismo supervisor.
    - Para **Horas Grúa / Equipos**, hay que elegir el **Proyecto**: todas las horas de la OCA
      tienen que pertenecer al mismo proyecto.
-   - Solo aparecen horas que estén **aprobadas**, marcadas como **"Horas en Planta"**, con
-     **generación de OCA habilitada**, y que **no estén ya asignadas a otra OCA**.
+   - Solo aparecen horas que estén **aprobadas**, con **generación de OCA habilitada** (tildadas
+     como "PEP OCA" u "OCA sin PEP" al cargarlas — "PEP Regular" nunca aparece acá), con
+     supervisor asignado, y que **no estén ya asignadas a otra OCA**.
 3. Tildar las horas que se quieren incluir (o dejar la selección vacía si el remito va a
    armarse solo con líneas manuales, algo permitido únicamente en Horas Grúa).
 4. Guardar. La OCA queda creada en estado **Pendiente**, con un número único autogenerado

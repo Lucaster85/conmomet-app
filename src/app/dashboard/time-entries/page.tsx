@@ -672,7 +672,7 @@ export default function TimeEntriesPage() {
                           <Typography variant="subtitle2" fontWeight="bold">
                             {entry.employee?.lastname}, {entry.employee?.name}
                             {entry.concept && <Chip label={entry.concept.name} size="small" color="primary" variant="outlined" sx={{ ml: 1, height: 20 }} />}
-                            {entry.is_plant_hours && (
+                            {entry.is_plant_hours ? (
                               <Chip
                                 label={entry.generates_oca ? "PEP OCA" : "PEP Regular"}
                                 size="small"
@@ -680,7 +680,15 @@ export default function TimeEntriesPage() {
                                 variant="outlined"
                                 sx={{ ml: 0.5, height: 20 }}
                               />
-                            )}
+                            ) : entry.generates_oca ? (
+                              <Chip
+                                label="OCA sin PEP"
+                                size="small"
+                                color="info"
+                                variant="outlined"
+                                sx={{ ml: 0.5, height: 20 }}
+                              />
+                            ) : null}
                             {entry.oca_id && (
                               <Chip 
                                 label={`OCA #${entry.oca?.number || entry.oca_id}`} 
@@ -890,41 +898,70 @@ export default function TimeEntriesPage() {
                     </Grid>
                   )}
                   {massiveBlock.project_id && (
-                    <Grid size={{ xs: 12, md: 6 }} display="flex" gap={2} alignItems="center">
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={!!massiveBlock.is_plant_hours && !!massiveBlock.generates_oca}
-                            disabled={!massiveBlock.supervisor_id}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              setMassiveBlock({
-                                ...massiveBlock,
-                                is_plant_hours: checked,
-                                generates_oca: checked ? true : false
-                              });
-                            }}
-                          />
-                        }
-                        label="PEP OCA (genera remito)"
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={!!massiveBlock.is_plant_hours && !massiveBlock.generates_oca}
-                            disabled={!massiveBlock.supervisor_id}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              setMassiveBlock({
-                                ...massiveBlock,
-                                is_plant_hours: checked,
-                                generates_oca: false
-                              });
-                            }}
-                          />
-                        }
-                        label="PEP Regular (no genera remito)"
-                      />
+                    <Grid size={{ xs: 12, md: 6 }} sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0.5, alignItems: 'center' }}>
+                      <Tooltip title="Horas en planta que se facturan al cliente — quedan disponibles para incluirse en un Remito/OCA.">
+                        <FormControlLabel
+                          sx={{ mr: 0 }}
+                          control={
+                            <Checkbox
+                              size="small"
+                              checked={!!massiveBlock.is_plant_hours && !!massiveBlock.generates_oca}
+                              disabled={!massiveBlock.supervisor_id}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setMassiveBlock({
+                                  ...massiveBlock,
+                                  is_plant_hours: checked,
+                                  generates_oca: checked ? true : false
+                                });
+                              }}
+                            />
+                          }
+                          label={<Typography variant="caption" noWrap>PEP OCA</Typography>}
+                        />
+                      </Tooltip>
+                      <Tooltip title="Horas en planta que no se facturan a ningún cliente, pero igual cuentan como permanencia en planta.">
+                        <FormControlLabel
+                          sx={{ mr: 0 }}
+                          control={
+                            <Checkbox
+                              size="small"
+                              checked={!!massiveBlock.is_plant_hours && !massiveBlock.generates_oca}
+                              disabled={!massiveBlock.supervisor_id}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setMassiveBlock({
+                                  ...massiveBlock,
+                                  is_plant_hours: checked,
+                                  generates_oca: false
+                                });
+                              }}
+                            />
+                          }
+                          label={<Typography variant="caption" noWrap>PEP Regular</Typography>}
+                        />
+                      </Tooltip>
+                      <Tooltip title="Queda disponible para un Remito/OCA, pero no suma permanencia en planta del empleado.">
+                        <FormControlLabel
+                          sx={{ mr: 0 }}
+                          control={
+                            <Checkbox
+                              size="small"
+                              checked={!massiveBlock.is_plant_hours && !!massiveBlock.generates_oca}
+                              disabled={!massiveBlock.supervisor_id}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setMassiveBlock({
+                                  ...massiveBlock,
+                                  is_plant_hours: false,
+                                  generates_oca: checked
+                                });
+                              }}
+                            />
+                          }
+                          label={<Typography variant="caption" noWrap>OCA sin PEP</Typography>}
+                        />
+                      </Tooltip>
                     </Grid>
                   )}
                   {concepts.find(c => c.id === Number(massiveBlock.concept_id))?.is_crane_hours && (
@@ -1046,39 +1083,67 @@ export default function TimeEntriesPage() {
                           </Grid>
                         )}
                         {block.project_id && (
-                          <Grid size={{ xs: 12, md: 4 }} display="flex" gap={1} alignItems="center">
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={!!block.is_plant_hours && !!block.generates_oca}
-                                  disabled={!block.supervisor_id}
-                                  onChange={(e) => {
-                                    const checked = e.target.checked;
-                                    const newBlocks = [...individualBlocks];
-                                    newBlocks[index].is_plant_hours = checked;
-                                    newBlocks[index].generates_oca = checked ? true : false;
-                                    setIndividualBlocks(newBlocks);
-                                  }}
-                                />
-                              }
-                              label="PEP OCA"
-                            />
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={!!block.is_plant_hours && !block.generates_oca}
-                                  disabled={!block.supervisor_id}
-                                  onChange={(e) => {
-                                    const checked = e.target.checked;
-                                    const newBlocks = [...individualBlocks];
-                                    newBlocks[index].is_plant_hours = checked;
-                                    newBlocks[index].generates_oca = false;
-                                    setIndividualBlocks(newBlocks);
-                                  }}
-                                />
-                              }
-                              label="PEP Reg."
-                            />
+                          <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0.5, alignItems: 'center' }}>
+                            <Tooltip title="Horas en planta que se facturan al cliente — quedan disponibles para un Remito/OCA.">
+                              <FormControlLabel
+                                sx={{ mr: 0 }}
+                                control={
+                                  <Checkbox
+                                    size="small"
+                                    checked={!!block.is_plant_hours && !!block.generates_oca}
+                                    disabled={!block.supervisor_id}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      const newBlocks = [...individualBlocks];
+                                      newBlocks[index].is_plant_hours = checked;
+                                      newBlocks[index].generates_oca = checked ? true : false;
+                                      setIndividualBlocks(newBlocks);
+                                    }}
+                                  />
+                                }
+                                label={<Typography variant="caption" noWrap>PEP OCA</Typography>}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Horas en planta que no se facturan a ningún cliente, pero cuentan como permanencia en planta.">
+                              <FormControlLabel
+                                sx={{ mr: 0 }}
+                                control={
+                                  <Checkbox
+                                    size="small"
+                                    checked={!!block.is_plant_hours && !block.generates_oca}
+                                    disabled={!block.supervisor_id}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      const newBlocks = [...individualBlocks];
+                                      newBlocks[index].is_plant_hours = checked;
+                                      newBlocks[index].generates_oca = false;
+                                      setIndividualBlocks(newBlocks);
+                                    }}
+                                  />
+                                }
+                                label={<Typography variant="caption" noWrap>PEP Reg.</Typography>}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Queda disponible para un Remito/OCA, pero no suma permanencia en planta.">
+                              <FormControlLabel
+                                sx={{ mr: 0 }}
+                                control={
+                                  <Checkbox
+                                    size="small"
+                                    checked={!block.is_plant_hours && !!block.generates_oca}
+                                    disabled={!block.supervisor_id}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      const newBlocks = [...individualBlocks];
+                                      newBlocks[index].is_plant_hours = false;
+                                      newBlocks[index].generates_oca = checked;
+                                      setIndividualBlocks(newBlocks);
+                                    }}
+                                  />
+                                }
+                                label={<Typography variant="caption" noWrap>OCA s/PEP</Typography>}
+                              />
+                            </Tooltip>
                           </Grid>
                         )}
                         {concepts.find(c => c.id === Number(block.concept_id))?.is_crane_hours && (

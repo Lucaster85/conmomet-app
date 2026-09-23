@@ -32,10 +32,13 @@ Al abrir **"Nuevo Registro"** hay dos modos:
   correspondiente.
 - **Planta / Proyecto**: opcional. Al elegir un proyecto se habilita elegir el **Supervisor**
   del cliente que corresponde a esas horas.
-- **PEP OCA / PEP Regular**: con el supervisor elegido, se puede marcar una de las dos. **PEP
-  OCA** son horas en planta que sí se facturan al cliente — quedan disponibles más adelante
-  para incluirse en un Remito/OCA. **PEP Regular** son horas en planta que no se facturan a
-  ningún cliente, pero igual quedan registradas como tales.
+- **PEP OCA / PEP Regular / OCA sin PEP**: con el supervisor elegido, se puede marcar una de las
+  tres. **PEP OCA** son horas en planta que sí se facturan al cliente — quedan disponibles más
+  adelante para incluirse en un Remito/OCA. **PEP Regular** son horas en planta que no se
+  facturan a ningún cliente, pero igual quedan registradas como tales (suman permanencia en
+  planta del empleado). **OCA sin PEP** es la combinación inversa a PEP Regular: la hora **sí**
+  queda disponible para un Remito/OCA, pero **no** suma permanencia en planta — para cargas que
+  se facturan al cliente pero no deben contar como PEP del empleado.
 - **Llegada tarde**: un tilde general que marca que la persona llegó tarde ese día. Es solo
   informativo, queda visible como etiqueta en el listado.
 - **Observaciones**: texto libre para cualquier aclaración.
