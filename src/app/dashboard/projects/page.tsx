@@ -53,6 +53,7 @@ export default function ProjectsPage() {
   const [filterName, setFilterName] = useState('');
   const [filterClientId, setFilterClientId] = useState<number | ''>('');
   const [filterPlantId, setFilterPlantId] = useState<number | ''>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
   
   const [openDialog, setOpenDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -294,6 +295,7 @@ export default function ProjectsPage() {
     if (filterName && !proj.name.toLowerCase().includes(filterName.toLowerCase())) return false;
     if (filterClientId && proj.client_id !== filterClientId) return false;
     if (filterPlantId && proj.plant_id !== filterPlantId) return false;
+    if (filterStatus && proj.status !== filterStatus) return false;
     return true;
   });
 
@@ -372,6 +374,23 @@ export default function ProjectsPage() {
               {plants
                 .filter((p) => !filterClientId || p.client_id === filterClientId)
                 .map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </TextField>
+          </Grid>
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              label="Estado"
+              select
+              size="small"
+              fullWidth
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="">Todos los estados</option>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </TextField>
           </Grid>
         </Grid>
