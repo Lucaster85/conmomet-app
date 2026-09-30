@@ -19,6 +19,9 @@ import {
   Alert,
   Paper,
   Divider,
+  Stack,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   CloseOutlined as CloseIcon,
@@ -26,12 +29,14 @@ import {
   SaveOutlined as SaveIcon,
   CancelOutlined as CancelIcon,
   HistoryOutlined as HistoryIcon,
+  AddOutlined as AddIcon,
 } from '@mui/icons-material';
 import GearSpinner from '../../../components/GearSpinner';
 import {
-  Client, BudgetItemType, BudgetItemTypeService, BudgetCurrency,
+  Client, BudgetItemType, BudgetItemTypeService, CreateBudgetItemTypeData, BudgetCurrency,
   ClientItemRate, ClientItemRateService, ClientItemRateHistoryEntry,
 } from '../../../utils/api';
+import { useAuth } from '../../../utils/auth';
 
 interface ClientItemRatesDialogProps {
   open: boolean;
@@ -39,10 +44,20 @@ interface ClientItemRatesDialogProps {
   client: Client | null;
 }
 
+const emptyItemTypeForm = (): CreateBudgetItemTypeData => ({
+  name: '', unit_type: 'hours', unit_label: 'hs', display_order: 0, is_active: true,
+});
+
 // Tarifa por cliente y rubro de mano de obra (ej. "Hs Grúa" varía según el cliente) — solo
 // visible/editable para quien tiene budget_prices_read, ya gateado por el botón que abre este
 // diálogo en page.tsx. Ver FLOWS.md.
 export default function ClientItemRatesDialog({ open, onClose, client }: ClientItemRatesDialogProps) {
+  const { user } = useAuth();
+  const permissions: string[] = Array.isArray((user as unknown as Record<string, unknown>)?.permissions)
+    ? ((user as unknown as Record<string, unknown>).permissions as string[])
+    : [];
+  const hasItemTypesWrite = permissions.includes('admin_granted') || permissions.includes('budget_item_types_write');
+
   const [itemTypes, setItemTypes] = useState<BudgetItemType[]>([]);
   const [rates, setRates] = useState<ClientItemRate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,6 +70,12 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
 
   const [historyDialog, setHistoryDialog] = useState<{ open: boolean; itemType: BudgetItemType | null; entries: ClientItemRateHistoryEntry[]; loading: boolean }>(
     { open: false, itemType: null, entries: [], loading: false }
+  );
+
+  // Alta rápida de rubro sin salir de este diálogo — mismo form que
+  // dashboard/budget-item-types/page.tsx, para no tener que ir a otra pantalla.
+  const [newItemType, setNewItemType] = useState<{ open: boolean; form: CreateBudgetItemTypeData }>(
+    { open: false, form: emptyItemTypeForm() }
   );
 
   const loadData = useCallback(async () => {
@@ -108,6 +129,23 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
     }
   };
 
+  const handleCreateItemType = async () => {
+    if (!newItemType.form.name.trim()) {
+      setError('Ingresá un nombre para el rubro.');
+      return;
+    }
+    try {
+      setError('');
+      setSuccess('');
+      await BudgetItemTypeService.create(newItemType.form);
+      setSuccess('Rubro creado correctamente.');
+      setNewItemType({ open: false, form: emptyItemTypeForm() });
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear el rubro.');
+    }
+  };
+
   const handleShowHistory = async (itemType: BudgetItemType) => {
     if (!client) return;
     setHistoryDialog({ open: true, itemType, entries: [], loading: true });
@@ -127,7 +165,16 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
             <Typography variant="h6" fontWeight="bold">Tarifas por Rubro</Typography>
             <Typography variant="subtitle2" color="text.secondary">{client?.razonSocial}</Typography>
           </Box>
-          <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+          <Box display="flex" alignItems="center" gap={0.5}>
+            {hasItemTypesWrite && (
+              <Tooltip title="Nuevo rubro">
+                <IconButton onClick={() => setNewItemType({ open: true, form: emptyItemTypeForm() })} size="small" color="primary">
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+            <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+          </Box>
         </DialogTitle>
 
         <Divider />
@@ -226,6 +273,48 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setHistoryDialog({ open: false, itemType: null, entries: [], loading: false })}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Alta rápida de rubro — mismo form que dashboard/budget-item-types/page.tsx */}
+      <Dialog open={newItemType.open} onClose={() => setNewItemType({ open: false, form: emptyItemTypeForm() })} maxWidth="xs" fullWidth>
+        <DialogTitle>Nuevo Rubro</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Nombre *" fullWidth value={newItemType.form.name}
+              onChange={(e) => setNewItemType({ ...newItemType, form: { ...newItemType.form, name: e.target.value } })}
+            />
+            <TextField
+              label="Tipo de unidad" select fullWidth value={newItemType.form.unit_type}
+              onChange={(e) => setNewItemType({ ...newItemType, form: { ...newItemType.form, unit_type: e.target.value as 'hours' | 'units' } })}
+              SelectProps={{ native: true }}
+            >
+              <option value="hours">Horas</option>
+              <option value="units">Unidades</option>
+            </TextField>
+            <TextField
+              label="Etiqueta de unidad" fullWidth value={newItemType.form.unit_label}
+              onChange={(e) => setNewItemType({ ...newItemType, form: { ...newItemType.form, unit_label: e.target.value } })}
+            />
+            <TextField
+              label="Orden de visualización" type="number" fullWidth value={newItemType.form.display_order}
+              onChange={(e) => setNewItemType({ ...newItemType, form: { ...newItemType.form, display_order: Number(e.target.value) } })}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={newItemType.form.is_active}
+                  onChange={(e) => setNewItemType({ ...newItemType, form: { ...newItemType.form, is_active: e.target.checked } })}
+                />
+              }
+              label="Activo"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setNewItemType({ open: false, form: emptyItemTypeForm() })}>Cancelar</Button>
+          <Button onClick={handleCreateItemType} variant="contained">Crear</Button>
         </DialogActions>
       </Dialog>
     </>

@@ -607,6 +607,16 @@ export interface Plant {
   createdAt: string;
 }
 
+// Bolsa de horas presupuestadas por rubro en un proyecto — budget_item_type_id null es la bolsa
+// "Generales" (horas cargadas sin rubro). Reemplaza al viejo Project.budgeted_hours (un total
+// único, sin desglose).
+export interface HourBucket {
+  budget_item_type_id: number | null;
+  item_type_name: string;
+  budgeted_hours: number;
+  consumed_hours: number;
+}
+
 export interface Project {
   id: number;
   name: string;
@@ -615,7 +625,9 @@ export interface Project {
   plant_id?: number;
   parent_id?: number;
   description?: string;
-  budgeted_hours: number;
+  hour_buckets?: HourBucket[];
+  budgeted_hours_own?: number;
+  budgeted_hours_total?: number;
   consumed_hours_own?: number;
   consumed_hours_total?: number;
   consumed_cost_labor?: number;
@@ -639,7 +651,6 @@ export interface CreateProjectData {
   client_id: number;
   plant_id?: number;
   description?: string;
-  budgeted_hours?: number;
   status?: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
   start_date?: string;
   end_date?: string;
@@ -794,6 +805,11 @@ export interface TimeEntry {
   supervisor?: { id: number; name: string; lastname: string };
   vehicle?: { id: number; brand: string; model: string; plate: string; type: string };
   oca?: { id: number; number: string; type: string; status: string };
+  // Rubro de PROYECTO (Montaje, Construcción, etc.) para la bolsa de horas del proyecto — NO es
+  // el concepto de liquidación (concept_id/PayrollConcept). Opcional: sin rubro, cuenta para la
+  // bolsa "Generales" del proyecto.
+  budget_item_type_id?: number;
+  projectItemType?: BudgetItemType;
 }
 
 export interface CreateTimeEntryData {
@@ -812,6 +828,7 @@ export interface CreateTimeEntryData {
   generates_oca?: boolean;
   supervisor_id?: number;
   vehicle_id?: number;
+  budget_item_type_id?: number;
 }
 
 // Plant Service
@@ -1515,6 +1532,9 @@ export interface BudgetLaborLine {
   currency?: BudgetCurrency | null;
   estimated_total?: number;
   notes?: string;
+  // Horas ya cargadas de este rubro en el proyecto vinculado — informativo, solo presente
+  // cuando el presupuesto ya generó/está vinculado a un proyecto con horas reales.
+  consumed_hours?: number;
 }
 
 export interface BudgetMaterialItem {
@@ -3857,6 +3877,20 @@ export interface OcaLine {
   project?: { id: number; name: string; code: string; plant?: { id: number; name: string } };
 }
 
+// Material cargado a una OCA de horas hombre — sin precio, es un registro tipo remito
+// (material + cantidad) que se imprime como sección aparte al final de "Imprimir Remito".
+export interface OcaMaterialItem {
+  id: number;
+  oca_id: number;
+  material_id?: number | null;
+  description: string;
+  quantity: number;
+  material_unit_id: number;
+  notes?: string | null;
+  material?: { id: number; description: string };
+  materialUnit?: { id: number; label: string };
+}
+
 export interface OcaStatusLog {
   id: number;
   oca_id: number;
@@ -3898,6 +3932,7 @@ export interface Oca {
   project?: { id: number; name: string; code: string; plant_id?: number; plant?: { id: number; name: string; address?: string } };
   lines?: OcaLine[];
   logs?: OcaStatusLog[];
+  materialItems?: OcaMaterialItem[];
 }
 
 // Valor de referencia de la hora por cliente para presupuestos de OCA (man_hours y crane_hours,
@@ -4447,6 +4482,31 @@ export class OcaService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Error al editar la línea de la OCA');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async addMaterialItem(id: number, itemData: Partial<OcaMaterialItem>): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/materials`, {
+      method: 'POST',
+      body: JSON.stringify(itemData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al agregar el material a la OCA');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  static async removeMaterialItem(id: number, itemId: number): Promise<Oca> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/ocas/${id}/materials/${itemId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar el material de la OCA');
     }
     const data = await response.json();
     return data.data || data;

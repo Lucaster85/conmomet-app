@@ -80,6 +80,10 @@ import {
   ClientSupervisorService,
   OcaClientRateService,
   OcaClientRateHistoryEntry,
+  Material,
+  MaterialService,
+  MaterialUnit,
+  MaterialUnitService,
 } from '../../../utils/api';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
@@ -214,6 +218,21 @@ export default function OcasPage() {
   const [manualProjectId, setManualProjectId] = useState<number | ''>('');
   const [supervisorProjects, setSupervisorProjects] = useState<Project[]>([]);
 
+  // Materiales cargados a una OCA de horas hombre — sin precio, se imprimen como sección
+  // aparte al final de "Imprimir Remito" (ver print). Catálogo compartido con Presupuestos,
+  // pero acá la línea es solo material + cantidad, nunca se vincula a costo/margen.
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [materialUnits, setMaterialUnits] = useState<MaterialUnit[]>([]);
+  const [materialDialog, setMaterialDialog] = useState<{
+    open: boolean;
+    oca: Oca | null;
+    material: Material | null;
+    description: string;
+    quantity: number | '';
+    materialUnitId: number | '';
+    notes: string;
+  }>({ open: false, oca: null, material: null, description: '', quantity: '', materialUnitId: '', notes: '' });
+
   useEffect(() => {
     if (manualCheckIn && manualCheckOut) {
       const [inH, inM] = manualCheckIn.split(':').map(Number);
@@ -231,16 +250,22 @@ export default function OcasPage() {
     try {
       setLoading(true);
       setError('');
-      const [clis, list, emps, vehs] = await Promise.all([
+      const [clis, list, emps, vehs, mats, matUnits] = await Promise.all([
         ClientService.getAll({ is_active: true }),
         OcaService.getAll({ type: typeKey, include_anuladas: showAnuladas }),
         EmployeeService.getAll('active'),
         VehicleService.getAll({ is_active: true }),
+        // Los materiales solo aplican a OCAs de horas hombre — no hace falta pedirlos en la
+        // pestaña de grúa.
+        typeKey === 'man_hours' ? MaterialService.getAll({ is_active: true }) : Promise.resolve([]),
+        typeKey === 'man_hours' ? MaterialUnitService.getAll(true) : Promise.resolve([]),
       ]);
       setClients(clis);
       setOcas(list);
       setEmployees(emps);
       setVehicles(vehs);
+      setMaterials(mats);
+      setMaterialUnits(matUnits);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar los remitos / OCAs');
     } finally {
@@ -557,6 +582,67 @@ export default function OcasPage() {
           loadData();
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Error al remover registro');
+        }
+      }
+    });
+  };
+
+  // Materiales cargados a la OCA (solo horas hombre, sin precio) — ver OcaMaterialItem.
+  const handleOpenAddMaterial = (oca: Oca) => {
+    setMaterialDialog({ open: true, oca, material: null, description: '', quantity: '', materialUnitId: '', notes: '' });
+  };
+
+  const handleCloseMaterialDialog = () => {
+    setMaterialDialog({ open: false, oca: null, material: null, description: '', quantity: '', materialUnitId: '', notes: '' });
+  };
+
+  const handleMaterialCatalogSelect = (material: Material | null) => {
+    setMaterialDialog(prev => ({
+      ...prev,
+      material,
+      description: material ? material.description : prev.description,
+      materialUnitId: material ? material.material_unit_id : prev.materialUnitId,
+    }));
+  };
+
+  const handleSubmitMaterial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!materialDialog.oca) return;
+    if (!materialDialog.description.trim() || !materialDialog.quantity || !materialDialog.materialUnitId) {
+      setError('Descripción, cantidad y unidad son obligatorios');
+      return;
+    }
+
+    try {
+      setError('');
+      setSuccess('');
+      await OcaService.addMaterialItem(materialDialog.oca.id, {
+        material_id: materialDialog.material?.id ?? null,
+        description: materialDialog.description.trim(),
+        quantity: Number(materialDialog.quantity),
+        material_unit_id: Number(materialDialog.materialUnitId),
+        notes: materialDialog.notes.trim() || undefined,
+      });
+      setSuccess('Material agregado al remito');
+      handleCloseMaterialDialog();
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al agregar el material');
+    }
+  };
+
+  const handleRemoveMaterialItem = (ocaId: number, itemId: number) => {
+    setConfirmModal({
+      message: '¿Seguro que desea quitar este material del remito?',
+      action: async () => {
+        try {
+          setError('');
+          setSuccess('');
+          await OcaService.removeMaterialItem(ocaId, itemId);
+          setSuccess('Material quitado del remito');
+          loadData();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Error al quitar el material');
         }
       }
     });
@@ -1313,6 +1399,54 @@ export default function OcasPage() {
                         </TableBody>
                       </Table>
                     </TableContainer>
+
+                    {/* Materiales — sección aparte al final del remito, sin precio */}
+                    {printOca.materialItems && printOca.materialItems.length > 0 && (
+                      <TableContainer component={Paper} variant="outlined" sx={{ mt: 1.5, borderRadius: 0 }}>
+                        <Table
+                          size="small"
+                          sx={{
+                            '& .MuiTableCell-root': {
+                              padding: '2px 6px',
+                              fontSize: '0.72rem',
+                              lineHeight: 1.25,
+                            },
+                          }}
+                        >
+                          <TableHead>
+                            <TableRow>
+                              <TableCell
+                                colSpan={3}
+                                sx={{
+                                  color: 'black',
+                                  fontWeight: 'bold',
+                                  fontSize: '0.72rem',
+                                  padding: '8px 6px 3px',
+                                  borderBottom: '2px solid black',
+                                  bgcolor: '#f0f0f0',
+                                }}
+                              >
+                                MATERIALES
+                              </TableCell>
+                            </TableRow>
+                            <TableRow sx={{ borderBottom: '2px solid black' }}>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Material</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold', color: 'black' }}>Cantidad</TableCell>
+                              <TableCell sx={{ fontWeight: 'bold', color: 'black' }}>Unidad</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {printOca.materialItems.map((item) => (
+                              <TableRow key={item.id} sx={{ borderBottom: '1px solid grey' }}>
+                                <TableCell sx={{ color: 'black' }}>{item.description}</TableCell>
+                                <TableCell align="center" sx={{ color: 'black' }}>{Number(item.quantity).toLocaleString('es-AR')}</TableCell>
+                                <TableCell sx={{ color: 'black' }}>{item.materialUnit?.label || '—'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    )}
                   </Box>
                                 ) : (
                   /* Remito de Horas Grúa Printable Template */
@@ -1813,8 +1947,7 @@ export default function OcasPage() {
 
                   <AccordionDetails sx={{ borderTop: '1px solid', borderColor: 'divider', bgcolor: 'grey.50', p: 3 }}>
                     {/* Action Flow Panel */}
-                    <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} justifyContent="space-between" mb={3} gap={2} alignItems={{ xs: 'stretch', md: 'center' }}>
-                      <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                    <Box display="flex" flexWrap="wrap" rowGap={1} columnGap={1} mb={3} alignItems="center">
                         {oca.status === 'pendiente' && (
                           <Button
                             variant="contained"
@@ -1959,9 +2092,8 @@ export default function OcasPage() {
                             )}
                           </>
                         )}
-                      </Stack>
                       {oca.status === 'pendiente' && (
-                        <Stack direction="row" spacing={1}>
+                        <>
                           <Button
                             variant="outlined"
                             color="primary"
@@ -1969,7 +2101,7 @@ export default function OcasPage() {
                             onClick={() => handleOpenAddEntries(oca)}
                             size="small"
                           >
-                            Agregar Horas Pendientes
+                            Horas Pendientes
                           </Button>
                           <Button
                             variant="outlined"
@@ -1978,9 +2110,20 @@ export default function OcasPage() {
                             onClick={() => handleOpenAddManualLine(oca)}
                             size="small"
                           >
-                            Agregar Línea Manual
+                            Línea Manual
                           </Button>
-                        </Stack>
+                          {oca.type === 'man_hours' && (
+                            <Button
+                              variant="outlined"
+                              color="secondary"
+                              startIcon={<AddIcon />}
+                              onClick={() => handleOpenAddMaterial(oca)}
+                              size="small"
+                            >
+                              Material
+                            </Button>
+                          )}
+                        </>
                       )}
                     </Box>
 
@@ -2290,6 +2433,85 @@ export default function OcasPage() {
                         >
                           {savingLines ? 'Guardando...' : 'Guardar Cambios de Tareas'}
                         </Button>
+                      </Box>
+                    )}
+
+                    {/* Materials list (man_hours only) */}
+                    {oca.type === 'man_hours' && ((oca.materialItems && oca.materialItems.length > 0) || oca.status === 'pendiente') && (
+                      <Box mt={2}>
+                        <Typography variant="subtitle2" fontWeight="bold" mb={1}>
+                          Materiales del Remito
+                        </Typography>
+                        {(!oca.materialItems || oca.materialItems.length === 0) ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Sin materiales cargados todavía.
+                          </Typography>
+                        ) : !isMobile ? (
+                          <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', mb: 1 }}>
+                            <Table size="small">
+                              <TableHead sx={{ bgcolor: 'grey.100' }}>
+                                <TableRow>
+                                  <TableCell><strong>Material</strong></TableCell>
+                                  <TableCell align="center"><strong>Cantidad</strong></TableCell>
+                                  <TableCell><strong>Unidad</strong></TableCell>
+                                  <TableCell><strong>Notas</strong></TableCell>
+                                  {oca.status === 'pendiente' && <TableCell align="center"><strong>Acciones</strong></TableCell>}
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {oca.materialItems.map((item) => (
+                                  <TableRow key={item.id} hover>
+                                    <TableCell>{item.description}</TableCell>
+                                    <TableCell align="center">{Number(item.quantity).toLocaleString('es-AR')}</TableCell>
+                                    <TableCell>{item.materialUnit?.label || '—'}</TableCell>
+                                    <TableCell>{item.notes || '—'}</TableCell>
+                                    {oca.status === 'pendiente' && (
+                                      <TableCell align="center">
+                                        <Tooltip title="Quitar Material">
+                                          <IconButton
+                                            color="error"
+                                            size="small"
+                                            onClick={() => handleRemoveMaterialItem(oca.id, item.id)}
+                                          >
+                                            <RemoveIcon fontSize="small" />
+                                          </IconButton>
+                                        </Tooltip>
+                                      </TableCell>
+                                    )}
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        ) : (
+                          <Box display="flex" flexDirection="column" gap={1} sx={{ mb: 1 }}>
+                            {oca.materialItems.map((item) => (
+                              <Card key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                                <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                                  <Box>
+                                    <Typography variant="body2" fontWeight="bold">{item.description}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {Number(item.quantity).toLocaleString('es-AR')} {item.materialUnit?.label || ''}
+                                    </Typography>
+                                    {item.notes && (
+                                      <Typography variant="caption" color="text.secondary" display="block">{item.notes}</Typography>
+                                    )}
+                                  </Box>
+                                  {oca.status === 'pendiente' && (
+                                    <IconButton
+                                      color="error"
+                                      size="small"
+                                      onClick={() => handleRemoveMaterialItem(oca.id, item.id)}
+                                      sx={{ p: 0.5 }}
+                                    >
+                                      <RemoveIcon fontSize="small" />
+                                    </IconButton>
+                                  )}
+                                </Box>
+                              </Card>
+                            ))}
+                          </Box>
+                        )}
                       </Box>
                     )}
 
@@ -3208,6 +3430,73 @@ export default function OcasPage() {
             <DialogActions>
               <Button onClick={() => { setOpenManualLineDialog(false); setEditingLineId(null); }}>Cancelar</Button>
               <Button type="submit" variant="contained">{editingLineId ? 'Guardar Cambios' : 'Agregar Línea'}</Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+
+        {/* Agregar Material al Remito (solo horas hombre, sin precio) */}
+        <Dialog open={materialDialog.open} onClose={handleCloseMaterialDialog} maxWidth="sm" fullWidth>
+          <form onSubmit={handleSubmitMaterial}>
+            <DialogTitle>Agregar Material al Remito {materialDialog.oca?.number}</DialogTitle>
+            <DialogContent dividers>
+              <Stack spacing={2}>
+                <Autocomplete<Material>
+                  size="small"
+                  fullWidth
+                  options={materials}
+                  value={materialDialog.material}
+                  onChange={(_, newValue) => handleMaterialCatalogSelect(newValue)}
+                  getOptionLabel={(option) => option.description}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  renderInput={(params) => <TextField {...params} label="Material del catálogo (opcional)" />}
+                />
+                <TextField
+                  label="Descripción *"
+                  size="small"
+                  fullWidth
+                  required
+                  value={materialDialog.description}
+                  onChange={(e) => setMaterialDialog(prev => ({ ...prev, description: e.target.value }))}
+                />
+                <Stack direction="row" spacing={2}>
+                  <TextField
+                    label="Cantidad *"
+                    type="number"
+                    size="small"
+                    fullWidth
+                    required
+                    value={materialDialog.quantity}
+                    onChange={(e) => setMaterialDialog(prev => ({ ...prev, quantity: e.target.value === '' ? '' : Number(e.target.value) }))}
+                  />
+                  <FormControl fullWidth size="small" required>
+                    <InputLabel>Unidad *</InputLabel>
+                    <Select
+                      value={materialDialog.materialUnitId}
+                      label="Unidad *"
+                      required
+                      onChange={(e) => setMaterialDialog(prev => ({ ...prev, materialUnitId: e.target.value as number | '' }))}
+                    >
+                      <MenuItem value="">— Seleccionar Unidad —</MenuItem>
+                      {materialUnits.map(u => (
+                        <MenuItem key={u.id} value={u.id}>{u.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Stack>
+                <TextField
+                  label="Notas"
+                  size="small"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  value={materialDialog.notes}
+                  onChange={(e) => setMaterialDialog(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseMaterialDialog}>Cancelar</Button>
+              <Button type="submit" variant="contained">Agregar Material</Button>
             </DialogActions>
           </form>
         </Dialog>

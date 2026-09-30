@@ -47,6 +47,11 @@ precios de presupuestos). Es la tarifa de mano de obra que ese cliente en partic
 cada rubro (ej. "Hs Grúa"), y sirve como **valor sugerido al armar un Presupuesto** para ese
 cliente — el valor sigue siendo editable línea por línea, esto es solo el punto de partida.
 
+Si el rubro que necesitás todavía no existe en el catálogo, el botón **"+"** (arriba del
+listado, solo con permiso para administrar rubros) abre un alta rápida sin salir de este
+diálogo — mismos campos que el ABM completo de **Configuración → Rubros de Presupuesto**
+(nombre, tipo de unidad, etiqueta, orden, activo).
+
 No hace falta cargarlas siempre a mano acá: **se actualizan solas** cada vez que alguien edita
 el valor unitario de una línea de mano de obra en un Presupuesto de ese cliente (incluso en
 borrador). Este diálogo es la forma de **verlas y corregirlas** manualmente, y tiene un botón
@@ -56,4 +61,4 @@ es un historial que no se puede borrar.
 Es un concepto totalmente aparte de la tarifa que se carga en una OCA de Horas Hombre — son dos
 precios independientes que no se mezclan.
 
-<!-- ref: conmomet-app/src/app/dashboard/clients/page.tsx, conmomet-app/src/app/dashboard/clients/ClientForm.tsx, conmomet-app/src/app/dashboard/clients/ClientSupervisorsDialog.tsx, conmomet-app/src/app/dashboard/clients/ClientItemRatesDialog.tsx, api_conmomet/controllers/clientController.js, api_conmomet/controllers/clientSupervisorController.js, api_conmomet/controllers/clientItemRateController.js -->
+<!-- ref: conmomet-app/src/app/dashboard/clients/page.tsx, conmomet-app/src/app/dashboard/clients/ClientForm.tsx, conmomet-app/src/app/dashboard/clients/ClientSupervisorsDialog.tsx, conmomet-app/src/app/dashboard/clients/ClientItemRatesDialog.tsx, api_conmomet/controllers/clientController.js, api_conmomet/controllers/clientSupervisorController.js, api_conmomet/controllers/clientItemRateController.js, api_conmomet/controllers/budgetItemTypeController.js -->

@@ -101,10 +101,6 @@ export default function ProjectDetailPage() {
   const hasBudgetsRead = permissions.includes('admin_granted') || permissions.includes('budgets_read');
   const hasPricesRead = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
   const hasToolsRead = permissions.includes('admin_granted') || permissions.includes('asset_assignments_read');
-  // Mismo truco de "índice inalcanzable" que ya usa este archivo para Presupuesto (línea de
-  // abajo con hasBudgetsRead ? 4 : 99): evita romper la numeración de tabs cuando falta el
-  // permiso, sin tener que recalcular todos los índices a mano.
-  const panolTabIndex = hasToolsRead ? (hasBudgetsRead ? 5 : 4) : 99;
 
   const [project, setProject] = useState<Project | null>(null);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -139,6 +135,19 @@ export default function ProjectDetailPage() {
   const [printWeeks, setPrintWeeks] = useState<WorkDayLogWeek[]>([]);
   const [loadingPrint, setLoadingPrint] = useState(false);
 
+  // Índices de pestañas calculados en orden — "Adicionales" no se muestra si este proyecto ya es
+  // un adicional (parent_id), porque no se admiten más de 2 niveles de jerarquía. El resto de
+  // las pestañas condicionales (Presupuesto/Pañol) usan el mismo truco de "índice inalcanzable"
+  // (99) que ya tenía este archivo — evita romper la numeración cuando falta un permiso o esta
+  // pestaña no aplica, sin tener que recalcular todo a mano.
+  const hasAdicionalesTab = !project?.parent_id;
+  let nextTabIndex = 1;
+  const adicionalesTabIndex = hasAdicionalesTab ? nextTabIndex++ : 99;
+  const horasTabIndex = nextTabIndex++;
+  const planillaTabIndex = nextTabIndex++;
+  const presupuestoTabIndex = hasBudgetsRead ? nextTabIndex++ : 99;
+  const panolTabIndex = hasToolsRead ? nextTabIndex++ : 99;
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -156,12 +165,12 @@ export default function ProjectDetailPage() {
 
   // Load TimeEntries for Horas tab
   useEffect(() => {
-    if (tab !== 2 || !project) return;
+    if (tab !== horasTabIndex || !project) return;
     const childIds = (project.subprojects || []).map(sp => sp.id);
     const idsToLoad = includeChildrenHours ? [project.id, ...childIds] : [project.id];
     Promise.all(idsToLoad.map(id => TimeEntryService.getAll({ project_id: id })))
       .then(results => setEntries(results.flat()));
-  }, [tab, project, includeChildrenHours]);
+  }, [tab, project, includeChildrenHours, horasTabIndex]);
 
   // Load Planilla Diaria logs
   const loadWeekLogs = useCallback(async (monday: string) => {
@@ -177,10 +186,10 @@ export default function ProjectDetailPage() {
   }, [projectId]);
 
   useEffect(() => {
-    if (tab === 3 && project) {
+    if (tab === planillaTabIndex && project) {
       loadWeekLogs(selectedMonday);
     }
-  }, [tab, project, selectedMonday, loadWeekLogs]);
+  }, [tab, project, selectedMonday, loadWeekLogs, planillaTabIndex]);
 
   // Load Pañol (herramientas/grúas asignadas) — historial completo, no solo lo activo.
   useEffect(() => {
@@ -260,7 +269,7 @@ export default function ProjectDetailPage() {
 
   const tabs = [
     { label: 'Resumen' },
-    { label: `Adicionales (${project.subproject_count ?? project.subprojects?.length ?? 0})` },
+    ...(hasAdicionalesTab ? [{ label: `Adicionales (${project.subproject_count ?? project.subprojects?.length ?? 0})` }] : []),
     { label: 'Horas' },
     { label: 'Planilla Diaria' },
     ...(hasBudgetsRead ? [{ label: 'Presupuesto' }] : []),
@@ -272,10 +281,10 @@ export default function ProjectDetailPage() {
   // home del dashboard y el portal del empleado (IconTileGrid).
   const mobileNavItems: IconTileItem[] = [
     { key: 'resumen', label: 'Resumen', icon: <InfoIcon />, onClick: () => setTab(0) },
-    { key: 'adicionales', label: 'Adicionales', icon: <SubprojectsIcon />, badge: project.subproject_count ?? project.subprojects?.length ?? 0, onClick: () => setTab(1) },
-    { key: 'horas', label: 'Horas', icon: <HoursIcon />, onClick: () => setTab(2) },
-    { key: 'planilla', label: 'Planilla', icon: <DailyLogIcon />, onClick: () => setTab(3) },
-    ...(hasBudgetsRead ? [{ key: 'presupuesto', label: 'Presupuesto', icon: <BudgetTabIcon />, onClick: () => setTab(4) }] : []),
+    ...(hasAdicionalesTab ? [{ key: 'adicionales', label: 'Adicionales', icon: <SubprojectsIcon />, badge: project.subproject_count ?? project.subprojects?.length ?? 0, onClick: () => setTab(adicionalesTabIndex) }] : []),
+    { key: 'horas', label: 'Horas', icon: <HoursIcon />, onClick: () => setTab(horasTabIndex) },
+    { key: 'planilla', label: 'Planilla', icon: <DailyLogIcon />, onClick: () => setTab(planillaTabIndex) },
+    ...(hasBudgetsRead ? [{ key: 'presupuesto', label: 'Presupuesto', icon: <BudgetTabIcon />, onClick: () => setTab(presupuestoTabIndex) }] : []),
     ...(hasToolsRead ? [{ key: 'panol', label: 'Pañol', icon: <PanolIcon />, onClick: () => setTab(panolTabIndex) }] : []),
   ];
   const activeMobileKey = mobileNavItems[tab]?.key;
@@ -317,14 +326,27 @@ export default function ProjectDetailPage() {
       {/* Tab 0: Resumen */}
       {tab === 0 && (
         <Paper sx={{ p: 3 }}>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>Horas por rubro</Typography>
+          {(!project.hour_buckets || project.hour_buckets.length === 0) ? (
+            <Typography variant="body2" color="text.secondary">Sin horas presupuestadas ni cargadas todavía.</Typography>
+          ) : (
+            <Stack spacing={2} sx={{ mb: 3 }}>
+              {project.hour_buckets.map((bucket) => (
+                <Box key={bucket.budget_item_type_id ?? 'general'}>
+                  <Typography variant="body2" fontWeight="medium" sx={{ mb: 0.5 }}>{bucket.item_type_name}</Typography>
+                  {renderProgress(bucket.consumed_hours, bucket.budgeted_hours)}
+                </Box>
+              ))}
+            </Stack>
+          )}
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 6 }}>
-              <Typography variant="subtitle2" color="text.secondary">Horas propias</Typography>
-              {renderProgress(project.consumed_hours_own || 0, project.budgeted_hours || 0)}
+              <Typography variant="subtitle2" color="text.secondary">Total propio</Typography>
+              {renderProgress(project.consumed_hours_own || 0, project.budgeted_hours_own || 0)}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <Typography variant="subtitle2" color="text.secondary">Horas consolidadas (propias + adicionales)</Typography>
-              {renderProgress(project.consumed_hours_total || 0, project.budgeted_hours || 0)}
+              <Typography variant="subtitle2" color="text.secondary">Total consolidado (propias + adicionales)</Typography>
+              {renderProgress(project.consumed_hours_total || 0, project.budgeted_hours_total || 0)}
             </Grid>
           </Grid>
           <Divider sx={{ my: 3 }} />
@@ -342,8 +364,8 @@ export default function ProjectDetailPage() {
         </Paper>
       )}
 
-      {/* Tab 1: Adicionales */}
-      {tab === 1 && (
+      {/* Tab Adicionales — no existe si este proyecto ya es un adicional (parent_id) */}
+      {tab === adicionalesTabIndex && (
         <Paper sx={{ p: 3 }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6">Adicionales / Subproyectos</Typography>
@@ -369,7 +391,7 @@ export default function ProjectDetailPage() {
                           <Chip size="small" label={STATUS_LABELS[sp.status]} sx={{ mt: 0.5 }} />
                         </Box>
                       </Box>
-                      <Box mt={1.5}>{renderProgress(sp.consumed_hours_own || 0, sp.budgeted_hours || 0)}</Box>
+                      <Box mt={1.5}>{renderProgress(sp.consumed_hours_own || 0, sp.budgeted_hours_own || 0)}</Box>
                     </Card>
                   ))}
                 </Stack>
@@ -392,7 +414,7 @@ export default function ProjectDetailPage() {
                           <TableCell>{sp.code}</TableCell>
                           <TableCell>{sp.name}</TableCell>
                           <TableCell>{STATUS_LABELS[sp.status]}</TableCell>
-                          <TableCell>{renderProgress(sp.consumed_hours_own || 0, sp.budgeted_hours || 0)}</TableCell>
+                          <TableCell>{renderProgress(sp.consumed_hours_own || 0, sp.budgeted_hours_own || 0)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -404,8 +426,8 @@ export default function ProjectDetailPage() {
         </Paper>
       )}
 
-      {/* Tab 2: Horas */}
-      {tab === 2 && (
+      {/* Tab Horas */}
+      {tab === horasTabIndex && (
         <Paper sx={{ p: 3 }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6">Horas Cargadas</Typography>
@@ -483,8 +505,8 @@ export default function ProjectDetailPage() {
         </Paper>
       )}
 
-      {/* Tab 3: Planilla Diaria */}
-      {tab === 3 && (
+      {/* Tab Planilla Diaria */}
+      {tab === planillaTabIndex && (
         <Paper sx={{ p: 3 }}>
           {/* Header controls */}
           <Stack spacing={2} mb={3}>
@@ -746,8 +768,8 @@ export default function ProjectDetailPage() {
         </Paper>
       )}
 
-      {/* Tab 4 (o 3 si no tiene presupuesto): Presupuesto */}
-      {tab === (hasBudgetsRead ? 4 : 99) && (
+      {/* Tab Presupuesto */}
+      {tab === presupuestoTabIndex && (
         <Paper sx={{ p: 3 }}>
           {!project.budget ? (
             <Typography color="text.secondary" textAlign="center" py={3}>Este proyecto no tiene un presupuesto vinculado.</Typography>

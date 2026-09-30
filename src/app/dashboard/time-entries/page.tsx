@@ -23,7 +23,8 @@ import {
   Vehicle, VehicleService,
   ClientSupervisor, ClientSupervisorService,
   PayPeriod, PayPeriodService,
-  Holiday, HolidayService
+  Holiday, HolidayService,
+  BudgetItemType, BudgetItemTypeService
 } from '../../../utils/api';
 import { isFixedSalaryPayType } from '../../../utils/payType';
 
@@ -53,6 +54,7 @@ interface TimeBlock {
   generates_oca?: boolean;
   supervisor_id?: number | '';
   vehicle_id?: number | '';
+  budget_item_type_id?: number | '';
 }
 
 export default function TimeEntriesPage() {
@@ -61,6 +63,7 @@ export default function TimeEntriesPage() {
   const [plants, setPlants] = useState<Plant[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [concepts, setConcepts] = useState<PayrollConcept[]>([]);
+  const [itemTypes, setItemTypes] = useState<BudgetItemType[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [payPeriods, setPayPeriods] = useState<PayPeriod[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -160,19 +163,19 @@ export default function TimeEntriesPage() {
   // Masivo state
   const [massiveBlock, setMassiveBlock] = useState<TimeBlock>({
     id: 'massive', check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
-    is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
+    is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: '', budget_item_type_id: ''
   });
 
   // Individual state
   const [individualBlocks, setIndividualBlocks] = useState<TimeBlock[]>([{
     id: Date.now().toString(), check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
-    is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
+    is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: '', budget_item_type_id: ''
   }]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [emps, plts, projs, concs, vehs, periods, hols] = await Promise.all([
+      const [emps, plts, projs, concs, vehs, periods, hols, types] = await Promise.all([
         EmployeeService.getAll('active'),
         PlantService.getAll(),
         ProjectService.getAll({ status: 'active', include_children: true }),
@@ -180,6 +183,7 @@ export default function TimeEntriesPage() {
         VehicleService.getAll({ is_active: true }), // active only
         PayPeriodService.getAll(),
         HolidayService.getAll(),
+        BudgetItemTypeService.getAll(true), // active only
       ]);
       setEmployees(emps);
       setPlants(plts);
@@ -188,6 +192,7 @@ export default function TimeEntriesPage() {
       setVehicles(vehs);
       setPayPeriods(periods);
       setHolidays(hols);
+      setItemTypes(types.filter(t => t.unit_type === 'hours'));
       await loadEntries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar datos');
@@ -379,6 +384,7 @@ export default function TimeEntriesPage() {
           generates_oca: massiveBlock.generates_oca || false,
           supervisor_id: massiveBlock.supervisor_id ? Number(massiveBlock.supervisor_id) : undefined,
           vehicle_id: massiveBlock.vehicle_id ? Number(massiveBlock.vehicle_id) : undefined,
+          budget_item_type_id: massiveBlock.budget_item_type_id ? Number(massiveBlock.budget_item_type_id) : undefined,
         });
       } else {
         // Individual blocks (only 1 employee allowed)
@@ -411,6 +417,7 @@ export default function TimeEntriesPage() {
             generates_oca: block.generates_oca || false,
             supervisor_id: block.supervisor_id ? Number(block.supervisor_id) : undefined,
             vehicle_id: block.vehicle_id ? Number(block.vehicle_id) : undefined,
+            budget_item_type_id: block.budget_item_type_id ? Number(block.budget_item_type_id) : undefined,
           });
         }
       }
@@ -449,18 +456,18 @@ export default function TimeEntriesPage() {
     setIsLate(false);
     setMassiveBlock({
       id: 'massive', check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
-      is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
+      is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: '', budget_item_type_id: ''
     });
     setIndividualBlocks([{
       id: Date.now().toString(), check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
-      is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
+      is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: '', budget_item_type_id: ''
     }]);
   };
 
   const addBlock = () => {
     setIndividualBlocks([...individualBlocks, {
       id: Date.now().toString(), check_in: dayjs('2026-01-01T13:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
-      is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: ''
+      is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: '', budget_item_type_id: ''
     }]);
   };
 
@@ -512,7 +519,8 @@ export default function TimeEntriesPage() {
         is_plant_hours: entryToCopy.is_plant_hours || false,
         generates_oca: entryToCopy.generates_oca || false,
         supervisor_id: entryToCopy.supervisor_id ?? '',
-        vehicle_id: entryToCopy.vehicle_id ?? ''
+        vehicle_id: entryToCopy.vehicle_id ?? '',
+        budget_item_type_id: entryToCopy.budget_item_type_id ?? ''
       }]);
 
       setVoidDialog({ open: false, entry: null });
@@ -690,12 +698,21 @@ export default function TimeEntriesPage() {
                               />
                             ) : null}
                             {entry.oca_id && (
-                              <Chip 
-                                label={`OCA #${entry.oca?.number || entry.oca_id}`} 
-                                size="small" 
-                                color="secondary" 
-                                variant="filled" 
-                                sx={{ ml: 0.5, height: 20 }} 
+                              <Chip
+                                label={`OCA #${entry.oca?.number || entry.oca_id}`}
+                                size="small"
+                                color="secondary"
+                                variant="filled"
+                                sx={{ ml: 0.5, height: 20 }}
+                              />
+                            )}
+                            {entry.projectItemType && (
+                              <Chip
+                                label={entry.projectItemType.name}
+                                size="small"
+                                color="default"
+                                variant="outlined"
+                                sx={{ ml: 0.5, height: 20 }}
                               />
                             )}
                           </Typography>
@@ -898,6 +915,25 @@ export default function TimeEntriesPage() {
                     </Grid>
                   )}
                   {massiveBlock.project_id && (
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <TextField
+                        label="Rubro (Opcional)"
+                        select
+                        fullWidth
+                        value={massiveBlock.budget_item_type_id}
+                        onChange={(e) => setMassiveBlock({ ...massiveBlock, budget_item_type_id: e.target.value ? Number(e.target.value) : '' })}
+                        SelectProps={{ native: true }}
+                        InputLabelProps={{ shrink: true }}
+                        helperText="A qué bolsa de horas del proyecto corresponden — sin elegir, cuentan como Generales."
+                      >
+                        <option value="">— Generales —</option>
+                        {itemTypes.map(it => (
+                          <option key={it.id} value={it.id}>{it.name}</option>
+                        ))}
+                      </TextField>
+                    </Grid>
+                  )}
+                  {massiveBlock.project_id && (
                     <Grid size={{ xs: 12, md: 6 }} sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0.5, alignItems: 'center' }}>
                       <Tooltip title="Horas en planta que se facturan al cliente — quedan disponibles para incluirse en un Remito/OCA.">
                         <FormControlLabel
@@ -1078,6 +1114,29 @@ export default function TimeEntriesPage() {
                               <option value="">— Ninguno —</option>
                               {(supervisorsCache[Number(block.project_id)] || []).map(s => (
                                 <option key={s.id} value={s.id}>{s.lastname}, {s.name}</option>
+                              ))}
+                            </TextField>
+                          </Grid>
+                        )}
+                        {block.project_id && (
+                          <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                              label="Rubro (Opcional)"
+                              select
+                              fullWidth
+                              value={block.budget_item_type_id}
+                              onChange={(e) => {
+                                const newBlocks = [...individualBlocks];
+                                newBlocks[index].budget_item_type_id = e.target.value ? Number(e.target.value) : '';
+                                setIndividualBlocks(newBlocks);
+                              }}
+                              SelectProps={{ native: true }}
+                              InputLabelProps={{ shrink: true }}
+                              size="small"
+                            >
+                              <option value="">— Generales —</option>
+                              {itemTypes.map(it => (
+                                <option key={it.id} value={it.id}>{it.name}</option>
                               ))}
                             </TextField>
                           </Grid>
