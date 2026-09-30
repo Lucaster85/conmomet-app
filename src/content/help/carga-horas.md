@@ -31,7 +31,13 @@ Al abrir **"Nuevo Registro"** hay dos modos:
   **horas de grúa**, se habilita (y se vuelve obligatorio) elegir la **Grúa / Vehículo**
   correspondiente.
 - **Planta / Proyecto**: opcional. Al elegir un proyecto se habilita elegir el **Supervisor**
-  del cliente que corresponde a esas horas.
+  del cliente que corresponde a esas horas, y un selector de **Rubro** (ver abajo).
+- **Rubro** (opcional, solo con proyecto elegido): a qué bolsa de horas presupuestadas del
+  **proyecto** corresponden — Montaje, Construcción, etc. (ver el tema **Proyectos**). Es un
+  concepto totalmente distinto del campo **Concepto** de arriba (que define cómo se le paga la
+  hora al empleado): una misma hora puede tener concepto "General" para el sueldo y rubro
+  "Montaje" para el consumo del proyecto. Si no se elige rubro, la hora cuenta para la bolsa
+  "Generales" del proyecto.
 - **PEP OCA / PEP Regular / OCA sin PEP**: con el supervisor elegido, se puede marcar una de las
   tres. **PEP OCA** son horas en planta que sí se facturan al cliente — quedan disponibles más
   adelante para incluirse en un Remito/OCA. **PEP Regular** son horas en planta que no se

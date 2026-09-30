@@ -51,6 +51,19 @@ Con la OCA todavía en **Pendiente** se puede seguir ajustando antes de mandarla
   las horas ni la fecha (eso evita descuadres contra lo que el empleado cargó). Las líneas
   manuales o las que vienen de una corrección sí se pueden editar libremente.
 
+## Materiales del remito (solo Horas Hombre)
+
+En una OCA de **Horas Hombre** en estado **Pendiente**, el botón **"Agregar Material"** permite
+sumar materiales entregados junto con las horas — por ejemplo, insumos que se le dejaron al
+cliente en la obra. Es un dato **sin precio**: solo material, cantidad y unidad (más una nota
+opcional), igual que un remito de materiales común. Se puede elegir un material ya cargado en el
+catálogo (autocompleta descripción y unidad) o escribir uno libre.
+
+Los materiales cargados aparecen como una **sección nueva al final del documento**, después de
+la tabla de horas, tanto en la ficha de la OCA como en **"Imprimir Remito"**. No aparecen en
+**"Imprimir Presupuesto"** (ese documento es solo de horas con costo) ni en las OCAs de **Horas
+Grúa / Equipos**. Mientras la OCA siga Pendiente se pueden seguir agregando o quitando.
+
 ## Presentar, aprobar o rechazar
 
 - **"Presentar a Cliente"**: pasa la OCA a **Presentado**. A partir de acá ya no se puede

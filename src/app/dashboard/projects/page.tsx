@@ -77,7 +77,6 @@ export default function ProjectsPage() {
     client_id: '',
     plant_id: '',
     description: '',
-    budgeted_hours: 0,
     status: 'active',
     start_date: '',
     end_date: '',
@@ -146,7 +145,6 @@ export default function ProjectsPage() {
       client_id: '',
       plant_id: '',
       description: '',
-      budgeted_hours: 0,
       status: 'active',
       start_date: '',
       end_date: '',
@@ -163,7 +161,6 @@ export default function ProjectsPage() {
       client_id: String(project.client_id),
       plant_id: project.plant_id ? String(project.plant_id) : '',
       description: project.description || '',
-      budgeted_hours: project.budgeted_hours || 0,
       status: project.status || 'active',
       start_date: project.start_date || '',
       end_date: project.end_date || '',
@@ -196,7 +193,6 @@ export default function ProjectsPage() {
         client_id: Number(form.client_id),
         plant_id: form.plant_id ? Number(form.plant_id) : undefined,
         description: form.description || undefined,
-        budgeted_hours: Number(form.budgeted_hours) || 0,
         status: form.status as CreateProjectData['status'],
         start_date: form.start_date || undefined,
         end_date: form.end_date || undefined,
@@ -413,7 +409,7 @@ export default function ProjectsPage() {
                 </Box>
                 <Divider sx={{ my: 1 }} />
                 <Box mt={1}>
-                  {renderProgress(proj.consumed_hours_total || 0, proj.budgeted_hours || 0)}
+                  {renderProgress(proj.consumed_hours_total || 0, proj.budgeted_hours_total || 0)}
                 </Box>
                 {hasBudgetsRead && (
                   <Box mt={1}>
@@ -483,7 +479,7 @@ export default function ProjectsPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      {renderProgress(proj.consumed_hours_total || 0, proj.budgeted_hours || 0)}
+                      {renderProgress(proj.consumed_hours_total || 0, proj.budgeted_hours_total || 0)}
                     </TableCell>
                     {hasBudgetsRead && (
                       <TableCell>
@@ -554,10 +550,7 @@ export default function ProjectsPage() {
             </Grid>
 
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField label="Horas Presupuestadas" type="number" fullWidth value={form.budgeted_hours} onChange={(e) => setForm({ ...form, budgeted_hours: Number(e.target.value) })} inputProps={{ min: 0 }} />
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
+              <Grid size={{ xs: 12 }}>
                 <TextField label="Estado" select fullWidth value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
                   SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
                   <option value="draft">Borrador</option>

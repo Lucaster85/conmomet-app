@@ -28,6 +28,13 @@ presupuestos — **Valor unitario** y **Moneda**. Al elegir un rubro, si la lín
 tiene precio cargado, se **prellena automáticamente** con la Tarifa por Rubro vigente para ese
 cliente (ver el tema **Clientes**) — es solo un punto de partida, se puede editar sin problema.
 
+Si este presupuesto ya está vinculado a un proyecto que tiene horas reales cargadas (típico en
+un adicional que arrancó antes de cerrar el presupuesto — ver "Generar Proyecto" más abajo),
+al lado de la **Cantidad** de cada rubro aparece un texto informativo **"Ya cargado en el
+proyecto: X hs"** apenas se elige ese rubro, y si ya hay horas cargadas para algún rubro se ve
+además un aviso arriba de toda la sección. Es solo para tener visibilidad — nunca autocompleta
+ni pisa lo que estés escribiendo.
+
 ## Líneas de Materiales
 
 Cada línea tiene **Material** (se puede buscar o crear uno nuevo al vuelo sin salir del
@@ -67,10 +74,20 @@ líneas originales.
 
 ## Generar Proyecto
 
-Botón **"Generar Proyecto"**, disponible solo cuando el presupuesto está **Aprobado** y todavía
-no generó ninguno. Crea el Proyecto real (nuevo, subproyecto, o el vinculado, según lo elegido
-al crear el presupuesto — ver arriba) y lo deja vinculado a este presupuesto. Solo se puede usar
+Botón **"Generar Proyecto"**, disponible cuando el presupuesto está **Aprobado** y todavía no
+generó ninguno. Crea el Proyecto real (nuevo, subproyecto, o el vinculado, según lo elegido al
+crear el presupuesto — ver arriba) y lo deja vinculado a este presupuesto. Solo se puede usar
 una vez por presupuesto.
+
+**Excepción para adicionales**: si el presupuesto es "un adicional de" un proyecto existente, el
+botón aparece también estando todavía en **Borrador** — no hace falta esperar a aprobarlo. Sirve
+para el caso típico de un adicional donde todavía no se sabe el alcance real (horas, materiales)
+pero ya hay que empezar a trabajar: se genera el subproyecto de una, se van cargando horas ahí
+(ver el tema **Proyectos**), y el presupuesto se sigue terminando de armar en paralelo — cada vez
+que se guarda, las bolsas de horas por rubro del subproyecto se actualizan con lo que tenga el
+presupuesto en ese momento. Una vez que el presupuesto ya generó su proyecto, no se puede
+cambiar a qué proyecto está vinculado. Proyecto nuevo o vinculación a uno existente siguen
+necesitando que el presupuesto esté aprobado.
 
 ## Duplicar
 

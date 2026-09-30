@@ -4,7 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, Tooltip, TextField, Stack, Chip, Divider, Grid,
+  DialogActions, Tooltip, TextField, Stack, Chip, Divider, Grid, Alert,
   Autocomplete, createFilterOptions, useMediaQuery, useTheme,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
@@ -21,7 +21,7 @@ import {
   Budget, BudgetService, BudgetLaborLine, BudgetMaterialItem, CreateBudgetData,
   BudgetItemType, BudgetItemTypeService, MaterialUnit, MaterialUnitService,
   Material, MaterialService, Client, ClientService, Plant, PlantService,
-  Project, ProjectService, BudgetCurrency,
+  Project, ProjectService, HourBucket, BudgetCurrency,
   ClientSupervisor, ClientSupervisorService, ClientItemRate, ClientItemRateService,
 } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
@@ -114,6 +114,15 @@ function formatTotals(totals?: Record<BudgetCurrency, number>) {
 // Solo advertencia, nunca bloquea nada — la decisión de aprobar a precio viejo queda en el
 // usuario. Solo tiene sentido mientras el presupuesto sigue "sent" (una vez aprobado o
 // rechazado, la vigencia deja de importar).
+// Un adicional (parent_project_id) puede generar su proyecto estando en borrador — todavía no
+// se sabe el alcance real, se va cargando horas mientras se termina de armar el presupuesto
+// formal. Proyecto nuevo raíz o vinculación a uno existente siguen requiriendo aprobación.
+function canGenerateProject(budget: Budget): boolean {
+  if (budget.project_id) return false;
+  if (budget.status === 'approved') return true;
+  return budget.status === 'draft' && !!budget.parent_project_id;
+}
+
 function daysExpired(budget: Budget): number | null {
   if (budget.status !== 'sent' || !budget.sent_at || !budget.validity_days) return null;
   const sentAt = new Date(budget.sent_at);
@@ -159,6 +168,10 @@ function BudgetsPageContent() {
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [processing, setProcessing] = useState(false);
   const [form, setForm] = useState(emptyForm());
+  // Bolsas de horas por rubro del proyecto vinculado (si lo hay) — para mostrar "ya cargado en
+  // el proyecto" en vivo mientras se arma el presupuesto, sin depender de haber guardado antes
+  // (ver FLOWS.md, Fase 2 Parte A.1).
+  const [linkedProjectHourBuckets, setLinkedProjectHourBuckets] = useState<HourBucket[]>([]);
 
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; budget: Budget | null }>({ open: false, budget: null });
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; budget: Budget | null; target: string }>({ open: false, budget: null, target: '' });
@@ -272,10 +285,11 @@ function BudgetsPageContent() {
   const handleOpenCreate = () => {
     setEditingBudget(null);
     setForm(emptyForm());
+    setLinkedProjectHourBuckets([]);
     setOpenDialog(true);
   };
 
-  const handleOpenEdit = (budget: Budget) => {
+  const handleOpenEdit = async (budget: Budget) => {
     setEditingBudget(budget);
     setForm({
       title: budget.title,
@@ -293,6 +307,16 @@ function BudgetsPageContent() {
       laborLines: budget.laborLines || [],
       materialItems: budget.materialItems || [],
     });
+    if (budget.project_id) {
+      try {
+        const proj = await ProjectService.getById(budget.project_id);
+        setLinkedProjectHourBuckets(proj.hour_buckets || []);
+      } catch {
+        setLinkedProjectHourBuckets([]);
+      }
+    } else {
+      setLinkedProjectHourBuckets([]);
+    }
     setOpenDialog(true);
   };
 
@@ -872,7 +896,7 @@ function BudgetsPageContent() {
                       {b.status === 'approved' && !b.approved_document_url && (
                         <Tooltip title="Subir documento firmado"><IconButton size="small" color="info" onClick={() => handleOpenStatusDialog(b, 'approved')}><UploadIcon fontSize="small" /></IconButton></Tooltip>
                       )}
-                      {b.status === 'approved' && !b.project_id && (
+                      {canGenerateProject(b) && (
                         <Tooltip title="Generar Proyecto"><IconButton size="small" color="success" onClick={() => handleGenerateProject(b)}><GenerateIcon fontSize="small" /></IconButton></Tooltip>
                       )}
                       {hasPricesRead && (b.status === 'sent' || b.status === 'approved') && (
@@ -964,7 +988,7 @@ function BudgetsPageContent() {
                         {b.status === 'approved' && !b.approved_document_url && (
                           <Tooltip title="Subir documento firmado"><IconButton size="small" color="info" onClick={() => handleOpenStatusDialog(b, 'approved')}><UploadIcon fontSize="small" /></IconButton></Tooltip>
                         )}
-                        {b.status === 'approved' && !b.project_id && (
+                        {canGenerateProject(b) && (
                           <Tooltip title="Generar Proyecto"><IconButton size="small" color="success" onClick={() => handleGenerateProject(b)}><GenerateIcon fontSize="small" /></IconButton></Tooltip>
                         )}
                         {hasPricesRead && (b.status === 'sent' || b.status === 'approved') && (
@@ -1061,6 +1085,14 @@ function BudgetsPageContent() {
 
             {/* Mano de obra */}
             <Divider />
+            {linkedProjectHourBuckets.some(b => b.consumed_hours > 0) && (
+              <Alert severity="info" sx={{ py: 0.5 }}>
+                Horas ya cargadas en el proyecto: {linkedProjectHourBuckets
+                  .filter(b => b.consumed_hours > 0)
+                  .map(b => `${b.item_type_name}: ${b.consumed_hours.toFixed(1)} hs`)
+                  .join(' · ')}
+              </Alert>
+            )}
             <Box display="flex" justifyContent="space-between" alignItems="center">
               <Typography fontWeight="bold">Mano de Obra</Typography>
               <Button size="small" startIcon={<AddIcon />} onClick={addLaborLine} disabled={itemTypes.length === 0}>Agregar línea</Button>
@@ -1087,7 +1119,12 @@ function BudgetsPageContent() {
                 </Grid>
                 <Grid size={{ xs: hasPricesRead ? 6 : 10, md: hasPricesRead ? 2 : 5 }}>
                   <TextField type="number" size="small" fullWidth label="Cantidad" value={line.quantity}
-                    onChange={(e) => updateLaborLine(idx, { quantity: Number(e.target.value) })} />
+                    onChange={(e) => updateLaborLine(idx, { quantity: Number(e.target.value) })}
+                    helperText={(() => {
+                      const bucket = linkedProjectHourBuckets.find(b => b.budget_item_type_id === line.budget_item_type_id);
+                      return bucket ? `Ya cargado en el proyecto: ${bucket.consumed_hours.toFixed(1)} hs` : undefined;
+                    })()}
+                  />
                 </Grid>
                 {hasPricesRead && (
                   <>
