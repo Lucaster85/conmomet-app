@@ -162,13 +162,13 @@ export default function TimeEntriesPage() {
   
   // Masivo state
   const [massiveBlock, setMassiveBlock] = useState<TimeBlock>({
-    id: 'massive', check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+    id: 'massive', check_in: null, check_out: null, concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
     is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: '', budget_item_type_id: ''
   });
 
   // Individual state
   const [individualBlocks, setIndividualBlocks] = useState<TimeBlock[]>([{
-    id: Date.now().toString(), check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+    id: Date.now().toString(), check_in: null, check_out: null, concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
     is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: '', budget_item_type_id: ''
   }]);
 
@@ -455,18 +455,18 @@ export default function TimeEntriesPage() {
     setFormDate(new Date().toISOString().split('T')[0]);
     setIsLate(false);
     setMassiveBlock({
-      id: 'massive', check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+      id: 'massive', check_in: null, check_out: null, concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
       is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: '', budget_item_type_id: ''
     });
     setIndividualBlocks([{
-      id: Date.now().toString(), check_in: dayjs('2026-01-01T08:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+      id: Date.now().toString(), check_in: null, check_out: null, concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
       is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: '', budget_item_type_id: ''
     }]);
   };
 
   const addBlock = () => {
     setIndividualBlocks([...individualBlocks, {
-      id: Date.now().toString(), check_in: dayjs('2026-01-01T13:00'), check_out: dayjs('2026-01-01T17:00'), concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
+      id: Date.now().toString(), check_in: null, check_out: null, concept_id: '', overtime_50_hours: 0, overtime_100_hours: 0, plant_id: '', project_id: '', notes: '',
       is_plant_hours: false, generates_oca: false, supervisor_id: '', vehicle_id: '', budget_item_type_id: ''
     }]);
   };
@@ -508,8 +508,8 @@ export default function TimeEntriesPage() {
 
       setIndividualBlocks([{
         id: Date.now().toString(),
-        check_in: entryToCopy.check_in ? dayjs(`2026-01-01T${entryToCopy.check_in}`) : dayjs('2026-01-01T08:00'),
-        check_out: entryToCopy.check_out ? dayjs(`2026-01-01T${entryToCopy.check_out}`) : dayjs('2026-01-01T17:00'),
+        check_in: entryToCopy.check_in ? dayjs(`2026-01-01T${entryToCopy.check_in}`) : null,
+        check_out: entryToCopy.check_out ? dayjs(`2026-01-01T${entryToCopy.check_out}`) : null,
         concept_id: entryToCopy.concept_id ?? '',
         overtime_50_hours: entryToCopy.overtime_50_hours || 0,
         overtime_100_hours: entryToCopy.overtime_100_hours || 0,
