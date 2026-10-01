@@ -27,6 +27,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth, TokenManager } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
+import SessionExpiredDialog from '../../components/SessionExpiredDialog';
 import { HeaderLogo, HeaderAvatarButton, HEADER_MIN_HEIGHT, HEADER_TOGGLE_ICON_SIZE } from '../../components/layout/HeaderChrome';
 import { PORTAL_MENU_ITEMS } from '../../components/portal/portalMenuItems';
 
@@ -224,6 +225,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           onClose={() => setChangePasswordOpen(false)}
           forced={!!user?.must_change_password}
         />
+
+        <SessionExpiredDialog />
 
         <Container maxWidth="lg" sx={{ mt: { xs: 1.5, sm: 4 }, mb: 4, flexGrow: 1 }}>
           <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 2 }}>

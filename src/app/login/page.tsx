@@ -29,12 +29,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
   const [accountError, setAccountError] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('password_changed') === 'true') setPasswordChanged(true);
     if (params.get('account_error') === 'true') setAccountError(true);
+    if (params.get('session_expired') === 'true') setSessionExpired(true);
   }, []);
 
   // Adónde volver después de loguearse — viene de ProtectedRoute cuando alguien entra a una
@@ -157,6 +159,12 @@ export default function LoginPage() {
           {accountError && !error && (
             <Alert severity="warning" sx={{ mb: 3 }}>
               Tu cuenta no tiene un acceso configurado correctamente. Contactá a administración.
+            </Alert>
+          )}
+
+          {sessionExpired && !error && !accountError && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              Tu sesión expiró. Volvé a iniciar sesión para continuar.
             </Alert>
           )}
 

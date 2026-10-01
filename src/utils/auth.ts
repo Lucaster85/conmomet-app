@@ -1,5 +1,14 @@
 // Utility functions para manejar JWT tokens
 
+import { SessionExpiredError, ForbiddenError } from './apiErrors';
+import { handleSessionExpired } from './sessionExpiry';
+
+// Mensajes de error del backend que, históricamente, el frontend ya sabía reconocer como
+// "el token es inválido/expiró" (ver middlewares/auth.js del backend). Se mantiene como
+// fallback detrás del campo `code` para que un backend viejo (desplegado antes de que exista
+// `code`) siga funcionando sin tocar el frontend.
+const LEGACY_TOKEN_ERRORS = ['No token provided', 'invalid token', 'jwt expired', 'jwt malformed'];
+
 export interface UserData {
   id?: number;
   name?: string;
@@ -152,6 +161,15 @@ export class TokenManager {
   }
 
   static async authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+    // Chequeo local ANTES de salir a la red: si el JWT ya expiró no hace falta esperar la
+    // respuesta del backend para saberlo (y esto funciona aunque el backend todavía no mande
+    // `code`, porque no depende de él). Deja pasar las llamadas sin token (ej. login) porque
+    // ahí getToken() ya devuelve null y no corresponde este chequeo.
+    if (this.getToken() && !this.isAuthenticated()) {
+      handleSessionExpired();
+      throw new SessionExpiredError();
+    }
+
     const headers = {
       ...this.getAuthHeaders(),
       ...options.headers,
@@ -169,7 +187,7 @@ export class TokenManager {
     // Solo hacer logout si el token es inválido/expirado (verifyToken falla).
     // Un 401 de "sin permisos" (authPermission) NO debe desloguear al usuario.
     if (response.status === 401) {
-      let body: { error?: string } = {};
+      let body: { error?: string; code?: string } = {};
       try {
         const clone = response.clone();
         body = await clone.json();
@@ -178,28 +196,17 @@ export class TokenManager {
       }
 
       const isTokenError =
-        body.error === 'No token provided' ||
-        body.error === 'invalid token' ||
-        body.error === 'jwt expired' ||
-        body.error === 'jwt malformed';
+        body.code === 'token_expired' ||
+        body.code === 'token_invalid' ||
+        body.code === 'token_missing' ||
+        LEGACY_TOKEN_ERRORS.includes(body.error ?? '');
 
       if (isTokenError) {
-        this.removeToken();
-        if (typeof window !== 'undefined') {
-          // Si estamos en la misma pestaña de login, no redirigir para evitar loop.
-          if (!window.location.pathname.includes('/login')) {
-            window.location.href = '/login?session_expired=true';
-            // Devolvemos un dummy response para evitar que las Promesas en el UI rompan 
-            // intentando parsear JSON, mientras ocurre el reload completo.
-            return new Response(JSON.stringify({}), { status: 200 }); 
-          }
-        }
+        handleSessionExpired();
+        throw new SessionExpiredError();
       }
 
-      const message = body.error || 'Sin autorización';
-      const err = new Error(message);
-      err.name = 'UnauthorizedError';
-      throw err;
+      throw new ForbiddenError();
     }
 
     return response;

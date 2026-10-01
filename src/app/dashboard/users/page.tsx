@@ -32,6 +32,7 @@ import {
 } from '@mui/icons-material';
 import { User, UserService } from '../../../utils/api';
 import { TokenManager } from '../../../utils/auth';
+import { getErrorMessage } from '../../../utils/apiErrors';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import UserForm from './UserForm';
@@ -67,11 +68,7 @@ export default function UsersPage() {
       setUsers(Array.isArray(usersData) ? usersData : []);
     } catch (err) {
       console.error('Error loading users:', err);
-      if (err instanceof Error && err.name === 'UnauthorizedError') {
-        window.location.href = '/login';
-        return;
-      }
-      setError(err instanceof Error ? err.message : 'Error al cargar usuarios');
+      setError(getErrorMessage(err, 'Error al cargar usuarios'));
       setUsers([]);
     } finally {
       setLoading(false);

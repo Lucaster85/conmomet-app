@@ -115,17 +115,7 @@ export default function RolesPage() {
       setRoles(rolesData);
       setPermissions(permsData);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : typeof err === 'string'
-          ? err
-          : 'Error al cargar los datos';
-      setError(
-        msg === 'Sin autorización' || msg === 'Unauthoriced' || msg === 'UNAUTHORIZED'
-          ? 'No tenés permisos para ver roles. Reiniciá el servidor para que el seeder asigne admin_granted al rol admin, luego volvé a iniciar sesión.'
-          : msg
-      );
+      setError(toErrorMsg(err));
     } finally {
       setLoading(false);
     }

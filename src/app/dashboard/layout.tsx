@@ -65,6 +65,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
+import SessionExpiredDialog from '../../components/SessionExpiredDialog';
 
 const drawerWidth = 280;
 
@@ -484,6 +485,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           onClose={() => setChangePasswordOpen(false)}
           forced={!!user?.must_change_password}
         />
+
+        <SessionExpiredDialog />
 
         {/* Drawer */}
         <Box
