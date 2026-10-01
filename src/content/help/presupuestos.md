@@ -28,12 +28,14 @@ presupuestos — **Valor unitario** y **Moneda**. Al elegir un rubro, si la lín
 tiene precio cargado, se **prellena automáticamente** con la Tarifa por Rubro vigente para ese
 cliente (ver el tema **Clientes**) — es solo un punto de partida, se puede editar sin problema.
 
-Si este presupuesto ya está vinculado a un proyecto que tiene horas reales cargadas (típico en
-un adicional que arrancó antes de cerrar el presupuesto — ver "Generar Proyecto" más abajo),
-al lado de la **Cantidad** de cada rubro aparece un texto informativo **"Ya cargado en el
-proyecto: X hs"** apenas se elige ese rubro, y si ya hay horas cargadas para algún rubro se ve
-además un aviso arriba de toda la sección. Es solo para tener visibilidad — nunca autocompleta
-ni pisa lo que estés escribiendo.
+Si este presupuesto está vinculado a un proyecto que ya tiene horas reales cargadas — ya sea
+porque es un adicional que arrancó antes de cerrar el presupuesto (ver "Generar Proyecto" más
+abajo), o porque se está creando desde el botón **"Vincular Presupuesto"** del detalle de un
+Proyecto que todavía no tenía presupuesto pero ya venía con horas cargadas — al lado de la
+**Cantidad** de cada rubro aparece un texto informativo **"Ya cargado en el proyecto: X hs"**
+apenas se elige ese rubro, y si ya hay horas cargadas para algún rubro se ve además un aviso
+arriba de toda la sección. Es solo para tener visibilidad — nunca autocompleta ni pisa lo que
+estés escribiendo.
 
 ## Líneas de Materiales
 

@@ -265,6 +265,12 @@ function BudgetsPageContent() {
       setForm({ ...emptyForm(), existing_project_id: existingProjectId, client_id: String(project.client_id), plant_id: project.plant_id ? String(project.plant_id) : '' });
       setOpenDialog(true);
       router.replace('/dashboard/budgets');
+      // El proyecto todavía no tiene presupuesto, pero puede ya tener horas cargadas (ver
+      // "Vincular Presupuesto" en el detalle de Proyecto) — la lista sin presupuesto no trae el
+      // detalle por rubro, hay que pedirlo aparte para que se vea el mismo aviso que en edición.
+      ProjectService.getById(project.id)
+        .then(proj => setLinkedProjectHourBuckets(proj.hour_buckets || []))
+        .catch(() => setLinkedProjectHourBuckets([]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rootProjects, projectsWithoutBudget]);
