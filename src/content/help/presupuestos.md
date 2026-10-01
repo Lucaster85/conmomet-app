@@ -13,9 +13,12 @@ Con el botón **"Nuevo Presupuesto"**:
   - Vacío: es para un **proyecto totalmente nuevo**, que se crea al aprobar.
   - **"Es un adicional de"** un proyecto existente: al aprobar, genera un **subproyecto**
     hijo de ese proyecto.
-  - **"Vincular a un proyecto ya existente"**: al aprobar **no crea nada nuevo**, reutiliza
-    ese proyecto y le actualiza las horas presupuestadas. Un proyecto no se puede vincular a
-    dos presupuestos a la vez.
+  - **"Vincular a un proyecto ya existente"**: a diferencia de los otros dos casos, el
+    proyecto ya existe de antes — el vínculo queda firme **desde que se crea el presupuesto**,
+    sin esperar a que se apruebe, y le actualiza las horas presupuestadas en cada guardado. Este
+    presupuesto nunca tiene botón "Generar Proyecto" (no hay nada que generar). Un proyecto no
+    se puede vincular a dos presupuestos a la vez. Mientras el presupuesto siga en Borrador, se
+    puede cambiar o quitar este vínculo con normalidad.
 - **Cliente*** (obligatorio) y **Planta** (se filtra según el cliente elegido). Si elegiste
   "adicional" o "vincular" arriba, estos dos campos se completan solos y quedan bloqueados.
 - **Descripción**, **Fecha de Inicio/Fin previstas**, **Vigencia (días)** (solo informativo, no
@@ -28,10 +31,9 @@ presupuestos — **Valor unitario** y **Moneda**. Al elegir un rubro, si la lín
 tiene precio cargado, se **prellena automáticamente** con la Tarifa por Rubro vigente para ese
 cliente (ver el tema **Clientes**) — es solo un punto de partida, se puede editar sin problema.
 
-Si este presupuesto está vinculado a un proyecto que ya tiene horas reales cargadas — ya sea
-porque es un adicional que arrancó antes de cerrar el presupuesto (ver "Generar Proyecto" más
-abajo), o porque se está creando desde el botón **"Vincular Presupuesto"** del detalle de un
-Proyecto que todavía no tenía presupuesto pero ya venía con horas cargadas — al lado de la
+Si este presupuesto está vinculado a un proyecto que ya tiene horas reales cargadas — un
+"vincular a un proyecto existente" (vinculado desde la creación, ver arriba) o un adicional que
+ya generó su subproyecto estando en borrador (ver "Generar Proyecto" más abajo) — al lado de la
 **Cantidad** de cada rubro aparece un texto informativo **"Ya cargado en el proyecto: X hs"**
 apenas se elige ese rubro, y si ya hay horas cargadas para algún rubro se ve además un aviso
 arriba de toda la sección. Es solo para tener visibilidad — nunca autocompleta ni pisa lo que
@@ -77,9 +79,11 @@ líneas originales.
 ## Generar Proyecto
 
 Botón **"Generar Proyecto"**, disponible cuando el presupuesto está **Aprobado** y todavía no
-generó ninguno. Crea el Proyecto real (nuevo, subproyecto, o el vinculado, según lo elegido al
-crear el presupuesto — ver arriba) y lo deja vinculado a este presupuesto. Solo se puede usar
-una vez por presupuesto.
+generó ninguno. Crea el Proyecto real (nuevo o subproyecto, según lo elegido al crear el
+presupuesto — ver arriba) y lo deja vinculado a este presupuesto. Solo se puede usar una vez
+por presupuesto. **No aplica a "vincular a un proyecto existente"**: ese caso no tiene nada que
+generar, ya quedó vinculado desde que se creó el presupuesto (ver arriba) — nunca muestra este
+botón.
 
 **Excepción para adicionales**: si el presupuesto es "un adicional de" un proyecto existente, el
 botón aparece también estando todavía en **Borrador** — no hace falta esperar a aprobarlo. Sirve

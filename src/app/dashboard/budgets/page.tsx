@@ -1519,7 +1519,7 @@ function BudgetsPageContent() {
                   {printBudget.status === 'approved' && printBudget.approvedBySupervisor && (
                     <Typography variant="body2"><strong>Aprobado por:</strong> {printBudget.approvedBySupervisor.lastname}, {printBudget.approvedBySupervisor.name}{printBudget.approved_at ? ` — ${new Date(printBudget.approved_at).toLocaleDateString('es-AR')}` : ''}</Typography>
                   )}
-                  {printBudget.project && <Typography variant="body2"><strong>Proyecto generado:</strong> {printBudget.project.code}</Typography>}
+                  {printBudget.project && !printBudget.existingProject && <Typography variant="body2"><strong>Proyecto generado:</strong> {printBudget.project.code}</Typography>}
                 </Grid>
               </Grid>
               {printBudget.description && <Typography variant="body2" sx={{ mb: 2 }}>{printBudget.description}</Typography>}
