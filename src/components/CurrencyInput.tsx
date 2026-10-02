@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useState } from 'react';
 import { NumericFormat, NumericFormatProps } from 'react-number-format';
 import { TextField, TextFieldProps, InputAdornment, OutlinedInputProps } from '@mui/material';
 
@@ -9,11 +9,17 @@ interface CustomProps {
 
 const NumericFormatCustom = forwardRef<HTMLInputElement, CustomProps & Omit<NumericFormatProps, 'onChange'>>(
   function NumericFormatCustom(props, ref) {
-    const { onChange, ...other } = props;
+    const { onChange, allowNegative = false, fixedDecimalScale = true, ...other } = props;
 
     return (
       <NumericFormat
+        thousandSeparator="."
+        decimalSeparator=","
+        decimalScale={2}
+        valueIsNumericString
         {...other}
+        allowNegative={allowNegative}
+        fixedDecimalScale={fixedDecimalScale}
         getInputRef={ref}
         onValueChange={(values) => {
           onChange({
@@ -23,39 +29,71 @@ const NumericFormatCustom = forwardRef<HTMLInputElement, CustomProps & Omit<Nume
             },
           });
         }}
-        thousandSeparator="."
-        decimalSeparator=","
-        allowNegative={false}
-        decimalScale={2}
-        fixedDecimalScale
-        valueIsNumericString
       />
     );
   }
 );
 
-export type CurrencyInputProps = Omit<TextFieldProps, 'onChange'> & {
+export type CurrencyInputProps = Omit<TextFieldProps, 'onChange' | 'value'> & {
   value: number | string | null | undefined;
   onChange: (value: number | null) => void;
   name?: string;
+  currency?: 'ARS' | 'USD';
+  adornment?: React.ReactNode | null;
+  allowNegative?: boolean;
+  showZero?: boolean;
 };
 
-export default function CurrencyInput({ value, onChange, name = 'currency-input', ...props }: CurrencyInputProps) {
+const CURRENCY_SYMBOL: Record<'ARS' | 'USD', string> = { ARS: '$', USD: 'US$' };
+
+export default function CurrencyInput({
+  value,
+  onChange,
+  name = 'currency-input',
+  currency = 'ARS',
+  adornment,
+  allowNegative = false,
+  showZero = false,
+  ...props
+}: CurrencyInputProps) {
+  const [focused, setFocused] = useState(false);
+
+  const isEmpty = value === null || value === undefined || value === ''
+    || (!showZero && Number(value) === 0);
+
+  const resolvedAdornment = adornment === null
+    ? undefined
+    : adornment ?? props.InputProps?.startAdornment ?? (
+      <InputAdornment position="start">{CURRENCY_SYMBOL[currency]}</InputAdornment>
+    );
+
   return (
     <TextField
       {...props}
-      value={value === 0 && props.placeholder ? '' : value}
+      value={isEmpty ? '' : value}
+      placeholder={props.placeholder ?? '0,00'}
       onChange={(e) => {
         const val = e.target.value;
         onChange(val ? Number(val) : null);
+      }}
+      onFocus={(e) => {
+        setFocused(true);
+        props.onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setFocused(false);
+        props.onBlur?.(e);
       }}
       name={name}
       InputProps={{
         ...props.InputProps,
         inputComponent: NumericFormatCustom as unknown as OutlinedInputProps['inputComponent'],
-        startAdornment: props.InputProps?.startAdornment || (
-          <InputAdornment position="start">$</InputAdornment>
-        ),
+        startAdornment: resolvedAdornment,
+        inputProps: {
+          ...props.InputProps?.inputProps,
+          allowNegative,
+          fixedDecimalScale: !focused,
+        },
       }}
     />
   );

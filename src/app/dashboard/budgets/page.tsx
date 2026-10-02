@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
+import CurrencyInput from '../../../components/CurrencyInput';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon,
   ContentCopyOutlined as DuplicateIcon, VisibilityOutlined as ViewIcon, PlayArrowOutlined as GenerateIcon,
@@ -1135,8 +1136,9 @@ function BudgetsPageContent() {
                 {hasPricesRead && (
                   <>
                     <Grid size={{ xs: 6, md: 2 }}>
-                      <TextField type="number" size="small" fullWidth label="Valor unitario" value={line.unit_price}
-                        onChange={(e) => updateLaborLine(idx, { unit_price: Number(e.target.value) })} />
+                      <CurrencyInput size="small" fullWidth label="Valor unitario" value={line.unit_price}
+                        currency={line.currency || form.currency}
+                        onChange={(value) => updateLaborLine(idx, { unit_price: value ?? 0 })} />
                     </Grid>
                     <Grid size={{ xs: 6, md: 2 }}>
                       <TextField select size="small" fullWidth label="Moneda" value={line.currency || ''}
@@ -1256,23 +1258,29 @@ function BudgetsPageContent() {
                 </Grid>
                 {hasCostsRead && (
                   <Grid size={{ xs: hasPricesRead ? 6 : 12, md: hasPricesRead ? 1.5 : 2.5 }}>
-                    <TextField
-                      type={item.material_id ? 'number' : 'text'}
-                      size="small" fullWidth label="Costo real"
-                      disabled={!item.material_id}
-                      value={item.material_id ? (cost?.value ?? '') : 'Sin vincular'}
-                      onChange={(e) => {
-                        const newCost = e.target.value === '' ? null : Number(e.target.value);
-                        const newCurrency = cost?.currency || item.material_cost_currency || form.currency;
-                        updateMaterialItem(idx, {
-                          material_cost_snapshot: newCost,
-                          material_cost_currency: newCurrency,
-                          currency: newCurrency,
-                          unit_price: computeUnitPrice(newCost, item.margin_percent ?? 0),
-                        });
-                      }}
-                      InputLabelProps={{ shrink: true }}
-                    />
+                    {item.material_id ? (
+                      <CurrencyInput
+                        size="small" fullWidth label="Costo real"
+                        currency={cost?.currency || item.material_cost_currency || form.currency}
+                        value={cost?.value ?? null}
+                        onChange={(newCost) => {
+                          const newCurrency = cost?.currency || item.material_cost_currency || form.currency;
+                          updateMaterialItem(idx, {
+                            material_cost_snapshot: newCost,
+                            material_cost_currency: newCurrency,
+                            currency: newCurrency,
+                            unit_price: computeUnitPrice(newCost, item.margin_percent ?? 0),
+                          });
+                        }}
+                      />
+                    ) : (
+                      <TextField
+                        size="small" fullWidth label="Costo real"
+                        disabled
+                        value="Sin vincular"
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    )}
                   </Grid>
                 )}
                 {hasPricesRead && (
@@ -1356,8 +1364,10 @@ function BudgetsPageContent() {
             </TextField>
             {hasCostsRead && (
               <Stack direction="row" spacing={2}>
-                <TextField label="Costo real (opcional)" type="number" fullWidth value={materialQuickAdd.cost}
-                  onChange={(e) => setMaterialQuickAdd({ ...materialQuickAdd, cost: e.target.value })} />
+                <CurrencyInput label="Costo real (opcional)" fullWidth
+                  value={materialQuickAdd.cost === '' ? null : materialQuickAdd.cost}
+                  currency={materialQuickAdd.currency}
+                  onChange={(value) => setMaterialQuickAdd({ ...materialQuickAdd, cost: value === null ? '' : String(value) })} />
                 <TextField label="Moneda" select fullWidth value={materialQuickAdd.currency}
                   onChange={(e) => setMaterialQuickAdd({ ...materialQuickAdd, currency: e.target.value as BudgetCurrency })}
                   SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>

@@ -87,6 +87,7 @@ import {
 } from '../../../utils/api';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
+import CurrencyInput from '../../../components/CurrencyInput';
 import { useAuth } from '../../../utils/auth';
 
 // Mismo patrón "creatable" que budgets/page.tsx para elegir el contacto de administración del
@@ -3152,13 +3153,11 @@ export default function OcasPage() {
               </Typography>
               {rateDialog.oca?.type === 'man_hours' ? (
                 <>
-                  <TextField
-                    label="Valor hora ($)"
-                    type="number"
+                  <CurrencyInput
+                    label="Valor hora"
                     fullWidth
-                    value={rateDialog.hourly_rate}
-                    onChange={(e) => setRateDialog({ ...rateDialog, hourly_rate: e.target.value })}
-                    InputLabelProps={{ shrink: true }}
+                    value={rateDialog.hourly_rate === '' ? null : rateDialog.hourly_rate}
+                    onChange={(value) => setRateDialog({ ...rateDialog, hourly_rate: value === null ? '' : String(value) })}
                   />
                   {rateDialog.oca && (
                     <Button size="small" onClick={() => handleOpenRateHistory()} sx={{ alignSelf: 'flex-start' }}>
@@ -3172,18 +3171,16 @@ export default function OcasPage() {
                     <Box key={vr.vehicle_id}>
                       <Typography variant="body2" fontWeight="bold">{vr.label}</Typography>
                       <Stack direction="row" spacing={1} alignItems="center">
-                        <TextField
-                          label="Valor hora ($)"
-                          type="number"
+                        <CurrencyInput
+                          label="Valor hora"
                           fullWidth
                           size="small"
-                          value={vr.hourly_rate}
-                          onChange={(e) => {
+                          value={vr.hourly_rate === '' ? null : vr.hourly_rate}
+                          onChange={(value) => {
                             const vehicleRates = [...rateDialog.vehicleRates];
-                            vehicleRates[idx] = { ...vehicleRates[idx], hourly_rate: e.target.value };
+                            vehicleRates[idx] = { ...vehicleRates[idx], hourly_rate: value === null ? '' : String(value) };
                             setRateDialog({ ...rateDialog, vehicleRates });
                           }}
-                          InputLabelProps={{ shrink: true }}
                         />
                         <Button size="small" onClick={() => handleOpenRateHistory(vr.vehicle_id)}>
                           Historial

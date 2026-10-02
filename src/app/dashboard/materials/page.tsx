@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
+import CurrencyInput from '../../../components/CurrencyInput';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon,
   SearchOutlined as SearchIcon, UploadFileOutlined as UploadIcon, HistoryOutlined as HistoryIcon,
@@ -338,8 +339,9 @@ export default function MaterialsPage() {
             </TextField>
             {hasCostsRead && (
               <Stack direction="row" spacing={2}>
-                <TextField label="Costo real" type="number" fullWidth value={form.current_cost ?? ''}
-                  onChange={(e) => setForm({ ...form, current_cost: e.target.value ? Number(e.target.value) : null })} />
+                <CurrencyInput label="Costo real" fullWidth value={form.current_cost ?? null}
+                  currency={form.currency || 'ARS'}
+                  onChange={(value) => setForm({ ...form, current_cost: value })} />
                 <TextField label="Moneda" select fullWidth value={form.currency || 'ARS'}
                   onChange={(e) => setForm({ ...form, currency: e.target.value as BudgetCurrency })}
                   SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>

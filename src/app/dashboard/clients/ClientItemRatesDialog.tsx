@@ -23,6 +23,7 @@ import {
   Switch,
   FormControlLabel,
 } from '@mui/material';
+import CurrencyInput from '../../../components/CurrencyInput';
 import {
   CloseOutlined as CloseIcon,
   EditOutlined as EditIcon,
@@ -209,7 +210,13 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
                         <TableCell align="right">
                           {isEditing ? (
                             <Box display="flex" gap={1} justifyContent="flex-end">
-                              <TextField type="number" size="small" value={rateValue} onChange={(e) => setRateValue(e.target.value)} sx={{ width: 110 }} />
+                              <CurrencyInput
+                                size="small"
+                                adornment={null}
+                                value={rateValue === '' ? null : rateValue}
+                                onChange={(value) => setRateValue(value === null ? '' : String(value))}
+                                sx={{ width: 130 }}
+                              />
                               <TextField select size="small" value={currency} onChange={(e) => setCurrency(e.target.value as BudgetCurrency)}
                                 SelectProps={{ native: true }} sx={{ width: 80 }}>
                                 <option value="ARS">ARS</option>
