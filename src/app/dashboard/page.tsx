@@ -20,7 +20,8 @@ import {
   PaymentOutlined as PaymentIcon,
   VisibilityOutlined as VisibilityIcon,
   BadgeOutlined as BadgeIcon,
-  EventAvailableOutlined as EventAvailableIcon
+  EventAvailableOutlined as EventAvailableIcon,
+  DescriptionOutlined as DescriptionIcon
 } from '@mui/icons-material';
 import { EntityDocumentService, EntityDocument, LoanService, SalaryAdvanceService } from '../../utils/api';
 import {
@@ -44,6 +45,22 @@ const QUICK_ACCESS_ITEMS: (IconTileItem & { requiredPermission: string })[] = [
   { key: 'employees', label: 'Empleados', path: '/dashboard/employees', icon: <BadgeIcon />, requiredPermission: 'employees_read' },
   { key: 'attendance', label: 'Presentismo', path: '/dashboard/attendance', icon: <EventAvailableIcon />, requiredPermission: 'attendance_read' },
 ];
+
+// Los documentos no tienen ruta propia: los de empleado están en la pestaña "Documentos y
+// Vencimientos" de su ficha, y los de vehículo en el modal "Legajo Digital" que se abre desde
+// el listado. project/company todavía no tienen UI de documentos, así que para esos el único
+// "detalle" posible es el archivo adjunto (botón "Ver archivo").
+const DOC_DETAIL_PERMISSION: Partial<Record<EntityDocument['entity_type'], string>> = {
+  employee: 'employees_read',
+  vehicle: 'vehicles_read',
+};
+
+function docDetailHref(doc: EntityDocument): string | null {
+  if (!doc.entity_id) return null; // documento global, no hay ficha de origen
+  if (doc.entity_type === 'employee') return `/dashboard/employees/${doc.entity_id}?tab=documents&doc=${doc.id}`;
+  if (doc.entity_type === 'vehicle') return `/dashboard/vehicles?docs=${doc.entity_id}&doc=${doc.id}`;
+  return null;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -216,15 +233,17 @@ export default function DashboardPage() {
                 const isExpired = doc.computed_status === 'expired';
 
                 const entityLabel = doc.entity_name || 'Global';
-                const entityTypeLabel: Record<string, string> = {
+                const entityTypeLabel: Record<EntityDocument['entity_type'], string> = {
                   employee: 'Empleado',
                   vehicle: 'Vehículo',
-                  client: 'Cliente',
-                  provider: 'Proveedor',
-                  plant: 'Planta',
+                  project: 'Proyecto',
                   company: 'Empresa',
                 };
                 const typeLabel = entityTypeLabel[doc.entity_type] ?? doc.entity_type;
+
+                const detailHref = docDetailHref(doc);
+                const detailPermission = DOC_DETAIL_PERMISSION[doc.entity_type];
+                const canSeeDetail = !!detailHref && (!detailPermission || hasPermission(detailPermission));
 
                 return (
                   <Box
@@ -286,16 +305,30 @@ export default function DashboardPage() {
                           </IconButton>
                         </Tooltip>
                       )}
-                      <Tooltip title="Ver detalle">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          sx={{ display: { xs: 'inline-flex', sm: 'none' }, border: 1, borderColor: 'primary.main' }}
-                          onClick={() => { if (doc.entity_type === 'employee') router.push(`/dashboard/employees/${doc.entity_id}`); }}
-                        >
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      {canSeeDetail && (
+                        <Tooltip title="Ver detalle">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            sx={{ display: { xs: 'inline-flex', sm: 'none' }, border: 1, borderColor: 'primary.main' }}
+                            onClick={() => router.push(detailHref!)}
+                          >
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {doc.file_url && (
+                        <Tooltip title="Ver archivo">
+                          <IconButton
+                            size="small"
+                            color="info"
+                            sx={{ display: { xs: 'inline-flex', sm: 'none' }, border: 1, borderColor: 'info.main' }}
+                            onClick={() => window.open(doc.file_url, '_blank', 'noopener,noreferrer')}
+                          >
+                            <DescriptionIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
 
                       {/* Desktop: full buttons */}
                       {doc.is_renewable ? (
@@ -321,16 +354,30 @@ export default function DashboardPage() {
                           Pagar / Resolver
                         </Button>
                       )}
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="primary"
-                        startIcon={<VisibilityIcon />}
-                        sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-                        onClick={() => { if (doc.entity_type === 'employee') router.push(`/dashboard/employees/${doc.entity_id}`); }}
-                      >
-                        Ver detalle
-                      </Button>
+                      {canSeeDetail && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          startIcon={<VisibilityIcon />}
+                          sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                          onClick={() => router.push(detailHref!)}
+                        >
+                          Ver detalle
+                        </Button>
+                      )}
+                      {doc.file_url && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="info"
+                          startIcon={<DescriptionIcon />}
+                          sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                          onClick={() => window.open(doc.file_url, '_blank', 'noopener,noreferrer')}
+                        >
+                          Ver archivo
+                        </Button>
+                      )}
                     </Box>
                   </Box>
                 );

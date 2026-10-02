@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   Box, Typography, Paper, Tabs, Tab,
   Button, IconButton, Chip, Table, TableBody, TableCell,
@@ -62,14 +62,24 @@ const STATUS_CONFIG = {
 } as const;
 
 export default function EmployeeDetailPage() {
+  return (
+    <Suspense fallback={<Box display="flex" justifyContent="center" py={8}><GearSpinner /></Box>}>
+      <EmployeeDetailPageContent />
+    </Suspense>
+  );
+}
+
+function EmployeeDetailPageContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const employeeId = Number(params.id);
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [documents, setDocuments] = useState<EntityDocument[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tabValue, setTabValue] = useState(0);
+  const [tabValue, setTabValue] = useState(searchParams.get('tab') === 'documents' ? 1 : 0);
+  const highlightDocId = Number(searchParams.get('doc')) || null;
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -706,7 +716,7 @@ export default function EmployeeDetailPage() {
                     const isCritical = doc.computed_status === 'expiring_soon' || doc.computed_status === 'expired';
                     
                     return (
-                      <TableRow key={doc.id}>
+                      <TableRow key={doc.id} sx={doc.id === highlightDocId ? { bgcolor: 'warning.50' } : undefined}>
                         <TableCell>
                           <Typography fontWeight="medium">{doc.title}</Typography>
                           {doc.notes && <Typography variant="caption" color="text.secondary" display="block">{doc.notes}</Typography>}

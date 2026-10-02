@@ -74,6 +74,15 @@ Es el panel único para ver todo lo que está por vencer o vencido, de cualquier
 vehículo, sin tener que entrar módulo por módulo. Desde ahí mismo se puede **Renovar** o
 **Resolver** directamente, igual que desde la ficha de origen.
 
+Cada alerta tiene además dos botones para ir al detalle:
+
+- **Ver detalle**: lleva directo a la ficha de origen del documento — en empleados, abre la
+  ficha ya en la pestaña "Documentos y Vencimientos"; en vehículos, abre el "Legajo Digital" de
+  ese vehículo. En ambos casos el documento que generó la alerta queda resaltado en la lista.
+  Solo aparece si el usuario tiene permiso de lectura sobre ese módulo (empleados o vehículos).
+- **Ver archivo**: abre directamente el archivo adjunto (PDF o imagen) en una pestaña nueva, sin
+  pasar por la ficha. Solo aparece si el documento tiene un archivo cargado.
+
 ## Un aviso importante
 
 Hoy el sistema marca los documentos por vencer o vencidos y los muestra en pantalla (en la

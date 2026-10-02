@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box,
   Typography,
@@ -80,9 +80,19 @@ const STATUS_COLORS: Record<VehicleStatus, 'success' | 'info' | 'warning' | 'def
 const CHANGEABLE_STATUSES: VehicleStatus[] = ['available', 'reserved', 'in_repair', 'retired'];
 
 export default function VehiclesPage() {
+  return (
+    <Suspense fallback={<Box display="flex" justifyContent="center" py={8}><GearSpinner /></Box>}>
+      <VehiclesPageContent />
+    </Suspense>
+  );
+}
+
+function VehiclesPageContent() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const autoOpenedDocs = useRef(false);
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,9 +111,10 @@ export default function VehiclesPage() {
     open: false,
     vehicle: null,
   });
-  const [docDialog, setDocDialog] = useState<{ open: boolean; vehicle: Vehicle | null }>({
+  const [docDialog, setDocDialog] = useState<{ open: boolean; vehicle: Vehicle | null; highlightDocId: number | null }>({
     open: false,
     vehicle: null,
+    highlightDocId: null,
   });
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; vehicle: Vehicle | null; status: VehicleStatus; notes: string }>(
     { open: false, vehicle: null, status: 'available', notes: '' }
@@ -137,6 +148,20 @@ export default function VehiclesPage() {
   useEffect(() => {
     loadVehicles();
   }, [loadVehicles]);
+
+  // Acceso directo desde el widget "Alertas de Vencimientos" del Inicio:
+  // ?docs=<vehicleId>&doc=<documentId> abre el Legajo Digital de ese vehículo con el documento
+  // vencido resaltado. El modal necesita el vehículo completo, así que esperamos el listado.
+  useEffect(() => {
+    if (autoOpenedDocs.current) return;
+    const vehicleId = searchParams.get('docs');
+    if (!vehicleId || vehicles.length === 0) return;
+    const target = vehicles.find(v => String(v.id) === vehicleId);
+    if (!target) return;
+    autoOpenedDocs.current = true;
+    setDocDialog({ open: true, vehicle: target, highlightDocId: Number(searchParams.get('doc')) || null });
+    router.replace('/dashboard/vehicles');
+  }, [vehicles, router, searchParams]);
 
   const handleOpenCreate = () => {
     setEditingVehicle(null);
@@ -436,7 +461,7 @@ export default function VehiclesPage() {
                       variant="outlined"
                       size="small"
                       startIcon={<FolderIcon />}
-                      onClick={() => setDocDialog({ open: true, vehicle })}
+                      onClick={() => setDocDialog({ open: true, vehicle, highlightDocId: null })}
                       sx={{ borderRadius: 2 }}
                     >
                       Legajo Digital
@@ -543,7 +568,7 @@ export default function VehiclesPage() {
                         variant="outlined"
                         size="small"
                         startIcon={<FolderIcon />}
-                        onClick={() => setDocDialog({ open: true, vehicle })}
+                        onClick={() => setDocDialog({ open: true, vehicle, highlightDocId: null })}
                         sx={{ borderRadius: 2 }}
                       >
                         Ver Documentos
@@ -698,8 +723,9 @@ export default function VehiclesPage() {
       {/* Vehicle Documents Dialog / Legajo */}
       <VehicleDocumentsDialog
         open={docDialog.open}
-        onClose={() => setDocDialog({ open: false, vehicle: null })}
+        onClose={() => setDocDialog({ open: false, vehicle: null, highlightDocId: null })}
         vehicle={docDialog.vehicle}
+        highlightDocId={docDialog.highlightDocId}
       />
 
       {/* Status Change Dialog */}

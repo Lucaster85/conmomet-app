@@ -53,6 +53,7 @@ interface VehicleDocumentsDialogProps {
   open: boolean;
   onClose: () => void;
   vehicle: Vehicle | null;
+  highlightDocId?: number | null;
 }
 
 const STATUS_CONFIG = {
@@ -63,7 +64,7 @@ const STATUS_CONFIG = {
   resolved: { label: 'Resuelto', color: 'default', icon: <CheckCircleIcon fontSize="small" /> },
 } as const;
 
-export default function VehicleDocumentsDialog({ open, onClose, vehicle }: VehicleDocumentsDialogProps) {
+export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlightDocId }: VehicleDocumentsDialogProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -543,7 +544,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
                       const isCritical = doc.computed_status === 'expiring_soon' || doc.computed_status === 'expired';
                       
                       return (
-                        <TableRow key={doc.id} hover>
+                        <TableRow key={doc.id} hover sx={doc.id === highlightDocId ? { bgcolor: 'warning.50' } : undefined}>
                           <TableCell>
                             <Typography variant="body2" fontWeight="medium">{doc.title}</Typography>
                             {doc.notes && <Typography variant="caption" color="text.secondary" display="block">{doc.notes}</Typography>}
@@ -632,7 +633,13 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle }: Vehic
                   const isCritical = doc.computed_status === 'expiring_soon' || doc.computed_status === 'expired';
                   
                   return (
-                    <Card key={doc.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Card
+                      key={doc.id}
+                      variant="outlined"
+                      sx={doc.id === highlightDocId
+                        ? { p: 2, borderRadius: 2, borderColor: 'warning.main', bgcolor: 'warning.50' }
+                        : { p: 2, borderRadius: 2 }}
+                    >
                       <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
                         <Box>
                           <Typography variant="subtitle2" fontWeight="bold">{doc.title}</Typography>
