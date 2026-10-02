@@ -1509,15 +1509,20 @@ function BudgetsPageContent() {
         <DialogTitle>Presupuesto {printBudget?.number}</DialogTitle>
         <DialogContent>
           {printBudget && (
-            <Box className="print-area" sx={{ bgcolor: 'white', color: 'black', p: 2 }}>
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+            <Box className="print-area" sx={{ bgcolor: 'white', color: 'black', p: 2, fontFamily: 'sans-serif' }}>
+              <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={2}>
                 <Box>
-                  <Typography variant="h5" fontWeight="bold">{printBudget.number}</Typography>
-                  <Typography variant="h6">{printBudget.title}</Typography>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
+                  <img src="/img/logos/logo-conmomet-ROJO.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
+                  <Typography variant="caption" sx={{ color: 'black', display: 'block', mt: 0.5 }}>Servicios Metalúrgicos e Industriales</Typography>
                 </Box>
-                <Chip label={STATUS_LABELS[printBudget.status].label} color={STATUS_LABELS[printBudget.status].color} />
+                <Box textAlign="right">
+                  <Typography variant="h6" fontWeight="bold" sx={{ color: 'black' }}>PRESUPUESTO</Typography>
+                  <Typography variant="subtitle1" fontWeight="bold" sx={{ fontFamily: 'monospace', color: 'black' }}>Nº: {printBudget.number}</Typography>
+                  <Chip label={STATUS_LABELS[printBudget.status].label} color={STATUS_LABELS[printBudget.status].color} size="small" sx={{ mt: 1 }} />
+                </Box>
               </Box>
-              <Divider sx={{ mb: 2 }} />
+              <Typography variant="h6" fontWeight="bold" sx={{ color: 'black', mb: 2 }}>{printBudget.title}</Typography>
               <Grid container spacing={2} sx={{ mb: 2 }}>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="body2"><strong>Cliente:</strong> {printBudget.client?.razonSocial}</Typography>
