@@ -80,18 +80,20 @@ interface SupervisorOption {
 }
 const supervisorFilter = createFilterOptions<SupervisorOption>();
 
-function formatMoney(value: number, currency: BudgetCurrency) {
+function formatMoney(value: number | string, currency: BudgetCurrency) {
   const symbol = currency === 'USD' ? 'US$' : '$';
-  return `${symbol}${value.toLocaleString('es-AR', { maximumFractionDigits: 2 })}`;
+  return `${symbol}${(Number(value) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // Subtotales "brutos" (sin bonificación) para el desglose del Ver/Imprimir — totals_by_currency
 // ya viene neto de bonificación desde el backend (ver FLOWS.md).
+// Los DECIMAL de Sequelize llegan como string (estimated_total/total_price) — Number() es
+// obligatorio acá, sino `totals[currency] += "7.50"` concatena en vez de sumar.
 function sumLaborByCurrency(lines: BudgetLaborLine[] | undefined, defaultCurrency: BudgetCurrency): Record<BudgetCurrency, number> {
   const totals: Record<BudgetCurrency, number> = { ARS: 0, USD: 0 };
   for (const l of lines || []) {
     const currency = (l.currency || defaultCurrency) as BudgetCurrency;
-    totals[currency] += l.estimated_total || 0;
+    totals[currency] += Number(l.estimated_total) || 0;
   }
   return totals;
 }
@@ -99,7 +101,7 @@ function sumMaterialsByCurrency(items: BudgetMaterialItem[] | undefined, default
   const totals: Record<BudgetCurrency, number> = { ARS: 0, USD: 0 };
   for (const m of items || []) {
     const currency = (m.currency || defaultCurrency) as BudgetCurrency;
-    totals[currency] += m.total_price || 0;
+    totals[currency] += Number(m.total_price) || 0;
   }
   return totals;
 }
