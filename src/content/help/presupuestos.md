@@ -4,6 +4,22 @@ Es donde se arman las cotizaciones para un cliente: mano de obra, materiales, y 
 aprobación. Se ubica en **Gestión de Clientes → Presupuestos**. Un Presupuesto aprobado puede
 convertirse en un Proyecto real (ver más abajo).
 
+Un presupuesto se puede crear suelto, como siempre, o nacer de un **Pedido de Cotización** (ver
+el tema **Pedidos de Cotización**) — en ese caso llega con el cliente y la planta ya
+precargados y **bloqueados** (no se pueden cambiar), y queda vinculado para siempre a ese
+pedido. En el listado se ve un cartel con el número del pedido y su vencimiento de presentación;
+en el Ver/Imprimir sale el número del pedido como un dato más, **sin el vencimiento** (esa fecha
+es interna, no tiene por qué salir en lo que se le manda al cliente).
+
+En el listado, si el presupuesto viene de un pedido que **tenés asignado**, aparece una etiqueta
+de color: **"Asignado a vos"** mientras te toca armarlo, o **"A validar por vos"** si te lo
+entregaron para que cargues los márgenes y lo revises. Así se encuentran de un vistazo los
+presupuestos propios sin tener que ir al módulo de Pedidos de Cotización. La etiqueta desaparece
+cuando el pedido ya se cotizó o se canceló, porque ya no hay nada pendiente de tu lado.
+
+El recorrido completo, desde que entra el pedido del cliente hasta que se genera el Proyecto,
+está graficado en el tema **Pedidos de Cotización**.
+
 ## Crear un presupuesto
 
 Con el botón **"Nuevo Presupuesto"**:
@@ -20,9 +36,14 @@ Con el botón **"Nuevo Presupuesto"**:
     se puede vincular a dos presupuestos a la vez. Mientras el presupuesto siga en Borrador, se
     puede cambiar o quitar este vínculo con normalidad.
 - **Cliente*** (obligatorio) y **Planta** (se filtra según el cliente elegido). Si elegiste
-  "adicional" o "vincular" arriba, estos dos campos se completan solos y quedan bloqueados.
+  "adicional" o "vincular" arriba, o si el presupuesto nació de un Pedido de Cotización, estos
+  dos campos se completan solos y quedan bloqueados.
 - **Descripción**, **Fecha de Inicio/Fin previstas**, **Vigencia (días)** (solo informativo, no
   bloquea nada), **N° de OT** (opcional).
+
+El **N° de Cotización del Cliente** no se carga acá: es un dato del Pedido de Cotización, se
+carga una sola vez ahí y el presupuesto lo muestra a través de su PC (ver el tema **Pedidos de
+Cotización**). Un presupuesto suelto, sin PC detrás, no tiene número de cotización del cliente.
 
 ## Líneas de Mano de Obra
 
@@ -60,7 +81,10 @@ que después se sigue editando y guardando de la forma normal.
 
 **Borrador** → **Enviado** → **Aprobado** o **Rechazado**.
 
-- **"Enviar"**: pasa de Borrador a Enviado.
+- **"Enviar"**: pasa de Borrador a Enviado. **Requiere un permiso aparte** del de editar
+  presupuestos: quien arma el presupuesto puede cargarlo y modificarlo todo lo que necesite,
+  pero no necesariamente ponerlo en manos del cliente. Si no tenés ese permiso, el botón no
+  aparece (ver el tema **Pedidos de Cotización**).
 - **"Aprobar"**: opcionalmente se completa quién lo aprobó (un contacto/Supervisor del
   cliente) y se puede subir el documento firmado (o subirlo más adelante). Una vez aprobado, el
   mismo botón sirve para **reemplazar el documento firmado** sin cambiar de estado.
@@ -68,6 +92,13 @@ que después se sigue editando y guardando de la forma normal.
 
 **Rechazado es un estado final**: a diferencia de las OCAs, un Presupuesto rechazado no tiene
 un botón de "corregir" — la forma de arrancar de nuevo es **Duplicarlo** (ver abajo).
+
+Si el presupuesto nació de un Pedido de Cotización, antes de llegar a "Enviado" pasa por un
+ida y vuelta interno entre quien lo arma y gerencia. Cuando el presupuesto ya tiene cargados los
+rubros y los materiales, el responsable usa el botón **"Entregar a gerencia"** — está acá mismo,
+en la fila del presupuesto — y elige quién lo recibe: el pedido pasa a **A validar** y gerencia
+carga los márgenes y lo envía (ver el tema **Pedidos de Cotización**). Apenas el presupuesto se
+envía al cliente, el Pedido de Cotización se marca automáticamente como cumplido.
 
 ## Bonificación
 
@@ -102,17 +133,27 @@ Borrador** con el mismo cliente, planta, moneda, fechas y todas las líneas de m
 materiales — es la forma de volver a cotizar algo parecido, o de rearmar un presupuesto
 rechazado desde cero.
 
-## Quién ve precios y costos
+Si el original venía de un **Pedido de Cotización**, al duplicar se pregunta una sola cosa: si
+el duplicado **sigue vinculado al mismo PC** (hereda su N° de cotización del cliente, y cliente
+y planta quedan bloqueados igual que en el original) o **nace libre, sin PC** (cliente y planta
+se pueden editar, y no tiene N° de cotización del cliente hasta que se lo vincule a una PC).
+Un presupuesto que no venía de un PC se duplica directo, sin preguntar nada.
 
-El acceso al módulo lo da un permiso general, pero **ver la plata es otro permiso aparte**:
+## Quién ve precios y costos, y quién puede enviar
+
+El acceso al módulo lo da un permiso general, pero hay tres cosas que se gatean por separado:
+**ver los costos**, **ver los precios** y **enviar el presupuesto al cliente**.
 
 - Sin permiso de **costos**, no se ve el costo real de los materiales.
 - Sin permiso de **precios**, no se ven los valores unitarios de mano de obra, ni los precios
   ni márgenes de materiales, ni los totales, ni la Bonificación, ni las Tarifas por Rubro del
   cliente.
+- Sin permiso de **enviar**, no aparece el botón **"Enviar"**: se puede armar el presupuesto
+  completo pero no presentarlo al cliente. Es el caso típico de quien cotiza a partir de un
+  Pedido de Cotización y se lo entrega a gerencia para que lo revise y lo envíe.
 
-Alguien sin ninguno de los dos permisos igual puede hacer todo el trabajo operativo — crear y
+Alguien sin permiso de costos ni de precios igual puede hacer todo el trabajo operativo — crear y
 editar presupuestos (cargando rubros/cantidades y materiales/cantidades, sin precio),
-cambiarles el estado, duplicarlos y generar el proyecto — simplemente no ve los montos.
+duplicarlos y generar el proyecto — simplemente no ve los montos.
 
-<!-- ref: conmomet-app/src/app/dashboard/budgets/page.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js -->
+<!-- ref: conmomet-app/src/app/dashboard/budgets/page.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js -->

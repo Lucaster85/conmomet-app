@@ -6,17 +6,19 @@ import {
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack, Chip, Divider, Grid, Alert,
   Autocomplete, createFilterOptions, useMediaQuery, useTheme,
+  FormControlLabel, Switch,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import CurrencyInput from '../../../components/CurrencyInput';
+import DeliverToManagementDialog from '../../../components/common/DeliverToManagementDialog';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon,
   ContentCopyOutlined as DuplicateIcon, VisibilityOutlined as ViewIcon, PlayArrowOutlined as GenerateIcon,
   UploadFileOutlined as UploadIcon, SendOutlined as SendIcon, CheckCircleOutlined as ApproveIcon,
   CancelOutlined as RejectIcon, PrintOutlined as PrintIcon, DescriptionOutlined as DocumentIcon,
   AssignmentOutlined as ProjectIcon, DownloadOutlined as DownloadIcon, PercentOutlined as DiscountIcon,
-  RequestQuoteOutlined as TitleIcon,
+  RequestQuoteOutlined as TitleIcon, AssignmentReturnOutlined as DeliverIcon,
 } from '@mui/icons-material';
 import {
   Budget, BudgetService, BudgetLaborLine, BudgetMaterialItem, CreateBudgetData,
@@ -24,6 +26,7 @@ import {
   Material, MaterialService, Client, ClientService, Plant, PlantService,
   Project, ProjectService, HourBucket, BudgetCurrency,
   ClientSupervisor, ClientSupervisorService, ClientItemRate, ClientItemRateService,
+  QuoteRequestService,
 } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
 
@@ -47,6 +50,7 @@ const emptyForm = () => ({
   validity_days: 15,
   notes: '',
   work_order_number: '',
+  quote_request_id: '',
   laborLines: [] as BudgetLaborLine[],
   materialItems: [] as BudgetMaterialItem[],
 });
@@ -134,6 +138,28 @@ function daysExpired(budget: Budget): number | null {
   return diffDays > 0 ? diffDays : null;
 }
 
+// Vencimiento de presentación del PC vinculado — mismo criterio "visual, no bloquea" que
+// daysExpired de arriba, pero sobre quoteRequest.due_date en vez de sent_at+validity_days
+// (ver quote-requests/page.tsx#dueDateChip, misma lógica duplicada a propósito por ser un
+// helper de 4 líneas sin estado compartido).
+function quoteRequestDueChip(dueDate: string): { label: string; color: 'default' | 'warning' | 'error' } {
+  const days = Math.ceil((new Date(dueDate + 'T00:00:00').getTime() - new Date().setHours(0, 0, 0, 0)) / (24 * 60 * 60 * 1000));
+  if (days < 0) return { label: `PC vencido hace ${Math.abs(days)} día(s)`, color: 'error' };
+  if (days <= 2) return { label: `PC vence en ${days}d`, color: 'error' };
+  if (days <= 7) return { label: `PC vence en ${days}d`, color: 'warning' };
+  return { label: `PC vence en ${days}d`, color: 'default' };
+}
+
+// Etiqueta para el listado cuando el presupuesto está asignado a quien está mirando (vía los
+// responsables de su Pedido de Cotización). El texto cambia según qué se espera de esa persona:
+// armarlo o validarlo. En PC ya cotizado o cancelado no se muestra — no hay nada que hacer.
+function assignedChip(qr: NonNullable<Budget['quoteRequest']>): { label: string; color: 'primary' | 'warning' } | null {
+  if (!qr.assigned_to_me) return null;
+  if (qr.status === 'pending' || qr.status === 'in_progress') return { label: 'Asignado a vos', color: 'primary' };
+  if (qr.status === 'pending_review') return { label: 'A validar por vos', color: 'warning' };
+  return null;
+}
+
 export default function BudgetsPage() {
   return (
     <Suspense fallback={<Box display="flex" justifyContent="center" py={8}><GearSpinner /></Box>}>
@@ -151,10 +177,19 @@ function BudgetsPageContent() {
     : [];
   const hasCostsRead = permissions.includes('admin_granted') || permissions.includes('material_costs_read');
   const hasPricesRead = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
+  // Enviar al cliente es un permiso aparte de budgets_update: quien arma el presupuesto puede
+  // editarlo pero no necesariamente ponerlo en manos del cliente (ver FLOWS.md flujo 27).
+  const hasSendPermission = permissions.includes('admin_granted') || permissions.includes('budgets_send');
+  // Entregar a gerencia es una transición del PC, no del presupuesto: pide el permiso granular
+  // de ese módulo. Gerencia (quote_requests_assign) también puede hacerlo (ver FLOWS.md 27d).
+  const hasDeliverPermission = permissions.includes('admin_granted')
+    || permissions.includes('quote_requests_deliver')
+    || permissions.includes('quote_requests_assign');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const autoOpenedFromParent = useRef(false);
   const autoViewedBudget = useRef(false);
+  const autoOpenedFromQuoteRequest = useRef(false);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [itemTypes, setItemTypes] = useState<BudgetItemType[]>([]);
   const [materialUnits, setMaterialUnits] = useState<MaterialUnit[]>([]);
@@ -203,6 +238,24 @@ function BudgetsPageContent() {
   const [discountDialog, setDiscountDialog] = useState<{ open: boolean; budget: Budget | null; labor: string; material: string }>(
     { open: false, budget: null, labor: '0', material: '0' }
   );
+
+  // Si el original venía de un Pedido de Cotización, al duplicar se pregunta si el duplicado
+  // sigue atado al mismo PC (y por lo tanto hereda su N° de cotización del cliente) o nace
+  // libre — no hay una regla de negocio única todavía (ver FLOWS.md flujo 27). Para un
+  // presupuesto sin PC no hay nada que preguntar: se duplica directo.
+  const [duplicateDialog, setDuplicateDialog] = useState<{ open: boolean; budget: Budget | null; keepQuoteRequest: boolean }>(
+    { open: false, budget: null, keepQuoteRequest: false }
+  );
+
+  const [deliverDialog, setDeliverDialog] = useState<{ open: boolean; budget: Budget | null }>(
+    { open: false, budget: null }
+  );
+
+  // "Entregar a gerencia" solo tiene sentido sobre un presupuesto que nació de un PC y que
+  // todavía está del lado del responsable (PC en "En progreso"). Es una transición del PC, por
+  // eso pide el permiso de ese módulo (ver FLOWS.md flujo 27d).
+  const canDeliverBudget = (b: Budget) =>
+    hasDeliverPermission && !!b.quoteRequest && b.quoteRequest.status === 'in_progress';
 
   const loadData = async () => {
     try {
@@ -291,6 +344,31 @@ function BudgetsPageContent() {
     router.replace('/dashboard/budgets');
   }, [budgets, router, searchParams]);
 
+  // Acceso directo desde "Crear presupuesto" en el listado de Pedidos de Cotización:
+  // ?quote_request_id=<id> abre el alta pre-vinculada al PC, precargando cliente/planta —
+  // mismo patrón que parent_project_id/existing_project_id de arriba.
+  useEffect(() => {
+    if (autoOpenedFromQuoteRequest.current) return;
+    const quoteRequestId = searchParams.get('quote_request_id');
+    if (!quoteRequestId) return;
+    autoOpenedFromQuoteRequest.current = true;
+    QuoteRequestService.getById(Number(quoteRequestId))
+      .then((qr) => {
+        setEditingBudget(null);
+        setForm({
+          ...emptyForm(),
+          quote_request_id: String(qr.id),
+          title: qr.title,
+          client_id: String(qr.client_id),
+          plant_id: qr.plant_id ? String(qr.plant_id) : '',
+        });
+        setOpenDialog(true);
+      })
+      .catch(() => setError('No se pudo cargar el Pedido de Cotización.'));
+    router.replace('/dashboard/budgets');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleOpenCreate = () => {
     setEditingBudget(null);
     setForm(emptyForm());
@@ -313,6 +391,7 @@ function BudgetsPageContent() {
       validity_days: budget.validity_days ?? 15,
       notes: budget.notes || '',
       work_order_number: budget.work_order_number || '',
+      quote_request_id: budget.quote_request_id ? String(budget.quote_request_id) : '',
       laborLines: budget.laborLines || [],
       materialItems: budget.materialItems || [],
     });
@@ -660,6 +739,9 @@ function BudgetsPageContent() {
         validity_days: form.validity_days,
         notes: form.notes || undefined,
         work_order_number: form.work_order_number || undefined,
+        // Solo tiene efecto en el alta — el backend lo ignora en update, el vínculo con el PC
+        // queda fijo desde que nace el presupuesto (ver FLOWS.md).
+        quote_request_id: !editingBudget && form.quote_request_id ? Number(form.quote_request_id) : undefined,
         laborLines: form.laborLines,
         materialItems: form.materialItems,
       };
@@ -755,14 +837,34 @@ function BudgetsPageContent() {
     }
   };
 
-  const handleDuplicate = async (budget: Budget) => {
+  const runDuplicate = async (budget: Budget, keepQuoteRequest: boolean) => {
+    setProcessing(true);
     try {
-      await BudgetService.duplicate(budget.id);
+      await BudgetService.duplicate(budget.id, {
+        quote_request_id: keepQuoteRequest ? budget.quote_request_id || undefined : undefined,
+      });
+      setDuplicateDialog({ open: false, budget: null, keepQuoteRequest: false });
       setSuccess('Presupuesto duplicado como borrador');
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al duplicar');
+    } finally {
+      setProcessing(false);
     }
+  };
+
+  // Sin PC detrás no hay nada que decidir: se duplica directo, como venía siendo antes.
+  const handleDuplicate = (budget: Budget) => {
+    if (!budget.quoteRequest) {
+      runDuplicate(budget, false);
+      return;
+    }
+    setDuplicateDialog({ open: true, budget, keepQuoteRequest: true });
+  };
+
+  const handleConfirmDuplicate = () => {
+    if (!duplicateDialog.budget) return;
+    runDuplicate(duplicateDialog.budget, duplicateDialog.keepQuoteRequest);
   };
 
   const handleGenerateProject = async (budget: Budget) => {
@@ -852,6 +954,7 @@ function BudgetsPageContent() {
                         {b.parentProject && <Typography variant="caption" color="text.secondary" display="block">Adicional de {b.parentProject.code}</Typography>}
                         {b.existingProject && <Typography variant="caption" color="text.secondary" display="block">Vinculado a {b.existingProject.code}</Typography>}
                         {b.work_order_number && <Typography variant="caption" color="text.secondary" display="block">OT: {b.work_order_number}</Typography>}
+                        {b.quoteRequest?.client_quote_number && <Typography variant="caption" color="text.secondary" display="block">N° Cotización Cliente: {b.quoteRequest.client_quote_number}</Typography>}
                       </Box>
                     </Box>
                     <Typography variant="body2" color="text.secondary">{b.client?.razonSocial}</Typography>
@@ -859,6 +962,21 @@ function BudgetsPageContent() {
                       <Chip label={STATUS_LABELS[b.status].label} color={STATUS_LABELS[b.status].color} size="small" />
                       {daysExpired(b) !== null && (
                         <Chip label={`Vencido hace ${daysExpired(b)} día(s)`} color="warning" size="small" variant="outlined" sx={{ ml: 0.5 }} />
+                      )}
+                      {b.quoteRequest && (
+                        <Chip
+                          label={`${b.quoteRequest.number} · ${quoteRequestDueChip(b.quoteRequest.due_date).label}`}
+                          color={quoteRequestDueChip(b.quoteRequest.due_date).color}
+                          size="small" variant="outlined" sx={{ ml: 0.5 }} clickable
+                          onClick={() => router.push(`/dashboard/quote-requests?view=${b.quoteRequest!.id}`)}
+                        />
+                      )}
+                      {b.quoteRequest && assignedChip(b.quoteRequest) && (
+                        <Chip
+                          label={assignedChip(b.quoteRequest)!.label}
+                          color={assignedChip(b.quoteRequest)!.color}
+                          size="small" sx={{ ml: 0.5 }}
+                        />
                       )}
                       {b.status === 'approved' && b.approvedBySupervisor && (
                         <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
@@ -892,7 +1010,12 @@ function BudgetsPageContent() {
                       {b.status === 'draft' && (
                         <>
                           <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(b)}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                          <Tooltip title="Enviar"><IconButton size="small" color="info" onClick={() => handleOpenStatusDialog(b, 'sent')}><SendIcon fontSize="small" /></IconButton></Tooltip>
+                          {canDeliverBudget(b) && (
+                            <Tooltip title="Entregar a gerencia"><IconButton size="small" color="warning" onClick={() => setDeliverDialog({ open: true, budget: b })}><DeliverIcon fontSize="small" /></IconButton></Tooltip>
+                          )}
+                          {hasSendPermission && (
+                            <Tooltip title="Enviar"><IconButton size="small" color="info" onClick={() => handleOpenStatusDialog(b, 'sent')}><SendIcon fontSize="small" /></IconButton></Tooltip>
+                          )}
                           <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, budget: b })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                         </>
                       )}
@@ -943,12 +1066,28 @@ function BudgetsPageContent() {
                         {b.parentProject && <Typography variant="caption" color="text.secondary">Adicional de {b.parentProject.code}</Typography>}
                         {b.existingProject && <Typography variant="caption" color="text.secondary">Vinculado a {b.existingProject.code}</Typography>}
                         {b.work_order_number && <Typography variant="caption" color="text.secondary" display="block">OT: {b.work_order_number}</Typography>}
+                        {b.quoteRequest?.client_quote_number && <Typography variant="caption" color="text.secondary" display="block">N° Cotización Cliente: {b.quoteRequest.client_quote_number}</Typography>}
                       </TableCell>
                       <TableCell>{b.client?.razonSocial}</TableCell>
                       <TableCell>
                         <Chip label={STATUS_LABELS[b.status].label} color={STATUS_LABELS[b.status].color} size="small" />
                         {daysExpired(b) !== null && (
                           <Chip label={`Vencido hace ${daysExpired(b)} día(s)`} color="warning" size="small" variant="outlined" sx={{ ml: 0.5 }} />
+                        )}
+                        {b.quoteRequest && (
+                          <Chip
+                            label={`${b.quoteRequest.number} · ${quoteRequestDueChip(b.quoteRequest.due_date).label}`}
+                            color={quoteRequestDueChip(b.quoteRequest.due_date).color}
+                            size="small" variant="outlined" sx={{ ml: 0.5 }} clickable
+                            onClick={() => router.push(`/dashboard/quote-requests?view=${b.quoteRequest!.id}`)}
+                          />
+                        )}
+                        {b.quoteRequest && assignedChip(b.quoteRequest) && (
+                          <Chip
+                            label={assignedChip(b.quoteRequest)!.label}
+                            color={assignedChip(b.quoteRequest)!.color}
+                            size="small" sx={{ ml: 0.5 }}
+                          />
                         )}
                         {b.status === 'approved' && b.approvedBySupervisor && (
                           <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
@@ -984,7 +1123,12 @@ function BudgetsPageContent() {
                         {b.status === 'draft' && (
                           <>
                             <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(b)}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                            <Tooltip title="Enviar"><IconButton size="small" color="info" onClick={() => handleOpenStatusDialog(b, 'sent')}><SendIcon fontSize="small" /></IconButton></Tooltip>
+                            {canDeliverBudget(b) && (
+                              <Tooltip title="Entregar a gerencia"><IconButton size="small" color="warning" onClick={() => setDeliverDialog({ open: true, budget: b })}><DeliverIcon fontSize="small" /></IconButton></Tooltip>
+                            )}
+                            {hasSendPermission && (
+                              <Tooltip title="Enviar"><IconButton size="small" color="info" onClick={() => handleOpenStatusDialog(b, 'sent')}><SendIcon fontSize="small" /></IconButton></Tooltip>
+                            )}
                             <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, budget: b })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                           </>
                         )}
@@ -1048,15 +1192,16 @@ function BudgetsPageContent() {
 
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField label="Cliente *" select fullWidth value={form.client_id} disabled={!!form.parent_project_id || !!form.existing_project_id}
+                <TextField label="Cliente *" select fullWidth value={form.client_id} disabled={!!form.parent_project_id || !!form.existing_project_id || !!form.quote_request_id}
                   onChange={(e) => setForm({ ...form, client_id: e.target.value, plant_id: '' })}
-                  SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
+                  SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
+                  helperText={form.quote_request_id ? 'Viene del Pedido de Cotización — no se puede cambiar' : undefined}>
                   <option value="">— Seleccionar —</option>
                   {clients.map((c) => <option key={c.id} value={c.id}>{c.razonSocial}</option>)}
                 </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField label="Planta" select fullWidth value={form.plant_id} disabled={!!form.parent_project_id || !!form.existing_project_id || !form.client_id}
+                <TextField label="Planta" select fullWidth value={form.plant_id} disabled={!!form.parent_project_id || !!form.existing_project_id || !!form.quote_request_id || !form.client_id}
                   onChange={(e) => setForm({ ...form, plant_id: e.target.value })}
                   SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
                   <option value="">— Ninguna —</option>
@@ -1483,6 +1628,44 @@ function BudgetsPageContent() {
         </DialogActions>
       </Dialog>
 
+      {/* Duplicar — solo pregunta si el duplicado sigue atado al mismo Pedido de Cotización. Un
+          presupuesto sin PC se duplica directo, sin pasar por acá (ver FLOWS.md flujo 27). */}
+      <Dialog open={duplicateDialog.open} onClose={() => setDuplicateDialog({ open: false, budget: null, keepQuoteRequest: false })} maxWidth="xs" fullWidth>
+        <DialogTitle>Duplicar Presupuesto</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>A partir de <strong>{duplicateDialog.budget?.number}</strong></Typography>
+          <Stack spacing={1} sx={{ mt: 1 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={duplicateDialog.keepQuoteRequest}
+                  onChange={(e) => setDuplicateDialog({ ...duplicateDialog, keepQuoteRequest: e.target.checked })}
+                />
+              }
+              label="Mantener vínculo con el mismo Pedido de Cotización"
+            />
+            <Typography variant="caption" color="text.secondary">
+              {duplicateDialog.keepQuoteRequest
+                ? `Sigue vinculado a ${duplicateDialog.budget?.quoteRequest?.number}${duplicateDialog.budget?.quoteRequest?.client_quote_number ? ` (N° del cliente: ${duplicateDialog.budget.quoteRequest.client_quote_number})` : ''} — cliente y planta quedan bloqueados, igual que en el original.`
+                : 'Nace libre, sin Pedido de Cotización — cliente y planta se podrán editar, y no va a tener N° de cotización del cliente hasta que se lo vincule a una PC.'}
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDuplicateDialog({ open: false, budget: null, keepQuoteRequest: false })}>Cancelar</Button>
+          <Button onClick={handleConfirmDuplicate} variant="contained" disabled={processing}>Duplicar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <DeliverToManagementDialog
+        open={deliverDialog.open}
+        quoteRequest={deliverDialog.budget?.quoteRequest ?? null}
+        budgetNumber={deliverDialog.budget?.number}
+        onClose={() => setDeliverDialog({ open: false, budget: null })}
+        onDelivered={(msg) => { setSuccess(msg); loadData(); }}
+        onError={(msg) => setError(msg)}
+      />
+
       {/* Alta rápida de contacto del cliente (ClientSupervisor) — abierta desde el Autocomplete de arriba */}
       <Dialog open={supervisorQuickAdd.open} onClose={() => setSupervisorQuickAdd({ ...supervisorQuickAdd, open: false })} maxWidth="xs" fullWidth>
         <DialogTitle>Nuevo Contacto del Cliente</DialogTitle>
@@ -1530,6 +1713,8 @@ function BudgetsPageContent() {
                   {printBudget.parentProject && <Typography variant="body2"><strong>Adicional de:</strong> {printBudget.parentProject.code} - {printBudget.parentProject.name}</Typography>}
                   {printBudget.existingProject && <Typography variant="body2"><strong>Vinculado a:</strong> {printBudget.existingProject.code} - {printBudget.existingProject.name}</Typography>}
                   {printBudget.work_order_number && <Typography variant="body2"><strong>N° OT:</strong> {printBudget.work_order_number}</Typography>}
+                  {printBudget.quoteRequest && <Typography variant="body2"><strong>Pedido de Cotización:</strong> {printBudget.quoteRequest.number}</Typography>}
+                  {printBudget.quoteRequest?.client_quote_number && <Typography variant="body2"><strong>N° Cotización Cliente:</strong> {printBudget.quoteRequest.client_quote_number}</Typography>}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="body2"><strong>Fecha:</strong> {new Date(printBudget.createdAt).toLocaleDateString('es-AR')}</Typography>

@@ -1588,6 +1588,8 @@ export interface Budget {
   approved_document_url?: string;
   approved_by_supervisor_id?: number;
   created_by: number;
+  // Pedido de Cotización que originó este presupuesto (opcional — ver utils/api.ts#QuoteRequest)
+  quote_request_id?: number | null;
   client?: { id: number; razonSocial: string };
   plant?: { id: number; name: string };
   parentProject?: { id: number; name: string; code: string };
@@ -1597,6 +1599,18 @@ export interface Budget {
   approvedBy?: { id: number; name: string; lastname: string };
   // Contacto externo del cliente que aprobó — distinto de approvedBy (usuario interno)
   approvedBySupervisor?: { id: number; name: string; lastname: string; email?: string; phone?: string };
+  // El N° de cotización del cliente vive en la PC, no acá — el presupuesto lo lee a través de
+  // esta relación (ver FLOWS.md flujo 27).
+  // `assigned_to_me` lo calcula el backend desde los responsables del PC (withTotals) — llega
+  // como booleano, no viene la lista de responsables.
+  quoteRequest?: {
+    id: number;
+    number: string;
+    client_quote_number?: string | null;
+    due_date: string;
+    status: string;
+    assigned_to_me?: boolean;
+  };
   laborLines?: BudgetLaborLine[];
   materialItems?: BudgetMaterialItem[];
   totals_by_currency?: Record<BudgetCurrency, number>;
@@ -1616,6 +1630,7 @@ export interface CreateBudgetData {
   validity_days?: number;
   notes?: string;
   work_order_number?: string | null;
+  quote_request_id?: number;
   laborLines?: BudgetLaborLine[];
   materialItems?: BudgetMaterialItem[];
 }
@@ -1720,9 +1735,13 @@ export class BudgetService {
     return data.data;
   }
 
-  static async duplicate(id: number): Promise<Budget> {
+  // quote_request_id no se copia solo del original: queda a criterio del usuario si el duplicado
+  // sigue atado al mismo Pedido de Cotización (y por lo tanto hereda su N° de cotización del
+  // cliente) o nace libre (ver FLOWS.md).
+  static async duplicate(id: number, options?: { quote_request_id?: number }): Promise<Budget> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}/duplicate`, {
       method: 'POST',
+      body: JSON.stringify(options || {}),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -1763,6 +1782,176 @@ export class BudgetService {
     }
     const data = await response.json();
     return data.data || [];
+  }
+}
+
+// Pedido de Cotización (PC) — paso previo opcional a un Presupuesto: documento que manda el
+// cliente, vencimiento de presentación y responsables asignados. quote_request_id en Budget es
+// nullable, así que un Presupuesto se sigue pudiendo crear sin pasar por acá (ver FLOWS.md).
+export interface QuoteRequestFile {
+  id: number;
+  quote_request_id: number;
+  file_url: string;
+  file_name?: string;
+  mime_type?: string;
+  size_bytes?: number;
+  uploaded_by: number;
+  uploader?: { id: number; name: string; lastname: string };
+  createdAt: string;
+}
+
+export interface QuoteRequest {
+  id: number;
+  // Código interno nuestro (PC-YYYY-NNN)
+  number: string;
+  // Número con el que el CLIENTE identifica su pedido. Texto libre (cada cliente usa su propia
+  // nomenclatura) y obligatorio al cargar la PC. Los Presupuestos de esta PC lo leen de acá.
+  client_quote_number?: string | null;
+  title: string;
+  client_id: number;
+  plant_id?: number | null;
+  description?: string;
+  received_at?: string | null;
+  due_date: string;
+  status: 'pending' | 'in_progress' | 'pending_review' | 'quoted' | 'cancelled';
+  notes?: string;
+  created_by: number;
+  client?: { id: number; razonSocial: string };
+  plant?: { id: number; name: string };
+  createdBy?: { id: number; name: string; lastname: string };
+  assignees?: { id: number; name: string; lastname: string }[];
+  files?: QuoteRequestFile[];
+  budgets?: { id: number; number: string; status: string; title: string }[];
+  createdAt: string;
+}
+
+export interface CreateQuoteRequestData {
+  title: string;
+  client_quote_number: string;
+  client_id: number;
+  plant_id?: number | null;
+  description?: string;
+  received_at?: string | null;
+  due_date: string;
+  notes?: string;
+  assignee_ids?: number[];
+  files?: File[];
+}
+
+export class QuoteRequestService {
+  static async getAll(params?: { status?: string; client_id?: number; assigned_to_me?: boolean }): Promise<QuoteRequest[]> {
+    let url = `${API_BASE_URL}/quote-requests`;
+    if (params) {
+      const qs = new URLSearchParams();
+      if (params.status) qs.append('status', params.status);
+      if (params.client_id) qs.append('client_id', params.client_id.toString());
+      if (params.assigned_to_me) qs.append('assigned_to_me', 'true');
+      if (qs.toString()) url += `?${qs.toString()}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener pedidos de cotización');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getById(id: number): Promise<QuoteRequest> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/quote-requests/${id}`);
+    if (!response.ok) throw new Error('Error al obtener el pedido de cotización');
+    const data = await response.json();
+    return data.data;
+  }
+
+  private static buildFormData(body: Partial<CreateQuoteRequestData>): FormData {
+    const formData = new FormData();
+    if (body.title !== undefined) formData.append('title', body.title);
+    if (body.client_quote_number !== undefined) formData.append('client_quote_number', body.client_quote_number);
+    if (body.client_id !== undefined) formData.append('client_id', String(body.client_id));
+    if (body.plant_id !== undefined) formData.append('plant_id', body.plant_id ? String(body.plant_id) : '');
+    if (body.description !== undefined) formData.append('description', body.description || '');
+    if (body.received_at !== undefined) formData.append('received_at', body.received_at || '');
+    if (body.due_date !== undefined) formData.append('due_date', body.due_date);
+    if (body.notes !== undefined) formData.append('notes', body.notes || '');
+    if (body.assignee_ids !== undefined) formData.append('assignee_ids', JSON.stringify(body.assignee_ids));
+    (body.files || []).forEach((file) => formData.append('files', file));
+    return formData;
+  }
+
+  static async create(body: CreateQuoteRequestData): Promise<QuoteRequest> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/quote-requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' },
+      body: this.buildFormData(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear el pedido de cotización');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  // Reemplazo total de responsables (no merge) — refleja el handoff explícito entre el
+  // responsable y gerencia en cada paso. No acepta archivos: se suman aparte con addFiles.
+  static async update(id: number, body: Omit<Partial<CreateQuoteRequestData>, 'files'>): Promise<QuoteRequest> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/quote-requests/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar el pedido de cotización');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async changeStatus(id: number, status: QuoteRequest['status'], assigneeIds?: number[]): Promise<QuoteRequest> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/quote-requests/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, assignee_ids: assigneeIds }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al cambiar el estado del pedido de cotización');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async addFiles(id: number, files: File[]): Promise<QuoteRequest> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/quote-requests/${id}/files`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' },
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al subir archivos');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async removeFile(id: number, fileId: number): Promise<QuoteRequest> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/quote-requests/${id}/files/${fileId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar el archivo');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/quote-requests/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar el pedido de cotización');
+    }
   }
 }
 

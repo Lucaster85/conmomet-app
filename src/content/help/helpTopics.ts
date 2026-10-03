@@ -119,6 +119,21 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'proyectos.md',
   },
   {
+    id: 'pedidos-cotizacion',
+    category: 'Gestión de Clientes',
+    title: 'Pedidos de Cotización',
+    keywords: [
+      'pedido de cotizacion', 'pedido de cotización', 'pedidos de cotizacion',
+      'pedidos de cotización', 'pc', 'cotizacion', 'cotización', 'vencimiento',
+      'presentacion', 'presentación', 'asignar', 'asignacion', 'asignación', 'responsable',
+      'responsables', 'reasignar', 'gerencia', 'gerente', 'margen', 'margenes', 'márgenes',
+      'validar', 'validacion', 'validación', 'aviso', 'avisos', 'notificacion', 'notificación',
+      'cancelar', 'cancelado', 'flujo', 'circuito', 'diagrama', 'estados', 'proyecto',
+      'entregar', 'aprobar', 'rechazar', 'cotizado',
+    ],
+    file: 'pedidos-cotizacion.md',
+  },
+  {
     id: 'presupuestos',
     category: 'Gestión de Clientes',
     title: 'Presupuestos',

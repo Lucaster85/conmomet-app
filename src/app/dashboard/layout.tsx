@@ -52,6 +52,7 @@ import {
   LocalShippingOutlined as LocalShippingIcon,
   ReceiptLongOutlined as ReceiptLongIcon,
   RequestQuoteOutlined as RequestQuoteIcon,
+  DescriptionOutlined as QuoteRequestIcon,
   Inventory2Outlined as InventoryIcon,
   LockOutlined as LockIcon,
   SettingsOutlined as SettingsIcon,
@@ -114,6 +115,7 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Clientes', icon: <Business />, path: '/dashboard/clients', requiredPermission: 'clients_read' },
       { text: 'Plantas', icon: <FactoryIcon />, path: '/dashboard/plants', requiredPermission: 'plants_read' },
       { text: 'Proyectos', icon: <AssignmentIcon />, path: '/dashboard/projects', requiredPermission: 'projects_read' },
+      { text: 'Pedidos de Cotización', icon: <QuoteRequestIcon />, path: '/dashboard/quote-requests', requiredPermission: 'quote_requests_read' },
       { text: 'Presupuestos', icon: <RequestQuoteIcon />, path: '/dashboard/budgets', requiredPermission: 'budgets_read' },
       { text: 'Remitos / OCAs', icon: <ReceiptLongIcon />, path: '/dashboard/ocas', requiredPermission: 'ocas_read' },
     ]
