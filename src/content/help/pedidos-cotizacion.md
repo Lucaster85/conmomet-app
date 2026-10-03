@@ -147,8 +147,22 @@ alcance. Está explicado en el tema **Presupuestos**.
 
 Cargar un Pedido de Cotización nuevo, y cada vez que se reasigna en el ida y vuelta con
 gerencia, genera un aviso en el **Inicio** de la persona asignada — separado según si le toca
-armar el presupuesto o validarlo. Por ahora el aviso es solo dentro de la app (no llega como
-notificación al celular todavía).
+armar el presupuesto o validarlo.
+
+Además, si activaste las notificaciones en tu celular o computadora (ver más abajo), te llega
+un **push** — aunque no tengas la app abierta — en estos cuatro momentos: te asignan un pedido,
+te entregan un presupuesto para validar, te lo devuelven, o se envía un presupuesto al cliente.
+Tocar la notificación te lleva directo a la pantalla correspondiente.
+
+### Activar las notificaciones en tu dispositivo
+
+Se activan desde el ícono de tu usuario (arriba a la derecha) → **Notificaciones**. Hay que
+activarlas **en cada dispositivo por separado** — si las activás en la computadora, el celular
+sigue sin avisos hasta que entres ahí también y las actives. En iPhone hace falta un paso
+previo: agregar la app a la pantalla de inicio desde **Compartir → Agregar a pantalla de
+inicio** en Safari (el diálogo de Notificaciones te lo explica si hace falta). Al cerrar sesión,
+las notificaciones de ese dispositivo se desactivan solas — si vuelve a entrar otra persona en
+el mismo celular, no va a recibir avisos que eran para vos.
 
 ## Quién puede hacer qué
 
@@ -159,4 +173,4 @@ notificación al celular todavía).
   **entrega a gerencia**. No puede editar el pedido (ni cambiarle el vencimiento ni
   reasignarlo), ni enviarle el presupuesto al cliente — su trabajo termina al entregarlo.
 
-<!-- ref: conmomet-app/src/app/dashboard/quote-requests/page.tsx, conmomet-app/src/components/common/QuoteRequestAlert.tsx, conmomet-app/src/components/common/DeliverToManagementDialog.tsx, api_conmomet/controllers/quoteRequestController.js, api_conmomet/controllers/budgetController.js -->
+<!-- ref: conmomet-app/src/app/dashboard/quote-requests/page.tsx, conmomet-app/src/components/common/QuoteRequestAlert.tsx, conmomet-app/src/components/common/DeliverToManagementDialog.tsx, conmomet-app/src/components/common/PushNotificationsDialog.tsx, conmomet-app/src/utils/push.ts, api_conmomet/helpers/pushService.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/controllers/budgetController.js -->

@@ -19,6 +19,7 @@ import {
 import {
   LogoutOutlined as LogoutIcon,
   LockOutlined as LockIcon,
+  NotificationsOutlined as NotificationsIcon,
   AccountCircleOutlined as AccountCircle,
   ArrowBackOutlined as ArrowBackIcon,
   HomeOutlined as HomeIcon
@@ -27,6 +28,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth, TokenManager } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
+import PushNotificationsDialog from '../../components/common/PushNotificationsDialog';
+import { reconcilePushSubscriptionOnLoad, unsubscribeFromPush, unsubscribeFromPushLocalOnly } from '../../utils/push';
+import { onSessionExpired } from '../../utils/sessionExpiry';
 import SessionExpiredDialog from '../../components/SessionExpiredDialog';
 import { HeaderLogo, HeaderAvatarButton, HEADER_MIN_HEIGHT, HEADER_TOGGLE_ICON_SIZE } from '../../components/layout/HeaderChrome';
 import { PORTAL_MENU_ITEMS } from '../../components/portal/portalMenuItems';
@@ -37,6 +41,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   // Redirección si no tiene employee_id
   useEffect(() => {
@@ -53,6 +58,20 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     }
   }, [user, router]);
 
+  // Capa 1 de la reconciliación de pushsubscriptionchange (ver FLOWS.md flujo 28) — mismo
+  // criterio que dashboard/layout.tsx.
+  useEffect(() => {
+    reconcilePushSubscriptionOnLoad();
+  }, []);
+
+  // Celular compartido, caso "sesión venció sola" (ver FLOWS.md flujo 28, §4) — mismo criterio
+  // que dashboard/layout.tsx.
+  useEffect(() => {
+    return onSessionExpired(() => {
+      unsubscribeFromPushLocalOnly();
+    });
+  }, []);
+
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -63,7 +82,13 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   const handleLogout = () => {
     handleProfileMenuClose();
-    logout();
+    // Celular compartido (ver FLOWS.md flujo 28, §4): mismo orden que dashboard/layout.tsx.
+    Promise.race([
+      unsubscribeFromPush().catch(() => undefined),
+      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+    ]).finally(() => {
+      logout();
+    });
   };
 
   const getUserInitials = () => {
@@ -207,6 +232,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <ListItemIcon><LockIcon fontSize="small" /></ListItemIcon>
             <ListItemText>Cambiar contraseña</ListItemText>
           </MenuItem>
+          <MenuItem onClick={() => { handleProfileMenuClose(); setNotificationsOpen(true); }}>
+            <ListItemIcon><NotificationsIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>Notificaciones</ListItemText>
+          </MenuItem>
           {user?.has_dashboard_access && (
             <MenuItem onClick={() => { handleProfileMenuClose(); router.push('/dashboard'); }}>
               <ListItemIcon><ArrowBackIcon fontSize="small" /></ListItemIcon>
@@ -225,6 +254,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           onClose={() => setChangePasswordOpen(false)}
           forced={!!user?.must_change_password}
         />
+
+        <PushNotificationsDialog open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
 
         <SessionExpiredDialog />
 

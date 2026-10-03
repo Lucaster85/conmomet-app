@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from '@mui/material/styles';
@@ -21,7 +21,22 @@ export const metadata: Metadata = {
   description: "Sistema de gestión Conmomet",
   icons: {
     icon: "/img/logos/conmomet-logo-blue.svg",
+    apple: "/icons/apple-touch-icon.png",
   },
+  manifest: "/manifest.webmanifest",
+  // iOS exige esto para permitir Web Push: la app tiene que poder instalarse en la pantalla de
+  // inicio y abrir en modo standalone, no alcanza con el manifest solo (ver FLOWS.md flujo 28).
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Conmomet",
+  },
+};
+
+// themeColor vive acá y no en `metadata` — Next 15 lo movió a un export aparte; dejarlo en
+// metadata no tira error pero se ignora en silencio.
+export const viewport: Viewport = {
+  themeColor: "#F44336",
 };
 
 export default function RootLayout({

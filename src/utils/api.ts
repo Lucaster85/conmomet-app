@@ -4702,3 +4702,53 @@ export class OcaService {
   }
 }
 
+
+// Web Push — suscripciones de dispositivo. `getVapidPublicKey` es pública (fetch crudo, mismo
+// patrón que PublicInvitationService); subscribe/unsubscribe van por el token porque identifican
+// AL USUARIO dueño del dispositivo (ver FLOWS.md flujo 28).
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
+export class PushSubscriptionService {
+  // El service worker vive en un scope sin DOM (no puede leer window.__ENV__) y corre en un
+  // origen distinto al de la API — necesita este valor para la reconciliación best-effort de
+  // `pushsubscriptionchange` (capa 2, ver FLOWS.md flujo 28). Se guarda en IndexedDB al
+  // suscribirse, no se hardcodea en el SW.
+  static getApiBaseUrl(): string {
+    return API_BASE_URL;
+  }
+
+  static async getVapidPublicKey(): Promise<string> {
+    const response = await fetch(`${API_BASE_URL}/public/push/vapid-public-key`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al obtener la clave de notificaciones push');
+    }
+    const data = await response.json();
+    return data.publicKey;
+  }
+
+  static async subscribe(subscription: PushSubscriptionPayload): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/push-subscriptions`, {
+      method: 'POST',
+      body: JSON.stringify(subscription),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al activar las notificaciones');
+    }
+  }
+
+  static async unsubscribe(endpoint: string): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/push-subscriptions/unsubscribe`, {
+      method: 'POST',
+      body: JSON.stringify({ endpoint }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al desactivar las notificaciones');
+    }
+  }
+}

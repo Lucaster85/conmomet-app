@@ -55,6 +55,7 @@ import {
   DescriptionOutlined as QuoteRequestIcon,
   Inventory2Outlined as InventoryIcon,
   LockOutlined as LockIcon,
+  NotificationsOutlined as NotificationsIcon,
   SettingsOutlined as SettingsIcon,
   ConstructionOutlined as ConstructionIcon,
   BuildOutlined as BuildIcon,
@@ -66,6 +67,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
+import PushNotificationsDialog from '../../components/common/PushNotificationsDialog';
+import { reconcilePushSubscriptionOnLoad, unsubscribeFromPush, unsubscribeFromPushLocalOnly } from '../../utils/push';
+import { onSessionExpired } from '../../utils/sessionExpiry';
 import SessionExpiredDialog from '../../components/SessionExpiredDialog';
 
 const drawerWidth = 280;
@@ -198,6 +202,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
     menuGroups.forEach((g) => {
@@ -227,6 +232,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [user, router]);
 
+  // Capa 1 de la reconciliación de pushsubscriptionchange (ver FLOWS.md flujo 28) — en cada
+  // arranque, si ya había una suscripción activa en este dispositivo, se vuelve a mandar al
+  // servidor. No pide permiso ni molesta si no hay suscripción; falla en silencio.
+  useEffect(() => {
+    reconcilePushSubscriptionOnLoad();
+  }, []);
+
+  // Celular compartido, caso "sesión venció sola" (ver FLOWS.md flujo 28, §4): acá el token ya
+  // no es válido, así que no se intenta avisar al servidor (fallaría y encadenaría otro
+  // handleSessionExpired) — solo se invalida localmente, que es la defensa real.
+  useEffect(() => {
+    return onSessionExpired(() => {
+      unsubscribeFromPushLocalOnly();
+    });
+  }, []);
+
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
@@ -241,7 +262,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleLogout = () => {
     handleProfileMenuClose();
-    logout();
+    // Celular compartido (ver FLOWS.md flujo 28, §4): avisar al servidor primero (todavía hay
+    // token válido) y recién después invalidar localmente — unsubscribeFromPush() ya hace esto
+    // en ese orden. Con timeout de ~2s para que una red mala no cuelgue el logout, y en
+    // try/finally para que un fallo no se salte el logout en sí.
+    Promise.race([
+      unsubscribeFromPush().catch(() => undefined),
+      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+    ]).finally(() => {
+      logout();
+    });
   };
 
   const handleNavigation = (path: string) => {
@@ -473,6 +503,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </ListItemIcon>
             <ListItemText>Cambiar contraseña</ListItemText>
           </MenuItem>
+          <MenuItem onClick={() => { handleProfileMenuClose(); setNotificationsOpen(true); }}>
+            <ListItemIcon>
+              <NotificationsIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Notificaciones</ListItemText>
+          </MenuItem>
           <Divider />
           <MenuItem onClick={handleLogout}>
             <ListItemIcon>
@@ -487,6 +523,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           onClose={() => setChangePasswordOpen(false)}
           forced={!!user?.must_change_password}
         />
+
+        <PushNotificationsDialog open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
 
         <SessionExpiredDialog />
 

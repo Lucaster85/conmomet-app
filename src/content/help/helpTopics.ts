@@ -128,6 +128,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'presentacion', 'presentación', 'asignar', 'asignacion', 'asignación', 'responsable',
       'responsables', 'reasignar', 'gerencia', 'gerente', 'margen', 'margenes', 'márgenes',
       'validar', 'validacion', 'validación', 'aviso', 'avisos', 'notificacion', 'notificación',
+      'notificaciones', 'push', 'celular', 'telefono', 'teléfono', 'iphone', 'android',
+      'pantalla de inicio', 'activar notificaciones',
       'cancelar', 'cancelado', 'flujo', 'circuito', 'diagrama', 'estados', 'proyecto',
       'entregar', 'aprobar', 'rechazar', 'cotizado',
     ],
