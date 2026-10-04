@@ -15,10 +15,10 @@ import {
   AttachFileOutlined as AttachIcon, CloseOutlined as CloseIcon,
   ReceiptLongOutlined as BudgetIcon, AssignmentReturnOutlined as HandoffIcon,
   CancelOutlined as CancelIcon,
-  ReplayOutlined as ReopenIcon,
+  ReplayOutlined as ReopenIcon, VisibilityOutlined as ViewIcon,
 } from '@mui/icons-material';
 import {
-  QuoteRequest, QuoteRequestService, CreateQuoteRequestData,
+  QuoteRequest, QuoteRequestService, CreateQuoteRequestData, QuoteRequestHistoryEntry,
   Client, ClientService, Plant, PlantService, User, UserService, Permission,
 } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
@@ -29,6 +29,14 @@ const STATUS_LABELS: Record<QuoteRequest['status'], { label: string; color: 'def
   pending_review: { label: 'A validar', color: 'warning' },
   quoted: { label: 'Cotizado', color: 'success' },
   cancelled: { label: 'Cancelado', color: 'error' },
+};
+
+// Línea de tiempo del ida y vuelta (ver FLOWS.md flujo 27g) — un evento por fila, PC +
+// Presupuesto mezclados y ya ordenados por el backend.
+const HISTORY_EVENT_LABELS: Record<QuoteRequestHistoryEntry['event'], string> = {
+  assigned: 'Asignado', delivered: 'Entregado a gerencia', returned: 'Devuelto al responsable',
+  reassigned: 'Reasignado', cancelled: 'Cancelado', reopened: 'Reabierto', quoted: 'Marcado como cotizado',
+  budget_sent: 'Presupuesto enviado al cliente', budget_approved: 'Presupuesto aprobado', budget_rejected: 'Presupuesto rechazado',
 };
 
 // Mismo criterio que daysExpired en budgets/page.tsx: puramente visual, nunca bloquea nada.
@@ -131,9 +139,15 @@ function QuoteRequestsPageContent() {
   const [form, setForm] = useState<FormState>(emptyForm());
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
+  const [viewOnly, setViewOnly] = useState(false);
+  const [editComment, setEditComment] = useState('');
+  const [historyEntries, setHistoryEntries] = useState<QuoteRequestHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   const [deleteDialog, setDeleteDialog] = useState<QuoteRequest | null>(null);
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; qr: QuoteRequest | null; target: QuoteRequest['status'] | '' }>({ open: false, qr: null, target: '' });
   const [statusAssigneeIds, setStatusAssigneeIds] = useState<number[]>([]);
+  const [statusComment, setStatusComment] = useState('');
 
   const assignableUsers = users.filter(canBeAssigned);
 
@@ -162,13 +176,30 @@ function QuoteRequestsPageContent() {
     loadData();
   }, []);
 
-  // Deep link simétrico al de Presupuestos: un chip "PC-..." en budgets/page.tsx abre acá el
-  // detalle directo, sin tener que buscarlo en el listado.
+  // Línea de tiempo unificada PC + Presupuesto (ver FLOWS.md flujo 27g) — se carga al abrir el
+  // detalle de un PC existente, en modo lectura o edición.
+  const loadHistory = async (id: number) => {
+    setHistoryLoading(true);
+    try {
+      const entries = await QuoteRequestService.getHistory(id);
+      setHistoryEntries(entries);
+    } catch {
+      setHistoryEntries([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Deep link simétrico al de Presupuestos: un chip "PC-..." en budgets/page.tsx (y el deep
+  // link del push, ver FLOWS.md flujo 28) abren acá el detalle directo, sin tener que buscarlo
+  // en el listado. Quien no puede editar (responsable) lo abre en modo lectura — antes caía
+  // siempre en modo edición, que el backend le rechazaba al guardar (ver FLOWS.md flujo 27g,
+  // §2.3: el responsable no tenía ninguna vía para leer su propio PC).
   useEffect(() => {
     const viewId = searchParams.get('view');
     if (viewId && quoteRequests.length > 0) {
       const qr = quoteRequests.find((q) => q.id === Number(viewId));
-      if (qr) handleOpenEdit(qr);
+      if (qr) handleOpenEdit(qr, !hasAssignPermission);
       router.replace('/dashboard/quote-requests');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,13 +207,17 @@ function QuoteRequestsPageContent() {
 
   const handleOpenCreate = () => {
     setEditing(null);
+    setViewOnly(false);
     setForm(emptyForm());
     setPendingFiles([]);
+    setEditComment('');
+    setHistoryEntries([]);
     setOpenDialog(true);
   };
 
-  const handleOpenEdit = (qr: QuoteRequest) => {
+  const handleOpenEdit = (qr: QuoteRequest, viewOnlyMode = false) => {
     setEditing(qr);
+    setViewOnly(viewOnlyMode);
     setForm({
       title: qr.title,
       client_quote_number: qr.client_quote_number || '',
@@ -195,8 +230,12 @@ function QuoteRequestsPageContent() {
       assignee_ids: (qr.assignees || []).map((a) => a.id),
     });
     setPendingFiles([]);
+    setEditComment('');
     setOpenDialog(true);
+    loadHistory(qr.id);
   };
+
+  const handleOpenView = (qr: QuoteRequest) => handleOpenEdit(qr, true);
 
   const handleSubmit = async () => {
     if (!form.title.trim() || !form.client_id || !form.due_date || !form.client_quote_number.trim()) {
@@ -215,6 +254,7 @@ function QuoteRequestsPageContent() {
         due_date: form.due_date,
         notes: form.notes || undefined,
         assignee_ids: form.assignee_ids,
+        comment: editComment.trim() || undefined,
       };
 
       if (editing) {
@@ -269,6 +309,7 @@ function QuoteRequestsPageContent() {
   // En ningún caso se pre-carga al usuario actual.
   const handleOpenStatusDialog = (qr: QuoteRequest, target: QuoteRequest['status']) => {
     setStatusDialog({ open: true, qr, target });
+    setStatusComment('');
 
     let preselected: number[] = [];
     if (target === 'in_progress' && qr.status === 'pending_review') {
@@ -279,6 +320,10 @@ function QuoteRequestsPageContent() {
   };
 
   const needsReassignOnTransition = statusDialog.target === 'in_progress' || statusDialog.target === 'pending_review';
+  // Devolver al responsable es la única transición con comentario obligatorio (ver FLOWS.md
+  // flujo 27g) — mismo criterio que budgetController exige rejection_reason al rechazar.
+  const isReturnTransition = statusDialog.target === 'in_progress' && statusDialog.qr?.status === 'pending_review';
+  const commentMissing = isReturnTransition && !statusComment.trim();
 
   const handleConfirmStatusChange = async () => {
     if (!statusDialog.qr || !statusDialog.target) return;
@@ -287,7 +332,8 @@ function QuoteRequestsPageContent() {
       await QuoteRequestService.changeStatus(
         statusDialog.qr.id,
         statusDialog.target,
-        needsReassignOnTransition ? statusAssigneeIds : undefined
+        needsReassignOnTransition ? statusAssigneeIds : undefined,
+        statusComment.trim() || undefined
       );
       setStatusDialog({ open: false, qr: null, target: '' });
       setSuccess('Estado actualizado.');
@@ -303,9 +349,15 @@ function QuoteRequestsPageContent() {
 
   const renderActions = (qr: QuoteRequest) => (
     <Box display="flex" gap={0.5} flexWrap="wrap">
-      {hasAssignPermission && (
+      {hasAssignPermission ? (
         <Tooltip title="Editar">
           <IconButton size="small" onClick={() => handleOpenEdit(qr)}><EditIcon fontSize="small" /></IconButton>
+        </Tooltip>
+      ) : (
+        // Responsable: no puede editar, pero sí tiene que poder leer su propio PC — línea de
+        // tiempo incluida (ver FLOWS.md flujo 27g, §2.3).
+        <Tooltip title="Ver">
+          <IconButton size="small" onClick={() => handleOpenView(qr)}><ViewIcon fontSize="small" /></IconButton>
         </Tooltip>
       )}
       {(qr.status === 'pending' || qr.status === 'in_progress' || qr.status === 'pending_review') && !hasLiveBudget(qr) && (
@@ -462,34 +514,35 @@ function QuoteRequestsPageContent() {
         </TableContainer>
       </Box>
 
-      {/* Alta / Edición */}
+      {/* Alta / Edición / Ver */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        <DialogTitle>{editing ? `Editar ${editing.number}` : 'Nuevo Pedido de Cotización'}</DialogTitle>
+        <DialogTitle>{viewOnly ? `Ver ${editing?.number}` : editing ? `Editar ${editing.number}` : 'Nuevo Pedido de Cotización'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="Título *" fullWidth value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            <TextField label="N° de Cotización del Cliente *" fullWidth value={form.client_quote_number}
+            <TextField label="Título *" fullWidth disabled={viewOnly} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            <TextField label="N° de Cotización del Cliente *" fullWidth disabled={viewOnly} value={form.client_quote_number}
               onChange={(e) => setForm({ ...form, client_quote_number: e.target.value })}
               helperText="Número con el que el cliente identifica su pedido — texto libre, cada cliente usa su propia nomenclatura" />
-            <TextField label="Cliente *" select fullWidth value={form.client_id}
+            <TextField label="Cliente *" select fullWidth disabled={viewOnly} value={form.client_id}
               onChange={(e) => setForm({ ...form, client_id: e.target.value, plant_id: '' })}
               SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
               <option value="">— Seleccionar —</option>
               {clients.map((c) => <option key={c.id} value={c.id}>{c.razonSocial}</option>)}
             </TextField>
-            <TextField label="Planta" select fullWidth value={form.plant_id} disabled={!form.client_id}
+            <TextField label="Planta" select fullWidth disabled={viewOnly || !form.client_id} value={form.plant_id}
               onChange={(e) => setForm({ ...form, plant_id: e.target.value })}
               SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
               <option value="">— Ninguna —</option>
               {availablePlants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </TextField>
-            <TextField label="Descripción" fullWidth multiline rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <TextField label="Descripción" fullWidth multiline rows={2} disabled={viewOnly} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <DateField label="Fecha de recepción" value={form.received_at} onChange={(v) => setForm({ ...form, received_at: v })} fullWidth />
-              <DateField label="Vencimiento de presentación *" value={form.due_date} onChange={(v) => setForm({ ...form, due_date: v })} fullWidth />
+              <DateField label="Fecha de recepción" value={form.received_at} onChange={(v) => setForm({ ...form, received_at: v })} fullWidth disabled={viewOnly} />
+              <DateField label="Vencimiento de presentación *" value={form.due_date} onChange={(v) => setForm({ ...form, due_date: v })} fullWidth disabled={viewOnly} />
             </Stack>
             <Autocomplete
               multiple
+              disabled={viewOnly}
               options={assignableUsers}
               getOptionLabel={(u) => `${u.name} ${u.lastname}`}
               value={assignableUsers.filter((u) => form.assignee_ids.includes(u.id))}
@@ -497,37 +550,117 @@ function QuoteRequestsPageContent() {
               renderInput={(params) => <TextField {...params} label="Responsables" placeholder="Agregar responsable" />}
               isOptionEqualToValue={(a, b) => a.id === b.id}
             />
-            <TextField label="Notas" fullWidth multiline rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            <TextField label="Notas" fullWidth multiline rows={2} disabled={viewOnly} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            {!viewOnly && (
+              <TextField
+                label="Comentario"
+                fullWidth
+                multiline
+                rows={2}
+                value={editComment}
+                onChange={(e) => setEditComment(e.target.value)}
+                helperText={editing
+                  ? 'Opcional — se avisa a los responsables que se agreguen y queda en la línea de tiempo'
+                  : 'Opcional — se avisa a los responsables asignados y queda en la línea de tiempo'}
+              />
+            )}
 
-            <Box>
-              <Button component="label" variant="outlined" startIcon={<AttachIcon />} size="small">
-                Adjuntar documento
-                <input type="file" hidden multiple onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  setPendingFiles((prev) => [...prev, ...files]);
-                  e.target.value = '';
-                }} />
-              </Button>
-              <Stack spacing={0.5} sx={{ mt: 1 }}>
-                {(editing?.files || []).map((f) => (
-                  <Box key={f.id} display="flex" alignItems="center" justifyContent="space-between" sx={{ bgcolor: 'action.hover', px: 1, py: 0.5, borderRadius: 1 }}>
-                    <Typography variant="body2" noWrap sx={{ maxWidth: '70%' }}>{f.file_name || 'Archivo'} {f.size_bytes ? `(${formatFileSize(f.size_bytes)})` : ''}</Typography>
-                    <IconButton size="small" onClick={() => handleRemoveExistingFile(f.id)}><CloseIcon fontSize="small" /></IconButton>
-                  </Box>
-                ))}
-                {pendingFiles.map((f, idx) => (
-                  <Box key={idx} display="flex" alignItems="center" justifyContent="space-between" sx={{ bgcolor: 'action.hover', px: 1, py: 0.5, borderRadius: 1 }}>
-                    <Typography variant="body2" noWrap sx={{ maxWidth: '70%' }}>{f.name} ({formatFileSize(f.size)})</Typography>
-                    <IconButton size="small" onClick={() => setPendingFiles((prev) => prev.filter((_, i) => i !== idx))}><CloseIcon fontSize="small" /></IconButton>
-                  </Box>
-                ))}
-              </Stack>
-            </Box>
+            {!viewOnly && (
+              <Box>
+                <Button component="label" variant="outlined" startIcon={<AttachIcon />} size="small">
+                  Adjuntar documento
+                  <input type="file" hidden multiple onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setPendingFiles((prev) => [...prev, ...files]);
+                    e.target.value = '';
+                  }} />
+                </Button>
+                <Stack spacing={0.5} sx={{ mt: 1 }}>
+                  {(editing?.files || []).map((f) => (
+                    <Box key={f.id} display="flex" alignItems="center" justifyContent="space-between" sx={{ bgcolor: 'action.hover', px: 1, py: 0.5, borderRadius: 1 }}>
+                      <Typography variant="body2" noWrap sx={{ maxWidth: '70%' }}>{f.file_name || 'Archivo'} {f.size_bytes ? `(${formatFileSize(f.size_bytes)})` : ''}</Typography>
+                      <IconButton size="small" onClick={() => handleRemoveExistingFile(f.id)}><CloseIcon fontSize="small" /></IconButton>
+                    </Box>
+                  ))}
+                  {pendingFiles.map((f, idx) => (
+                    <Box key={idx} display="flex" alignItems="center" justifyContent="space-between" sx={{ bgcolor: 'action.hover', px: 1, py: 0.5, borderRadius: 1 }}>
+                      <Typography variant="body2" noWrap sx={{ maxWidth: '70%' }}>{f.name} ({formatFileSize(f.size)})</Typography>
+                      <IconButton size="small" onClick={() => setPendingFiles((prev) => prev.filter((_, i) => i !== idx))}><CloseIcon fontSize="small" /></IconButton>
+                    </Box>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+            {viewOnly && (editing?.files || []).length > 0 && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">Archivos adjuntos</Typography>
+                <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                  {(editing?.files || []).map((f) => (
+                    <Typography key={f.id} variant="body2">{f.file_name || 'Archivo'} {f.size_bytes ? `(${formatFileSize(f.size_bytes)})` : ''}</Typography>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
+            {editing && (
+              <>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mt: 1 }}>Línea de tiempo</Typography>
+                {historyLoading ? (
+                  <Typography variant="body2" color="text.secondary">Cargando…</Typography>
+                ) : historyEntries.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">Sin eventos registrados todavía.</Typography>
+                ) : (
+                  <>
+                    {/* Mobile Cards */}
+                    <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                      <Stack spacing={1}>
+                        {historyEntries.map((h) => (
+                          <Card key={h.id} sx={{ p: 1.5 }}>
+                            <Typography variant="body2" fontWeight={600}>{HISTORY_EVENT_LABELS[h.event] || h.event}</Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {new Date(h.at).toLocaleString('es-AR')}
+                              {h.actor ? ` · ${h.actor.lastname}, ${h.actor.name}` : ''}
+                              {h.recipients.length > 0 ? ` → ${h.recipients.map((r) => `${r.lastname}, ${r.name}`).join('; ')}` : ''}
+                            </Typography>
+                            {h.comment && <Typography variant="body2" sx={{ mt: 0.5 }}>{h.comment}</Typography>}
+                          </Card>
+                        ))}
+                      </Stack>
+                    </Box>
+                    {/* Desktop Table */}
+                    <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                      <TableContainer>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow><TableCell>Fecha</TableCell><TableCell>Evento</TableCell><TableCell>De → Para</TableCell><TableCell>Comentario</TableCell></TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {historyEntries.map((h) => (
+                              <TableRow key={h.id}>
+                                <TableCell>{new Date(h.at).toLocaleString('es-AR')}</TableCell>
+                                <TableCell>{HISTORY_EVENT_LABELS[h.event] || h.event}</TableCell>
+                                <TableCell>
+                                  {h.actor ? `${h.actor.lastname}, ${h.actor.name}` : '—'}
+                                  {h.recipients.length > 0 ? ` → ${h.recipients.map((r) => `${r.lastname}, ${r.name}`).join('; ')}` : ''}
+                                </TableCell>
+                                <TableCell>{h.comment || '—'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Box>
+                  </>
+                )}
+              </>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={processing}>Guardar</Button>
+          <Button onClick={() => setOpenDialog(false)}>{viewOnly ? 'Cerrar' : 'Cancelar'}</Button>
+          {!viewOnly && (
+            <Button variant="contained" onClick={handleSubmit} disabled={processing}>Guardar</Button>
+          )}
         </DialogActions>
       </Dialog>
 
@@ -573,6 +706,20 @@ function QuoteRequestsPageContent() {
             {statusDialog.target === 'cancelled' && (
               <Typography variant="body2" color="text.secondary">Se puede reabrir después desde el listado.</Typography>
             )}
+            {needsReassignOnTransition && (
+              <TextField
+                label={isReturnTransition ? 'Comentario *' : 'Comentario'}
+                fullWidth
+                multiline
+                rows={2}
+                value={statusComment}
+                onChange={(e) => setStatusComment(e.target.value)}
+                error={isReturnTransition && !statusComment.trim()}
+                helperText={isReturnTransition
+                  ? 'Obligatorio — contale al responsable por qué se lo devolvés'
+                  : 'Opcional — se avisa a quien lo recibe y queda en la línea de tiempo'}
+              />
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -580,7 +727,7 @@ function QuoteRequestsPageContent() {
           <Button
             variant="contained"
             onClick={handleConfirmStatusChange}
-            disabled={processing || (needsReassignOnTransition && statusAssigneeIds.length === 0)}
+            disabled={processing || (needsReassignOnTransition && statusAssigneeIds.length === 0) || commentMissing}
           >
             Confirmar
           </Button>

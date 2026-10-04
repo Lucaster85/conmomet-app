@@ -38,12 +38,14 @@ export default function DeliverToManagementDialog({
 }: DeliverToManagementDialogProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
+  const [comment, setComment] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setAssigneeIds([]);
+    setComment('');
     setLoadingUsers(true);
     UserService.getAll()
       .then((all) => setUsers(Array.isArray(all) ? all.filter(canReceiveHandoff) : []))
@@ -61,7 +63,7 @@ export default function DeliverToManagementDialog({
     }
     setProcessing(true);
     try {
-      await QuoteRequestService.changeStatus(quoteRequest.id, 'pending_review', assigneeIds);
+      await QuoteRequestService.changeStatus(quoteRequest.id, 'pending_review', assigneeIds, comment.trim() || undefined);
       onDelivered('Presupuesto entregado a gerencia para su validación.');
       onClose();
     } catch (err) {
@@ -90,6 +92,15 @@ export default function DeliverToManagementDialog({
             onChange={(_e, value) => setAssigneeIds(value.map((u) => u.id))}
             renderInput={(params) => <TextField {...params} label="Entregar a (gerencia) *" placeholder="Elegir destinatario" />}
             isOptionEqualToValue={(a, b) => a.id === b.id}
+          />
+          <TextField
+            label="Comentario"
+            fullWidth
+            multiline
+            rows={2}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            helperText="Opcional — se avisa a quien lo recibe y queda en la línea de tiempo del PC"
           />
         </Stack>
       </DialogContent>

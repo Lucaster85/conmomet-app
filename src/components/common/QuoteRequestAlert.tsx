@@ -69,13 +69,20 @@ export default function QuoteRequestAlert() {
               {toBuild.map((qr) => {
                 const days = daysUntil(qr.due_date);
                 return (
-                  <Box key={qr.id} display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
-                    <Typography variant="body2">{qr.number} — {qr.title}</Typography>
-                    <Chip
-                      size="small"
-                      label={days < 0 ? `Vencido hace ${Math.abs(days)} día(s)` : days === 0 ? 'Vence hoy' : `Vence en ${days} días`}
-                      color={days <= 2 ? 'error' : days <= 7 ? 'warning' : 'default'}
-                    />
+                  <Box key={qr.id}>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
+                      <Typography variant="body2">{qr.number} — {qr.title}</Typography>
+                      <Chip
+                        size="small"
+                        label={days < 0 ? `Vencido hace ${Math.abs(days)} día(s)` : days === 0 ? 'Vence hoy' : `Vence en ${days} días`}
+                        color={days <= 2 ? 'error' : days <= 7 ? 'warning' : 'default'}
+                      />
+                    </Box>
+                    {qr.last_comment && (
+                      <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                        &quot;{qr.last_comment.comment}&quot; — {qr.last_comment.from.name} {qr.last_comment.from.lastname}
+                      </Typography>
+                    )}
                   </Box>
                 );
               })}
@@ -97,7 +104,14 @@ export default function QuoteRequestAlert() {
             </Typography>
             <Stack spacing={0.5}>
               {toValidate.map((qr) => (
-                <Typography key={qr.id} variant="body2">{qr.number} — {qr.title}</Typography>
+                <Box key={qr.id}>
+                  <Typography variant="body2">{qr.number} — {qr.title}</Typography>
+                  {qr.last_comment && (
+                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                      &quot;{qr.last_comment.comment}&quot; — {qr.last_comment.from.name} {qr.last_comment.from.lastname}
+                    </Typography>
+                  )}
+                </Box>
               ))}
             </Stack>
             <Button

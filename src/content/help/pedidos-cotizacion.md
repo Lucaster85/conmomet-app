@@ -108,6 +108,8 @@ cualquier punto del camino.
   quien armó el presupuesto, que es el caso normal; se puede cambiar o sumar gente. En ambos
   handoffs (entregar y devolver) el pedido **cambia de manos**: quien lo entrega deja de figurar
   como responsable, así que no hay que sacarse de la lista a mano.
+  **Al devolver hay que dejar un comentario** — es obligatorio, porque devolver sin explicar por
+  qué es justo el caso que hay que evitar. Al entregar o reasignar, el comentario es opcional.
 - **Cotizado no se marca a mano**: el pedido pasa solo a ese estado en cuanto el presupuesto
   vinculado se manda al cliente (botón **"Enviar"** en Presupuestos, que normalmente solo puede
   usar gerencia). Así **Cotizado** siempre significa que la cotización efectivamente salió, y no
@@ -125,6 +127,24 @@ generado. Vuelve a aparecer en dos casos: si el presupuesto se **rechaza** (ahí
 cotizar — lo más práctico suele ser **Duplicar** el rechazado, ver el tema **Presupuestos**) o si
 se **elimina** mientras todavía estaba en Borrador. El presupuesto rechazado se sigue viendo en
 la fila del pedido, marcado en rojo, para no perder el historial.
+
+## Comentarios y línea de tiempo
+
+Cada entrega, devolución o reasignación puede llevar un **comentario** — el mensaje a la
+persona que lo recibe ("te lo devuelvo porque falta el detalle de materiales"). No se pisa
+nunca: cada comentario queda guardado con quién lo escribió, cuándo y a quién fue dirigido, así
+que devolver un pedido dos veces por motivos distintos deja las dos aclaraciones, no solo la
+última.
+
+Todo eso se lee en la **línea de tiempo**, dentro del detalle del pedido — mezclada con los
+eventos del presupuesto (enviado, aprobado o rechazado con su motivo), para tener el ida y
+vuelta completo en un solo lugar. El responsable que no puede editar el pedido (no tiene permiso
+de gerencia) lo abre con el botón **Ver** en vez de Editar: puede leer todo, incluida la línea
+de tiempo, pero no modificar nada.
+
+El **último comentario dirigido a vos** también aparece directo en el aviso del tablero de
+Inicio, para no tener que entrar al detalle solo para leerlo. Distinto del campo **Notas**, que
+es información general del pedido (no tiene autor ni fecha, y se puede editar).
 
 ## Después de cotizar: aprobación y Proyecto
 
@@ -188,4 +208,4 @@ avisa: se corrige desactivando y volviendo a activar.
   **entrega a gerencia**. No puede editar el pedido (ni cambiarle el vencimiento ni
   reasignarlo), ni enviarle el presupuesto al cliente — su trabajo termina al entregarlo.
 
-<!-- ref: conmomet-app/src/app/dashboard/quote-requests/page.tsx, conmomet-app/src/components/common/QuoteRequestAlert.tsx, conmomet-app/src/components/common/DeliverToManagementDialog.tsx, conmomet-app/src/components/common/PushNotificationsDialog.tsx, conmomet-app/src/utils/push.ts, api_conmomet/helpers/pushService.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/controllers/budgetController.js -->
+<!-- ref: conmomet-app/src/app/dashboard/quote-requests/page.tsx, conmomet-app/src/components/common/QuoteRequestAlert.tsx, conmomet-app/src/components/common/DeliverToManagementDialog.tsx, conmomet-app/src/components/common/PushNotificationsDialog.tsx, conmomet-app/src/utils/push.ts, api_conmomet/helpers/pushService.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/controllers/budgetController.js, api_conmomet/models/quoteRequestStatusLog.js -->

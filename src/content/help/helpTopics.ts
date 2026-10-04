@@ -132,6 +132,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'pantalla de inicio', 'activar notificaciones',
       'cancelar', 'cancelado', 'flujo', 'circuito', 'diagrama', 'estados', 'proyecto',
       'entregar', 'aprobar', 'rechazar', 'cotizado',
+      'comentario', 'comentarios', 'linea de tiempo', 'línea de tiempo', 'historial', 'ver',
     ],
     file: 'pedidos-cotizacion.md',
   },

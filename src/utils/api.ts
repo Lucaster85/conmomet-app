@@ -1823,6 +1823,10 @@ export interface QuoteRequest {
   files?: QuoteRequestFile[];
   budgets?: { id: number; number: string; status: string; title: string; created_by?: number }[];
   createdAt: string;
+  // Último comentario del ida y vuelta dirigido a MÍ (resuelto por el backend según el usuario
+  // de la request) — liviano a propósito, para el aviso del tablero. El hilo completo se pide
+  // aparte con getHistory().
+  last_comment?: { comment: string; at: string; from: { name: string; lastname: string } } | null;
 }
 
 export interface CreateQuoteRequestData {
@@ -1836,6 +1840,24 @@ export interface CreateQuoteRequestData {
   notes?: string;
   assignee_ids?: number[];
   files?: File[];
+  // Mensaje dirigido a los destinatarios de ESTA operación puntual (alta o reasignación) — no
+  // es lo mismo que `notes`, que son notas generales del pedido. Queda en la línea de tiempo
+  // (ver FLOWS.md flujo 27g) y viaja en el push.
+  comment?: string;
+}
+
+export interface QuoteRequestHistoryEntry {
+  id: string;
+  source: 'quote_request' | 'budget';
+  event: 'assigned' | 'delivered' | 'returned' | 'reassigned' | 'cancelled' | 'reopened' | 'quoted'
+    | 'budget_sent' | 'budget_approved' | 'budget_rejected';
+  at: string;
+  actor: { id: number; name: string; lastname: string } | null;
+  recipients: { id: number; name: string; lastname: string }[];
+  comment?: string | null;
+  from_status?: string | null;
+  to_status: string;
+  budget: { id: number; number: string } | null;
 }
 
 export class QuoteRequestService {
@@ -1872,6 +1894,7 @@ export class QuoteRequestService {
     if (body.due_date !== undefined) formData.append('due_date', body.due_date);
     if (body.notes !== undefined) formData.append('notes', body.notes || '');
     if (body.assignee_ids !== undefined) formData.append('assignee_ids', JSON.stringify(body.assignee_ids));
+    if (body.comment !== undefined) formData.append('comment', body.comment || '');
     (body.files || []).forEach((file) => formData.append('files', file));
     return formData;
   }
@@ -1905,10 +1928,10 @@ export class QuoteRequestService {
     return data.data;
   }
 
-  static async changeStatus(id: number, status: QuoteRequest['status'], assigneeIds?: number[]): Promise<QuoteRequest> {
+  static async changeStatus(id: number, status: QuoteRequest['status'], assigneeIds?: number[], comment?: string): Promise<QuoteRequest> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/quote-requests/${id}/status`, {
       method: 'PUT',
-      body: JSON.stringify({ status, assignee_ids: assigneeIds }),
+      body: JSON.stringify({ status, assignee_ids: assigneeIds, comment }),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -1916,6 +1939,14 @@ export class QuoteRequestService {
     }
     const data = await response.json();
     return data.data;
+  }
+
+  // Línea de tiempo unificada PC + Presupuesto (ver FLOWS.md flujo 27g).
+  static async getHistory(id: number): Promise<QuoteRequestHistoryEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/quote-requests/${id}/history`);
+    if (!response.ok) throw new Error('Error al obtener el historial del pedido de cotización');
+    const data = await response.json();
+    return data.data || [];
   }
 
   static async addFiles(id: number, files: File[]): Promise<QuoteRequest> {
