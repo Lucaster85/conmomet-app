@@ -260,9 +260,22 @@ function QuoteRequestsPageContent() {
     }
   };
 
+  // El handoff REEMPLAZA a los asignados: el PC pasa de manos. Por eso pre-cargar a los
+  // asignados actuales estaba mal en las dos direcciones — los asignados actuales son siempre
+  // el lado que está entregando, o sea uno mismo, y había que buscarse en la lista para
+  // sacarse. El default correcto es el lado que RECIBE:
+  // - Entregar a gerencia: no se puede adivinar a qué gerente va, se elige. Arranca vacío.
+  // - Devolver al responsable: el candidato natural es quien armó el presupuesto.
+  // En ningún caso se pre-carga al usuario actual.
   const handleOpenStatusDialog = (qr: QuoteRequest, target: QuoteRequest['status']) => {
     setStatusDialog({ open: true, qr, target });
-    setStatusAssigneeIds((qr.assignees || []).map((a) => a.id));
+
+    let preselected: number[] = [];
+    if (target === 'in_progress' && qr.status === 'pending_review') {
+      const liveBudget = (qr.budgets || []).find((b) => b.status !== 'rejected');
+      if (liveBudget?.created_by) preselected = [liveBudget.created_by];
+    }
+    setStatusAssigneeIds(preselected.filter((id) => id !== user?.id));
   };
 
   const needsReassignOnTransition = statusDialog.target === 'in_progress' || statusDialog.target === 'pending_review';
@@ -547,7 +560,13 @@ function QuoteRequestsPageContent() {
                 getOptionLabel={(u) => `${u.name} ${u.lastname}`}
                 value={assignableUsers.filter((u) => statusAssigneeIds.includes(u.id))}
                 onChange={(_e, value) => setStatusAssigneeIds(value.map((u) => u.id))}
-                renderInput={(params) => <TextField {...params} label="Responsables" placeholder="Agregar responsable" />}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label={statusDialog.target === 'pending_review' ? 'Gerencia' : 'Responsables'}
+                    placeholder={statusDialog.target === 'pending_review' ? 'Elegí a quién se lo entregás' : 'Elegí a quién se lo devolvés'}
+                  />
+                )}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
               />
             )}
@@ -558,7 +577,13 @@ function QuoteRequestsPageContent() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setStatusDialog({ open: false, qr: null, target: '' })}>Cancelar</Button>
-          <Button variant="contained" onClick={handleConfirmStatusChange} disabled={processing}>Confirmar</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmStatusChange}
+            disabled={processing || (needsReassignOnTransition && statusAssigneeIds.length === 0)}
+          >
+            Confirmar
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

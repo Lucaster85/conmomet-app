@@ -104,7 +104,10 @@ cualquier punto del camino.
   **El responsable no puede enviar el presupuesto al cliente**: ese botón requiere un permiso
   aparte que normalmente solo tiene gerencia, así que su trabajo termina al entregarlo.
 - Si gerencia necesita que se corrija algo, usa **"Devolver al responsable"**: vuelve a **En
-  progreso**, con la posibilidad de reasignarlo a otra persona si hace falta.
+  progreso**, con la posibilidad de reasignarlo a otra persona si hace falta. Viene propuesto
+  quien armó el presupuesto, que es el caso normal; se puede cambiar o sumar gente. En ambos
+  handoffs (entregar y devolver) el pedido **cambia de manos**: quien lo entrega deja de figurar
+  como responsable, así que no hay que sacarse de la lista a mano.
 - **Cotizado no se marca a mano**: el pedido pasa solo a ese estado en cuanto el presupuesto
   vinculado se manda al cliente (botón **"Enviar"** en Presupuestos, que normalmente solo puede
   usar gerencia). Así **Cotizado** siempre significa que la cotización efectivamente salió, y no
@@ -163,6 +166,18 @@ previo: agregar la app a la pantalla de inicio desde **Compartir → Agregar a p
 inicio** en Safari (el diálogo de Notificaciones te lo explica si hace falta). Al cerrar sesión,
 las notificaciones de ese dispositivo se desactivan solas — si vuelve a entrar otra persona en
 el mismo celular, no va a recibir avisos que eran para vos.
+
+### Comprobar que funcionan
+
+En el mismo diálogo de **Notificaciones**, una vez activadas, aparece el botón **Enviar
+prueba**: manda un aviso a este dispositivo en el momento. Si llega, está todo bien. Si no
+llega, el diálogo te dice el motivo concreto en vez de dejarte adivinando — por ejemplo que el
+navegador dio de baja la suscripción (hay que desactivar y volver a activar) o que las
+notificaciones de Conmomet están bloqueadas en los ajustes del celular.
+
+Puede pasar que el navegador tenga la suscripción activa pero el servidor no la tenga
+registrada; en ese caso no llega nada aunque "parezca" activado. El diálogo lo detecta y lo
+avisa: se corrige desactivando y volviendo a activar.
 
 ## Quién puede hacer qué
 

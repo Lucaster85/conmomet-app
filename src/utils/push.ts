@@ -1,4 +1,4 @@
-import { PushSubscriptionService } from './api';
+import { PushSubscriptionService, PushServerStatus } from './api';
 
 // Mini-almacén en IndexedDB, espejado en public/sw.js con la MISMA forma (DB_NAME/STORE_NAME/
 // RECORD_KEY) — es el único storage que un service worker puede leer. Guarda lo mínimo que la
@@ -171,7 +171,16 @@ export async function subscribeToPush(): Promise<void> {
   }
 
   const payload = subscriptionToPayload(subscription);
-  await PushSubscriptionService.subscribe(payload);
+  try {
+    await PushSubscriptionService.subscribe(payload);
+  } catch (err) {
+    // Si el servidor no registró la suscripción, NO se puede dejar viva la del browser: el
+    // diálogo la leería como "activado" y el usuario quedaría esperando avisos que nunca
+    // salen (el servidor no sabe a dónde mandarlos). Se revierte para que el estado sea
+    // honesto y se pueda reintentar.
+    await subscription.unsubscribe().catch(() => undefined);
+    throw err;
+  }
 
   // Para que el SW pueda reconciliar sin login si el browser rota el endpoint más adelante
   // (pushsubscriptionchange, capa 2 — ver plan §3.6). Falla en silencio: si IndexedDB no está
@@ -260,5 +269,46 @@ export async function reconcilePushSubscriptionOnLoad(): Promise<void> {
     });
   } catch {
     // No es crítico — se reintenta en el próximo arranque.
+  }
+}
+
+
+export interface PushDiagnostics {
+  state: PushSupportState;
+  endpoint: string | null;
+  server: PushServerStatus | null;
+  serverError: string | null;
+}
+
+/**
+ * Estado del browser CRUZADO con el del servidor. Son dos cosas distintas y la diferencia es
+ * la que importa: el browser puede tener una suscripción viva mientras el servidor no tiene
+ * ninguna fila (el POST de alta falló, o la fila se podó por un 404/410). En ese caso no llega
+ * nada y hasta ahora se veía igual que "todo bien".
+ */
+export async function getPushDiagnostics(): Promise<PushDiagnostics> {
+  const state = await getPushState();
+  let endpoint: string | null = null;
+
+  if (state === 'subscribed') {
+    try {
+      const registration = await registerServiceWorker();
+      const subscription = await registration.pushManager.getSubscription();
+      endpoint = subscription?.endpoint ?? null;
+    } catch {
+      endpoint = null;
+    }
+  }
+
+  try {
+    const server = await PushSubscriptionService.status(endpoint ?? undefined);
+    return { state, endpoint, server, serverError: null };
+  } catch (err) {
+    return {
+      state,
+      endpoint,
+      server: null,
+      serverError: err instanceof Error ? err.message : 'No se pudo consultar al servidor.',
+    };
   }
 }

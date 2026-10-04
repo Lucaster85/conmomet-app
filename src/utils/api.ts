@@ -1821,7 +1821,7 @@ export interface QuoteRequest {
   createdBy?: { id: number; name: string; lastname: string };
   assignees?: { id: number; name: string; lastname: string }[];
   files?: QuoteRequestFile[];
-  budgets?: { id: number; number: string; status: string; title: string }[];
+  budgets?: { id: number; number: string; status: string; title: string; created_by?: number }[];
   createdAt: string;
 }
 
@@ -4751,4 +4751,36 @@ export class PushSubscriptionService {
       throw new Error(error.error || 'Error al desactivar las notificaciones');
     }
   }
+
+  // Estado segun el SERVIDOR. El diálogo lo cruza con el estado del browser: tener una
+  // suscripción local viva no significa que el servidor la tenga registrada, y esa diferencia
+  // es justamente el caso en el que "dice activado y no llega nada".
+  static async status(endpoint?: string): Promise<PushServerStatus> {
+    const qs = endpoint ? `?endpoint=${encodeURIComponent(endpoint)}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/push-subscriptions${qs}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al consultar el estado de las notificaciones');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async sendTest(): Promise<{ sent: number; devices: number }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/push-subscriptions/test`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al enviar la notificación de prueba');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+}
+
+export interface PushServerStatus {
+  devices: number;
+  thisDeviceRegistered: boolean | null;
+  vapidConfigured: boolean;
 }
