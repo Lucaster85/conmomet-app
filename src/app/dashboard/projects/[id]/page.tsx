@@ -16,6 +16,7 @@ import {
   BuildOutlined as PanolIcon, OpenInNewOutlined as OpenIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../../../utils/auth';
+import { formatLaborQuantity } from '../../../../utils/laborFormat';
 import IconTileGrid, { IconTileItem } from '../../../../components/common/IconTileGrid';
 import GearSpinner from '../../../../components/GearSpinner';
 import {
@@ -791,8 +792,9 @@ export default function ProjectDetailPage() {
                   {(project.budget.laborLines || []).map((line, i) => (
                     <Card key={i} sx={{ p: 1.5, borderRadius: 2 }}>
                       <Typography variant="body2" fontWeight={600}>{line.itemType?.name}</Typography>
+                      {line.description && <Typography variant="caption" color="text.secondary" display="block" sx={{ whiteSpace: 'pre-wrap' }}>{line.description}</Typography>}
                       <Typography variant="body2" color="text.secondary">
-                        {line.quantity} {line.itemType?.unit_label}
+                        {formatLaborQuantity(line)}
                         {hasPricesRead && ` · ${line.currency || project.budget?.currency} ${line.estimated_total}`}
                       </Typography>
                     </Card>
@@ -813,8 +815,11 @@ export default function ProjectDetailPage() {
                     <TableBody>
                       {(project.budget.laborLines || []).map((line, i) => (
                         <TableRow key={i}>
-                          <TableCell>{line.itemType?.name}</TableCell>
-                          <TableCell align="right">{line.quantity} {line.itemType?.unit_label}</TableCell>
+                          <TableCell>
+                            {line.itemType?.name}
+                            {line.description && <Typography variant="caption" color="text.secondary" display="block" sx={{ whiteSpace: 'pre-wrap' }}>{line.description}</Typography>}
+                          </TableCell>
+                          <TableCell align="right">{formatLaborQuantity(line)}</TableCell>
                           {hasPricesRead && <TableCell align="right">{line.currency || project.budget?.currency} {line.estimated_total}</TableCell>}
                         </TableRow>
                       ))}

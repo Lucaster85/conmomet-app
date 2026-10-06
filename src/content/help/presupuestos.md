@@ -62,6 +62,49 @@ presupuestos — **Valor unitario** y **Moneda**. Al elegir un rubro, si la lín
 tiene precio cargado, se **prellena automáticamente** con la Tarifa por Rubro vigente para ese
 cliente (ver el tema **Clientes**) — es solo un punto de partida, se puede editar sin problema.
 
+### Rubros repetidos
+
+Un mismo rubro se puede cargar en **más de una línea**, cada una con su propio valor. Por ejemplo:
+20 hs de Construcción para un ítem del pedido a un precio y otras 30 hs de Construcción para otro
+ítem a otro precio. En el presupuesto se ven como dos líneas separadas (y cada una suma a su
+propio total); en el **proyecto** las horas del rubro se agrupan en una sola bolsa (50 hs de
+Construcción). La carga de horas de los empleados no cambia.
+
+Con rubros repetidos la **Tarifa por Rubro del cliente no se actualiza**: se actualiza solo con
+los rubros que aparecen en **una única línea** (con la repetición no habría una tarifa única para
+guardar). Si el rubro tiene una sola línea, funciona como siempre. Un aviso en el formulario
+recuerda esto. El texto "Ya cargado en el proyecto" se muestra solo en la primera línea de cada
+rubro.
+
+### Rubros por días
+
+Un rubro puede estar configurado como **por días** (en **Configuración → Rubros de Presupuesto**,
+tipo de unidad "Días"). En sus líneas se carga la cantidad de **días** y el valor es **por día**;
+cada día equivale a **9 horas** en la bolsa de horas del proyecto: 2 días cargados se ven como
+**18 hs** cotizadas. El formulario muestra la equivalencia ("= 18 hs") y en todas las vistas se ve
+como "2 días (18 hs)". Los empleados cargan horas a ese rubro como siempre y se descuentan de esas
+horas. Las 9 horas se guardan en cada línea: si más adelante cambia el tipo del rubro, los
+presupuestos ya armados no se alteran. En un rubro por días la tarifa del cliente queda expresada
+**por día**, sin conversión.
+
+### Detalle de mano de obra
+
+Al final del formulario (después del total y antes de las notas internas) hay un apartado
+**"Detalle de mano de obra"** que lista cada línea numerada, con un campo para escribir su
+**descripción**:
+
+```
+1 - Construcción - 20 hs: [descripción]
+2 - Construcción - 30 hs: [descripción]
+3 - Montaje - 20 hs: [descripción]
+```
+
+No es un texto aparte: se arma solo desde las líneas. Si agregás una línea aparece su fila; si
+quitás una del medio, la numeración se reacomoda; cada línea conserva su propia descripción. Es
+distinto de las **notas internas** del presupuesto. El detalle también aparece en la vista del
+presupuesto, **debajo del total y sin precios** (las líneas sin descripción igual se listan). Quien
+no tiene permiso de precios lo ve en solo lectura, como el resto de la mano de obra.
+
 Si este presupuesto está vinculado a un proyecto que ya tiene horas reales cargadas — un
 "vincular a un proyecto existente" (vinculado desde la creación, ver arriba) o un adicional que
 ya generó su subproyecto estando en borrador (ver "Generar Proyecto" más abajo) — al lado de la
@@ -182,7 +225,8 @@ necesitando que el presupuesto esté aprobado.
 Botón **"Duplicar"**, disponible en cualquier estado. Crea un **Presupuesto nuevo en
 Borrador** con el mismo cliente, planta, moneda, fechas y todas las líneas de mano de obra y
 materiales — es la forma de volver a cotizar algo parecido, o de rearmar un presupuesto
-rechazado desde cero.
+rechazado desde cero. Las descripciones del Detalle de mano de obra y las líneas por días también
+se copian.
 
 Si el original venía de un **Pedido de Cotización**, al duplicar se pregunta una sola cosa: si
 el duplicado **sigue vinculado al mismo PC** (hereda su N° de cotización del cliente, y cliente

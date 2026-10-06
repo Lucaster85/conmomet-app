@@ -37,7 +37,9 @@ Al abrir **"Nuevo Registro"** hay dos modos:
   concepto totalmente distinto del campo **Concepto** de arriba (que define cómo se le paga la
   hora al empleado): una misma hora puede tener concepto "General" para el sueldo y rubro
   "Montaje" para el consumo del proyecto. Si no se elige rubro, la hora cuenta para la bolsa
-  "Generales" del proyecto.
+  "Generales" del proyecto. Los rubros **por días** (ver el tema **Presupuestos**) aparecen en
+  esta lista igual que los demás y se cargan **en horas**: se descuentan de las horas cotizadas
+  del rubro (cada día presupuestado vale 9 hs).
 - **PEP OCA / PEP Regular / OCA sin PEP**: con el supervisor elegido, se puede marcar una de las
   tres. **PEP OCA** son horas en planta que sí se facturan al cliente — quedan disponibles más
   adelante para incluirse en un Remito/OCA. **PEP Regular** son horas en planta que no se

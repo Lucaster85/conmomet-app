@@ -14,6 +14,11 @@ horas que se cargan en **Carga de Horas** sin elegir rubro caen en una bolsa apa
 **"Generales"**, que también se muestra ahí. Abajo de las bolsas por rubro se ve el total propio
 y el total consolidado (propio + subproyectos).
 
+Si el presupuesto tenía un **rubro repetido** en varias líneas (ej. dos líneas de Construcción con
+precios distintos), las horas de ese rubro se **suman en una sola bolsa**. Si el rubro es **por
+días**, las horas cotizadas son **días × 9**: 2 días cotizados aparecen como 18 hs. En la pestaña
+**Presupuesto** del proyecto cada línea se ve como "2 días (18 hs)" o "20 hs", con su descripción.
+
 ## Subproyectos
 
 Un proyecto puede tener **subproyectos** (adicionales de obra), que se ven anidados dentro del

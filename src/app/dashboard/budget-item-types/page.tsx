@@ -9,6 +9,7 @@ import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import { AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon, CategoryOutlined as TitleIcon } from '@mui/icons-material';
 import { BudgetItemType, BudgetItemTypeService, CreateBudgetItemTypeData } from '../../../utils/api';
+import { HOURS_PER_DAY } from '../../../utils/laborFormat';
 
 const emptyForm = (): CreateBudgetItemTypeData => ({ name: '', unit_type: 'hours', unit_label: 'hs', display_order: 0, is_active: true });
 
@@ -135,7 +136,7 @@ export default function BudgetItemTypesPage() {
               items.map((item) => (
                 <TableRow key={item.id} hover>
                   <TableCell><Typography fontWeight="medium">{item.name}</Typography></TableCell>
-                  <TableCell>{item.unit_type === 'hours' ? 'Horas' : 'Unidades'}</TableCell>
+                  <TableCell>{item.unit_type === 'hours' ? 'Horas' : item.unit_type === 'days' ? 'Días' : 'Unidades'}</TableCell>
                   <TableCell>{item.unit_label}</TableCell>
                   <TableCell>{item.display_order}</TableCell>
                   <TableCell><Chip size="small" label={item.is_active ? 'Activo' : 'Inactivo'} color={item.is_active ? 'success' : 'default'} /></TableCell>
@@ -156,10 +157,17 @@ export default function BudgetItemTypesPage() {
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField label="Nombre *" fullWidth value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <TextField label="Tipo de unidad" select fullWidth value={form.unit_type}
-              onChange={(e) => setForm({ ...form, unit_type: e.target.value as 'hours' | 'units' })}
-              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
+              onChange={(e) => {
+                const unitType = e.target.value as 'hours' | 'units' | 'days';
+                // Al elegir Días, la etiqueta pasa a "días" si todavía tenía la de por defecto.
+                const label = unitType === 'days' && (!form.unit_label || form.unit_label === 'hs') ? 'días' : form.unit_label;
+                setForm({ ...form, unit_type: unitType, unit_label: label });
+              }}
+              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
+              helperText={form.unit_type === 'days' ? 'Se carga y se cotiza en días: cada día equivale a 9 hs en la bolsa de horas del proyecto.' : undefined}>
               <option value="hours">Horas</option>
               <option value="units">Unidades</option>
+              <option value="days">Días ({HOURS_PER_DAY} hs por día)</option>
             </TextField>
             <TextField label="Etiqueta visible" fullWidth value={form.unit_label} onChange={(e) => setForm({ ...form, unit_label: e.target.value })} helperText='Ej: "hs", "u", "viajes"' />
             <TextField label="Orden" type="number" fullWidth value={form.display_order} onChange={(e) => setForm({ ...form, display_order: Number(e.target.value) })} />

@@ -38,6 +38,7 @@ import {
   ClientItemRate, ClientItemRateService, ClientItemRateHistoryEntry,
 } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
+import { HOURS_PER_DAY } from '../../../utils/laborFormat';
 
 interface ClientItemRatesDialogProps {
   open: boolean;
@@ -294,11 +295,17 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
             />
             <TextField
               label="Tipo de unidad" select fullWidth value={newItemType.form.unit_type}
-              onChange={(e) => setNewItemType({ ...newItemType, form: { ...newItemType.form, unit_type: e.target.value as 'hours' | 'units' } })}
+              onChange={(e) => {
+                const unitType = e.target.value as 'hours' | 'units' | 'days';
+                // Al elegir Días, la etiqueta pasa a "días" si todavía tenía la de por defecto.
+                const label = unitType === 'days' && (!newItemType.form.unit_label || newItemType.form.unit_label === 'hs') ? 'días' : newItemType.form.unit_label;
+                setNewItemType({ ...newItemType, form: { ...newItemType.form, unit_type: unitType, unit_label: label } });
+              }}
               SelectProps={{ native: true }}
             >
               <option value="hours">Horas</option>
               <option value="units">Unidades</option>
+              <option value="days">Días ({HOURS_PER_DAY} hs por día)</option>
             </TextField>
             <TextField
               label="Etiqueta de unidad" fullWidth value={newItemType.form.unit_label}

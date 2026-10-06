@@ -33,6 +33,7 @@ import ProviderPriceAutocomplete from '../../../components/materials/ProviderPri
 import MaterialSelect from '../../../components/materials/MaterialSelect';
 import { downloadMaterialsTemplate, exportMaterialsSheet } from '../../../utils/materialsExcel';
 import { findPrice } from '../../../utils/materialPrices';
+import { formatLaborQuantity, formatHours, hoursPerDayFor, laborLineHours, lineHoursPerDay } from '../../../utils/laborFormat';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'default' | 'info' | 'success' | 'error' }> = {
   draft: { label: 'Borrador', color: 'default' },
@@ -492,6 +493,13 @@ function BudgetsPageContent() {
   // Si el cliente del presupuesto tiene una tarifa cargada para el rubro elegido (ver
   // ClientItemRateService), se prellena el valor unitario — sigue siendo editable normalmente,
   // es solo el punto de partida (mismo criterio que vincular un material del catálogo).
+  // Rubros que aparecen en más de una línea del presupuesto.
+  const repeatedLaborTypeIds = (() => {
+    const counts = new Map<number, number>();
+    form.laborLines.forEach(l => counts.set(l.budget_item_type_id, (counts.get(l.budget_item_type_id) || 0) + 1));
+    return new Set(Array.from(counts.entries()).filter(([, n]) => n > 1).map(([id]) => id));
+  })();
+
   const rateForItemType = (itemTypeId: number) => clientRates.find(r => r.budget_item_type_id === itemTypeId);
 
   const addLaborLine = () => {
@@ -503,6 +511,8 @@ function BudgetsPageContent() {
       laborLines: [...form.laborLines, {
         budget_item_type_id: defaultType.id,
         quantity: 0,
+        // Rubro por días: cada día vale 9 hs (el backend lo fija igual al guardar).
+        hours_per_day: hoursPerDayFor(defaultType),
         unit_price: rate ? rate.current_rate : 0,
         currency: rate ? rate.currency : undefined,
       }],
@@ -1518,14 +1528,35 @@ function BudgetsPageContent() {
                 Solo lectura: la mano de obra la carga quien tiene permiso de precios.
               </Typography>
             )}
-            {form.laborLines.map((line, idx) => (
+            {hasPricesRead && repeatedLaborTypeIds.size > 0 && (
+              <Alert severity="info" sx={{ py: 0.5 }}>
+                Hay rubros repetidos: cada línea conserva su propio valor y en el proyecto se suman en una sola bolsa de horas.
+                La tarifa del cliente no se actualiza para los rubros repetidos.
+              </Alert>
+            )}
+            {form.laborLines.map((line, idx) => {
+              const itemType = itemTypes.find(t => t.id === line.budget_item_type_id);
+              const perDay = lineHoursPerDay(line, itemType);
+              const isRepeated = repeatedLaborTypeIds.has(line.budget_item_type_id);
+              const isFirstOfType = form.laborLines.findIndex(l => l.budget_item_type_id === line.budget_item_type_id) === idx;
+              const bucket = isFirstOfType ? linkedProjectHourBuckets.find(b => b.budget_item_type_id === line.budget_item_type_id) : undefined;
+              // En un rubro por días se ve la equivalencia en horas; las horas ya cargadas en el
+              // proyecto se muestran solo en la primera línea de cada rubro (la bolsa es una sola).
+              const quantityHelper = [
+                perDay ? `= ${formatHours(laborLineHours(line, itemType))}` : null,
+                bucket ? `Ya cargado en el proyecto: ${bucket.consumed_hours.toFixed(1)} hs${isRepeated ? ' (rubro repetido: se suma en el proyecto)' : ''}` : null,
+              ].filter(Boolean).join(' · ') || undefined;
+              return (
               <Grid container spacing={1} key={idx} alignItems="center">
                 <Grid size={{ xs: 12, md: hasPricesRead ? 4 : 6 }}>
                   <TextField select fullWidth size="small" label="Rubro" value={line.budget_item_type_id} disabled={!hasPricesRead}
                     onChange={(e) => {
                       const newTypeId = Number(e.target.value);
                       const rate = rateForItemType(newTypeId);
-                      const patch: Partial<BudgetLaborLine> = { budget_item_type_id: newTypeId };
+                      const patch: Partial<BudgetLaborLine> = {
+                        budget_item_type_id: newTypeId,
+                        hours_per_day: hoursPerDayFor(itemTypes.find(t => t.id === newTypeId)),
+                      };
                       // Solo prellena si la línea todavía no tiene un valor cargado a mano —
                       // no pisa una edición ya hecha por el usuario.
                       if (rate && !line.unit_price) {
@@ -1539,18 +1570,15 @@ function BudgetsPageContent() {
                   </TextField>
                 </Grid>
                 <Grid size={{ xs: hasPricesRead ? 6 : 12, md: hasPricesRead ? 2 : 6 }}>
-                  <TextField type="number" size="small" fullWidth label="Cantidad" value={line.quantity} disabled={!hasPricesRead}
+                  <TextField type="number" size="small" fullWidth label={perDay ? 'Días' : 'Cantidad'} value={line.quantity} disabled={!hasPricesRead}
                     onChange={(e) => updateLaborLine(idx, { quantity: Number(e.target.value) })}
-                    helperText={(() => {
-                      const bucket = linkedProjectHourBuckets.find(b => b.budget_item_type_id === line.budget_item_type_id);
-                      return bucket ? `Ya cargado en el proyecto: ${bucket.consumed_hours.toFixed(1)} hs` : undefined;
-                    })()}
+                    helperText={quantityHelper}
                   />
                 </Grid>
                 {hasPricesRead && (
                   <>
                     <Grid size={{ xs: 6, md: 2 }}>
-                      <CurrencyInput size="small" fullWidth label="Valor unitario" value={line.unit_price}
+                      <CurrencyInput size="small" fullWidth label={perDay ? 'Valor por día' : 'Valor unitario'} value={line.unit_price}
                         currency={line.currency || form.currency}
                         onChange={(value) => updateLaborLine(idx, { unit_price: value ?? 0 })} />
                     </Grid>
@@ -1576,7 +1604,8 @@ function BudgetsPageContent() {
                   </Grid>
                 )}
               </Grid>
-            ))}
+              );
+            })}
 
             {/* Materiales */}
             <Divider />
@@ -1634,6 +1663,32 @@ function BudgetsPageContent() {
                   )}
                 </Box>
               </>
+            )}
+
+            {/* Detalle de mano de obra: no es un texto guardado aparte — se arma desde las líneas, así
+                que agregar o quitar una línea agrega o quita su fila y cada una conserva su descripción. */}
+            {form.laborLines.length > 0 && (
+              <Box>
+                <Typography fontWeight="bold">Detalle de mano de obra</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Se muestra debajo del total en la vista del presupuesto.{!hasPricesRead && ' Solo lectura.'}
+                </Typography>
+                <Stack spacing={1.5} sx={{ mt: 1 }}>
+                  {form.laborLines.map((line, idx) => {
+                    const itemType = itemTypes.find(t => t.id === line.budget_item_type_id);
+                    return (
+                      <Box key={idx}>
+                        <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
+                          {idx + 1} - {itemType?.name || line.itemType?.name} - {formatLaborQuantity(line, itemType)}
+                        </Typography>
+                        <TextField size="small" fullWidth multiline minRows={1} maxRows={6} label="Descripción"
+                          value={line.description ?? ''} disabled={!hasPricesRead}
+                          onChange={(e) => updateLaborLine(idx, { description: e.target.value })} />
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Box>
             )}
 
             <TextField label="Notas internas" fullWidth multiline rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
@@ -1906,7 +1961,7 @@ function BudgetsPageContent() {
                         {printBudget.laborLines?.map((line, i) => (
                           <TableRow key={i}>
                             <TableCell>{line.itemType?.name}</TableCell>
-                            <TableCell align="right">{line.quantity} {line.itemType?.unit_label}</TableCell>
+                            <TableCell align="right">{formatLaborQuantity(line)}</TableCell>
                             {hasPricesRead && <TableCell align="right">{formatMoney(line.unit_price, line.currency || printBudget.currency)}</TableCell>}
                             {hasPricesRead && <TableCell align="right">{formatMoney(line.estimated_total || 0, line.currency || printBudget.currency)}</TableCell>}
                           </TableRow>
@@ -1964,6 +2019,20 @@ function BudgetsPageContent() {
                     {hasPricesRead && <Typography variant="h6" fontWeight="bold">Total: {formatTotals(printBudget.totals_by_currency)}</Typography>}
                   </Box>
                 </>
+              )}
+
+              {/* Detalle de mano de obra: una línea por cada línea de mano de obra, en su orden, sin precios. */}
+              {(printBudget.laborLines?.length || 0) > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle1" fontWeight="bold">Detalle de mano de obra</Typography>
+                  <Stack spacing={0.75} sx={{ mt: 0.5 }}>
+                    {printBudget.laborLines?.map((line, i) => (
+                      <Typography key={i} variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {i + 1} - {line.itemType?.name} - {formatLaborQuantity(line)}{line.description ? `: ${line.description}` : ''}
+                      </Typography>
+                    ))}
+                  </Stack>
+                </Box>
               )}
 
               {printBudget.notes && (

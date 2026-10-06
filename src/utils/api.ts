@@ -1107,7 +1107,8 @@ export class ProjectService {
 export interface BudgetItemType {
   id: number;
   name: string;
-  unit_type: 'hours' | 'units';
+  // 'days': rubro que se carga y cotiza en días; cada día equivale a 9 hs en la bolsa del proyecto.
+  unit_type: 'hours' | 'units' | 'days';
   unit_label: string;
   display_order: number;
   is_active: boolean;
@@ -1115,7 +1116,8 @@ export interface BudgetItemType {
 
 export interface CreateBudgetItemTypeData {
   name: string;
-  unit_type: 'hours' | 'units';
+  // 'days': rubro que se carga y cotiza en días; cada día equivale a 9 hs en la bolsa del proyecto.
+  unit_type: 'hours' | 'units' | 'days';
   unit_label?: string;
   display_order?: number;
   is_active?: boolean;
@@ -1636,6 +1638,13 @@ export interface BudgetLaborLine {
   unit_price: number;
   currency?: BudgetCurrency | null;
   estimated_total?: number;
+  // Horas por unidad cuando el rubro es por días (9) — null en rubros por horas/unidades y en
+  // líneas viejas. Lo fija el backend; se guarda en la línea.
+  hours_per_day?: number | null;
+  // Descripción de la línea, para el Detalle de mano de obra.
+  description?: string | null;
+  // Horas cotizadas de la línea (en un rubro por días: días × 9). Lo calcula el backend.
+  hours?: number;
   notes?: string;
   // Horas ya cargadas de este rubro en el proyecto vinculado — informativo, solo presente
   // cuando el presupuesto ya generó/está vinculado a un proyecto con horas reales.

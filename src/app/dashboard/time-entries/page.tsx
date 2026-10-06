@@ -192,7 +192,8 @@ export default function TimeEntriesPage() {
       setVehicles(vehs);
       setPayPeriods(periods);
       setHolidays(hols);
-      setItemTypes(types.filter(t => t.unit_type === 'hours'));
+      // Los rubros por días también: los empleados cargan horas a ese rubro como siempre.
+      setItemTypes(types.filter(t => t.unit_type === 'hours' || t.unit_type === 'days'));
       await loadEntries();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar datos');
