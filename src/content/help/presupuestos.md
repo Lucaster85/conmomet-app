@@ -76,6 +76,12 @@ Cada línea tiene **Material** (se puede buscar o crear uno nuevo al vuelo sin s
 formulario), **Proveedor**, **Cantidad**, **Unidad**, y — con permiso para ver costos — el
 **costo real** del material y un **margen %**, con los que se calcula solo el precio al cliente.
 
+En pantallas anchas (desde una laptop de 1024 px) las líneas se muestran como una **tabla alineada** bajo un encabezado
+(Material, Proveedor, Cant., Unidad, Costo real, Margen %, Total): los textos largos se cortan con
+"…" y el margen en pesos y el precio por unidad se ven en la columna Total (el precio por unidad
+al pasar el mouse). En pantallas angostas (menos de unos 960 px: celular y tablet vertical) cada línea es una **tarjeta** (en tablet material y proveedor van lado a lado) con todos sus campos
+apilados.
+
 ### Elegir y crear el material
 
 El material es una lista con búsqueda: escribís para filtrar y, si no existe, aparece

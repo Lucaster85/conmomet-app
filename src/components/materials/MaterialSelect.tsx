@@ -13,12 +13,14 @@ interface Props {
   onCreateRequest: (name: string) => void;
   label?: string;
   helperText?: React.ReactNode;
+  placeholder?: string;
+  error?: boolean;
   size?: 'small' | 'medium';
   disabled?: boolean;
 }
 
 export default function MaterialSelect({
-  materials, value, onChange, onCreateRequest, label = 'Material', helperText, size = 'small', disabled,
+  materials, value, onChange, onCreateRequest, label = 'Material', helperText, placeholder, error, size = 'small', disabled,
 }: Props) {
   return (
     <CreatableSelect<Material>
@@ -32,6 +34,8 @@ export default function MaterialSelect({
       onCreate={async (name) => { onCreateRequest(name); return null; }}
       label={label}
       helperText={helperText}
+      placeholder={placeholder}
+      error={error}
       size={size}
       disabled={disabled}
       noOptionsText="Escribí para crear un material"

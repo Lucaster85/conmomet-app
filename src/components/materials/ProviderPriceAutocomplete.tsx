@@ -20,6 +20,7 @@ interface Props {
   showPrices?: boolean;
   excludeIds?: number[];
   label?: string;
+  placeholder?: string;
   size?: 'small' | 'medium';
   disabled?: boolean;
   disableClearable?: boolean;
@@ -28,7 +29,7 @@ interface Props {
 
 export default function ProviderPriceAutocomplete({
   providers, prices = [], value, valueFallback, onChange, onCreate, onError, showPrices = true,
-  excludeIds, label = 'Proveedor', size = 'small', disabled, disableClearable, fullWidth = true,
+  excludeIds, label = 'Proveedor', placeholder, size = 'small', disabled, disableClearable, fullWidth = true,
 }: Props) {
   const priceByProvider = useMemo(() => new Map(prices.map((p) => [p.provider_id, p])), [prices]);
 
@@ -58,6 +59,7 @@ export default function ProviderPriceAutocomplete({
       onError={onError}
       excludeIds={excludeIds}
       label={label}
+      placeholder={placeholder}
       size={size}
       disabled={disabled}
       disableClearable={disableClearable}

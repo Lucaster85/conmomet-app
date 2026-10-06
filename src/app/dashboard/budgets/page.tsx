@@ -181,6 +181,8 @@ function BudgetsPageContent() {
     || permissions.includes('quote_requests_assign');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  // Debajo de 960px no entra la grilla alineada de las líneas de material: pasan a tarjetas apiladas.
+  const stackedMaterialLines = useMediaQuery(theme.breakpoints.down(960));
   const autoOpenedFromParent = useRef(false);
   const autoViewedBudget = useRef(false);
   const autoOpenedFromQuoteRequest = useRef(false);
@@ -739,6 +741,193 @@ function BudgetsPageContent() {
     }
   };
 
+  // ---- Líneas de material ----
+  // Desktop: una fila de grilla por línea, alineada bajo un único encabezado (columnas de ancho
+  // fijo para los datos cortos, el resto se reparte entre material y proveedor, que truncan con
+  // "…"). Angosto: tarjeta apilada con etiquetas en cada campo. Las columnas de costo y de
+  // margen/total solo existen con el permiso correspondiente.
+  const materialGridTemplate = [
+    'minmax(0, 2.4fr)', 'minmax(0, 1.8fr)', '68px', '92px',
+    ...(hasCostsRead ? ['118px'] : []),
+    ...(hasPricesRead ? ['76px', '112px'] : []),
+    '36px',
+  ].join(' ');
+  const materialColumnHeaders = [
+    'Material', 'Proveedor', 'Cant.', 'Unidad',
+    ...(hasCostsRead ? ['Costo real'] : []),
+    ...(hasPricesRead ? ['Margen %', 'Total'] : []),
+    '',
+  ];
+
+  const renderMaterialLine = (item: BudgetMaterialItem, idx: number) => {
+    const stacked = stackedMaterialLines;
+    const cost = lineCost(item);
+    const margin = lineMargin(item);
+    const lineCurrency = item.currency || form.currency;
+    // En desktop las etiquetas van en el encabezado de la grilla, no en cada input.
+    const lbl = (text: string) => (stacked ? text : '');
+    const shrink = stacked ? { shrink: true } : undefined;
+    // Línea vieja cargada como texto libre: se ve qué decía, marcada en rojo, para vincularla.
+    const unlinkedText = !item.material_id && item.description ? `Sin vincular: "${item.description}"` : '';
+
+    const materialField = (
+      <MaterialSelect
+        materials={materials}
+        value={item.material_id ?? null}
+        onChange={(material) => handleMaterialSelectChange(idx, material)}
+        onCreateRequest={(name) => handleMaterialCreateRequest(idx, name)}
+        label={lbl('Material')}
+        placeholder={unlinkedText || 'Buscar material…'}
+        error={!!unlinkedText}
+        helperText={stacked && unlinkedText ? `${unlinkedText} — elegí un material` : undefined}
+      />
+    );
+    const providerField = (
+      <ProviderPriceAutocomplete
+        providers={providers}
+        prices={materials.find(m => m.id === item.material_id)?.providerPrices || []}
+        value={item.material_id ? (item.provider_id ?? null) : null}
+        valueFallback={item.provider}
+        disabled={!item.material_id}
+        disableClearable
+        showPrices={hasCostsRead}
+        label={lbl('Proveedor')}
+        placeholder="Elegí un material primero"
+        onChange={(provider) => { if (provider) handleProviderChange(idx, provider); }}
+        onCreate={createProviderInline}
+        onError={setError}
+      />
+    );
+    const quantityField = (
+      <TextField type="number" size="small" fullWidth label={lbl('Cant.')} value={item.quantity}
+        inputProps={{ min: 0 }}
+        onChange={(e) => updateMaterialItem(idx, { quantity: Number(e.target.value) })} />
+    );
+    const unitField = (
+      <Autocomplete<MaterialUnitOption>
+        size="small"
+        fullWidth
+        options={materialUnits}
+        value={materialUnits.find(u => u.id === item.material_unit_id) || null}
+        onChange={(_, newValue) => handleMaterialUnitChange(idx, newValue)}
+        getOptionLabel={(option) => option.label}
+        isOptionEqualToValue={(option, value) => option.id === value.id}
+        filterOptions={(options, params) => {
+          const filtered = materialUnitFilter(options, params);
+          const { inputValue } = params;
+          const exists = options.some((o) => o.label.toLowerCase() === inputValue.toLowerCase());
+          if (inputValue !== '' && !exists) {
+            filtered.push({ label: `Agregar "${inputValue}"`, inputValue });
+          }
+          return filtered;
+        }}
+        selectOnFocus
+        clearOnBlur
+        handleHomeEndKeys
+        renderInput={(params) => <TextField {...params} label={lbl('Unidad')} />}
+      />
+    );
+    const costField = !hasCostsRead ? null : item.material_id ? (
+      <CurrencyInput
+        size="small" fullWidth label={lbl('Costo real')}
+        currency={cost?.currency || item.material_cost_currency || form.currency}
+        value={cost?.value ?? null}
+        onChange={(newCost) => {
+          const newCurrency = cost?.currency || item.material_cost_currency || form.currency;
+          updateMaterialItem(idx, {
+            material_cost_snapshot: newCost,
+            material_cost_currency: newCurrency,
+            currency: newCurrency,
+            unit_price: computeUnitPrice(newCost, item.margin_percent ?? 0),
+          });
+        }}
+      />
+    ) : (
+      <TextField size="small" fullWidth label={lbl('Costo real')} disabled value="Sin vincular" InputLabelProps={shrink} />
+    );
+    const marginField = !hasPricesRead ? null : (
+      <TextField
+        type="number" size="small" fullWidth label={lbl('Margen %')}
+        disabled={!cost}
+        value={item.margin_percent ?? 0}
+        inputProps={{ min: 0 }}
+        onChange={(e) => {
+          const marginPercent = Number(e.target.value);
+          updateMaterialItem(idx, { margin_percent: marginPercent, unit_price: computeUnitPrice(cost?.value, marginPercent) });
+        }}
+        InputLabelProps={shrink}
+      />
+    );
+    const totalField = !hasPricesRead ? null : (
+      <Tooltip title={cost ? `${formatMoney(item.unit_price || 0, lineCurrency)} c/u` : 'Vinculá un material con costo'}>
+        <Box minWidth={0}>
+          <Typography variant="body2" fontWeight="bold" noWrap>
+            {formatMoney((item.quantity || 0) * (item.unit_price || 0), lineCurrency)}
+          </Typography>
+          {hasCostsRead && item.material_id && (
+            <Typography variant="caption" noWrap display="block" color={margin !== null && margin >= 0 ? 'success.main' : margin !== null ? 'error.main' : 'text.secondary'}>
+              {margin !== null ? `Margen: ${formatMoney(margin, lineCurrency)}` : 'Margen: —'}
+            </Typography>
+          )}
+        </Box>
+      </Tooltip>
+    );
+    const removeButton = (
+      <Tooltip title="Quitar material">
+        <IconButton size="small" color="error" onClick={() => removeMaterialItem(idx)}><DeleteIcon fontSize="small" /></IconButton>
+      </Tooltip>
+    );
+
+    if (!stacked) {
+      return (
+        <Box key={idx} sx={{
+          display: 'grid', gridTemplateColumns: materialGridTemplate, gap: 1, alignItems: 'center', py: 0.75, borderBottom: '1px solid', borderColor: 'divider',
+          // Fuente y padding más chicos en la grilla de desktop para que entre todo en una fila
+          // (desde 960px, ej. laptop de 1024). Mobile/tablet usan tarjetas con tamaño normal.
+          '& .MuiInputBase-root, & .MuiTypography-body2': { fontSize: '0.75rem' },
+          '& .MuiInputBase-input': { textOverflow: 'ellipsis' },
+          '& .MuiOutlinedInput-root:not(.MuiAutocomplete-inputRoot) .MuiOutlinedInput-input': { pl: '10px', pr: '6px' },
+          '& .MuiAutocomplete-root .MuiOutlinedInput-root': { pl: '6px' },
+        }}>
+          {materialField}
+          {providerField}
+          {quantityField}
+          {unitField}
+          {costField}
+          {marginField}
+          {totalField}
+          <Box textAlign="center">{removeButton}</Box>
+        </Box>
+      );
+    }
+    return (
+      <Box key={idx} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
+        <Stack spacing={1.5}>
+          {/* Material y proveedor lado a lado desde tablet; apilados en celular. */}
+          <Box display="flex" gap={1} alignItems="flex-start">
+            <Box sx={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5 }}>
+              {materialField}
+              {providerField}
+            </Box>
+            {removeButton}
+          </Box>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 1.5 }}>
+            {quantityField}
+            {unitField}
+            {costField}
+            {marginField}
+          </Box>
+          {totalField && (
+            <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
+              <Typography variant="caption" color="text.secondary">Total</Typography>
+              <Box textAlign="right" minWidth={0}>{totalField}</Box>
+            </Box>
+          )}
+        </Stack>
+      </Box>
+    );
+  };
+
   const laborTotal = (currency: BudgetCurrency) => form.laborLines
     .filter(l => (l.currency || form.currency) === currency)
     .reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0), 0);
@@ -1203,7 +1392,7 @@ function BudgetsPageContent() {
       )}
 
       {/* Create/Edit Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="lg" fullWidth fullScreen={isMobile}>
         <DialogTitle>
           {editingBudget ? 'Editar Presupuesto' : 'Nuevo Presupuesto'}
           {editingBudget?.quoteRequest?.client_quote_number && (
@@ -1391,127 +1580,20 @@ function BudgetsPageContent() {
                 <Button size="small" startIcon={<AddIcon />} onClick={() => addMaterialItem()}>Agregar item</Button>
               </Box>
             </Box>
-            {form.materialItems.map((item, idx) => {
-              const cost = lineCost(item);
-              const margin = lineMargin(item);
-              return (
-              <Grid container spacing={1} key={idx} alignItems="center" sx={{ pb: 1.5, borderBottom: '1px dashed', borderColor: 'divider' }}>
-                {/* Fila 1: material, proveedor, cantidad, unidad. Fila 2: costo, margen y total. */}
-                <Grid size={{ xs: 12, md: 4.8 }}>
-                  <MaterialSelect
-                    materials={materials}
-                    value={item.material_id ?? null}
-                    onChange={(material) => handleMaterialSelectChange(idx, material)}
-                    onCreateRequest={(name) => handleMaterialCreateRequest(idx, name)}
-                    label="Material"
-                    helperText={item.material_id
-                      ? '✓ vinculado al catálogo'
-                      // Línea vieja cargada como texto libre: se ve qué decía para poder vincularla.
-                      : item.description ? `Sin vincular: "${item.description}" — elegí un material` : ' '}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 3.5 }}>
-                  <ProviderPriceAutocomplete
-                    providers={providers}
-                    prices={materials.find(m => m.id === item.material_id)?.providerPrices || []}
-                    value={item.material_id ? (item.provider_id ?? null) : null}
-                    valueFallback={item.provider}
-                    disabled={!item.material_id}
-                    disableClearable
-                    showPrices={hasCostsRead}
-                    onChange={(provider) => { if (provider) handleProviderChange(idx, provider); }}
-                    onCreate={createProviderInline}
-                    onError={setError}
-                  />
-                </Grid>
-                <Grid size={{ xs: 6, md: 1.2 }}>
-                  <TextField type="number" size="small" fullWidth label="Cant." value={item.quantity}
-                    onChange={(e) => updateMaterialItem(idx, { quantity: Number(e.target.value) })} />
-                </Grid>
-                <Grid size={{ xs: 6, md: 1.9 }}>
-                  <Autocomplete<MaterialUnitOption>
-                    size="small"
-                    fullWidth
-                    options={materialUnits}
-                    value={materialUnits.find(u => u.id === item.material_unit_id) || null}
-                    onChange={(_, newValue) => handleMaterialUnitChange(idx, newValue)}
-                    getOptionLabel={(option) => option.label}
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
-                    filterOptions={(options, params) => {
-                      const filtered = materialUnitFilter(options, params);
-                      const { inputValue } = params;
-                      const exists = options.some((o) => o.label.toLowerCase() === inputValue.toLowerCase());
-                      if (inputValue !== '' && !exists) {
-                        filtered.push({ label: `Agregar "${inputValue}"`, inputValue });
-                      }
-                      return filtered;
-                    }}
-                    selectOnFocus
-                    clearOnBlur
-                    handleHomeEndKeys
-                    renderInput={(params) => <TextField {...params} label="Unidad" />}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 0.6 }} textAlign={{ xs: 'right', md: 'center' }}>
-                  <IconButton size="small" color="error" onClick={() => removeMaterialItem(idx)}><DeleteIcon fontSize="small" /></IconButton>
-                </Grid>
-                {hasCostsRead && (
-                  <Grid size={{ xs: hasPricesRead ? 6 : 12, md: hasPricesRead ? 3 : 4 }}>
-                    {item.material_id ? (
-                      <CurrencyInput
-                        size="small" fullWidth label="Costo real"
-                        currency={cost?.currency || item.material_cost_currency || form.currency}
-                        value={cost?.value ?? null}
-                        onChange={(newCost) => {
-                          const newCurrency = cost?.currency || item.material_cost_currency || form.currency;
-                          updateMaterialItem(idx, {
-                            material_cost_snapshot: newCost,
-                            material_cost_currency: newCurrency,
-                            currency: newCurrency,
-                            unit_price: computeUnitPrice(newCost, item.margin_percent ?? 0),
-                          });
-                        }}
-                      />
-                    ) : (
-                      <TextField
-                        size="small" fullWidth label="Costo real"
-                        disabled
-                        value="Sin vincular"
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    )}
-                  </Grid>
+            {form.materialItems.length > 0 && (
+              <Box>
+                {!stackedMaterialLines && (
+                  <Box sx={{ display: 'grid', gridTemplateColumns: materialGridTemplate, gap: 1, pb: 0.5, borderBottom: '2px solid', borderColor: 'divider' }}>
+                    {materialColumnHeaders.map((header, i) => (
+                      <Typography key={i} variant="caption" fontWeight={700} color="text.secondary">{header}</Typography>
+                    ))}
+                  </Box>
                 )}
-                {hasPricesRead && (
-                  <>
-                    <Grid size={{ xs: hasCostsRead ? 6 : 12, md: 3 }}>
-                      <TextField
-                        type="number" size="small" fullWidth label="Margen %"
-                        disabled={!cost}
-                        value={item.margin_percent ?? 0}
-                        onChange={(e) => {
-                          const marginPercent = Number(e.target.value);
-                          updateMaterialItem(idx, { margin_percent: marginPercent, unit_price: computeUnitPrice(cost?.value, marginPercent) });
-                        }}
-                        helperText={!cost ? 'Vinculá un material con costo' : `${formatMoney(item.unit_price || 0, item.currency || form.currency)} c/u`}
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 5, md: 1.5 }}>
-                      <Typography variant="body2" fontWeight="bold">
-                        {formatMoney((item.quantity || 0) * (item.unit_price || 0), item.currency || form.currency)}
-                      </Typography>
-                      {hasCostsRead && item.material_id && (
-                        <Typography variant="caption" display="block" color={margin !== null && margin >= 0 ? 'success.main' : margin !== null ? 'error.main' : 'text.secondary'}>
-                          {margin !== null ? `Margen: ${formatMoney(margin, item.currency || form.currency)}` : 'Margen: —'}
-                        </Typography>
-                      )}
-                    </Grid>
-                  </>
-                )}
-              </Grid>
-              );
-            })}
+                <Stack spacing={stackedMaterialLines ? 1.5 : 0} sx={{ mt: stackedMaterialLines ? 0 : 0.5 }}>
+                  {form.materialItems.map((item, idx) => renderMaterialLine(item, idx))}
+                </Stack>
+              </Box>
+            )}
 
             {hasPricesRead && (
               <>

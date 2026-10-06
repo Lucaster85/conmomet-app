@@ -25,6 +25,8 @@ export interface CreatableSelectProps<T extends { id: number }> {
   excludeIds?: number[];
   label?: string;
   helperText?: React.ReactNode;
+  placeholder?: string;
+  error?: boolean;
   size?: 'small' | 'medium';
   disabled?: boolean;
   disableClearable?: boolean;
@@ -37,7 +39,7 @@ const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-�
 
 export default function CreatableSelect<T extends { id: number }>({
   options, getLabel, renderSecondary, value, valueFallback, onChange, onCreate, onError,
-  excludeIds = [], label, helperText, size = 'small', disabled, disableClearable, fullWidth = true,
+  excludeIds = [], label, helperText, placeholder, error, size = 'small', disabled, disableClearable, fullWidth = true,
   createLabel = (name) => `Agregar «${name}»`, noOptionsText = 'Sin resultados',
 }: CreatableSelectProps<T>) {
   const [busy, setBusy] = useState(false);
@@ -120,7 +122,7 @@ export default function CreatableSelect<T extends { id: number }>({
           </li>
         );
       }}
-      renderInput={(params) => <TextField {...params} label={label} helperText={helperText} />}
+      renderInput={(params) => <TextField {...params} label={label} placeholder={placeholder} error={error} helperText={helperText} />}
     />
   );
 }
