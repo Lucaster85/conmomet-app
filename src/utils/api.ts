@@ -1407,43 +1407,134 @@ export class ToolService {
 // Presupuestos / Cotizaciones
 export type BudgetCurrency = 'ARS' | 'USD';
 
-// Catálogo de Materiales con costo real (para margen por obra). El costo/moneda son
-// opcionales a nivel de tipo porque el backend los omite por completo en la respuesta si el
-// usuario no tiene el permiso material_costs_read — no vienen en null, directamente no están.
+// Proveedor mínimo para el catálogo de materiales (ABM rápido, solo nombre). "Sin especificar"
+// (is_system) aloja los costos sin proveedor y no se puede renombrar ni borrar.
+export interface MaterialProvider {
+  id: number;
+  razonSocial: string;
+  is_system: boolean;
+}
+
+// Precio de un Material con un Proveedor. cost null = el proveedor lo tiene pero sin precio
+// cargado (o el usuario no tiene material_costs_read: el backend vacía cost/currency pero deja
+// el proveedor, para que el nombre se siga viendo).
+export interface MaterialProviderPrice {
+  id?: number;
+  material_id?: number;
+  provider_id: number;
+  provider?: MaterialProvider;
+  cost: number | null;
+  currency: BudgetCurrency | null;
+}
+
+// Catálogo de Materiales. Todo costo es por proveedor (providerPrices).
 export interface Material {
   id: number;
   description: string;
   material_unit_id: number;
   materialUnit?: MaterialUnit;
-  current_cost?: number | null;
-  currency?: BudgetCurrency | null;
+  kg_per_meter?: number | null;
+  providerPrices?: MaterialProviderPrice[];
   is_active: boolean;
+}
+
+export interface MaterialProviderPriceInput {
+  provider_id: number;
+  cost: number | null;
+  currency: BudgetCurrency | null;
 }
 
 export interface CreateMaterialData {
   description: string;
   material_unit_id: number;
-  current_cost?: number | null;
-  currency?: BudgetCurrency | null;
+  kg_per_meter?: number | null;
+  // Semántica de reemplazo: los proveedores ausentes se borran. Ignorado sin material_costs_read.
+  provider_prices?: MaterialProviderPriceInput[];
   is_active?: boolean;
 }
 
 export interface MaterialImportRow {
   description: string;
   unit: string;
+  provider: string;
   cost: number | null;
   currency: BudgetCurrency | null;
+  kg_per_meter: number | null;
+}
+
+// Resultado por fila de POST /materials/import, con el costo efectivo guardado.
+export interface MaterialImportCommitRow {
+  material_id: number;
+  material_unit_id: number;
+  unit: string;
+  provider_id: number;
+  provider_name: string;
+  cost: number | null;
+  currency: BudgetCurrency | null;
+}
+
+export interface MaterialImportSummary {
+  materials_created: number;
+  units_created: number;
+  providers_created: number;
+  prices_updated: number;
 }
 
 // Registro de auditoría append-only del costo de un Material — nunca se edita ni se borra.
 export interface MaterialCostHistoryEntry {
   id: number;
   material_id: number;
+  provider_id?: number | null;
+  provider?: MaterialProvider | null;
   cost: number;
   currency: BudgetCurrency;
   changed_by: number;
   changedBy?: { id: number; name: string; lastname: string };
   createdAt: string;
+}
+
+export class MaterialProviderService {
+  static async getAll(): Promise<MaterialProvider[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/materials/providers`);
+    if (!response.ok) throw new Error('Error al obtener proveedores');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  // Find-or-create por nombre (case-insensitive): crear uno existente devuelve el existente.
+  static async create(razonSocial: string): Promise<MaterialProvider> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/materials/providers`, {
+      method: 'POST',
+      body: JSON.stringify({ razonSocial }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al crear proveedor');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async update(id: number, razonSocial: string): Promise<MaterialProvider> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/materials/providers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ razonSocial }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al actualizar proveedor');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/materials/providers/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al eliminar proveedor');
+    }
+  }
 }
 
 export class MaterialService {
@@ -1511,6 +1602,20 @@ export class MaterialService {
     return data.data || [];
   }
 
+  // Confirma el import (catálogo y presupuesto) en una sola transacción: crea unidades,
+  // proveedores, materiales y precios que falten.
+  static async importCommit(rows: MaterialImportRow[]): Promise<{ data: MaterialImportCommitRow[]; summary: MaterialImportSummary }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/materials/import`, {
+      method: 'POST',
+      body: JSON.stringify({ rows }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al importar materiales');
+    }
+    return response.json();
+  }
+
   static async getCostHistory(materialId: number): Promise<MaterialCostHistoryEntry[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/materials/${materialId}/cost-history`);
     if (!response.ok) {
@@ -1542,6 +1647,9 @@ export interface BudgetMaterialItem {
   budget_id?: number;
   material_id?: number | null;
   material?: Material;
+  // Proveedor del que se tomó el costo (visible aunque no se tenga material_costs_read).
+  provider_id?: number | null;
+  provider?: MaterialProvider | null;
   description: string;
   quantity: number;
   material_unit_id: number;
@@ -1552,7 +1660,7 @@ export interface BudgetMaterialItem {
   // % de margen sobre material_cost_snapshot — unit_price se calcula desde acá en el backend,
   // no se carga directo. Presente solo si el usuario tiene budget_prices_read.
   margin_percent?: number;
-  // Presentes solo si el usuario tiene material_costs_read (igual que Material.current_cost)
+  // Presentes solo si el usuario tiene material_costs_read (igual que los precios por proveedor del Material)
   material_cost_snapshot?: number | null;
   material_cost_currency?: BudgetCurrency | null;
   notes?: string;
@@ -1610,6 +1718,9 @@ export interface Budget {
     due_date: string;
     status: string;
     assigned_to_me?: boolean;
+    // Pliego adjunto del PC — solo viene si el usuario tiene acceso al PC (asignado o con
+    // quote_requests_read).
+    files?: { id: number; file_url: string; file_name?: string; size_bytes?: number }[];
   };
   laborLines?: BudgetLaborLine[];
   materialItems?: BudgetMaterialItem[];
@@ -1639,8 +1750,12 @@ export interface BudgetMaterialImportRow {
   description: string;
   quantity: number;
   unit: string;
-  // Costo real del material (lo que sale comprarlo) — nunca el precio al cliente.
-  cost: number;
+  provider: string;
+  // Costo real del material (lo que sale comprarlo) — nunca el precio al cliente. null si el
+  // archivo no lo trae.
+  cost: number | null;
+  currency: BudgetCurrency | null;
+  kg_per_meter: number | null;
   total_price: number;
 }
 

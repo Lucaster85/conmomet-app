@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, Tooltip, TextField, Stack, Chip, Autocomplete, useMediaQuery, useTheme,
+  DialogActions, Tooltip, TextField, Stack, Chip, Autocomplete, Link, useMediaQuery, useTheme,
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
@@ -578,7 +578,10 @@ function QuoteRequestsPageContent() {
                 <Stack spacing={0.5} sx={{ mt: 1 }}>
                   {(editing?.files || []).map((f) => (
                     <Box key={f.id} display="flex" alignItems="center" justifyContent="space-between" sx={{ bgcolor: 'action.hover', px: 1, py: 0.5, borderRadius: 1 }}>
-                      <Typography variant="body2" noWrap sx={{ maxWidth: '70%' }}>{f.file_name || 'Archivo'} {f.size_bytes ? `(${formatFileSize(f.size_bytes)})` : ''}</Typography>
+                      <Typography variant="body2" noWrap sx={{ maxWidth: '70%' }}>
+                        <Link href={f.file_url} target="_blank" rel="noopener noreferrer" underline="hover">{f.file_name || 'Archivo'}</Link>
+                        {f.size_bytes ? ` (${formatFileSize(f.size_bytes)})` : ''}
+                      </Typography>
                       <IconButton size="small" onClick={() => handleRemoveExistingFile(f.id)}><CloseIcon fontSize="small" /></IconButton>
                     </Box>
                   ))}
@@ -596,7 +599,10 @@ function QuoteRequestsPageContent() {
                 <Typography variant="caption" color="text.secondary">Archivos adjuntos</Typography>
                 <Stack spacing={0.5} sx={{ mt: 0.5 }}>
                   {(editing?.files || []).map((f) => (
-                    <Typography key={f.id} variant="body2">{f.file_name || 'Archivo'} {f.size_bytes ? `(${formatFileSize(f.size_bytes)})` : ''}</Typography>
+                    <Typography key={f.id} variant="body2">
+                      <Link href={f.file_url} target="_blank" rel="noopener noreferrer" underline="hover">{f.file_name || 'Archivo'}</Link>
+                      {f.size_bytes ? ` (${formatFileSize(f.size_bytes)})` : ''}
+                    </Typography>
                   ))}
                 </Stack>
               </Box>

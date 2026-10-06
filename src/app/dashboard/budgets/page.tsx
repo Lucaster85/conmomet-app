@@ -4,7 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
-  DialogActions, Tooltip, TextField, Stack, Chip, Divider, Grid, Alert,
+  DialogActions, Tooltip, TextField, Stack, Chip, Divider, Grid, Alert, Link,
   Autocomplete, createFilterOptions, useMediaQuery, useTheme,
   FormControlLabel, Switch,
 } from '@mui/material';
@@ -18,17 +18,21 @@ import {
   UploadFileOutlined as UploadIcon, SendOutlined as SendIcon, CheckCircleOutlined as ApproveIcon,
   CancelOutlined as RejectIcon, PrintOutlined as PrintIcon, DescriptionOutlined as DocumentIcon,
   AssignmentOutlined as ProjectIcon, DownloadOutlined as DownloadIcon, PercentOutlined as DiscountIcon,
-  RequestQuoteOutlined as TitleIcon, AssignmentReturnOutlined as DeliverIcon,
+  RequestQuoteOutlined as TitleIcon, AssignmentReturnOutlined as DeliverIcon, AttachFileOutlined as AttachIcon,
 } from '@mui/icons-material';
 import {
   Budget, BudgetService, BudgetLaborLine, BudgetMaterialItem, CreateBudgetData,
   BudgetItemType, BudgetItemTypeService, MaterialUnit, MaterialUnitService,
-  Material, MaterialService, Client, ClientService, Plant, PlantService,
+  Material, MaterialService, MaterialProvider, MaterialProviderService, Client, ClientService, Plant, PlantService,
   Project, ProjectService, HourBucket, BudgetCurrency,
   ClientSupervisor, ClientSupervisorService, ClientItemRate, ClientItemRateService,
   QuoteRequestService,
 } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
+import ProviderPriceAutocomplete from '../../../components/materials/ProviderPriceAutocomplete';
+import MaterialSelect from '../../../components/materials/MaterialSelect';
+import { downloadMaterialsTemplate, exportMaterialsSheet } from '../../../utils/materialsExcel';
+import { findPrice } from '../../../utils/materialPrices';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'default' | 'info' | 'success' | 'error' }> = {
   draft: { label: 'Borrador', color: 'default' },
@@ -63,16 +67,6 @@ interface MaterialUnitOption {
   inputValue?: string;
 }
 const materialUnitFilter = createFilterOptions<MaterialUnitOption>();
-
-// Igual patrón para el Autocomplete "creatable" de Material — a diferencia de Unidad, dar de
-// alta uno nuevo pide un dato más (la unidad), así que la opción sintética abre un mini
-// diálogo en vez de crear directo.
-interface MaterialOption {
-  id?: number;
-  description: string;
-  inputValue?: string;
-}
-const materialFilter = createFilterOptions<MaterialOption>();
 
 // Mismo patrón "creatable" para elegir quién aprobó del lado del cliente (ClientSupervisor).
 // Igual que Material, dar de alta uno nuevo pide más de un dato (nombre y apellido por
@@ -194,6 +188,7 @@ function BudgetsPageContent() {
   const [itemTypes, setItemTypes] = useState<BudgetItemType[]>([]);
   const [materialUnits, setMaterialUnits] = useState<MaterialUnit[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [providers, setProviders] = useState<MaterialProvider[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [plants, setPlants] = useState<Plant[]>([]);
   const [rootProjects, setRootProjects] = useState<Project[]>([]);
@@ -221,8 +216,8 @@ function BudgetsPageContent() {
   const [printBudget, setPrintBudget] = useState<Budget | null>(null);
   // Alta rápida de Material: a diferencia de Unidad, pide un dato más (la unidad del
   // material), así que no se puede crear "al toque" — abre este mini-diálogo.
-  const [materialQuickAdd, setMaterialQuickAdd] = useState<{ open: boolean; lineIdx: number; description: string; materialUnitId: string; cost: string; currency: BudgetCurrency }>(
-    { open: false, lineIdx: -1, description: '', materialUnitId: '', cost: '', currency: 'ARS' }
+  const [materialQuickAdd, setMaterialQuickAdd] = useState<{ open: boolean; lineIdx: number; description: string; materialUnitId: string; providerId: number | null; cost: string; currency: BudgetCurrency }>(
+    { open: false, lineIdx: -1, description: '', materialUnitId: '', providerId: null, cost: '', currency: 'ARS' }
   );
   // Alta rápida de contacto (ClientSupervisor) al aprobar — mismo criterio que Material,
   // pide más de un dato así que abre un mini-diálogo en vez de crear directo.
@@ -261,11 +256,12 @@ function BudgetsPageContent() {
     try {
       setLoading(true);
       setError('');
-      const [bgs, its, mUnits, mats, clis, plts, projs, projsNoBudget] = await Promise.all([
+      const [bgs, its, mUnits, mats, mProviders, clis, plts, projs, projsNoBudget] = await Promise.all([
         BudgetService.getAll(),
         BudgetItemTypeService.getAll(true),
         MaterialUnitService.getAll(true),
         MaterialService.getAll({ is_active: true }),
+        MaterialProviderService.getAll(),
         ClientService.getAll({ is_active: true }),
         PlantService.getAll(),
         ProjectService.getAll(),
@@ -275,6 +271,7 @@ function BudgetsPageContent() {
       setItemTypes(Array.isArray(its) ? its : []);
       setMaterialUnits(Array.isArray(mUnits) ? mUnits : []);
       setMaterials(Array.isArray(mats) ? mats : []);
+      setProviders(Array.isArray(mProviders) ? mProviders : []);
       setClients(Array.isArray(clis) ? clis : []);
       setPlants(Array.isArray(plts) ? plts : []);
       setRootProjects(Array.isArray(projs) ? projs.filter(p => !p.parent_id) : []);
@@ -454,6 +451,38 @@ function BudgetsPageContent() {
     }
   };
 
+  // Los proyectos elegibles dependen del cliente y la planta del formulario: sin cliente no hay
+  // lista; con cliente, solo los de ese cliente; con planta elegida, solo los de esa planta (la
+  // planta es opcional — sin planta se ven todos los del cliente). El stub del proyecto ya
+  // vinculado (ver existingProjectOptions) no trae client_id y siempre pasa el filtro, igual
+  // que el proyecto actualmente elegido, para que nunca desaparezca de su propio select.
+  const matchesClientAndPlant = (p: Project, clientId: string, plantId: string) => {
+    if (!p.client_id) return true;
+    if (String(p.client_id) !== clientId) return false;
+    return !plantId || String(p.plant_id ?? '') === plantId;
+  };
+  const filteredRootProjects = rootProjects.filter(p =>
+    matchesClientAndPlant(p, form.client_id, form.plant_id) || String(p.id) === form.parent_project_id);
+  const filteredExistingProjects = existingProjectOptions.filter(p =>
+    matchesClientAndPlant(p, form.client_id, form.plant_id) || String(p.id) === form.existing_project_id);
+
+  // Al cambiar cliente/planta, si el proyecto ya elegido deja de corresponder se desvincula.
+  const changeClientOrPlant = (clientId: string, plantId: string) => {
+    const linked = form.parent_project_id
+      ? rootProjects.find(p => String(p.id) === form.parent_project_id)
+      : form.existing_project_id
+        ? existingProjectOptions.find(p => String(p.id) === form.existing_project_id)
+        : undefined;
+    const stillMatches = !linked || matchesClientAndPlant(linked, clientId, plantId);
+    if (!stillMatches) setLinkedProjectHourBuckets([]);
+    setForm({
+      ...form,
+      client_id: clientId,
+      plant_id: plantId,
+      ...(stillMatches ? {} : { parent_project_id: '', existing_project_id: '' }),
+    });
+  };
+
   // Si el cliente del presupuesto tiene una tarifa cargada para el rubro elegido (ver
   // ClientItemRateService), se prellena el valor unitario — sigue siendo editable normalmente,
   // es solo el punto de partida (mismo criterio que vincular un material del catálogo).
@@ -504,6 +533,8 @@ function BudgetsPageContent() {
         currency: costCurrency,
         margin_percent: marginPercent,
         material_id: item?.material_id,
+        provider_id: item?.provider_id,
+        provider: item?.provider,
         material_cost_snapshot: costValue,
         material_cost_currency: costCurrency,
       }],
@@ -518,6 +549,16 @@ function BudgetsPageContent() {
   };
   const removeMaterialItem = (index: number) => {
     setForm({ ...form, materialItems: form.materialItems.filter((_, i) => i !== index) });
+  };
+
+  // Proveedor por defecto de una línea: "Sin especificar" (is_system). Elegir otro es opcional.
+  const unspecifiedProvider = providers.find(p => p.is_system) || null;
+
+  // Alta inline de proveedor desde el selector de la línea (o del alta rápida de material).
+  const createProviderInline = async (name: string) => {
+    const created = await MaterialProviderService.create(name);
+    setProviders(prev => (prev.some(p => p.id === created.id) ? prev : [...prev, created]));
+    return created;
   };
 
   // Alta rápida de Unidad de Medida desde la misma línea del material, sin salir del form.
@@ -536,31 +577,40 @@ function BudgetsPageContent() {
     if (newValue.id) updateMaterialItem(idx, { material_unit_id: newValue.id });
   };
 
+  // Aplica a la línea el precio de (material, proveedor) del catálogo como costo base — si ese
+  // par no tiene precio el costo queda vacío para cargarlo a mano, y lo cargado se guarda en el
+  // backend como el precio de ese proveedor.
+  const linkMaterialToLine = (idx: number, material: Material, provider: MaterialProvider | null) => {
+    const marginPercent = form.materialItems[idx]?.margin_percent ?? 0;
+    const price = findPrice(material, provider?.id);
+    const costValue = price?.cost != null ? Number(price.cost) : null;
+    const costCurrency = price?.currency ?? null;
+    updateMaterialItem(idx, {
+      material_id: material.id,
+      provider_id: provider?.id ?? null,
+      provider,
+      description: material.description,
+      material_unit_id: material.material_unit_id,
+      material_cost_snapshot: costValue,
+      material_cost_currency: costCurrency,
+      currency: costCurrency,
+      unit_price: computeUnitPrice(costValue, marginPercent),
+    });
+  };
+
   // Vincular un Material existente del catálogo a la línea (autocompleta descripción y
-  // unidad), o abrir el mini-diálogo de alta rápida si el usuario tipeó algo nuevo. Elegir
-  // texto libre sin vincular nada también es válido — la línea sigue funcionando como hoy,
-  // sin margen calculable.
-  const handleMaterialSelectChange = (idx: number, newValue: MaterialOption | null) => {
-    if (!newValue) return;
-    if (newValue.inputValue) {
-      setMaterialQuickAdd({ open: true, lineIdx: idx, description: newValue.inputValue, materialUnitId: '', cost: '', currency: form.currency });
-      return;
-    }
-    const material = materials.find(m => m.id === newValue.id);
-    if (material) {
-      const marginPercent = form.materialItems[idx]?.margin_percent ?? 0;
-      const costValue = material.current_cost ?? null;
-      const costCurrency = material.currency ?? null;
-      updateMaterialItem(idx, {
-        material_id: material.id,
-        description: material.description,
-        material_unit_id: material.material_unit_id,
-        material_cost_snapshot: costValue,
-        material_cost_currency: costCurrency,
-        currency: costCurrency,
-        unit_price: computeUnitPrice(costValue, marginPercent),
-      });
-    }
+  // unidad), o abrir el mini-diálogo de alta rápida si el usuario tipeó algo nuevo. La línea
+  // siempre queda vinculada al catálogo: sin costo real no se puede calcular el precio.
+  const handleMaterialSelectChange = (idx: number, material: Material | null) => {
+    if (material) linkMaterialToLine(idx, material, unspecifiedProvider);
+  };
+  const handleMaterialCreateRequest = (idx: number, name: string) =>
+    setMaterialQuickAdd({ open: true, lineIdx: idx, description: name, materialUnitId: '', providerId: unspecifiedProvider?.id ?? null, cost: '', currency: form.currency });
+
+  // Cambiar de proveedor re-resuelve el costo: pasa a ser el precio de ese proveedor.
+  const handleProviderChange = (idx: number, provider: MaterialProvider) => {
+    const material = materials.find(m => m.id === form.materialItems[idx]?.material_id);
+    if (material) linkMaterialToLine(idx, material, provider);
   };
 
   const handleConfirmMaterialQuickAdd = async () => {
@@ -569,26 +619,23 @@ function BudgetsPageContent() {
       return;
     }
     try {
+      const providerId = materialQuickAdd.providerId ?? unspecifiedProvider?.id ?? null;
+      const costNumber = materialQuickAdd.cost ? Number(materialQuickAdd.cost) : null;
       const created = await MaterialService.create({
         description: materialQuickAdd.description,
         material_unit_id: Number(materialQuickAdd.materialUnitId),
-        current_cost: hasCostsRead && materialQuickAdd.cost ? Number(materialQuickAdd.cost) : null,
-        currency: hasCostsRead ? materialQuickAdd.currency : null,
+        // El costo ingresado se guarda como precio del proveedor elegido.
+        provider_prices: hasCostsRead && providerId
+          ? [{ provider_id: providerId, cost: costNumber, currency: costNumber != null ? materialQuickAdd.currency : null }]
+          : undefined,
       });
       setMaterials(prev => [...prev, created]);
-      const marginPercent = form.materialItems[materialQuickAdd.lineIdx]?.margin_percent ?? 0;
-      const costValue = created.current_cost ?? null;
-      const costCurrency = created.currency ?? null;
-      updateMaterialItem(materialQuickAdd.lineIdx, {
-        material_id: created.id,
-        description: created.description,
-        material_unit_id: created.material_unit_id,
-        material_cost_snapshot: costValue,
-        material_cost_currency: costCurrency,
-        currency: costCurrency,
-        unit_price: computeUnitPrice(costValue, marginPercent),
-      });
-      setMaterialQuickAdd({ open: false, lineIdx: -1, description: '', materialUnitId: '', cost: '', currency: 'ARS' });
+      linkMaterialToLine(
+        materialQuickAdd.lineIdx,
+        created,
+        providers.find(p => p.id === providerId) || unspecifiedProvider,
+      );
+      setMaterialQuickAdd({ open: false, lineIdx: -1, description: '', materialUnitId: '', providerId: null, cost: '', currency: 'ARS' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear el material');
     }
@@ -604,9 +651,9 @@ function BudgetsPageContent() {
     if (item.material_cost_snapshot != null && item.material_cost_currency) {
       return { value: item.material_cost_snapshot, currency: item.material_cost_currency };
     }
-    const material = materials.find(m => m.id === item.material_id);
-    if (!material || material.current_cost == null) return null;
-    return { value: material.current_cost, currency: material.currency || form.currency };
+    const price = findPrice(materials.find(m => m.id === item.material_id), item.provider_id);
+    if (!price || price.cost == null) return null;
+    return { value: Number(price.cost), currency: price.currency || form.currency };
   };
 
   // El precio al cliente siempre se calcula en la misma moneda del costo (ver FLOWS.md), así
@@ -625,74 +672,70 @@ function BudgetsPageContent() {
       setImporting(true);
       const rows = await BudgetService.importMaterials(file);
 
-      // Resolvemos en mapas locales (no contra el estado de React) para no disparar altas
-      // duplicadas si el Excel repite la misma unidad/material en varias filas — el estado
-      // tarda un render en reflejar cada alta.
-      const unitsByLabel = new Map(materialUnits.map(u => [u.label.toLowerCase(), u]));
-      const newUnits: MaterialUnit[] = [];
-      const materialsByDescription = new Map(materials.map(m => [m.description.toLowerCase(), m]));
-      const touchedMaterials: Material[] = [];
+      // El precio del Excel es el COSTO REAL del material, nunca el precio al cliente — por eso
+      // alimenta el catálogo (precio de ese proveedor), no unit_price. Todo el alta (unidades,
+      // proveedores, materiales y precios) se hace en una sola transacción en el backend.
+      const { data: committed } = await MaterialService.importCommit(rows.map(row => ({
+        description: row.description,
+        unit: row.unit,
+        provider: row.provider,
+        cost: hasCostsRead ? row.cost : null,
+        // Si el archivo no trae moneda, la del presupuesto.
+        currency: hasCostsRead && row.cost != null ? (row.currency || form.currency) : null,
+        kg_per_meter: row.kg_per_meter,
+      })));
 
-      for (const row of rows) {
-        const unitLabel = (row.unit || 'u').trim() || 'u';
-        const unitKey = unitLabel.toLowerCase();
-        let unit = unitsByLabel.get(unitKey);
-        if (!unit) {
-          unit = await MaterialUnitService.create({ label: unitLabel });
-          unitsByLabel.set(unitKey, unit);
-          newUnits.push(unit);
-        }
+      const [mats, mUnits, mProviders] = await Promise.all([
+        MaterialService.getAll({ is_active: true }),
+        MaterialUnitService.getAll(true),
+        MaterialProviderService.getAll(),
+      ]);
+      setMaterials(Array.isArray(mats) ? mats : []);
+      setMaterialUnits(Array.isArray(mUnits) ? mUnits : []);
+      setProviders(Array.isArray(mProviders) ? mProviders : []);
 
-        // El precio del Excel es el COSTO REAL del material, nunca el precio al cliente —
-        // por eso alimenta el catálogo (crea o actualiza current_cost), no unit_price.
-        const descKey = row.description.trim().toLowerCase();
-        let material = materialsByDescription.get(descKey);
-        if (!material) {
-          material = await MaterialService.create({
-            description: row.description,
-            material_unit_id: unit.id,
-            current_cost: hasCostsRead ? (row.cost || null) : null,
-            currency: hasCostsRead ? form.currency : null,
-          });
-          materialsByDescription.set(descKey, material);
-          touchedMaterials.push(material);
-        } else if (hasCostsRead && row.cost && material.current_cost !== row.cost) {
-          // Reimportar una lista de precios de proveedor actualizada es la forma natural de
-          // mantener el catálogo al día — esto genera una entrada de historial de costos.
-          material = await MaterialService.update(material.id, { current_cost: row.cost, currency: form.currency });
-          materialsByDescription.set(descKey, material);
-          touchedMaterials.push(material);
-        }
-
-        // El precio al cliente arranca en margen 0% (= precio igual al costo) — el usuario
-        // carga el margen real de cada línea aparte, no se autocompleta con nada del Excel.
+      // El precio al cliente arranca en margen 0% (= precio igual al costo) — el usuario
+      // carga el margen real de cada línea aparte, no se autocompleta con nada del Excel.
+      committed.forEach((result, i) => {
         addMaterialItem({
-          description: material.description,
-          quantity: row.quantity,
-          material_unit_id: material.material_unit_id,
-          material_id: material.id,
-          material_cost_snapshot: material.current_cost ?? null,
-          material_cost_currency: material.currency ?? null,
+          description: mats.find(m => m.id === result.material_id)?.description ?? rows[i].description,
+          quantity: rows[i].quantity,
+          material_unit_id: result.material_unit_id,
+          material_id: result.material_id,
+          provider_id: result.provider_id,
+          provider: { id: result.provider_id, razonSocial: result.provider_name, is_system: false },
+          material_cost_snapshot: result.cost,
+          material_cost_currency: result.currency,
           margin_percent: 0,
         });
-      }
-
-      if (newUnits.length > 0) setMaterialUnits(prev => [...prev, ...newUnits]);
-      if (touchedMaterials.length > 0) {
-        setMaterials(prev => {
-          const merged = [...prev];
-          for (const m of touchedMaterials) {
-            const idx = merged.findIndex(x => x.id === m.id);
-            if (idx >= 0) merged[idx] = m; else merged.push(m);
-          }
-          return merged;
-        });
-      }
+      });
       setSuccess(`${rows.length} fila(s) importadas desde el Excel. Cargá el margen de cada una antes de guardar.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al importar el Excel');
     } finally {
       setImporting(false);
+    }
+  };
+
+  // Mismo formato que la plantilla, así el archivo se puede volver a importar. Sale del estado
+  // del formulario (no del servidor), así funciona también antes de guardar el presupuesto.
+  const handleExportExcel = async () => {
+    try {
+      await exportMaterialsSheet(form.materialItems.map(item => {
+        const cost = hasCostsRead ? lineCost(item) : null;
+        const kg = materials.find(m => m.id === item.material_id)?.kg_per_meter;
+        return {
+          description: item.description,
+          quantity: item.quantity,
+          unit: materialUnits.find(u => u.id === item.material_unit_id)?.label || 'u',
+          provider: item.provider?.razonSocial || providers.find(p => p.id === item.provider_id)?.razonSocial || '',
+          cost: cost?.value ?? null,
+          currency: cost?.currency ?? null,
+          kg_per_meter: kg != null ? Number(kg) : null,
+        };
+      }), `materiales-${editingBudget?.number || 'presupuesto'}.xlsx`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al descargar el Excel');
     }
   };
 
@@ -1109,10 +1152,11 @@ function BudgetsPageContent() {
                       {hasPricesRead && <TableCell>{formatTotals(b.totals_by_currency)}</TableCell>}
                       <TableCell>
                         {b.project ? (
-                          <Tooltip title="Ver proyecto">
+                          <Tooltip title={`Ver proyecto: ${b.project.code} - ${b.project.name}`}>
+                            {/* maxWidth: el label del Chip ya trunca con "…"; sin tope, un nombre largo ensancha la tabla y empuja las acciones fuera de vista. */}
                             <Chip
                               size="small" icon={<ProjectIcon />} label={`${b.project.code} - ${b.project.name}`}
-                              color="primary" variant="outlined" clickable
+                              color="primary" variant="outlined" clickable sx={{ maxWidth: 220 }}
                               onClick={() => router.push(`/dashboard/projects/${b.project!.id}`)}
                             />
                           </Tooltip>
@@ -1160,9 +1204,27 @@ function BudgetsPageContent() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
-        <DialogTitle>{editingBudget ? 'Editar Presupuesto' : 'Nuevo Presupuesto'}</DialogTitle>
+        <DialogTitle>
+          {editingBudget ? 'Editar Presupuesto' : 'Nuevo Presupuesto'}
+          {editingBudget?.quoteRequest?.client_quote_number && (
+            <Typography variant="body2" color="text.secondary" fontWeight={500}>
+              N° Cotización Cliente: {editingBudget.quoteRequest.client_quote_number}
+            </Typography>
+          )}
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
+            {(editingBudget?.quoteRequest?.files || []).length > 0 && (
+              <Alert severity="info" icon={<AttachIcon fontSize="small" />} sx={{ py: 0.5 }}>
+                <Typography variant="body2" fontWeight={600}>Pliego del Pedido de Cotización {editingBudget?.quoteRequest?.number}</Typography>
+                {(editingBudget?.quoteRequest?.files || []).map((f) => (
+                  <Typography key={f.id} variant="body2">
+                    <Link href={f.file_url} target="_blank" rel="noopener noreferrer" underline="hover">{f.file_name || 'Archivo'}</Link>
+                    {f.size_bytes ? ` (${f.size_bytes >= 1048576 ? `${(f.size_bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(f.size_bytes / 1024))} KB`})` : ''}
+                  </Typography>
+                ))}
+              </Alert>
+            )}
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 8 }}>
                 <TextField label="Título *" fullWidth value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
@@ -1176,24 +1238,10 @@ function BudgetsPageContent() {
               </Grid>
             </Grid>
 
-            <TextField label="Relación con un proyecto" select fullWidth value={projectLinkValue}
-              onChange={(e) => handleProjectLinkChange(e.target.value)}
-              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
-              helperText="Nuevo: genera un proyecto. Adicional: genera un subproyecto hijo. Vincular: no crea nada, usa el proyecto tal cual."
-            >
-              <option value="">— No, es un proyecto nuevo —</option>
-              <optgroup label="Es un adicional de (genera un subproyecto):">
-                {rootProjects.map((p) => <option key={`parent-${p.id}`} value={`parent:${p.id}`}>{p.code} - {p.name}</option>)}
-              </optgroup>
-              <optgroup label="Vincular a un proyecto ya existente (sin presupuesto):">
-                {existingProjectOptions.map((p) => <option key={`existing-${p.id}`} value={`existing:${p.id}`}>{p.code} - {p.name}</option>)}
-              </optgroup>
-            </TextField>
-
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField label="Cliente *" select fullWidth value={form.client_id} disabled={!!form.parent_project_id || !!form.existing_project_id || !!form.quote_request_id}
-                  onChange={(e) => setForm({ ...form, client_id: e.target.value, plant_id: '' })}
+                <TextField label="Cliente *" select fullWidth value={form.client_id} disabled={!!form.quote_request_id}
+                  onChange={(e) => changeClientOrPlant(e.target.value, '')}
                   SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
                   helperText={form.quote_request_id ? 'Viene del Pedido de Cotización — no se puede cambiar' : undefined}>
                   <option value="">— Seleccionar —</option>
@@ -1201,14 +1249,30 @@ function BudgetsPageContent() {
                 </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField label="Planta" select fullWidth value={form.plant_id} disabled={!!form.parent_project_id || !!form.existing_project_id || !!form.quote_request_id || !form.client_id}
-                  onChange={(e) => setForm({ ...form, plant_id: e.target.value })}
+                <TextField label="Planta" select fullWidth value={form.plant_id} disabled={!!form.quote_request_id || !form.client_id}
+                  onChange={(e) => changeClientOrPlant(form.client_id, e.target.value)}
                   SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
                   <option value="">— Ninguna —</option>
                   {plants.filter(p => p.client_id === Number(form.client_id)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </TextField>
               </Grid>
             </Grid>
+
+            <TextField label="Relación con un proyecto" select fullWidth value={projectLinkValue} disabled={!form.client_id}
+              onChange={(e) => handleProjectLinkChange(e.target.value)}
+              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
+              helperText={form.client_id
+                ? 'Nuevo: genera un proyecto. Adicional: genera un subproyecto hijo. Vincular: no crea nada, usa el proyecto tal cual.'
+                : 'Elegí primero el cliente para ver sus proyectos.'}
+            >
+              <option value="">— No, es un proyecto nuevo —</option>
+              <optgroup label="Es un adicional de (genera un subproyecto):">
+                {filteredRootProjects.map((p) => <option key={`parent-${p.id}`} value={`parent:${p.id}`}>{p.code} - {p.name}</option>)}
+              </optgroup>
+              <optgroup label="Vincular a un proyecto ya existente (sin presupuesto):">
+                {filteredExistingProjects.map((p) => <option key={`existing-${p.id}`} value={`existing:${p.id}`}>{p.code} - {p.name}</option>)}
+              </optgroup>
+            </TextField>
 
             <TextField label="Descripción" fullWidth multiline rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
 
@@ -1296,7 +1360,7 @@ function BudgetsPageContent() {
                         <option value="USD">USD</option>
                       </TextField>
                     </Grid>
-                    <Grid size={{ xs: 5, md: 1.5 }}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <Typography variant="body2" fontWeight="bold">
                         {formatMoney((line.quantity || 0) * (line.unit_price || 0), line.currency || form.currency)}
                       </Typography>
@@ -1314,8 +1378,11 @@ function BudgetsPageContent() {
             <Box display="flex" sx={{ flexDirection: { xs: 'column', sm: 'row' } }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1}>
               <Typography fontWeight="bold">Materiales</Typography>
               <Box display="flex" flexWrap="wrap" gap={1}>
-                <Button size="small" startIcon={<DownloadIcon />} component="a" href="/plantillas/plantilla-materiales.xlsx" download>
-                  Descargar plantilla
+                <Button size="small" startIcon={<DownloadIcon />} onClick={() => downloadMaterialsTemplate('budget')}>
+                  Descargar plantilla modelo
+                </Button>
+                <Button size="small" startIcon={<DownloadIcon />} onClick={handleExportExcel} disabled={form.materialItems.length === 0}>
+                  Descargar Excel
                 </Button>
                 <Button size="small" startIcon={<UploadIcon />} component="label" disabled={importing}>
                   {importing ? 'Importando…' : 'Importar Excel'}
@@ -1328,58 +1395,40 @@ function BudgetsPageContent() {
               const cost = lineCost(item);
               const margin = lineMargin(item);
               return (
-              <Grid container spacing={1} key={idx} alignItems="center">
-                <Grid size={{ xs: 12, md: hasPricesRead ? (hasCostsRead ? 4.7 : 6.2) : (hasCostsRead ? 5 : 7) }}>
-                  <Autocomplete<MaterialOption, false, false, true>
-                    freeSolo
-                    size="small"
-                    fullWidth
-                    options={materials}
-                    value={item.description}
-                    onChange={(_, newValue) => handleMaterialSelectChange(idx, typeof newValue === 'string' ? null : newValue)}
-                    onInputChange={(_, newInputValue, reason) => {
-                      if (reason !== 'input') return;
-                      const linkedDescription = materials.find(m => m.id === item.material_id)?.description;
-                      const stillLinked = item.material_id && newInputValue === linkedDescription;
-                      updateMaterialItem(idx, {
-                        description: newInputValue,
-                        material_id: stillLinked ? item.material_id : null,
-                        // Al desvincular se pierde la base de costo — sin eso no se puede
-                        // calcular el precio con margen (ver FLOWS.md).
-                        ...(stillLinked ? {} : { material_cost_snapshot: null, material_cost_currency: null, unit_price: 0 }),
-                      });
-                    }}
-                    getOptionLabel={(option) => typeof option === 'string' ? option : (option.description || option.inputValue || '')}
-                    filterOptions={(options, params) => {
-                      const filtered = materialFilter(options, params);
-                      const { inputValue } = params;
-                      const exists = options.some((o) => o.description.toLowerCase() === inputValue.toLowerCase());
-                      if (inputValue !== '' && !exists) {
-                        filtered.unshift({ description: `Agregar "${inputValue}"`, inputValue });
-                      }
-                      return filtered;
-                    }}
-                    renderOption={(props, option) => {
-                      const { key, ...optionProps } = props;
-                      return (
-                        <li key={key} {...optionProps}>
-                          {option.inputValue ? (
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <AddIcon fontSize="small" sx={{ color: 'success.main' }} />
-                              <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 500 }}>{option.description}</Typography>
-                            </Box>
-                          ) : option.description}
-                        </li>
-                      );
-                    }}
-                    renderInput={(params) => <TextField {...params} label="Descripción" helperText={item.material_id ? '✓ vinculado al catálogo' : ' '} />}
+              <Grid container spacing={1} key={idx} alignItems="center" sx={{ pb: 1.5, borderBottom: '1px dashed', borderColor: 'divider' }}>
+                {/* Fila 1: material, proveedor, cantidad, unidad. Fila 2: costo, margen y total. */}
+                <Grid size={{ xs: 12, md: 4.8 }}>
+                  <MaterialSelect
+                    materials={materials}
+                    value={item.material_id ?? null}
+                    onChange={(material) => handleMaterialSelectChange(idx, material)}
+                    onCreateRequest={(name) => handleMaterialCreateRequest(idx, name)}
+                    label="Material"
+                    helperText={item.material_id
+                      ? '✓ vinculado al catálogo'
+                      // Línea vieja cargada como texto libre: se ve qué decía para poder vincularla.
+                      : item.description ? `Sin vincular: "${item.description}" — elegí un material` : ' '}
                   />
                 </Grid>
-                <Grid size={{ xs: 6, md: hasPricesRead ? 1.1 : 1.5 }}>
+                <Grid size={{ xs: 12, md: 3.5 }}>
+                  <ProviderPriceAutocomplete
+                    providers={providers}
+                    prices={materials.find(m => m.id === item.material_id)?.providerPrices || []}
+                    value={item.material_id ? (item.provider_id ?? null) : null}
+                    valueFallback={item.provider}
+                    disabled={!item.material_id}
+                    disableClearable
+                    showPrices={hasCostsRead}
+                    onChange={(provider) => { if (provider) handleProviderChange(idx, provider); }}
+                    onCreate={createProviderInline}
+                    onError={setError}
+                  />
+                </Grid>
+                <Grid size={{ xs: 6, md: 1.2 }}>
                   <TextField type="number" size="small" fullWidth label="Cant." value={item.quantity}
                     onChange={(e) => updateMaterialItem(idx, { quantity: Number(e.target.value) })} />
                 </Grid>
-                <Grid size={{ xs: 6, md: hasPricesRead ? 1.2 : 1.6 }}>
+                <Grid size={{ xs: 6, md: 1.9 }}>
                   <Autocomplete<MaterialUnitOption>
                     size="small"
                     fullWidth
@@ -1403,8 +1452,11 @@ function BudgetsPageContent() {
                     renderInput={(params) => <TextField {...params} label="Unidad" />}
                   />
                 </Grid>
+                <Grid size={{ xs: 12, md: 0.6 }} textAlign={{ xs: 'right', md: 'center' }}>
+                  <IconButton size="small" color="error" onClick={() => removeMaterialItem(idx)}><DeleteIcon fontSize="small" /></IconButton>
+                </Grid>
                 {hasCostsRead && (
-                  <Grid size={{ xs: hasPricesRead ? 6 : 12, md: hasPricesRead ? 1.5 : 2.5 }}>
+                  <Grid size={{ xs: hasPricesRead ? 6 : 12, md: hasPricesRead ? 3 : 4 }}>
                     {item.material_id ? (
                       <CurrencyInput
                         size="small" fullWidth label="Costo real"
@@ -1432,7 +1484,7 @@ function BudgetsPageContent() {
                 )}
                 {hasPricesRead && (
                   <>
-                    <Grid size={{ xs: hasCostsRead ? 6 : 12, md: 1.5 }}>
+                    <Grid size={{ xs: hasCostsRead ? 6 : 12, md: 3 }}>
                       <TextField
                         type="number" size="small" fullWidth label="Margen %"
                         disabled={!cost}
@@ -1457,9 +1509,6 @@ function BudgetsPageContent() {
                     </Grid>
                   </>
                 )}
-                <Grid size={{ xs: hasPricesRead ? 1 : 2, md: hasPricesRead ? 0.5 : 1 }}>
-                  <IconButton size="small" color="error" onClick={() => removeMaterialItem(idx)}><DeleteIcon fontSize="small" /></IconButton>
-                </Grid>
               </Grid>
               );
             })}
@@ -1510,6 +1559,18 @@ function BudgetsPageContent() {
               {materialUnits.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}
             </TextField>
             {hasCostsRead && (
+              <ProviderPriceAutocomplete
+                providers={providers}
+                value={materialQuickAdd.providerId}
+                showPrices={false}
+                disableClearable
+                size="medium"
+                onChange={(provider) => { if (provider) setMaterialQuickAdd({ ...materialQuickAdd, providerId: provider.id }); }}
+                onCreate={createProviderInline}
+                onError={setError}
+              />
+            )}
+            {hasCostsRead && (
               <Stack direction="row" spacing={2}>
                 <CurrencyInput label="Costo real (opcional)" fullWidth
                   value={materialQuickAdd.cost === '' ? null : materialQuickAdd.cost}
@@ -1525,7 +1586,7 @@ function BudgetsPageContent() {
             )}
             {!hasCostsRead && (
               <Typography variant="caption" color="text.secondary">
-                Se crea sin costo — alguien con permiso lo completa después desde el catálogo de Materiales.
+                Se crea sin costo ni proveedor — alguien con permiso lo completa después desde el catálogo de Materiales.
               </Typography>
             )}
           </Stack>

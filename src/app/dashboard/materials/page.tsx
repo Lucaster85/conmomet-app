@@ -12,15 +12,31 @@ import CurrencyInput from '../../../components/CurrencyInput';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon,
   SearchOutlined as SearchIcon, UploadFileOutlined as UploadIcon, HistoryOutlined as HistoryIcon,
-  DownloadOutlined as DownloadIcon, Inventory2Outlined as TitleIcon,
+  DownloadOutlined as DownloadIcon, Inventory2Outlined as TitleIcon, StorefrontOutlined as ProvidersIcon,
+  RemoveCircleOutlineOutlined as RemoveIcon,
 } from '@mui/icons-material';
 import {
   Material, MaterialService, CreateMaterialData, MaterialUnit, MaterialUnitService,
-  BudgetCurrency, MaterialCostHistoryEntry,
+  BudgetCurrency, MaterialCostHistoryEntry, MaterialImportRow, MaterialProvider, MaterialProviderService,
 } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
+import ProviderPriceAutocomplete from '../../../components/materials/ProviderPriceAutocomplete';
+import ProvidersQuickDialog from '../../../components/materials/ProvidersQuickDialog';
+import { downloadMaterialsTemplate } from '../../../utils/materialsExcel';
+import { bestPrice, formatMaterialPrice } from '../../../utils/materialPrices';
 
-const emptyForm = (): CreateMaterialData => ({ description: '', material_unit_id: 0, current_cost: null, currency: 'ARS', is_active: true });
+// Fila editable de "Precios por proveedor" — provider_id null mientras no se eligió proveedor.
+interface PriceRow {
+  key: number;
+  provider_id: number | null;
+  cost: number | null;
+  currency: BudgetCurrency;
+}
+
+const emptyForm = (): CreateMaterialData => ({ description: '', material_unit_id: 0, kg_per_meter: null, is_active: true });
+let priceRowKey = 0;
+const newPriceRow = (providerId: number | null = null, cost: number | null = null, currency: BudgetCurrency = 'ARS'): PriceRow =>
+  ({ key: ++priceRowKey, provider_id: providerId, cost, currency });
 
 export default function MaterialsPage() {
   const { user } = useAuth();
@@ -43,7 +59,11 @@ export default function MaterialsPage() {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Material | null }>({ open: false, item: null });
 
   const [importing, setImporting] = useState(false);
-  const [importPreview, setImportPreview] = useState<{ description: string; unit: string; cost: number | null; currency: BudgetCurrency | null }[] | null>(null);
+  const [importPreview, setImportPreview] = useState<MaterialImportRow[] | null>(null);
+
+  const [providers, setProviders] = useState<MaterialProvider[]>([]);
+  const [providersDialogOpen, setProvidersDialogOpen] = useState(false);
+  const [priceRows, setPriceRows] = useState<PriceRow[]>([]);
 
   const [historyDialog, setHistoryDialog] = useState<{ open: boolean; item: Material | null; entries: MaterialCostHistoryEntry[]; loading: boolean }>(
     { open: false, item: null, entries: [], loading: false }
@@ -64,12 +84,14 @@ export default function MaterialsPage() {
     try {
       setLoading(true);
       setError('');
-      const [mats, mUnits] = await Promise.all([
+      const [mats, mUnits, mProviders] = await Promise.all([
         MaterialService.getAll(q ? { q } : undefined),
         MaterialUnitService.getAll(true),
+        MaterialProviderService.getAll(),
       ]);
       setItems(Array.isArray(mats) ? mats : []);
       setUnits(Array.isArray(mUnits) ? mUnits : []);
+      setProviders(Array.isArray(mProviders) ? mProviders : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar materiales');
     } finally {
@@ -87,6 +109,9 @@ export default function MaterialsPage() {
   const handleOpenCreate = () => {
     setEditingItem(null);
     setForm(emptyForm());
+    // Un material nuevo arranca con "Sin especificar", igual que una línea de presupuesto.
+    const unspecified = providers.find((p) => p.is_system);
+    setPriceRows(hasCostsRead && unspecified ? [newPriceRow(unspecified.id)] : []);
     setOpenDialog(true);
   };
 
@@ -95,10 +120,11 @@ export default function MaterialsPage() {
     setForm({
       description: item.description,
       material_unit_id: item.material_unit_id,
-      current_cost: item.current_cost ?? null,
-      currency: item.currency ?? 'ARS',
+      kg_per_meter: item.kg_per_meter != null ? Number(item.kg_per_meter) : null,
       is_active: item.is_active,
     });
+    setPriceRows((item.providerPrices || []).map((p) =>
+      newPriceRow(p.provider_id, p.cost != null ? Number(p.cost) : null, p.currency || 'ARS')));
     setOpenDialog(true);
   };
 
@@ -110,11 +136,21 @@ export default function MaterialsPage() {
     if (processing) return;
     setProcessing(true);
     try {
+      // Sin material_costs_read el backend ignora provider_prices (y los precios que vienen
+      // están vaciados), así que ni se mandan: no se puede pisar nada por accidente.
+      const body: CreateMaterialData = hasCostsRead
+        ? {
+            ...form,
+            provider_prices: priceRows
+              .filter((r) => r.provider_id)
+              .map((r) => ({ provider_id: r.provider_id as number, cost: r.cost, currency: r.cost != null ? r.currency : null })),
+          }
+        : form;
       if (editingItem) {
-        await MaterialService.update(editingItem.id, form);
+        await MaterialService.update(editingItem.id, body);
         setSuccess('Material actualizado');
       } else {
-        await MaterialService.create(form);
+        await MaterialService.create(body);
         setSuccess('Material creado');
       }
       setOpenDialog(false);
@@ -154,54 +190,39 @@ export default function MaterialsPage() {
   };
 
   const handleConfirmImport = async () => {
-    if (!importPreview) return;
+    if (!importPreview || processing) return;
+    setProcessing(true);
     try {
-      const unitsByLabel = new Map(units.map(u => [u.label.toLowerCase(), u]));
-      const newUnits: MaterialUnit[] = [];
-
-      // `items` puede estar filtrado por el buscador — traemos el catálogo completo para
-      // resolver duplicados contra TODOS los materiales, no solo los que se ven en pantalla.
-      const allMaterials = await MaterialService.getAll();
-      const materialsByDescription = new Map(allMaterials.map(m => [m.description.toLowerCase(), m]));
-
-      let created = 0;
-      let updated = 0;
-
-      for (const row of importPreview) {
-        const label = (row.unit || 'u').trim() || 'u';
-        const key = label.toLowerCase();
-        let unit = unitsByLabel.get(key);
-        if (!unit) {
-          unit = await MaterialUnitService.create({ label });
-          unitsByLabel.set(key, unit);
-          newUnits.push(unit);
-        }
-
-        const descKey = row.description.trim().toLowerCase();
-        const existing = materialsByDescription.get(descKey);
-        if (!existing) {
-          const createdMaterial = await MaterialService.create({
-            description: row.description,
-            material_unit_id: unit.id,
-            current_cost: row.cost,
-            currency: row.currency || 'ARS',
-          });
-          materialsByDescription.set(descKey, createdMaterial);
-          created++;
-        } else if (row.cost != null && existing.current_cost !== row.cost) {
-          const updatedMaterial = await MaterialService.update(existing.id, { current_cost: row.cost, currency: row.currency || 'ARS' });
-          materialsByDescription.set(descKey, updatedMaterial);
-          updated++;
-        }
-      }
-
-      if (newUnits.length > 0) setUnits(prev => [...prev, ...newUnits]);
+      const { summary } = await MaterialService.importCommit(importPreview);
       setImportPreview(null);
-      setSuccess(`${created} material(es) nuevo(s), ${updated} actualizado(s)`);
+      setSuccess(`${summary.materials_created} material(es) nuevo(s), ${summary.prices_updated} precio(s) actualizado(s)`);
       loadData(search || undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al confirmar la importación');
+    } finally {
+      setProcessing(false);
     }
+  };
+
+  const createProviderInline = async (name: string) => {
+    const created = await MaterialProviderService.create(name);
+    setProviders((prev) => (prev.some((p) => p.id === created.id) ? prev : [...prev, created]));
+    return created;
+  };
+
+  const reloadProviders = async () => {
+    setProviders(await MaterialProviderService.getAll());
+    loadData(search || undefined);
+  };
+
+  const updatePriceRow = (key: number, patch: Partial<PriceRow>) =>
+    setPriceRows((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+
+  const renderBestPrice = (item: Material) => {
+    const best = bestPrice(item);
+    const count = (item.providerPrices || []).length;
+    if (!best) return null;
+    return { label: formatMaterialPrice(best.cost, best.currency), count };
   };
 
   if (loading && items.length === 0) {
@@ -217,8 +238,9 @@ export default function MaterialsPage() {
         </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => loadData(search || undefined)} size="small">Actualizar</Button>
-          <Button variant="outlined" component="a" href="/plantillas/plantilla-materiales.xlsx" download startIcon={<DownloadIcon />} size="small">
-            Descargar plantilla
+          <Button variant="outlined" startIcon={<ProvidersIcon />} onClick={() => setProvidersDialogOpen(true)} size="small">Proveedores</Button>
+          <Button variant="outlined" onClick={() => downloadMaterialsTemplate('catalog')} startIcon={<DownloadIcon />} size="small">
+            Descargar plantilla modelo
           </Button>
           <Button variant="outlined" component="label" startIcon={<UploadIcon />} size="small" disabled={importing}>
             {importing ? 'Importando…' : 'Importar Excel'}
@@ -259,9 +281,18 @@ export default function MaterialsPage() {
                   <Box flex={1}>
                     <Typography variant="subtitle1" fontWeight="bold">{item.description}</Typography>
                     <Typography variant="body2" color="text.secondary">Unidad: {item.materialUnit?.label}</Typography>
-                    {hasCostsRead && (
+                    {item.kg_per_meter != null && (
+                      <Typography variant="body2" color="text.secondary">Kg x mL: {Number(item.kg_per_meter).toLocaleString('es-AR')}</Typography>
+                    )}
+                    {hasCostsRead ? (
                       <Typography variant="body2" fontWeight="medium">
-                        {item.current_cost != null ? `${item.currency === 'USD' ? 'US$' : '$'}${item.current_cost}` : 'Sin costo cargado'}
+                        {renderBestPrice(item)
+                          ? `Mejor precio: ${renderBestPrice(item)!.label} · ${renderBestPrice(item)!.count} proveedor(es)`
+                          : 'Sin costo cargado'}
+                      </Typography>
+                    ) : (item.providerPrices || []).length > 0 && (
+                      <Typography variant="body2" color="text.secondary">
+                        Proveedores: {(item.providerPrices || []).map((p) => p.provider?.razonSocial).filter(Boolean).join(', ')}
                       </Typography>
                     )}
                     <Chip size="small" label={item.is_active ? 'Activo' : 'Inactivo'} color={item.is_active ? 'success' : 'default'} sx={{ mt: 0.5 }} />
@@ -288,7 +319,8 @@ export default function MaterialsPage() {
               <TableRow sx={{ bgcolor: 'grey.50' }}>
                 <TableCell><strong>Descripción</strong></TableCell>
                 <TableCell><strong>Unidad</strong></TableCell>
-                {hasCostsRead && <TableCell><strong>Costo</strong></TableCell>}
+                <TableCell><strong>Kg x mL</strong></TableCell>
+                {hasCostsRead ? <TableCell><strong>Mejor precio</strong></TableCell> : <TableCell><strong>Proveedores</strong></TableCell>}
                 <TableCell><strong>Estado</strong></TableCell>
                 <TableCell align="center"><strong>Acciones</strong></TableCell>
               </TableRow>
@@ -296,7 +328,7 @@ export default function MaterialsPage() {
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={hasCostsRead ? 5 : 4} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                     <Typography variant="body2" color="text.secondary">No hay materiales que coincidan</Typography>
                   </TableCell>
                 </TableRow>
@@ -305,9 +337,19 @@ export default function MaterialsPage() {
                   <TableRow key={item.id} hover>
                     <TableCell><Typography fontWeight="medium">{item.description}</Typography></TableCell>
                     <TableCell>{item.materialUnit?.label}</TableCell>
-                    {hasCostsRead && (
+                    <TableCell>{item.kg_per_meter != null ? Number(item.kg_per_meter).toLocaleString('es-AR') : '—'}</TableCell>
+                    {hasCostsRead ? (
                       <TableCell>
-                        {item.current_cost != null ? `${item.currency === 'USD' ? 'US$' : '$'}${item.current_cost}` : <Typography variant="caption" color="text.secondary">Sin costo cargado</Typography>}
+                        {renderBestPrice(item) ? (
+                          <>
+                            <Typography variant="body2" fontWeight={600}>{renderBestPrice(item)!.label}</Typography>
+                            <Typography variant="caption" color="text.secondary">{renderBestPrice(item)!.count} proveedor(es)</Typography>
+                          </>
+                        ) : <Typography variant="caption" color="text.secondary">Sin costo cargado</Typography>}
+                      </TableCell>
+                    ) : (
+                      <TableCell>
+                        <Typography variant="body2">{(item.providerPrices || []).map((p) => p.provider?.razonSocial).filter(Boolean).join(', ') || '—'}</Typography>
                       </TableCell>
                     )}
                     <TableCell><Chip size="small" label={item.is_active ? 'Activo' : 'Inactivo'} color={item.is_active ? 'success' : 'default'} /></TableCell>
@@ -326,7 +368,7 @@ export default function MaterialsPage() {
         </TableContainer>
       </Box>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingItem ? 'Editar Material' : 'Nuevo Material'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -337,18 +379,50 @@ export default function MaterialsPage() {
               <option value="">— Seleccionar —</option>
               {units.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}
             </TextField>
+            <TextField label="Kg x mL" type="number" fullWidth value={form.kg_per_meter ?? ''}
+              onChange={(e) => setForm({ ...form, kg_per_meter: e.target.value === '' ? null : Number(e.target.value) })}
+              inputProps={{ min: 0, step: '0.001' }} helperText="Opcional — kilos por metro lineal (ejes, perfiles, etc.)" />
             {hasCostsRead && (
-              <Stack direction="row" spacing={2}>
-                <CurrencyInput label="Costo real" fullWidth value={form.current_cost ?? null}
-                  currency={form.currency || 'ARS'}
-                  onChange={(value) => setForm({ ...form, current_cost: value })} />
-                <TextField label="Moneda" select fullWidth value={form.currency || 'ARS'}
-                  onChange={(e) => setForm({ ...form, currency: e.target.value as BudgetCurrency })}
-                  SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-                  <option value="ARS">ARS</option>
-                  <option value="USD">USD</option>
-                </TextField>
-              </Stack>
+              <Box>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="subtitle2" fontWeight={700}>Precios por proveedor</Typography>
+                  <Button size="small" startIcon={<AddIcon />} onClick={() => setPriceRows((rows) => [...rows, newPriceRow()])}>Agregar</Button>
+                </Box>
+                {priceRows.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">Sin proveedores cargados.</Typography>
+                )}
+                <Stack spacing={1.5}>
+                  {priceRows.map((row) => (
+                    <Box key={row.key} display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={1} alignItems={{ sm: 'center' }}>
+                      <Box flex={2} minWidth={0}>
+                        <ProviderPriceAutocomplete
+                          providers={providers}
+                          value={row.provider_id}
+                          showPrices={false}
+                          excludeIds={priceRows.filter((r) => r.key !== row.key && r.provider_id).map((r) => r.provider_id as number)}
+                          onChange={(provider) => updatePriceRow(row.key, { provider_id: provider ? provider.id : null })}
+                          onCreate={createProviderInline}
+                          onError={setError}
+                        />
+                      </Box>
+                      <Box flex={1.4} minWidth={0}>
+                        <CurrencyInput label="Costo" size="small" fullWidth value={row.cost}
+                          currency={row.currency}
+                          onChange={(value) => updatePriceRow(row.key, { cost: value })} />
+                      </Box>
+                      <TextField size="small" select value={row.currency} sx={{ minWidth: 84 }}
+                        onChange={(e) => updatePriceRow(row.key, { currency: e.target.value as BudgetCurrency })}
+                        SelectProps={{ native: true }}>
+                        <option value="ARS">ARS</option>
+                        <option value="USD">USD</option>
+                      </TextField>
+                      <Tooltip title="Quitar proveedor">
+                        <IconButton size="small" color="error" onClick={() => setPriceRows((rows) => rows.filter((r) => r.key !== row.key))}><RemoveIcon fontSize="small" /></IconButton>
+                      </Tooltip>
+                    </Box>
+                  ))}
+                </Stack>
+              </Box>
             )}
             <FormControlLabel control={<Switch checked={!!form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />} label="Activo" />
           </Stack>
@@ -358,6 +432,13 @@ export default function MaterialsPage() {
           <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingItem ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
       </Dialog>
+
+      <ProvidersQuickDialog
+        open={providersDialogOpen}
+        onClose={() => setProvidersDialogOpen(false)}
+        providers={providers}
+        onChanged={reloadProviders}
+      />
 
       <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })}>
         <DialogTitle>Confirmar Eliminación</DialogTitle>
@@ -379,6 +460,8 @@ export default function MaterialsPage() {
                 <TableRow>
                   <TableCell>Descripción</TableCell>
                   <TableCell>Unidad</TableCell>
+                  <TableCell>Proveedor</TableCell>
+                  <TableCell align="right">Kg x mL</TableCell>
                   {hasCostsRead && <TableCell align="right">Costo</TableCell>}
                   {hasCostsRead && <TableCell>Moneda</TableCell>}
                 </TableRow>
@@ -388,6 +471,8 @@ export default function MaterialsPage() {
                   <TableRow key={i}>
                     <TableCell>{row.description}</TableCell>
                     <TableCell>{row.unit}</TableCell>
+                    <TableCell>{row.provider || <Typography variant="caption" color="text.secondary">Sin especificar</Typography>}</TableCell>
+                    <TableCell align="right">{row.kg_per_meter ?? '—'}</TableCell>
                     {hasCostsRead && <TableCell align="right">{row.cost ?? '—'}</TableCell>}
                     {hasCostsRead && <TableCell>{row.currency ?? '—'}</TableCell>}
                   </TableRow>
@@ -398,11 +483,11 @@ export default function MaterialsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setImportPreview(null)}>Cancelar</Button>
-          <Button onClick={handleConfirmImport} variant="contained">Confirmar e importar</Button>
+          <Button onClick={handleConfirmImport} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : 'Confirmar e importar'}</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={historyDialog.open} onClose={() => setHistoryDialog({ open: false, item: null, entries: [], loading: false })} maxWidth="xs" fullWidth>
+      <Dialog open={historyDialog.open} onClose={() => setHistoryDialog({ open: false, item: null, entries: [], loading: false })} maxWidth="sm" fullWidth>
         <DialogTitle>Historial de costos — {historyDialog.item?.description}</DialogTitle>
         <DialogContent>
           {historyDialog.loading ? (
@@ -414,6 +499,7 @@ export default function MaterialsPage() {
               <TableHead>
                 <TableRow>
                   <TableCell>Fecha</TableCell>
+                  <TableCell>Proveedor</TableCell>
                   <TableCell align="right">Costo</TableCell>
                   <TableCell>Quién</TableCell>
                 </TableRow>
@@ -422,7 +508,8 @@ export default function MaterialsPage() {
                 {historyDialog.entries.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell>{new Date(entry.createdAt).toLocaleDateString('es-AR')}</TableCell>
-                    <TableCell align="right">{entry.currency === 'USD' ? 'US$' : '$'}{entry.cost}</TableCell>
+                    <TableCell>{entry.provider?.razonSocial || '—'}</TableCell>
+                    <TableCell align="right">{formatMaterialPrice(entry.cost, entry.currency)}</TableCell>
                     <TableCell>{entry.changedBy ? `${entry.changedBy.lastname}, ${entry.changedBy.name}` : '—'}</TableCell>
                   </TableRow>
                 ))}

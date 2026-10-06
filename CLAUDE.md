@@ -74,3 +74,10 @@ frontend/backend reales que implementan ese flujo.
 `.md` correspondiente, en el mismo commit/PR que hace el cambio de código.** Si se agrega un
 flujo nuevo digno de documentar, sumarlo como un tema más en `helpTopics.ts` (con su propio
 `.md`), no como excepción aparte.
+
+## Selects con alta inline: usar `CreatableSelect`
+
+Cuando un campo es "elegir de una lista" y conviene poder **crear** una opción nueva sin salir
+del formulario, usar `src/components/common/CreatableSelect.tsx` (select genérico) en vez de un
+`Autocomplete` suelto con `createFilterOptions`. Ejemplos a copiar:
+`ProviderPriceAutocomplete` y `MaterialSelect` en `src/components/materials/`.

@@ -25,7 +25,9 @@ Cotización):
   visual — vencido igual se puede seguir trabajando con normalidad, no bloquea nada.
 - **Responsables**: una o más personas que van a armar el presupuesto. Se puede elegir más de
   una.
-- **Adjuntar documento**: el o los archivos que mandó el cliente, en cualquier formato.
+- **Adjuntar documento**: el o los archivos que mandó el cliente (el pliego), en cualquier formato.
+  Quien tenga asignado el pedido los abre o descarga haciendo clic en el nombre del archivo, tanto
+  desde **Ver** como desde **Editar**.
 
 ## El recorrido completo, de un vistazo
 

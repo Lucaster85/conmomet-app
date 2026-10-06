@@ -143,9 +143,21 @@ export const HELP_TOPICS: HelpTopic[] = [
     keywords: [
       'presupuesto', 'presupuestos', 'cotizacion', 'cotización', 'mano de obra', 'materiales',
       'importar excel', 'bonificacion', 'bonificación', 'descuento', 'aprobar', 'rechazar',
-      'enviar', 'duplicar', 'generar proyecto', 'rubro', 'margen', 'costo',
+      'enviar', 'duplicar', 'generar proyecto', 'rubro', 'margen', 'costo', 'proveedor',
+      'descargar excel', 'exportar',
     ],
     file: 'presupuestos.md',
+  },
+  {
+    id: 'materiales',
+    category: 'Pañol',
+    title: 'Materiales y Proveedores',
+    keywords: [
+      'material', 'materiales', 'catalogo', 'catálogo', 'proveedor', 'proveedores', 'precio',
+      'precios', 'costo', 'costos', 'sin especificar', 'kg x ml', 'kg por metro', 'unidad',
+      'importar excel', 'plantilla', 'historial de costos',
+    ],
+    file: 'materiales.md',
   },
   {
     // Categoría propia a propósito, mismo criterio que "Flota": el sistema de documentos es

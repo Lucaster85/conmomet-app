@@ -25,7 +25,14 @@ está graficado en el tema **Pedidos de Cotización**.
 Con el botón **"Nuevo Presupuesto"**:
 
 - **Título*** y **Moneda** (ARS/USD).
-- **Relación con un proyecto** — define qué pasa cuando se apruebe:
+- **Cliente*** (obligatorio) y **Planta** (se filtra según el cliente elegido). Si el
+  presupuesto nació de un Pedido de Cotización, estos dos campos vienen completos y quedan
+  bloqueados.
+- **Relación con un proyecto** — está **debajo de Cliente y Planta** y solo ofrece los
+  proyectos **del cliente elegido** (y de la planta, si elegiste una; sin planta se ven todos
+  los del cliente). Hasta que no elegís un cliente, el campo está deshabilitado. Si después
+  cambiás el cliente o la planta y el proyecto elegido ya no corresponde, se desvincula solo.
+  Define qué pasa cuando se apruebe:
   - Vacío: es para un **proyecto totalmente nuevo**, que se crea al aprobar.
   - **"Es un adicional de"** un proyecto existente: al aprobar, genera un **subproyecto**
     hijo de ese proyecto.
@@ -35,11 +42,14 @@ Con el botón **"Nuevo Presupuesto"**:
     presupuesto nunca tiene botón "Generar Proyecto" (no hay nada que generar). Un proyecto no
     se puede vincular a dos presupuestos a la vez. Mientras el presupuesto siga en Borrador, se
     puede cambiar o quitar este vínculo con normalidad.
-- **Cliente*** (obligatorio) y **Planta** (se filtra según el cliente elegido). Si elegiste
-  "adicional" o "vincular" arriba, o si el presupuesto nació de un Pedido de Cotización, estos
-  dos campos se completan solos y quedan bloqueados.
 - **Descripción**, **Fecha de Inicio/Fin previstas**, **Vigencia (días)** (solo informativo, no
   bloquea nada), **N° de OT** (opcional).
+
+Al **editar** un presupuesto que viene de un Pedido de Cotización, arriba del formulario aparece
+el **pliego** adjunto al pedido, con un enlace para abrirlo o descargarlo — así quien arma el
+presupuesto lo tiene a mano sin salir de acá. Lo ve quien tiene el pedido asignado o permiso
+para ver Pedidos de Cotización. El título del formulario muestra además el N° de Cotización del
+Cliente.
 
 El **N° de Cotización del Cliente** no se carga acá: es un dato del Pedido de Cotización, se
 carga una sola vez ahí y el presupuesto lo muestra a través de su PC (ver el tema **Pedidos de
@@ -63,19 +73,54 @@ estés escribiendo.
 ## Líneas de Materiales
 
 Cada línea tiene **Material** (se puede buscar o crear uno nuevo al vuelo sin salir del
-formulario), **Cantidad**, **Unidad**, y — con permiso para ver costos — el **costo real** del
-material y un **margen %**, con los que se calcula solo el precio al cliente.
+formulario), **Proveedor**, **Cantidad**, **Unidad**, y — con permiso para ver costos — el
+**costo real** del material y un **margen %**, con los que se calcula solo el precio al cliente.
 
-**Importante**: un material que todavía no tiene costo cargado en el catálogo **no se puede
-presupuestar** — el sistema pide cargarle el costo primero desde el catálogo de Materiales.
+### Elegir y crear el material
+
+El material es una lista con búsqueda: escribís para filtrar y, si no existe, aparece
+**"Agregar «…»"** para crearlo ahí mismo (pide además su unidad y, con permiso de costos, el
+proveedor y el costo). El material **siempre se elige del catálogo**: ya no se puede dejar
+texto libre sin vincular.
+
+### Proveedor de cada línea
+
+El costo de un material **depende del proveedor** (ver el tema **Materiales**). Al elegir un
+material de la lista, el proveedor queda en **"Sin especificar"** y el costo es el que tenga
+cargado ese proveedor — elegir otro es opcional. El selector de proveedor muestra cada uno con
+su precio (los que tienen precio primero, de menor a mayor) para poder compararlos, y también
+permite crear uno nuevo escribiendo el nombre.
+
+- **Cambiar de proveedor** cambia el costo de la línea al precio de ese proveedor.
+- Si el proveedor elegido **no tiene precio** para ese material, el costo queda vacío: se carga
+  a mano y queda guardado en el catálogo como el precio de ese proveedor.
+- **Editar el costo** de una línea actualiza el precio de **ese proveedor** en el catálogo (y
+  queda en el historial de costos). Guardar el presupuesto sin tocar el costo no genera nada.
+- Sin permiso de costos se ve el nombre del proveedor, pero no su precio.
+
+El proveedor es un dato interno: **no aparece** en la vista ni en la impresión para el cliente.
+
+**Importante**: un material que todavía no tiene costo cargado para el proveedor elegido **no se
+puede presupuestar** — hay que cargarlo en la línea o desde el catálogo de Materiales.
 
 ### Importar materiales desde Excel
 
-Botones **"Descargar plantilla"** e **"Importar Excel"**. El sistema busca una hoja llamada
+Botones **"Descargar plantilla modelo"** e **"Importar Excel"**. El sistema busca una hoja llamada
 "Materiales" dentro del archivo (si no la encuentra, usa la primera hoja) y reconoce las
-columnas aunque tengan nombres parecidos (ej. "cant" o "qty" para cantidad). **Esto no guarda
-nada por sí solo**: solo trae las filas leídas para previsualizar y agregarlas al formulario,
-que después se sigue editando y guardando de la forma normal.
+columnas aunque tengan nombres parecidos (ej. "cant" o "qty" para cantidad). Las columnas son:
+**Descripción, Cantidad, Unidad, Kg x mL, Proveedor, Costo Unitario y Moneda**. El costo puede
+quedar vacío, y si no hay moneda se usa la del presupuesto.
+
+Al importar, los materiales, unidades y proveedores que todavía no existan **se crean en el
+catálogo**, y el costo del Excel pasa a ser el precio de ese proveedor (nunca el precio al
+cliente). Después las filas se agregan al formulario con margen 0%, para seguir editando y
+guardando de la forma normal.
+
+### Descargar los materiales a Excel
+
+El botón **"Descargar Excel"** baja los materiales cargados en el presupuesto, con **las mismas
+columnas que la plantilla**: se puede editar y volver a importar. Funciona también antes de
+guardar el presupuesto. Sin permiso de costos, las columnas de costo y moneda salen vacías.
 
 ## El ciclo de estados
 
@@ -156,4 +201,4 @@ Alguien sin permiso de costos ni de precios igual puede hacer todo el trabajo op
 editar presupuestos (cargando rubros/cantidades y materiales/cantidades, sin precio),
 duplicarlos y generar el proyecto — simplemente no ve los montos.
 
-<!-- ref: conmomet-app/src/app/dashboard/budgets/page.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js -->
+<!-- ref: conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js -->
