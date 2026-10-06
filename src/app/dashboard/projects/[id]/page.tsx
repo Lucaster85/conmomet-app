@@ -832,7 +832,7 @@ export default function ProjectDetailPage() {
                       <Typography variant="body2" fontWeight={600}>{item.description}</Typography>
                       <Typography variant="body2" color="text.secondary">
                         {item.quantity} {item.materialUnit?.label}
-                        {hasPricesRead && ` · ${item.currency || project.budget?.currency} ${item.total_price}`}
+                        {` · ${item.currency || project.budget?.currency} ${item.total_price}`}
                       </Typography>
                     </Card>
                   ))}
@@ -846,7 +846,7 @@ export default function ProjectDetailPage() {
                       <TableRow>
                         <TableCell>Descripción</TableCell>
                         <TableCell align="right">Cantidad</TableCell>
-                        {hasPricesRead && <TableCell align="right">Total</TableCell>}
+                        <TableCell align="right">Total</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -854,7 +854,7 @@ export default function ProjectDetailPage() {
                         <TableRow key={i}>
                           <TableCell>{item.description}</TableCell>
                           <TableCell align="right">{item.quantity} {item.materialUnit?.label}</TableCell>
-                          {hasPricesRead && <TableCell align="right">{item.currency || project.budget?.currency} {item.total_price}</TableCell>}
+                          <TableCell align="right">{item.currency || project.budget?.currency} {item.total_price}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -862,10 +862,10 @@ export default function ProjectDetailPage() {
                 </TableContainer>
               </Box>
 
-              {hasPricesRead && (
-                <>
-                  <Divider sx={{ my: 2 }} />
-                  <Box textAlign="right">
+              <Divider sx={{ my: 2 }} />
+              <Box textAlign="right">
+                {hasPricesRead ? (
+                  <>
                     {(project.budget.labor_discount_percent ?? 0) > 0 && (
                       <Typography variant="body2" color="text.secondary">Bonificación mano de obra: {project.budget.labor_discount_percent}%</Typography>
                     )}
@@ -873,9 +873,12 @@ export default function ProjectDetailPage() {
                       <Typography variant="body2" color="text.secondary">Bonificación material: {project.budget.material_discount_percent}%</Typography>
                     )}
                     <Typography variant="h6" fontWeight="bold">Total: {formatTotals(project.budget.totals_by_currency)}</Typography>
-                  </Box>
-                </>
-              )}
+                  </>
+                ) : (
+                  // Sin budget_prices_read no hay total general (incluiría la mano de obra): solo el subtotal de materiales.
+                  <Typography variant="h6" fontWeight="bold">Materiales: {formatTotals(project.budget.materials_totals_by_currency)}</Typography>
+                )}
+              </Box>
             </Box>
           )}
         </Paper>

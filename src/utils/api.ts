@@ -1725,6 +1725,9 @@ export interface Budget {
   laborLines?: BudgetLaborLine[];
   materialItems?: BudgetMaterialItem[];
   totals_by_currency?: Record<BudgetCurrency, number>;
+  // Subtotal bruto de materiales (sin bonificación). Siempre viene; es lo que ve quien no tiene
+  // budget_prices_read, que no recibe totals_by_currency (incluye mano de obra).
+  materials_totals_by_currency?: Record<BudgetCurrency, number>;
   createdAt: string;
 }
 

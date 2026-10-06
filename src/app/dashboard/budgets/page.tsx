@@ -170,10 +170,14 @@ function BudgetsPageContent() {
     ? ((user as unknown as Record<string, unknown>).permissions as string[])
     : [];
   const hasCostsRead = permissions.includes('admin_granted') || permissions.includes('material_costs_read');
+  // budget_prices_read gatea SOLO la mano de obra (valores), el total general y la bonificación.
+  // Los precios y el margen de los materiales los ve y carga cualquiera con acceso a Presupuestos.
   const hasPricesRead = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
   // Enviar al cliente es un permiso aparte de budgets_update: quien arma el presupuesto puede
   // editarlo pero no necesariamente ponerlo en manos del cliente (ver FLOWS.md flujo 27).
-  const hasSendPermission = permissions.includes('admin_granted') || permissions.includes('budgets_send');
+  // Además, quien no ve los valores de mano de obra (hasPricesRead) no puede enviar: lo que le
+  // llegaría al cliente sería un presupuesto incompleto. El backend lo exige también.
+  const hasSendPermission = (permissions.includes('admin_granted') || permissions.includes('budgets_send')) && hasPricesRead;
   // Entregar a gerencia es una transición del PC, no del presupuesto: pide el permiso granular
   // de ese módulo. Gerencia (quote_requests_assign) también puede hacerlo (ver FLOWS.md 27d).
   const hasDeliverPermission = permissions.includes('admin_granted')
@@ -749,13 +753,13 @@ function BudgetsPageContent() {
   const materialGridTemplate = [
     'minmax(0, 2.4fr)', 'minmax(0, 1.8fr)', '68px', '92px',
     ...(hasCostsRead ? ['118px'] : []),
-    ...(hasPricesRead ? ['76px', '112px'] : []),
+    '76px', '112px',
     '36px',
   ].join(' ');
   const materialColumnHeaders = [
     'Material', 'Proveedor', 'Cant.', 'Unidad',
     ...(hasCostsRead ? ['Costo real'] : []),
-    ...(hasPricesRead ? ['Margen %', 'Total'] : []),
+    'Margen %', 'Total',
     '',
   ];
 
@@ -845,7 +849,7 @@ function BudgetsPageContent() {
     ) : (
       <TextField size="small" fullWidth label={lbl('Costo real')} disabled value="Sin vincular" InputLabelProps={shrink} />
     );
-    const marginField = !hasPricesRead ? null : (
+    const marginField = (
       <TextField
         type="number" size="small" fullWidth label={lbl('Margen %')}
         disabled={!cost}
@@ -858,7 +862,7 @@ function BudgetsPageContent() {
         InputLabelProps={shrink}
       />
     );
-    const totalField = !hasPricesRead ? null : (
+    const totalField = (
       <Tooltip title={cost ? `${formatMoney(item.unit_price || 0, lineCurrency)} c/u` : 'Vinculá un material con costo'}>
         <Box minWidth={0}>
           <Typography variant="body2" fontWeight="bold" noWrap>
@@ -917,7 +921,7 @@ function BudgetsPageContent() {
             {costField}
             {marginField}
           </Box>
-          {totalField && (
+          {(
             <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
               <Typography variant="caption" color="text.secondary">Total</Typography>
               <Box textAlign="right" minWidth={0}>{totalField}</Box>
@@ -974,7 +978,8 @@ function BudgetsPageContent() {
         // Solo tiene efecto en el alta — el backend lo ignora en update, el vínculo con el PC
         // queda fijo desde que nace el presupuesto (ver FLOWS.md).
         quote_request_id: !editingBudget && form.quote_request_id ? Number(form.quote_request_id) : undefined,
-        laborLines: form.laborLines,
+        // Sin budget_prices_read la mano de obra es de solo lectura: no se manda y el backend la conserva.
+        laborLines: hasPricesRead ? form.laborLines : undefined,
         materialItems: form.materialItems,
       };
       if (editingBudget) {
@@ -1227,7 +1232,9 @@ function BudgetsPageContent() {
                         </Box>
                       )}
                     </Box>
-                    {hasPricesRead && <Typography variant="body2">{formatTotals(b.totals_by_currency)}</Typography>}
+                    <Typography variant="body2">
+                      {hasPricesRead ? formatTotals(b.totals_by_currency) : `Materiales: ${formatTotals(b.materials_totals_by_currency)}`}
+                    </Typography>
                     {b.project && (
                       <Chip
                         size="small" icon={<ProjectIcon />} label={`${b.project.code} - ${b.project.name}`}
@@ -1238,7 +1245,7 @@ function BudgetsPageContent() {
                     )}
                     <Divider />
                     <Box display="flex" flexWrap="wrap" gap={0.5}>
-                      <Tooltip title="Ver / Imprimir"><IconButton size="small" color="secondary" onClick={() => setPrintBudget(b)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title={hasPricesRead ? 'Ver / Imprimir' : 'Ver'}><IconButton size="small" color="secondary" onClick={() => setPrintBudget(b)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
                       {b.status === 'draft' && (
                         <>
                           <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(b)}><EditIcon fontSize="small" /></IconButton></Tooltip>
@@ -1284,7 +1291,7 @@ function BudgetsPageContent() {
                     <TableCell><strong>Título</strong></TableCell>
                     <TableCell><strong>Cliente</strong></TableCell>
                     <TableCell><strong>Estado</strong></TableCell>
-                    {hasPricesRead && <TableCell><strong>Total</strong></TableCell>}
+                    <TableCell><strong>{hasPricesRead ? 'Total' : 'Total materiales'}</strong></TableCell>
                     <TableCell><strong>Proyecto</strong></TableCell>
                     <TableCell align="center"><strong>Acciones</strong></TableCell>
                   </TableRow>
@@ -1338,7 +1345,7 @@ function BudgetsPageContent() {
                           </Box>
                         )}
                       </TableCell>
-                      {hasPricesRead && <TableCell>{formatTotals(b.totals_by_currency)}</TableCell>}
+                      <TableCell>{formatTotals(hasPricesRead ? b.totals_by_currency : b.materials_totals_by_currency)}</TableCell>
                       <TableCell>
                         {b.project ? (
                           <Tooltip title={`Ver proyecto: ${b.project.code} - ${b.project.name}`}>
@@ -1352,7 +1359,7 @@ function BudgetsPageContent() {
                         ) : '—'}
                       </TableCell>
                       <TableCell align="center">
-                        <Tooltip title="Ver / Imprimir"><IconButton size="small" color="secondary" onClick={() => setPrintBudget(b)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
+                        <Tooltip title={hasPricesRead ? 'Ver / Imprimir' : 'Ver'}><IconButton size="small" color="secondary" onClick={() => setPrintBudget(b)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
                         {b.status === 'draft' && (
                           <>
                             <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(b)}><EditIcon fontSize="small" /></IconButton></Tooltip>
@@ -1502,12 +1509,19 @@ function BudgetsPageContent() {
             )}
             <Box display="flex" justifyContent="space-between" alignItems="center">
               <Typography fontWeight="bold">Mano de Obra</Typography>
-              <Button size="small" startIcon={<AddIcon />} onClick={addLaborLine} disabled={itemTypes.length === 0}>Agregar línea</Button>
+              {hasPricesRead && (
+                <Button size="small" startIcon={<AddIcon />} onClick={addLaborLine} disabled={itemTypes.length === 0}>Agregar línea</Button>
+              )}
             </Box>
+            {!hasPricesRead && (
+              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+                Solo lectura: la mano de obra la carga quien tiene permiso de precios.
+              </Typography>
+            )}
             {form.laborLines.map((line, idx) => (
               <Grid container spacing={1} key={idx} alignItems="center">
                 <Grid size={{ xs: 12, md: hasPricesRead ? 4 : 6 }}>
-                  <TextField select fullWidth size="small" label="Rubro" value={line.budget_item_type_id}
+                  <TextField select fullWidth size="small" label="Rubro" value={line.budget_item_type_id} disabled={!hasPricesRead}
                     onChange={(e) => {
                       const newTypeId = Number(e.target.value);
                       const rate = rateForItemType(newTypeId);
@@ -1524,8 +1538,8 @@ function BudgetsPageContent() {
                     {itemTypes.map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}
                   </TextField>
                 </Grid>
-                <Grid size={{ xs: hasPricesRead ? 6 : 10, md: hasPricesRead ? 2 : 5 }}>
-                  <TextField type="number" size="small" fullWidth label="Cantidad" value={line.quantity}
+                <Grid size={{ xs: hasPricesRead ? 6 : 12, md: hasPricesRead ? 2 : 6 }}>
+                  <TextField type="number" size="small" fullWidth label="Cantidad" value={line.quantity} disabled={!hasPricesRead}
                     onChange={(e) => updateLaborLine(idx, { quantity: Number(e.target.value) })}
                     helperText={(() => {
                       const bucket = linkedProjectHourBuckets.find(b => b.budget_item_type_id === line.budget_item_type_id);
@@ -1556,9 +1570,11 @@ function BudgetsPageContent() {
                     </Grid>
                   </>
                 )}
-                <Grid size={{ xs: hasPricesRead ? 1 : 2, md: hasPricesRead ? 0.5 : 1 }}>
-                  <IconButton size="small" color="error" onClick={() => removeLaborLine(idx)}><DeleteIcon fontSize="small" /></IconButton>
-                </Grid>
+                {hasPricesRead && (
+                  <Grid size={{ xs: 1, md: 0.5 }}>
+                    <IconButton size="small" color="error" onClick={() => removeLaborLine(idx)}><DeleteIcon fontSize="small" /></IconButton>
+                  </Grid>
+                )}
               </Grid>
             ))}
 
@@ -1595,15 +1611,19 @@ function BudgetsPageContent() {
               </Box>
             )}
 
-            {hasPricesRead && (
+            {(
               <>
                 <Divider />
                 <Box textAlign="right">
-                  <Typography variant="body2">Mano de obra: {formatMoney(laborTotal('ARS'), 'ARS')} {laborTotal('USD') > 0 && `+ ${formatMoney(laborTotal('USD'), 'USD')}`}</Typography>
+                  {hasPricesRead && (
+                    <Typography variant="body2">Mano de obra: {formatMoney(laborTotal('ARS'), 'ARS')} {laborTotal('USD') > 0 && `+ ${formatMoney(laborTotal('USD'), 'USD')}`}</Typography>
+                  )}
                   <Typography variant="body2">Materiales: {formatMoney(materialsTotal('ARS'), 'ARS')} {materialsTotal('USD') > 0 && `+ ${formatMoney(materialsTotal('USD'), 'USD')}`}</Typography>
-                  <Typography variant="h6" fontWeight="bold">
-                    Total: {formatMoney(laborTotal('ARS') + materialsTotal('ARS'), 'ARS')} {(laborTotal('USD') + materialsTotal('USD')) > 0 && `+ ${formatMoney(laborTotal('USD') + materialsTotal('USD'), 'USD')}`}
-                  </Typography>
+                  {hasPricesRead && (
+                    <Typography variant="h6" fontWeight="bold">
+                      Total: {formatMoney(laborTotal('ARS') + materialsTotal('ARS'), 'ARS')} {(laborTotal('USD') + materialsTotal('USD')) > 0 && `+ ${formatMoney(laborTotal('USD') + materialsTotal('USD'), 'USD')}`}
+                    </Typography>
+                  )}
                   {hasCostsRead && (totalMargin('ARS') !== 0 || totalMargin('USD') !== 0) && (
                     <Typography variant="body2" color="text.secondary">
                       Margen materiales: {formatMoney(totalMargin('ARS'), 'ARS')}
@@ -1906,8 +1926,8 @@ function BudgetsPageContent() {
                         <TableRow>
                           <TableCell>Descripción</TableCell>
                           <TableCell align="right">Cantidad</TableCell>
-                          {hasPricesRead && <TableCell align="right">Precio Unitario</TableCell>}
-                          {hasPricesRead && <TableCell align="right">Total</TableCell>}
+                          <TableCell align="right">Precio Unitario</TableCell>
+                          <TableCell align="right">Total</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -1915,8 +1935,8 @@ function BudgetsPageContent() {
                           <TableRow key={i}>
                             <TableCell>{item.description}</TableCell>
                             <TableCell align="right">{item.quantity} {item.materialUnit?.label}</TableCell>
-                            {hasPricesRead && <TableCell align="right">{formatMoney(item.unit_price, item.currency || printBudget.currency)}</TableCell>}
-                            {hasPricesRead && <TableCell align="right">{formatMoney(item.total_price || 0, item.currency || printBudget.currency)}</TableCell>}
+                            <TableCell align="right">{formatMoney(item.unit_price, item.currency || printBudget.currency)}</TableCell>
+                            <TableCell align="right">{formatMoney(item.total_price || 0, item.currency || printBudget.currency)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1925,19 +1945,23 @@ function BudgetsPageContent() {
                 </>
               )}
 
-              {hasPricesRead && (
+              {(
                 <>
                   <Divider sx={{ my: 2 }} />
                   <Box textAlign="right">
-                    <Typography variant="body2">Mano de obra: {formatTotals(sumLaborByCurrency(printBudget.laborLines, printBudget.currency))}</Typography>
-                    {(printBudget.labor_discount_percent ?? 0) > 0 && (
-                      <Typography variant="body2" color="text.secondary">Bonificación mano de obra: {printBudget.labor_discount_percent}%</Typography>
+                    {hasPricesRead && (
+                      <>
+                        <Typography variant="body2">Mano de obra: {formatTotals(sumLaborByCurrency(printBudget.laborLines, printBudget.currency))}</Typography>
+                        {(printBudget.labor_discount_percent ?? 0) > 0 && (
+                          <Typography variant="body2" color="text.secondary">Bonificación mano de obra: {printBudget.labor_discount_percent}%</Typography>
+                        )}
+                      </>
                     )}
                     <Typography variant="body2">Materiales: {formatTotals(sumMaterialsByCurrency(printBudget.materialItems, printBudget.currency))}</Typography>
-                    {(printBudget.material_discount_percent ?? 0) > 0 && (
+                    {hasPricesRead && (printBudget.material_discount_percent ?? 0) > 0 && (
                       <Typography variant="body2" color="text.secondary">Bonificación material: {printBudget.material_discount_percent}%</Typography>
                     )}
-                    <Typography variant="h6" fontWeight="bold">Total: {formatTotals(printBudget.totals_by_currency)}</Typography>
+                    {hasPricesRead && <Typography variant="h6" fontWeight="bold">Total: {formatTotals(printBudget.totals_by_currency)}</Typography>}
                   </Box>
                 </>
               )}
@@ -1953,7 +1977,8 @@ function BudgetsPageContent() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPrintBudget(null)}>Cerrar</Button>
-          <Button onClick={handlePrint} variant="contained" startIcon={<PrintIcon />}>Imprimir</Button>
+          {/* Sin budget_prices_read la vista no incluye la mano de obra: imprimirla daría un presupuesto incompleto. */}
+          {hasPricesRead && <Button onClick={handlePrint} variant="contained" startIcon={<PrintIcon />}>Imprimir</Button>}
         </DialogActions>
       </Dialog>
     </Box>

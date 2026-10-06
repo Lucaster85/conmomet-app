@@ -193,18 +193,31 @@ Un presupuesto que no venía de un PC se duplica directo, sin preguntar nada.
 ## Quién ve precios y costos, y quién puede enviar
 
 El acceso al módulo lo da un permiso general, pero hay tres cosas que se gatean por separado:
-**ver los costos**, **ver los precios** y **enviar el presupuesto al cliente**.
+**ver los costos**, **ver los precios de mano de obra** y **enviar el presupuesto al cliente**.
 
 - Sin permiso de **costos**, no se ve el costo real de los materiales.
-- Sin permiso de **precios**, no se ven los valores unitarios de mano de obra, ni los precios
-  ni márgenes de materiales, ni los totales, ni la Bonificación, ni las Tarifas por Rubro del
-  cliente.
+- Sin permiso de **precios**, no se ven los **valores de mano de obra** (valor unitario, moneda y
+  total de cada rubro), ni el **total general** del presupuesto (porque incluye la mano de obra),
+  ni la **Bonificación**, ni las Tarifas por Rubro del cliente. **Los precios y el margen de los
+  materiales NO dependen de este permiso**: cualquiera con acceso a Presupuestos los ve y carga
+  el margen. Quien no tiene este permiso ve, en lugar del total general, el **subtotal de
+  Materiales** (la suma de las líneas que ve, sin bonificación).
+  - La **mano de obra queda en solo lectura**: se ven el tipo de hora (rubro) y la cantidad, pero
+    no se pueden agregar, editar ni quitar líneas. Al guardar, **nunca se pisa** lo que ya cargó
+    alguien con permiso de precios.
+  - **No puede enviar ni imprimir.** El botón "Enviar" no aparece (aunque tenga el permiso de
+    enviar) y en "Ver" no hay botón "Imprimir": lo que saldría sería un presupuesto incompleto,
+    sin la mano de obra.
 - Sin permiso de **enviar**, no aparece el botón **"Enviar"**: se puede armar el presupuesto
   completo pero no presentarlo al cliente. Es el caso típico de quien cotiza a partir de un
   Pedido de Cotización y se lo entrega a gerencia para que lo revise y lo envíe.
 
-Alguien sin permiso de costos ni de precios igual puede hacer todo el trabajo operativo — crear y
-editar presupuestos (cargando rubros/cantidades y materiales/cantidades, sin precio),
-duplicarlos y generar el proyecto — simplemente no ve los montos.
+Ojo con una combinación: el precio al cliente se calcula como costo + margen, así que quien ve el
+precio y el margen de un material puede deducir su costo. Para cargar el margen hace falta ver el
+costo real (permiso de **costos**), por eso el perfil que arma materiales necesita ese permiso.
+
+Alguien sin permiso de precios igual puede hacer el trabajo con materiales — crear y editar
+presupuestos, cargar materiales con su margen, duplicarlos y generar el proyecto — pero no
+carga ni modifica la mano de obra, ni envía ni imprime.
 
 <!-- ref: conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js -->
