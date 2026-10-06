@@ -88,7 +88,8 @@ export default function ProjectsPage() {
       setLoading(true);
       setError('');
       const [projs, clis, plts] = await Promise.all([
-        ProjectService.getAll(),
+        // Los adicionales (con y sin padre) se listan solo en su módulo.
+        ProjectService.getAll({ is_additional: false }),
         ClientService.getAll({ is_active: true }),
         PlantService.getAll(),
       ]);

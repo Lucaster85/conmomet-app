@@ -18,6 +18,7 @@ import {
   AssetAssignment, AssetAssignmentService, AssetAssignmentStatus, AssetCondition, AssetCompleteness,
   Tool, ToolService, Vehicle, VehicleService, Employee, EmployeeService, Project, ProjectService,
 } from '../../../utils/api';
+import { formatProjectOptionLabel } from '../../../utils/projectCode';
 
 const STATUS_LABELS: Record<AssetAssignmentStatus, string> = {
   reserved: 'Reservada',
@@ -384,7 +385,7 @@ export default function AssetAssignmentsPage() {
 
             <Autocomplete
               options={projects}
-              getOptionLabel={(p) => p.name}
+              getOptionLabel={(p) => formatProjectOptionLabel(p, p.name)}
               value={projects.find(p => p.id === createForm.project_id) || null}
               onChange={(_, val) => setCreateForm({ ...createForm, project_id: val ? val.id : '' })}
               renderInput={(params) => <TextField {...params} label="Proyecto (opcional)" placeholder="Buscar proyecto..." />}

@@ -624,6 +624,8 @@ export interface Project {
   client_id: number;
   plant_id?: number;
   parent_id?: number;
+  // Adicional: proyecto urgente con código A-AAAA-NNN, con o sin padre (módulo Adicionales).
+  is_additional?: boolean;
   description?: string;
   hour_buckets?: HourBucket[];
   budgeted_hours_own?: number;
@@ -1001,7 +1003,7 @@ export class PublicInvitationService {
 }
 
 export class ProjectService {
-  static async getAll(params?: { client_id?: number; status?: string; plant_id?: number; include_children?: boolean; without_budget?: boolean }): Promise<Project[]> {
+  static async getAll(params?: { client_id?: number; status?: string; plant_id?: number; include_children?: boolean; without_budget?: boolean; is_additional?: boolean }): Promise<Project[]> {
     let url = `${API_BASE_URL}/projects`;
     if (params) {
       const qs = new URLSearchParams();
@@ -1010,6 +1012,7 @@ export class ProjectService {
       if (params.plant_id) qs.append('plant_id', params.plant_id.toString());
       if (params.include_children) qs.append('include_children', 'true');
       if (params.without_budget) qs.append('without_budget', 'true');
+      if (params.is_additional !== undefined) qs.append('is_additional', String(params.is_additional));
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);
@@ -1711,7 +1714,7 @@ export interface Budget {
   plant?: { id: number; name: string };
   parentProject?: { id: number; name: string; code: string };
   existingProject?: { id: number; name: string; code: string };
-  project?: { id: number; name: string; code: string };
+  project?: { id: number; name: string; code: string; is_additional?: boolean; parent?: { id: number; name: string; code: string } };
   createdBy?: { id: number; name: string; lastname: string };
   approvedBy?: { id: number; name: string; lastname: string };
   // Contacto externo del cliente que aprobó — distinto de approvedBy (usuario interno)
@@ -4941,4 +4944,233 @@ export interface PushServerStatus {
   devices: number;
   thisDeviceRegistered: boolean | null;
   vapidConfigured: boolean;
+}
+
+// ============== Adicionales ==============
+// Un adicional es un proyecto urgente (Project.is_additional) que nace con su presupuesto en
+// borrador, con o sin proyecto padre. Los materiales se cargan acá pero viven en el presupuesto
+// vigente; el margen y el precio al cliente nunca se ven ni se editan desde este módulo.
+
+export interface AdditionalBudgetSummary {
+  id: number;
+  number: string;
+  status: Budget['status'];
+  currency?: BudgetCurrency;
+  rejection_reason?: string | null;
+  rejected_at?: string | null;
+  sent_at?: string | null;
+  // Solo en budget_history
+  created_at?: string;
+}
+
+// Línea de material de un adicional: sin margen ni precio. El costo solo viene con material_costs_read.
+export interface AdditionalMaterialItem {
+  id?: number;
+  material_id: number | null;
+  provider_id?: number | null;
+  provider?: MaterialProvider | null;
+  description: string;
+  quantity: number;
+  material_unit_id: number;
+  materialUnit?: MaterialUnit;
+  material?: { id: number; description: string } | null;
+  material_cost_snapshot?: number | null;
+  material_cost_currency?: BudgetCurrency | null;
+}
+
+export interface Additional extends Project {
+  // Presupuesto vigente: el último no rechazado o, si todos están rechazados, el último rechazado.
+  current_budget: AdditionalBudgetSummary | null;
+  current_budget_items?: AdditionalMaterialItem[];
+  budget_history?: AdditionalBudgetSummary[];
+  consumed_hours_own: number;
+}
+
+export interface CreateAdditionalData {
+  name: string;
+  client_id?: number;
+  plant_id?: number | null;
+  parent_id?: number | null;
+  description?: string;
+  start_date?: string;
+  currency?: BudgetCurrency;
+}
+
+export interface UpdateAdditionalData {
+  name?: string;
+  description?: string | null;
+  plant_id?: number | null;
+  // null quita el padre
+  parent_id?: number | null;
+  status?: Project['status'];
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
+export interface AdditionalParentOption {
+  id: number;
+  code: string;
+  name: string;
+  client_id: number;
+  plant_id?: number | null;
+  plant?: { id: number; name: string } | null;
+}
+
+export interface AdditionalClientOption { id: number; razonSocial: string }
+export interface AdditionalPlantOption { id: number; name: string; client_id: number }
+
+export class AdditionalService {
+  private static async parse<T>(response: Response, fallback: string): Promise<T> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallback);
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async getAll(params?: { client_id?: number; status?: string; has_parent?: boolean; q?: string }): Promise<Additional[]> {
+    const qs = new URLSearchParams();
+    if (params?.client_id) qs.append('client_id', String(params.client_id));
+    if (params?.status) qs.append('status', params.status);
+    if (params?.has_parent !== undefined) qs.append('has_parent', String(params.has_parent));
+    if (params?.q) qs.append('q', params.q);
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals${qs.toString() ? `?${qs}` : ''}`);
+    return (await this.parse<Additional[]>(response, 'Error al obtener adicionales')) || [];
+  }
+
+  static async get(id: number): Promise<Additional> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/${id}`);
+    return this.parse<Additional>(response, 'Error al obtener el adicional');
+  }
+
+  static async create(body: CreateAdditionalData): Promise<Additional> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals`, { method: 'POST', body: JSON.stringify(body) });
+    return this.parse<Additional>(response, 'Error al crear el adicional');
+  }
+
+  static async update(id: number, body: UpdateAdditionalData): Promise<Additional> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+    return this.parse<Additional>(response, 'Error al actualizar el adicional');
+  }
+
+  // Materiales del presupuesto vigente (solo en borrador; 409 si ya se envió).
+  static async updateMaterials(id: number, items: AdditionalMaterialItem[]): Promise<AdditionalMaterialItem[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/${id}/materials`, { method: 'PUT', body: JSON.stringify({ items }) });
+    return this.parse<AdditionalMaterialItem[]>(response, 'Error al guardar los materiales');
+  }
+
+  // "Nuevo presupuesto" a partir del rechazado, vinculado al mismo adicional.
+  static async newBudget(id: number): Promise<Additional> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/${id}/budgets`, { method: 'POST' });
+    return this.parse<Additional>(response, 'Error al crear el presupuesto nuevo');
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al eliminar el adicional');
+    }
+  }
+
+  static async getParentOptions(clientId: number): Promise<AdditionalParentOption[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/parent-options?client_id=${clientId}`);
+    return (await this.parse<AdditionalParentOption[]>(response, 'Error al obtener los proyectos padre')) || [];
+  }
+
+  // Listas mínimas (id + nombre) de clientes y plantas, para que alcance con additionals_*.
+  static async getCatalogClients(): Promise<AdditionalClientOption[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/catalog/clients`);
+    return (await this.parse<AdditionalClientOption[]>(response, 'Error al obtener clientes')) || [];
+  }
+
+  static async getCatalogPlants(): Promise<AdditionalPlantOption[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/catalog/plants`);
+    return (await this.parse<AdditionalPlantOption[]>(response, 'Error al obtener plantas')) || [];
+  }
+
+  // Catálogo para cargar materiales: mismos handlers que Materiales, pero bajo /additionals para
+  // que alcance con los permisos additionals_* (el costo sigue gateado por material_costs_read).
+  static async getCatalogMaterials(): Promise<Material[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/catalog/materials?is_active=true`);
+    return (await this.parse<Material[]>(response, 'Error al obtener materiales')) || [];
+  }
+
+  static async getCatalogUnits(): Promise<MaterialUnit[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/catalog/units?is_active=true`);
+    return (await this.parse<MaterialUnit[]>(response, 'Error al obtener unidades')) || [];
+  }
+
+  static async getCatalogProviders(): Promise<MaterialProvider[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/catalog/providers`);
+    return (await this.parse<MaterialProvider[]>(response, 'Error al obtener proveedores')) || [];
+  }
+
+  static async createCatalogMaterial(body: CreateMaterialData): Promise<Material> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/catalog/materials`, { method: 'POST', body: JSON.stringify(body) });
+    return this.parse<Material>(response, 'Error al crear el material');
+  }
+
+  static async createCatalogUnit(label: string): Promise<MaterialUnit> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/catalog/units`, { method: 'POST', body: JSON.stringify({ label }) });
+    return this.parse<MaterialUnit>(response, 'Error al crear la unidad');
+  }
+
+  static async createCatalogProvider(razonSocial: string): Promise<MaterialProvider> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/catalog/providers`, { method: 'POST', body: JSON.stringify({ razonSocial }) });
+    return this.parse<MaterialProvider>(response, 'Error al crear el proveedor');
+  }
+}
+
+// ============== Bitácora de proyectos/adicionales ==============
+// Notas de seguimiento con fecha, autor y fotos opcionales. Registro de solo agregar: no hay
+// edición ni borrado — una nota equivocada se corrige con otra nueva. La fecha la pone el servidor.
+
+export interface ProjectLogFile {
+  id: number;
+  file_url: string;
+  file_name?: string | null;
+  mime_type?: string | null;
+  size_bytes?: number | null;
+}
+
+export interface ProjectLogEntry {
+  id: number;
+  project_id: number;
+  user_id: number;
+  note: string | null;
+  createdAt: string;
+  author?: { id: number; name: string; lastname: string };
+  files: ProjectLogFile[];
+}
+
+export class ProjectLogService {
+  // Más nuevas primero. beforeId trae las anteriores a esa entrada ("cargar más").
+  static async list(projectId: number, beforeId?: number): Promise<{ data: ProjectLogEntry[]; has_more: boolean }> {
+    const qs = beforeId ? `?before_id=${beforeId}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/project-logs/${projectId}${qs}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al obtener la bitácora');
+    }
+    return response.json();
+  }
+
+  static async create(projectId: number, note: string, photos: File[]): Promise<ProjectLogEntry> {
+    const formData = new FormData();
+    if (note.trim()) formData.append('note', note.trim());
+    photos.forEach((photo) => formData.append('files', photo));
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/project-logs/${projectId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' },
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al agregar la nota');
+    }
+    const data = await response.json();
+    return data.data;
+  }
 }

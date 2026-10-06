@@ -13,10 +13,13 @@ import {
   ChevronLeftOutlined as PrevIcon, ChevronRightOutlined as NextIcon, InfoOutlined as InfoIcon,
   TodayOutlined as TodayIcon, RefreshOutlined as RefreshIcon, AccountTreeOutlined as SubprojectsIcon,
   AccessTimeOutlined as HoursIcon, EventNoteOutlined as DailyLogIcon, RequestQuoteOutlined as BudgetTabIcon,
-  BuildOutlined as PanolIcon, OpenInNewOutlined as OpenIcon,
+  BuildOutlined as PanolIcon, OpenInNewOutlined as OpenIcon, EditNoteOutlined as LogIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../../../utils/auth';
 import { formatLaborQuantity } from '../../../../utils/laborFormat';
+import { formatProjectCode } from '../../../../utils/projectCode';
+import ProjectCodeLabel from '../../../../components/projects/ProjectCodeLabel';
+import ProjectLogPanel from '../../../../components/projects/ProjectLogPanel';
 import IconTileGrid, { IconTileItem } from '../../../../components/common/IconTileGrid';
 import GearSpinner from '../../../../components/GearSpinner';
 import {
@@ -102,6 +105,9 @@ export default function ProjectDetailPage() {
   const hasBudgetsRead = permissions.includes('admin_granted') || permissions.includes('budgets_read');
   const hasPricesRead = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
   const hasToolsRead = permissions.includes('admin_granted') || permissions.includes('asset_assignments_read');
+  const hasAdditionalsRead = permissions.includes('admin_granted') || permissions.includes('additionals_read');
+  const hasLogRead = permissions.includes('admin_granted') || permissions.includes('project_logs_read');
+  const hasAdditionalsWrite = permissions.includes('admin_granted') || permissions.includes('additionals_write');
 
   const [project, setProject] = useState<Project | null>(null);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -141,11 +147,13 @@ export default function ProjectDetailPage() {
   // las pestañas condicionales (Presupuesto/Pañol) usan el mismo truco de "índice inalcanzable"
   // (99) que ya tenía este archivo — evita romper la numeración cuando falta un permiso o esta
   // pestaña no aplica, sin tener que recalcular todo a mano.
-  const hasAdicionalesTab = !project?.parent_id;
+  // La pestaña Adicionales solo existe en proyectos que no son, a su vez, un adicional.
+  const hasAdicionalesTab = !project?.parent_id && !project?.is_additional;
   let nextTabIndex = 1;
   const adicionalesTabIndex = hasAdicionalesTab ? nextTabIndex++ : 99;
   const horasTabIndex = nextTabIndex++;
   const planillaTabIndex = nextTabIndex++;
+  const bitacoraTabIndex = hasLogRead ? nextTabIndex++ : 99;
   const presupuestoTabIndex = hasBudgetsRead ? nextTabIndex++ : 99;
   const panolTabIndex = hasToolsRead ? nextTabIndex++ : 99;
 
@@ -268,11 +276,21 @@ export default function ProjectDetailPage() {
     return <Box display="flex" justifyContent="center" py={8}><GearSpinner /></Box>;
   }
 
+  // Hijos del proyecto (adicionales): se muestran como "A-2026-001 ↳ P-2026-063" y, si son
+  // adicionales y el usuario tiene el módulo, abren su ficha de Adicionales.
+  const childCodeRef = (sp: NonNullable<typeof project.subprojects>[number]) => ({
+    code: sp.code,
+    parent: { id: project.id, code: project.code },
+  });
+  const openChild = (sp: NonNullable<typeof project.subprojects>[number]) =>
+    router.push(sp.is_additional && hasAdditionalsRead ? `/dashboard/additionals/${sp.id}` : `/dashboard/projects/${sp.id}`);
+
   const tabs = [
     { label: 'Resumen' },
     ...(hasAdicionalesTab ? [{ label: `Adicionales (${project.subproject_count ?? project.subprojects?.length ?? 0})` }] : []),
     { label: 'Horas' },
     { label: 'Planilla Diaria' },
+    ...(hasLogRead ? [{ label: 'Bitácora' }] : []),
     ...(hasBudgetsRead ? [{ label: 'Presupuesto' }] : []),
     ...(hasToolsRead ? [{ label: 'Pañol' }] : []),
   ];
@@ -285,6 +303,7 @@ export default function ProjectDetailPage() {
     ...(hasAdicionalesTab ? [{ key: 'adicionales', label: 'Adicionales', icon: <SubprojectsIcon />, badge: project.subproject_count ?? project.subprojects?.length ?? 0, onClick: () => setTab(adicionalesTabIndex) }] : []),
     { key: 'horas', label: 'Horas', icon: <HoursIcon />, onClick: () => setTab(horasTabIndex) },
     { key: 'planilla', label: 'Planilla', icon: <DailyLogIcon />, onClick: () => setTab(planillaTabIndex) },
+    ...(hasLogRead ? [{ key: 'bitacora', label: 'Bitácora', icon: <LogIcon />, onClick: () => setTab(bitacoraTabIndex) }] : []),
     ...(hasBudgetsRead ? [{ key: 'presupuesto', label: 'Presupuesto', icon: <BudgetTabIcon />, onClick: () => setTab(presupuestoTabIndex) }] : []),
     ...(hasToolsRead ? [{ key: 'panol', label: 'Pañol', icon: <PanolIcon />, onClick: () => setTab(panolTabIndex) }] : []),
   ];
@@ -292,15 +311,20 @@ export default function ProjectDetailPage() {
 
   return (
     <Box>
-      <Button startIcon={<BackIcon />} onClick={() => router.push('/dashboard/projects')} sx={{ mb: 2 }}>Volver a Proyectos</Button>
+      {/* Un adicional se gestiona desde su módulo: "volver" regresa a su ficha, no al listado de proyectos. */}
+      {project.is_additional && hasAdditionalsRead ? (
+        <Button startIcon={<BackIcon />} onClick={() => router.push(`/dashboard/additionals/${project.id}`)} sx={{ mb: 2 }}>Volver al adicional</Button>
+      ) : (
+        <Button startIcon={<BackIcon />} onClick={() => router.push('/dashboard/projects')} sx={{ mb: 2 }}>Volver a Proyectos</Button>
+      )}
 
       <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2} flexWrap="wrap" gap={1}>
         <Box>
-          <Typography variant="h4" fontWeight="bold">[{project.code}] {project.name}</Typography>
+          <Typography variant="h4" fontWeight="bold">[{formatProjectCode(project)}] {project.name}</Typography>
           <Typography variant="body2" color="text.secondary">{project.client?.razonSocial}{project.plant ? ` · ${project.plant.name}` : ''}</Typography>
         </Box>
         <Box display="flex" alignItems="center" gap={1}>
-          {hasBudgetsRead && !project.budget && !project.parent_id && (
+          {hasBudgetsRead && !project.budget && !project.parent_id && !project.is_additional && (
             <Button
               variant="outlined" size="small" startIcon={<AddIcon />}
               onClick={() => router.push(`/dashboard/budgets?existing_project_id=${project.id}`)}
@@ -311,6 +335,15 @@ export default function ProjectDetailPage() {
           <Chip label={STATUS_LABELS[project.status]} color={project.status === 'active' ? 'success' : 'default'} />
         </Box>
       </Box>
+
+      {project.is_additional && (
+        <Alert severity="info" sx={{ mb: 2 }}
+          action={hasAdditionalsRead ? (
+            <Button color="inherit" size="small" onClick={() => router.push(`/dashboard/additionals/${project.id}`)}>Ir al adicional</Button>
+          ) : undefined}>
+          Este proyecto es un adicional: se gestiona (materiales, descripción, proyecto padre y presupuesto) desde el módulo Adicionales.
+        </Alert>
+      )}
 
       {/* Mobile: íconos en vez de pestañas, mismo patrón que el home del dashboard y el portal */}
       <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 3 }}>
@@ -370,12 +403,15 @@ export default function ProjectDetailPage() {
         <Paper sx={{ p: 3 }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6">Adicionales / Subproyectos</Typography>
-            <Button
-              variant="contained" size="small" startIcon={<AddIcon />}
-              onClick={() => router.push(`/dashboard/budgets?parent_project_id=${project.id}`)}
-            >
-              Nuevo Adicional
-            </Button>
+            {/* Atajo: abre el alta del módulo Adicionales con este proyecto ya puesto como padre. */}
+            {hasAdditionalsWrite && (
+              <Button
+                variant="contained" size="small" startIcon={<AddIcon />}
+                onClick={() => router.push(`/dashboard/additionals?parent_id=${project.id}`)}
+              >
+                Nuevo Adicional
+              </Button>
+            )}
           </Box>
           {(!project.subprojects || project.subprojects.length === 0) ? (
             <Typography color="text.secondary" textAlign="center" py={3}>No hay adicionales/subproyectos asociados.</Typography>
@@ -385,10 +421,11 @@ export default function ProjectDetailPage() {
               <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                 <Stack spacing={2}>
                   {project.subprojects.map((sp) => (
-                    <Card key={sp.id} sx={{ p: 2, borderRadius: 2, cursor: 'pointer' }} onClick={() => router.push(`/dashboard/projects/${sp.id}`)}>
+                    <Card key={sp.id} sx={{ p: 2, borderRadius: 2, cursor: 'pointer' }} onClick={() => openChild(sp)}>
                       <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
                         <Box flex={1}>
-                          <Typography fontWeight={600}>{sp.code} — {sp.name}</Typography>
+                          <ProjectCodeLabel project={childCodeRef(sp)} linkParent={false} />
+                          <Typography fontWeight={600}>{sp.name}</Typography>
                           <Chip size="small" label={STATUS_LABELS[sp.status]} sx={{ mt: 0.5 }} />
                         </Box>
                       </Box>
@@ -411,8 +448,8 @@ export default function ProjectDetailPage() {
                     </TableHead>
                     <TableBody>
                       {project.subprojects.map((sp) => (
-                        <TableRow key={sp.id} hover sx={{ cursor: 'pointer' }} onClick={() => router.push(`/dashboard/projects/${sp.id}`)}>
-                          <TableCell>{sp.code}</TableCell>
+                        <TableRow key={sp.id} hover sx={{ cursor: 'pointer' }} onClick={() => openChild(sp)}>
+                          <TableCell><ProjectCodeLabel project={childCodeRef(sp)} linkParent={false} /></TableCell>
                           <TableCell>{sp.name}</TableCell>
                           <TableCell>{STATUS_LABELS[sp.status]}</TableCell>
                           <TableCell>{renderProgress(sp.consumed_hours_own || 0, sp.budgeted_hours_own || 0)}</TableCell>
@@ -886,6 +923,14 @@ export default function ProjectDetailPage() {
               </Box>
             </Box>
           )}
+        </Paper>
+      )}
+
+      {/* Tab Bitácora: notas de seguimiento con fecha y fotos (solo agregar) */}
+      {tab === bitacoraTabIndex && (
+        <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>Bitácora</Typography>
+          <ProjectLogPanel projectId={project.id} />
         </Paper>
       )}
 

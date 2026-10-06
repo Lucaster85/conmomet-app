@@ -34,14 +34,28 @@ Con el botón **"Nuevo Presupuesto"**:
   cambiás el cliente o la planta y el proyecto elegido ya no corresponde, se desvincula solo.
   Define qué pasa cuando se apruebe:
   - Vacío: es para un **proyecto totalmente nuevo**, que se crea al aprobar.
-  - **"Es un adicional de"** un proyecto existente: al aprobar, genera un **subproyecto**
-    hijo de ese proyecto.
   - **"Vincular a un proyecto ya existente"**: a diferencia de los otros dos casos, el
     proyecto ya existe de antes — el vínculo queda firme **desde que se crea el presupuesto**,
     sin esperar a que se apruebe, y le actualiza las horas presupuestadas en cada guardado. Este
     presupuesto nunca tiene botón "Generar Proyecto" (no hay nada que generar). Un proyecto no
     se puede vincular a dos presupuestos a la vez. Mientras el presupuesto siga en Borrador, se
     puede cambiar o quitar este vínculo con normalidad.
+
+  **Los adicionales ya no se crean desde acá.** La opción "Es un adicional de…" se quitó: un trabajo
+  urgente se da de alta en **Gestión de Clientes → Adicionales**, que crea el proyecto y su presupuesto
+  en el acto (ver el tema **Adicionales**). Los **borradores viejos** que ya estaban marcados como
+  "adicional de…" siguen funcionando: el formulario muestra esa relación en solo lectura y conservan el
+  botón "Generar Proyecto" de siempre.
+
+### Presupuesto de un adicional
+
+Un presupuesto que pertenece a un adicional (se crea junto con él) muestra arriba un ícono
+**"i"** (con la explicación en un tooltip) y, al lado, el código **"Adicional A-2026-001 ↳ P-2026-063"**,
+que es un acceso directo a la ficha del adicional. El **cliente, la planta y el proyecto** quedan
+bloqueados —se gestionan desde el adicional— y el **título y la descripción se sincronizan** con el
+adicional mientras el presupuesto esté en borrador. No se puede eliminar por separado (se elimina junto
+con el adicional) ni genera un proyecto nuevo al aprobarse: el proyecto es el adicional. Los materiales
+los puede cargar quien arma el adicional, sin margen; el margen se completa acá.
 - **Descripción**, **Fecha de Inicio/Fin previstas**, **Vigencia (días)** (solo informativo, no
   bloquea nada), **N° de OT** (opcional).
 
@@ -171,6 +185,13 @@ El botón **"Descargar Excel"** baja los materiales cargados en el presupuesto, 
 columnas que la plantilla**: se puede editar y volver a importar. Funciona también antes de
 guardar el presupuesto. Sin permiso de costos, las columnas de costo y moneda salen vacías.
 
+## Ver, editar e imprimir
+
+El ícono del ojo abre la **vista** del presupuesto, con los botones **Editar** (solo si está en
+**Borrador**), **Cerrar** e **Imprimir** (este último, solo con permiso de precios). **Editar** abre
+directo el formulario de ese presupuesto, sin volver al listado: es útil cuando se llega por un
+acceso directo y lo que se quiere es modificarlo.
+
 ## El ciclo de estados
 
 **Borrador** → **Enviado** → **Aprobado** o **Rechazado**.
@@ -210,8 +231,8 @@ por presupuesto. **No aplica a "vincular a un proyecto existente"**: ese caso no
 generar, ya quedó vinculado desde que se creó el presupuesto (ver arriba) — nunca muestra este
 botón.
 
-**Excepción para adicionales**: si el presupuesto es "un adicional de" un proyecto existente, el
-botón aparece también estando todavía en **Borrador** — no hace falta esperar a aprobarlo. Sirve
+**Excepción para borradores viejos de "adicional de…"**: si el presupuesto quedó marcado así antes de
+que existiera el módulo Adicionales, el botón aparece también estando todavía en **Borrador** — no hace falta esperar a aprobarlo. Sirve
 para el caso típico de un adicional donde todavía no se sabe el alcance real (horas, materiales)
 pero ya hay que empezar a trabajar: se genera el subproyecto de una, se van cargando horas ahí
 (ver el tema **Proyectos**), y el presupuesto se sigue terminando de armar en paralelo — cada vez
@@ -233,6 +254,12 @@ el duplicado **sigue vinculado al mismo PC** (hereda su N° de cotización del c
 y planta quedan bloqueados igual que en el original) o **nace libre, sin PC** (cliente y planta
 se pueden editar, y no tiene N° de cotización del cliente hasta que se lo vincule a una PC).
 Un presupuesto que no venía de un PC se duplica directo, sin preguntar nada.
+
+**Presupuesto de un adicional:** el duplicado queda **vinculado al mismo adicional** (no huérfano), con
+los materiales y la mano de obra como punto de partida; el diálogo lo aclara. Un adicional tiene **un
+solo presupuesto en curso a la vez**: si ya hay uno que no fue rechazado, el botón Duplicar queda
+deshabilitado ("El adicional ya tiene un presupuesto en curso"). Es la forma de rehacer un presupuesto
+rechazado de un adicional (también se puede desde la ficha del adicional con "Nuevo presupuesto").
 
 ## Quién ve precios y costos, y quién puede enviar
 
@@ -264,4 +291,4 @@ Alguien sin permiso de precios igual puede hacer el trabajo con materiales — c
 presupuestos, cargar materiales con su margen, duplicarlos y generar el proyecto — pero no
 carga ni modifica la mano de obra, ni envía ni imprime.
 
-<!-- ref: conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js -->
+<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js -->

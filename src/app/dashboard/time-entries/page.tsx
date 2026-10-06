@@ -26,6 +26,7 @@ import {
   Holiday, HolidayService,
   BudgetItemType, BudgetItemTypeService
 } from '../../../utils/api';
+import { formatProjectOptionLabel } from '../../../utils/projectCode';
 import { isFixedSalaryPayType } from '../../../utils/payType';
 
 const STATUS_COLORS: Record<string, 'success' | 'error' | 'warning' | 'default'> = {
@@ -894,7 +895,7 @@ export default function TimeEntriesPage() {
                       <option value="">— Ninguno —</option>
                       {projects
                         .filter(p => !massiveBlock.plant_id || p.plant_id === massiveBlock.plant_id)
-                        .map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
+                        .map(p => <option key={p.id} value={p.id}>{formatProjectOptionLabel(p)}</option>)}
                     </TextField>
                   </Grid>
                   {massiveBlock.project_id && (
@@ -1097,7 +1098,7 @@ export default function TimeEntriesPage() {
                             <option value="">— Ninguno —</option>
                             {projects
                               .filter(p => !block.plant_id || p.plant_id === block.plant_id)
-                              .map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
+                              .map(p => <option key={p.id} value={p.id}>{formatProjectOptionLabel(p)}</option>)}
                           </TextField>
                         </Grid>
                         {block.project_id && (

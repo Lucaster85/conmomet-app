@@ -85,6 +85,7 @@ import {
   MaterialUnit,
   MaterialUnitService,
 } from '../../../utils/api';
+import { formatProjectOptionLabel } from '../../../utils/projectCode';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import CurrencyInput from '../../../components/CurrencyInput';
@@ -2601,7 +2602,7 @@ export default function OcasPage() {
                         >
                           <MenuItem value="">— Todos los Proyectos / Ninguno —</MenuItem>
                           {clientProjects.map(p => (
-                            <MenuItem key={p.id} value={p.id}>[{p.code}] {p.name}</MenuItem>
+                            <MenuItem key={p.id} value={p.id}>{formatProjectOptionLabel(p, `[${p.code}] ${p.name}`)}</MenuItem>
                           ))}
                         </Select>
                       </FormControl>
@@ -2943,7 +2944,7 @@ export default function OcasPage() {
                             .map(entry => [entry.project!.id, entry.project!])
                         ).values()
                       ).map(p => (
-                        <MenuItem key={p.id} value={p.id}>[{p.code}] {p.name}</MenuItem>
+                        <MenuItem key={p.id} value={p.id}>{formatProjectOptionLabel(p, `[${p.code}] ${p.name}`)}</MenuItem>
                       ))}
                     </Select>
                   </FormControl>
@@ -3333,7 +3334,7 @@ export default function OcasPage() {
                   >
                     <MenuItem value="">— Seleccionar Proyecto —</MenuItem>
                     {supervisorProjects.map(p => (
-                      <MenuItem key={p.id} value={p.id}>[{p.code}] {p.name}</MenuItem>
+                      <MenuItem key={p.id} value={p.id}>{formatProjectOptionLabel(p, `[${p.code}] ${p.name}`)}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>

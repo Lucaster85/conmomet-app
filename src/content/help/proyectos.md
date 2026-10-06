@@ -19,16 +19,34 @@ precios distintos), las horas de ese rubro se **suman en una sola bolsa**. Si el
 días**, las horas cotizadas son **días × 9**: 2 días cotizados aparecen como 18 hs. En la pestaña
 **Presupuesto** del proyecto cada línea se ve como "2 días (18 hs)" o "20 hs", con su descripción.
 
-## Subproyectos
+## Adicionales y subproyectos
 
-Un proyecto puede tener **subproyectos** (adicionales de obra), que se ven anidados dentro del
-proyecto raíz — por eso un subproyecto **no tiene** su propia pestaña de "Adicionales" (no se
-admiten más de 2 niveles). Normalmente nacen al aprobar un Presupuesto marcado como "adicional
-de" un proyecto existente, pero **no hace falta esperar a que esté aprobado**: si el Presupuesto
-del adicional todavía está en **Borrador**, ya se puede usar el botón "Generar Proyecto" desde
-ahí (ver el tema **Presupuestos**) — así se puede empezar a cargar horas mientras se termina de
-definir el presupuesto formal. Mientras el presupuesto siga en borrador, cada vez que se guarde
-se actualizan las bolsas de horas por rubro del proyecto con lo que traiga en ese momento.
+Los **adicionales** (trabajos urgentes que arrancan sin pedido de cotización ni presupuesto aprobado)
+tienen su propio módulo: **Gestión de Clientes → Adicionales** (ver el tema **Adicionales**). Un
+adicional es un proyecto más, con o sin proyecto padre, con código **A-AAAA-NNN**.
+
+- El **listado de Proyectos ya no muestra adicionales**: ni los que tienen padre ni los sueltos. Se
+  listan solo en Adicionales (los selectores de proyecto de Carga de Horas, OCAs y asignaciones sí
+  los incluyen).
+- En la ficha de un proyecto, la pestaña **Adicionales** lista los adicionales que dependen de él, como
+  **A-2026-001 ↳ P-2026-063**, y su botón **"Nuevo Adicional"** es un **atajo**: abre el alta del módulo
+  Adicionales con este proyecto ya puesto como padre. Un adicional no tiene esta pestaña (no se admiten
+  más de 2 niveles).
+- Si entrás a la ficha de un proyecto que **es un adicional**, arriba aparece un aviso con un enlace
+  para ir a su ficha en Adicionales, donde se gestiona (materiales, descripción, padre, presupuesto).
+  En un adicional no aparece "Vincular Presupuesto".
+
+Los adicionales anteriores a esta función (**P-2026-063.1**, subproyectos que nacieron de un
+Presupuesto "adicional de…") conservan su código y aparecen también en el módulo Adicionales. Si
+quedó un **borrador viejo** de ese tipo, sigue generando su subproyecto con el botón "Generar Proyecto"
+como antes (ver el tema **Presupuestos**); mientras el presupuesto esté en borrador, cada vez que se
+guarde se actualizan las bolsas de horas por rubro del proyecto.
+
+## Bitácora
+
+Cada proyecto tiene una pestaña **Bitácora**, donde se van dejando notas de seguimiento con **fecha, hora y
+autor** (y fotos opcionales): qué se compró, qué se hizo. Se carga igual desde el celular que desde la
+computadora. Es un registro de solo agregar. Ver el tema **Bitácora de proyectos y adicionales**.
 
 ## Asignar Supervisores del Cliente
 
@@ -41,4 +59,4 @@ Esta asignación es la que habilita, más adelante, cargar horas **PEP OCA/PEP R
 supervisor en **Carga de Horas** (ver ese tema para el detalle) — sin un supervisor asignado al
 proyecto, esa opción no aparece.
 
-<!-- ref: conmomet-app/src/app/dashboard/projects/page.tsx, conmomet-app/src/app/dashboard/projects/[id]/page.tsx, api_conmomet/controllers/projectController.js, api_conmomet/services/projectFactory.js -->
+<!-- ref: conmomet-app/src/app/dashboard/additionals/page.tsx, conmomet-app/src/app/dashboard/projects/page.tsx, conmomet-app/src/app/dashboard/projects/[id]/page.tsx, api_conmomet/controllers/projectController.js, api_conmomet/services/projectFactory.js -->

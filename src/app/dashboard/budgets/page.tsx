@@ -19,6 +19,7 @@ import {
   CancelOutlined as RejectIcon, PrintOutlined as PrintIcon, DescriptionOutlined as DocumentIcon,
   AssignmentOutlined as ProjectIcon, DownloadOutlined as DownloadIcon, PercentOutlined as DiscountIcon,
   RequestQuoteOutlined as TitleIcon, AssignmentReturnOutlined as DeliverIcon, AttachFileOutlined as AttachIcon,
+  InfoOutlined as InfoIcon,
 } from '@mui/icons-material';
 import {
   Budget, BudgetService, BudgetLaborLine, BudgetMaterialItem, CreateBudgetData,
@@ -34,6 +35,7 @@ import MaterialSelect from '../../../components/materials/MaterialSelect';
 import { downloadMaterialsTemplate, exportMaterialsSheet } from '../../../utils/materialsExcel';
 import { findPrice } from '../../../utils/materialPrices';
 import { formatLaborQuantity, formatHours, hoursPerDayFor, laborLineHours, lineHoursPerDay } from '../../../utils/laborFormat';
+import { formatProjectCode } from '../../../utils/projectCode';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'default' | 'info' | 'success' | 'error' }> = {
   draft: { label: 'Borrador', color: 'default' },
@@ -174,6 +176,7 @@ function BudgetsPageContent() {
   // budget_prices_read gatea SOLO la mano de obra (valores), el total general y la bonificación.
   // Los precios y el margen de los materiales los ve y carga cualquiera con acceso a Presupuestos.
   const hasPricesRead = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
+  const hasAdditionalsRead = permissions.includes('admin_granted') || permissions.includes('additionals_read');
   // Enviar al cliente es un permiso aparte de budgets_update: quien arma el presupuesto puede
   // editarlo pero no necesariamente ponerlo en manos del cliente (ver FLOWS.md flujo 27).
   // Además, quien no ve los valores de mano de obra (hasPricesRead) no puede enviar: lo que le
@@ -198,7 +201,6 @@ function BudgetsPageContent() {
   const [providers, setProviders] = useState<MaterialProvider[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [plants, setPlants] = useState<Plant[]>([]);
-  const [rootProjects, setRootProjects] = useState<Project[]>([]);
   const [projectsWithoutBudget, setProjectsWithoutBudget] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -263,7 +265,7 @@ function BudgetsPageContent() {
     try {
       setLoading(true);
       setError('');
-      const [bgs, its, mUnits, mats, mProviders, clis, plts, projs, projsNoBudget] = await Promise.all([
+      const [bgs, its, mUnits, mats, mProviders, clis, plts, projsNoBudget] = await Promise.all([
         BudgetService.getAll(),
         BudgetItemTypeService.getAll(true),
         MaterialUnitService.getAll(true),
@@ -271,7 +273,6 @@ function BudgetsPageContent() {
         MaterialProviderService.getAll(),
         ClientService.getAll({ is_active: true }),
         PlantService.getAll(),
-        ProjectService.getAll(),
         ProjectService.getAll({ without_budget: true }),
       ]);
       setBudgets(Array.isArray(bgs) ? bgs : []);
@@ -281,7 +282,6 @@ function BudgetsPageContent() {
       setProviders(Array.isArray(mProviders) ? mProviders : []);
       setClients(Array.isArray(clis) ? clis : []);
       setPlants(Array.isArray(plts) ? plts : []);
-      setRootProjects(Array.isArray(projs) ? projs.filter(p => !p.parent_id) : []);
       setProjectsWithoutBudget(Array.isArray(projsNoBudget) ? projsNoBudget : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar datos');
@@ -298,42 +298,36 @@ function BudgetsPageContent() {
     ClientItemRateService.getAll(Number(form.client_id)).then(setClientRates).catch(() => setClientRates([]));
   }, [form.client_id, hasPricesRead]);
 
-  // Al llegar desde "Nuevo Adicional" (?parent_project_id=X) o "Vincular Presupuesto"
-  // (?existing_project_id=X) en el detalle de un proyecto, abrimos el formulario de
-  // creación con el proyecto ya preseleccionado en el modo correspondiente.
+  // "Nuevo Adicional" ya no vive acá: los adicionales se crean desde el módulo Adicionales. Un link
+  // viejo con ?parent_project_id=X redirige al alta de ese módulo con el padre ya puesto.
+  useEffect(() => {
+    const parentProjectId = searchParams.get('parent_project_id');
+    if (parentProjectId) router.replace(`/dashboard/additionals?parent_id=${parentProjectId}`);
+  }, [searchParams, router]);
+
+  // Al llegar desde "Vincular Presupuesto" (?existing_project_id=X) en el detalle de un proyecto,
+  // abrimos el formulario de creación con el proyecto ya preseleccionado.
   useEffect(() => {
     if (autoOpenedFromParent.current) return; // solo una vez por visita, aunque las listas se recarguen después
-    const parentProjectId = searchParams.get('parent_project_id');
     const existingProjectId = searchParams.get('existing_project_id');
-    if (!parentProjectId && !existingProjectId) return;
+    if (!existingProjectId) return;
 
-    if (parentProjectId) {
-      if (rootProjects.length === 0) return;
-      const parent = rootProjects.find(p => String(p.id) === parentProjectId);
-      if (!parent) return;
-      autoOpenedFromParent.current = true;
-      setEditingBudget(null);
-      setForm({ ...emptyForm(), parent_project_id: parentProjectId, client_id: String(parent.client_id), plant_id: parent.plant_id ? String(parent.plant_id) : '' });
-      setOpenDialog(true);
-      router.replace('/dashboard/budgets');
-    } else if (existingProjectId) {
-      if (projectsWithoutBudget.length === 0) return;
-      const project = projectsWithoutBudget.find(p => String(p.id) === existingProjectId);
-      if (!project) return;
-      autoOpenedFromParent.current = true;
-      setEditingBudget(null);
-      setForm({ ...emptyForm(), existing_project_id: existingProjectId, client_id: String(project.client_id), plant_id: project.plant_id ? String(project.plant_id) : '' });
-      setOpenDialog(true);
-      router.replace('/dashboard/budgets');
-      // El proyecto todavía no tiene presupuesto, pero puede ya tener horas cargadas (ver
-      // "Vincular Presupuesto" en el detalle de Proyecto) — la lista sin presupuesto no trae el
-      // detalle por rubro, hay que pedirlo aparte para que se vea el mismo aviso que en edición.
-      ProjectService.getById(project.id)
-        .then(proj => setLinkedProjectHourBuckets(proj.hour_buckets || []))
-        .catch(() => setLinkedProjectHourBuckets([]));
-    }
+    if (projectsWithoutBudget.length === 0) return;
+    const project = projectsWithoutBudget.find(p => String(p.id) === existingProjectId);
+    if (!project) return;
+    autoOpenedFromParent.current = true;
+    setEditingBudget(null);
+    setForm({ ...emptyForm(), existing_project_id: existingProjectId, client_id: String(project.client_id), plant_id: project.plant_id ? String(project.plant_id) : '' });
+    setOpenDialog(true);
+    router.replace('/dashboard/budgets');
+    // El proyecto todavía no tiene presupuesto, pero puede ya tener horas cargadas (ver
+    // "Vincular Presupuesto" en el detalle de Proyecto) — la lista sin presupuesto no trae el
+    // detalle por rubro, hay que pedirlo aparte para que se vea el mismo aviso que en edición.
+    ProjectService.getById(project.id)
+      .then(proj => setLinkedProjectHourBuckets(proj.hour_buckets || []))
+      .catch(() => setLinkedProjectHourBuckets([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rootProjects, projectsWithoutBudget]);
+  }, [projectsWithoutBudget]);
 
   // Acceso directo desde el listado de Proyectos: ?view=<budgetId> abre la vista Ver/Imprimir
   // de ese presupuesto puntual, sin pasar por la tabla.
@@ -412,12 +406,8 @@ function BudgetsPageContent() {
     setOpenDialog(true);
   };
 
-  // Value del <select> combinado: '' | `parent:<id>` | `existing:<id>`
-  const projectLinkValue = form.parent_project_id
-    ? `parent:${form.parent_project_id}`
-    : form.existing_project_id
-      ? `existing:${form.existing_project_id}`
-      : '';
+  // Value del <select> de relación: '' | `existing:<id>` ("adicional de" ya no existe acá).
+  const projectLinkValue = form.existing_project_id ? `existing:${form.existing_project_id}` : '';
 
   // El proyecto que este presupuesto ya tiene vinculado no aparece en projectsWithoutBudget
   // (dejó de estar "sin presupuesto" apenas se creó este mismo borrador) — lo inyectamos
@@ -429,33 +419,30 @@ function BudgetsPageContent() {
       : []),
   ];
 
+  // Presupuesto de un ADICIONAL (módulo Adicionales): cliente, planta y proyecto son del adicional.
+  const additionalProject = editingBudget?.project?.is_additional ? editingBudget.project : null;
+  // Borrador viejo "adicional de…" (flujo anterior): sigue generando su subproyecto como siempre.
+  const legacyParent = !additionalProject && form.parent_project_id ? editingBudget?.parentProject || null : null;
+  // Un adicional tiene un solo presupuesto vivo (no rechazado) a la vez: solo se puede duplicar
+  // cuando todos están rechazados.
+  const additionalHasLiveBudget = (b: Budget) =>
+    !!b.project?.is_additional && budgets.some(o => o.project?.id === b.project?.id && o.status !== 'rejected');
+
   const handleProjectLinkChange = (value: string) => {
     if (!value) {
-      setForm({ ...form, parent_project_id: '', existing_project_id: '' });
+      setForm({ ...form, existing_project_id: '' });
       return;
     }
-    const [mode, idStr] = value.split(':');
-    if (mode === 'parent') {
-      const parent = rootProjects.find(p => String(p.id) === idStr);
-      setForm({
-        ...form,
-        parent_project_id: idStr,
-        existing_project_id: '',
-        client_id: parent ? String(parent.client_id) : form.client_id,
-        plant_id: parent ? (parent.plant_id ? String(parent.plant_id) : '') : form.plant_id,
-      });
-    } else if (mode === 'existing') {
-      // El objeto puede ser el "stub" sintético del proyecto ya vinculado (solo id/name/code,
-      // ver existingProjectOptions) — en ese caso no pisamos cliente/planta, ya están bien.
-      const project = existingProjectOptions.find(p => String(p.id) === idStr);
-      setForm({
-        ...form,
-        parent_project_id: '',
-        existing_project_id: idStr,
-        client_id: project?.client_id ? String(project.client_id) : form.client_id,
-        plant_id: project?.client_id ? (project.plant_id ? String(project.plant_id) : '') : form.plant_id,
-      });
-    }
+    const [, idStr] = value.split(':');
+    // El objeto puede ser el "stub" sintético del proyecto ya vinculado (solo id/name/code,
+    // ver existingProjectOptions) — en ese caso no pisamos cliente/planta, ya están bien.
+    const project = existingProjectOptions.find(p => String(p.id) === idStr);
+    setForm({
+      ...form,
+      existing_project_id: idStr,
+      client_id: project?.client_id ? String(project.client_id) : form.client_id,
+      plant_id: project?.client_id ? (project.plant_id ? String(project.plant_id) : '') : form.plant_id,
+    });
   };
 
   // Los proyectos elegibles dependen del cliente y la planta del formulario: sin cliente no hay
@@ -468,25 +455,21 @@ function BudgetsPageContent() {
     if (String(p.client_id) !== clientId) return false;
     return !plantId || String(p.plant_id ?? '') === plantId;
   };
-  const filteredRootProjects = rootProjects.filter(p =>
-    matchesClientAndPlant(p, form.client_id, form.plant_id) || String(p.id) === form.parent_project_id);
   const filteredExistingProjects = existingProjectOptions.filter(p =>
     matchesClientAndPlant(p, form.client_id, form.plant_id) || String(p.id) === form.existing_project_id);
 
   // Al cambiar cliente/planta, si el proyecto ya elegido deja de corresponder se desvincula.
   const changeClientOrPlant = (clientId: string, plantId: string) => {
-    const linked = form.parent_project_id
-      ? rootProjects.find(p => String(p.id) === form.parent_project_id)
-      : form.existing_project_id
-        ? existingProjectOptions.find(p => String(p.id) === form.existing_project_id)
-        : undefined;
+    const linked = form.existing_project_id
+      ? existingProjectOptions.find(p => String(p.id) === form.existing_project_id)
+      : undefined;
     const stillMatches = !linked || matchesClientAndPlant(linked, clientId, plantId);
     if (!stillMatches) setLinkedProjectHourBuckets([]);
     setForm({
       ...form,
       client_id: clientId,
       plant_id: plantId,
-      ...(stillMatches ? {} : { parent_project_id: '', existing_project_id: '' }),
+      ...(stillMatches ? {} : { existing_project_id: '' }),
     });
   };
 
@@ -1102,6 +1085,11 @@ function BudgetsPageContent() {
 
   // Sin PC detrás no hay nada que decidir: se duplica directo, como venía siendo antes.
   const handleDuplicate = (budget: Budget) => {
+    // Presupuesto de un adicional: el duplicado queda vinculado al mismo adicional — se aclara.
+    if (budget.project?.is_additional) {
+      setDuplicateDialog({ open: true, budget, keepQuoteRequest: false });
+      return;
+    }
     if (!budget.quoteRequest) {
       runDuplicate(budget, false);
       return;
@@ -1199,6 +1187,7 @@ function BudgetsPageContent() {
                         <Typography variant="body2" fontWeight="medium">{b.number}</Typography>
                         <Typography fontWeight="medium">{b.title}</Typography>
                         {b.parentProject && <Typography variant="caption" color="text.secondary" display="block">Adicional de {b.parentProject.code}</Typography>}
+                        {b.project?.is_additional && <Typography variant="caption" color="text.secondary" display="block">Adicional {formatProjectCode(b.project)}</Typography>}
                         {b.existingProject && <Typography variant="caption" color="text.secondary" display="block">Vinculado a {b.existingProject.code}</Typography>}
                         {b.work_order_number && <Typography variant="caption" color="text.secondary" display="block">OT: {b.work_order_number}</Typography>}
                         {b.quoteRequest?.client_quote_number && <Typography variant="caption" color="text.secondary" display="block">N° Cotización Cliente: {b.quoteRequest.client_quote_number}</Typography>}
@@ -1283,7 +1272,9 @@ function BudgetsPageContent() {
                       {hasPricesRead && (b.status === 'sent' || b.status === 'approved') && (
                         <Tooltip title="Bonificación"><IconButton size="small" color="warning" onClick={() => handleOpenDiscountDialog(b)}><DiscountIcon fontSize="small" /></IconButton></Tooltip>
                       )}
-                      <Tooltip title="Duplicar"><IconButton size="small" onClick={() => handleDuplicate(b)}><DuplicateIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title={additionalHasLiveBudget(b) ? 'El adicional ya tiene un presupuesto en curso' : 'Duplicar'}>
+                        <span><IconButton size="small" disabled={additionalHasLiveBudget(b)} onClick={() => handleDuplicate(b)}><DuplicateIcon fontSize="small" /></IconButton></span>
+                      </Tooltip>
                     </Box>
                   </Stack>
                 </Card>
@@ -1312,7 +1303,8 @@ function BudgetsPageContent() {
                       <TableCell><Typography variant="body2" fontWeight="medium">{b.number}</Typography></TableCell>
                       <TableCell>
                         <Typography fontWeight="medium">{b.title}</Typography>
-                        {b.parentProject && <Typography variant="caption" color="text.secondary">Adicional de {b.parentProject.code}</Typography>}
+                        {b.parentProject && <Typography variant="caption" color="text.secondary" display="block">Adicional de {b.parentProject.code}</Typography>}
+                        {b.project?.is_additional && <Typography variant="caption" color="text.secondary" display="block">Adicional {formatProjectCode(b.project)}</Typography>}
                         {b.existingProject && <Typography variant="caption" color="text.secondary">Vinculado a {b.existingProject.code}</Typography>}
                         {b.work_order_number && <Typography variant="caption" color="text.secondary" display="block">OT: {b.work_order_number}</Typography>}
                         {b.quoteRequest?.client_quote_number && <Typography variant="caption" color="text.secondary" display="block">N° Cotización Cliente: {b.quoteRequest.client_quote_number}</Typography>}
@@ -1397,7 +1389,9 @@ function BudgetsPageContent() {
                         {hasPricesRead && (b.status === 'sent' || b.status === 'approved') && (
                           <Tooltip title="Bonificación"><IconButton size="small" color="warning" onClick={() => handleOpenDiscountDialog(b)}><DiscountIcon fontSize="small" /></IconButton></Tooltip>
                         )}
-                        <Tooltip title="Duplicar"><IconButton size="small" onClick={() => handleDuplicate(b)}><DuplicateIcon fontSize="small" /></IconButton></Tooltip>
+                        <Tooltip title={additionalHasLiveBudget(b) ? 'El adicional ya tiene un presupuesto en curso' : 'Duplicar'}>
+                          <span><IconButton size="small" disabled={additionalHasLiveBudget(b)} onClick={() => handleDuplicate(b)}><DuplicateIcon fontSize="small" /></IconButton></span>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1446,16 +1440,16 @@ function BudgetsPageContent() {
 
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField label="Cliente *" select fullWidth value={form.client_id} disabled={!!form.quote_request_id}
+                <TextField label="Cliente *" select fullWidth value={form.client_id} disabled={!!form.quote_request_id || !!additionalProject}
                   onChange={(e) => changeClientOrPlant(e.target.value, '')}
                   SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
-                  helperText={form.quote_request_id ? 'Viene del Pedido de Cotización — no se puede cambiar' : undefined}>
+                  helperText={form.quote_request_id ? 'Viene del Pedido de Cotización — no se puede cambiar' : additionalProject ? 'Viene del adicional — no se puede cambiar' : undefined}>
                   <option value="">— Seleccionar —</option>
                   {clients.map((c) => <option key={c.id} value={c.id}>{c.razonSocial}</option>)}
                 </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField label="Planta" select fullWidth value={form.plant_id} disabled={!!form.quote_request_id || !form.client_id}
+                <TextField label="Planta" select fullWidth value={form.plant_id} disabled={!!form.quote_request_id || !!additionalProject || !form.client_id}
                   onChange={(e) => changeClientOrPlant(form.client_id, e.target.value)}
                   SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
                   <option value="">— Ninguna —</option>
@@ -1464,21 +1458,40 @@ function BudgetsPageContent() {
               </Grid>
             </Grid>
 
-            <TextField label="Relación con un proyecto" select fullWidth value={projectLinkValue} disabled={!form.client_id}
-              onChange={(e) => handleProjectLinkChange(e.target.value)}
-              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
-              helperText={form.client_id
-                ? 'Nuevo: genera un proyecto. Adicional: genera un subproyecto hijo. Vincular: no crea nada, usa el proyecto tal cual.'
-                : 'Elegí primero el cliente para ver sus proyectos.'}
-            >
-              <option value="">— No, es un proyecto nuevo —</option>
-              <optgroup label="Es un adicional de (genera un subproyecto):">
-                {filteredRootProjects.map((p) => <option key={`parent-${p.id}`} value={`parent:${p.id}`}>{p.code} - {p.name}</option>)}
-              </optgroup>
-              <optgroup label="Vincular a un proyecto ya existente (sin presupuesto):">
-                {filteredExistingProjects.map((p) => <option key={`existing-${p.id}`} value={`existing:${p.id}`}>{p.code} - {p.name}</option>)}
-              </optgroup>
-            </TextField>
+            {additionalProject ? (
+              // Presupuesto de un adicional: solo el "i" (con la explicación en un tooltip) y el código del
+              // adicional, que es un acceso directo a su ficha.
+              <Box display="flex" alignItems="center" gap={0.5}>
+                <Tooltip enterTouchDelay={0} leaveTouchDelay={6000}
+                  title="Este presupuesto pertenece a un adicional. Cliente, planta y proyecto se gestionan desde el adicional; el título y la descripción se sincronizan con él mientras este presupuesto esté en borrador.">
+                  <IconButton size="small" color="info" aria-label="Información sobre el adicional"><InfoIcon fontSize="small" /></IconButton>
+                </Tooltip>
+                {hasAdditionalsRead ? (
+                  <Tooltip title="Ir al adicional">
+                    <Chip size="small" clickable color="info" variant="outlined" label={`Adicional ${formatProjectCode(additionalProject)}`}
+                      onClick={() => router.push(`/dashboard/additionals/${additionalProject.id}`)} />
+                  </Tooltip>
+                ) : (
+                  <Chip size="small" color="info" variant="outlined" label={`Adicional ${formatProjectCode(additionalProject)}`} />
+                )}
+              </Box>
+            ) : legacyParent ? (
+              <TextField label="Relación con un proyecto" fullWidth disabled value={`Adicional de ${legacyParent.code} - ${legacyParent.name}`}
+                helperText="Borrador del flujo anterior: al generar el proyecto se crea un subproyecto. Los adicionales nuevos se crean desde el módulo Adicionales." />
+            ) : (
+              <TextField label="Relación con un proyecto" select fullWidth value={projectLinkValue} disabled={!form.client_id}
+                onChange={(e) => handleProjectLinkChange(e.target.value)}
+                SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
+                helperText={form.client_id
+                  ? 'Nuevo: genera un proyecto al aprobar. Vincular: no crea nada, usa el proyecto tal cual. (Los adicionales se crean desde el módulo Adicionales.)'
+                  : 'Elegí primero el cliente para ver sus proyectos.'}
+              >
+                <option value="">— No, es un proyecto nuevo —</option>
+                <optgroup label="Vincular a un proyecto ya existente (sin presupuesto):">
+                  {filteredExistingProjects.map((p) => <option key={`existing-${p.id}`} value={`existing:${p.id}`}>{p.code} - {p.name}</option>)}
+                </optgroup>
+              </TextField>
+            )}
 
             <TextField label="Descripción" fullWidth multiline rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
 
@@ -1852,6 +1865,12 @@ function BudgetsPageContent() {
         <DialogTitle>Duplicar Presupuesto</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>A partir de <strong>{duplicateDialog.budget?.number}</strong></Typography>
+          {duplicateDialog.budget?.project?.is_additional ? (
+            <Typography variant="body2" color="text.secondary">
+              El duplicado queda <strong>vinculado al mismo adicional</strong> ({formatProjectCode(duplicateDialog.budget.project)}) como nuevo borrador,
+              con los materiales y la mano de obra como punto de partida. Un adicional tiene un solo presupuesto en curso a la vez.
+            </Typography>
+          ) : (
           <Stack spacing={1} sx={{ mt: 1 }}>
             <FormControlLabel
               control={
@@ -1868,6 +1887,7 @@ function BudgetsPageContent() {
                 : 'Nace libre, sin Pedido de Cotización — cliente y planta se podrán editar, y no va a tener N° de cotización del cliente hasta que se lo vincule a una PC.'}
             </Typography>
           </Stack>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDuplicateDialog({ open: false, budget: null, keepQuoteRequest: false })}>Cancelar</Button>
@@ -1929,6 +1949,7 @@ function BudgetsPageContent() {
                   <Typography variant="body2"><strong>Cliente:</strong> {printBudget.client?.razonSocial}</Typography>
                   {printBudget.plant && <Typography variant="body2"><strong>Planta:</strong> {printBudget.plant.name}</Typography>}
                   {printBudget.parentProject && <Typography variant="body2"><strong>Adicional de:</strong> {printBudget.parentProject.code} - {printBudget.parentProject.name}</Typography>}
+                  {printBudget.project?.is_additional && <Typography variant="body2"><strong>Adicional:</strong> {formatProjectCode(printBudget.project)} - {printBudget.project.name}</Typography>}
                   {printBudget.existingProject && <Typography variant="body2"><strong>Vinculado a:</strong> {printBudget.existingProject.code} - {printBudget.existingProject.name}</Typography>}
                   {printBudget.work_order_number && <Typography variant="body2"><strong>N° OT:</strong> {printBudget.work_order_number}</Typography>}
                   {printBudget.quoteRequest && <Typography variant="body2"><strong>Pedido de Cotización:</strong> {printBudget.quoteRequest.number}</Typography>}
@@ -2045,6 +2066,17 @@ function BudgetsPageContent() {
           )}
         </DialogContent>
         <DialogActions>
+          {/* Atajo a la edición: al llegar por un acceso directo (?view=) lo habitual es querer editar, y
+              cerrar la vista deja al usuario en el listado completo sin saber cuál era el presupuesto.
+              Solo en borrador, igual que el ícono Editar del listado. */}
+          {printBudget?.status === 'draft' && (
+            <Button
+              variant="outlined" startIcon={<EditIcon />}
+              onClick={() => { const budget = printBudget; setPrintBudget(null); handleOpenEdit(budget); }}
+            >
+              Editar
+            </Button>
+          )}
           <Button onClick={() => setPrintBudget(null)}>Cerrar</Button>
           {/* Sin budget_prices_read la vista no incluye la mano de obra: imprimirla daría un presupuesto incompleto. */}
           {hasPricesRead && <Button onClick={handlePrint} variant="contained" startIcon={<PrintIcon />}>Imprimir</Button>}

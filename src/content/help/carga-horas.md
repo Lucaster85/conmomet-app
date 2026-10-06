@@ -31,7 +31,10 @@ Al abrir **"Nuevo Registro"** hay dos modos:
   **horas de grúa**, se habilita (y se vuelve obligatorio) elegir la **Grúa / Vehículo**
   correspondiente.
 - **Planta / Proyecto**: opcional. Al elegir un proyecto se habilita elegir el **Supervisor**
-  del cliente que corresponde a esas horas, y un selector de **Rubro** (ver abajo).
+  del cliente que corresponde a esas horas, y un selector de **Rubro** (ver abajo). Los **adicionales**
+  (ver el tema **Adicionales**) aparecen en este selector como cualquier proyecto, con el formato
+  **A-2026-001 · nombre (adicional de P-2026-063)** —o "(adicional)" si no tienen proyecto padre—; las
+  horas cargadas a un adicional se consolidan en su padre.
 - **Rubro** (opcional, solo con proyecto elegido): a qué bolsa de horas presupuestadas del
   **proyecto** corresponden — Montaje, Construcción, etc. (ver el tema **Proyectos**). Es un
   concepto totalmente distinto del campo **Concepto** de arriba (que define cómo se le paga la

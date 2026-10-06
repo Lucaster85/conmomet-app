@@ -137,6 +137,28 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'pedidos-cotizacion.md',
   },
   {
+    id: 'adicionales',
+    category: 'Gestión de Clientes',
+    title: 'Adicionales',
+    keywords: [
+      'adicional', 'adicionales', 'urgente', 'urgencia', 'proyecto padre', 'padre', 'subproyecto',
+      'codigo', 'código', 'a-2026', 'materiales', 'presupuesto rechazado', 'rechazo',
+      'nuevo presupuesto', 'historial de presupuestos', 'sin pedido de cotizacion',
+      'sin pedido de cotización',
+    ],
+    file: 'adicionales.md',
+  },
+  {
+    id: 'bitacora',
+    category: 'Gestión de Clientes',
+    title: 'Bitácora de proyectos y adicionales',
+    keywords: [
+      'bitacora', 'bitácora', 'nota', 'notas', 'seguimiento', 'registro', 'fotos', 'foto',
+      'celular', 'obra', 'proyecto', 'adicional', 'se compro', 'se compró', 'trabajo realizado',
+    ],
+    file: 'bitacora.md',
+  },
+  {
     id: 'presupuestos',
     category: 'Gestión de Clientes',
     title: 'Presupuestos',
