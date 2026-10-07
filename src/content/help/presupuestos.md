@@ -116,8 +116,8 @@ Al final del formulario (después del total y antes de las notas internas) hay u
 No es un texto aparte: se arma solo desde las líneas. Si agregás una línea aparece su fila; si
 quitás una del medio, la numeración se reacomoda; cada línea conserva su propia descripción. Es
 distinto de las **notas internas** del presupuesto. El detalle también aparece en la vista del
-presupuesto, **debajo del total y sin precios** (las líneas sin descripción igual se listan). Quien
-no tiene permiso de precios lo ve en solo lectura, como el resto de la mano de obra.
+presupuesto, **debajo del total y sin precios** (las líneas sin descripción igual se listan). Todos
+los que arman presupuestos pueden escribir las descripciones, tengan o no permiso de precios.
 
 Si este presupuesto está vinculado a un proyecto que ya tiene horas reales cargadas — un
 "vincular a un proyecto existente" (vinculado desde la creación, ver arriba) o un adicional que
@@ -273,9 +273,11 @@ El acceso al módulo lo da un permiso general, pero hay tres cosas que se gatean
   materiales NO dependen de este permiso**: cualquiera con acceso a Presupuestos los ve y carga
   el margen. Quien no tiene este permiso ve, en lugar del total general, el **subtotal de
   Materiales** (la suma de las líneas que ve, sin bonificación).
-  - La **mano de obra queda en solo lectura**: se ven el tipo de hora (rubro) y la cantidad, pero
-    no se pueden agregar, editar ni quitar líneas. Al guardar, **nunca se pisa** lo que ya cargó
-    alguien con permiso de precios.
+  - **La mano de obra se puede cargar igual**: quien no tiene este permiso agrega, edita y quita líneas
+    de mano de obra (rubro, cantidad y descripción), pero **no ve ni define los valores**. Al guardar,
+    las líneas que ya existían **conservan su valor** (el total se recalcula con la cantidad nueva), y
+    las líneas nuevas —o las que cambian de rubro— quedan **sin valor (0)** hasta que alguien con
+    permiso de precios las complete. La Tarifa por Rubro del cliente no se actualiza con sus cargas.
   - **No puede enviar ni imprimir.** El botón "Enviar" no aparece (aunque tenga el permiso de
     enviar) y en "Ver" no hay botón "Imprimir": lo que saldría sería un presupuesto incompleto,
     sin la mano de obra.
@@ -287,8 +289,8 @@ Ojo con una combinación: el precio al cliente se calcula como costo + margen, a
 precio y el margen de un material puede deducir su costo. Para cargar el margen hace falta ver el
 costo real (permiso de **costos**), por eso el perfil que arma materiales necesita ese permiso.
 
-Alguien sin permiso de precios igual puede hacer el trabajo con materiales — crear y editar
-presupuestos, cargar materiales con su margen, duplicarlos y generar el proyecto — pero no
-carga ni modifica la mano de obra, ni envía ni imprime.
+Alguien sin permiso de precios igual puede armar el presupuesto — crear y editar, cargar la mano de
+obra (rubro y cantidad) y los materiales con su margen, duplicarlo y generar el proyecto — pero no ve
+ni define los valores de mano de obra, ni envía ni imprime.
 
 <!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js -->

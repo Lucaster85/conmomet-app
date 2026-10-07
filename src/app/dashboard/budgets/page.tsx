@@ -971,8 +971,9 @@ function BudgetsPageContent() {
         // Solo tiene efecto en el alta — el backend lo ignora en update, el vínculo con el PC
         // queda fijo desde que nace el presupuesto (ver FLOWS.md).
         quote_request_id: !editingBudget && form.quote_request_id ? Number(form.quote_request_id) : undefined,
-        // Sin budget_prices_read la mano de obra es de solo lectura: no se manda y el backend la conserva.
-        laborLines: hasPricesRead ? form.laborLines : undefined,
+        // Sin budget_prices_read se cargan rubro, cantidad y descripción, pero no los valores: el
+        // backend conserva el valor de las líneas existentes y deja en 0 las nuevas.
+        laborLines: form.laborLines,
         materialItems: form.materialItems,
       };
       if (editingBudget) {
@@ -1532,13 +1533,11 @@ function BudgetsPageContent() {
             )}
             <Box display="flex" justifyContent="space-between" alignItems="center">
               <Typography fontWeight="bold">Mano de Obra</Typography>
-              {hasPricesRead && (
-                <Button size="small" startIcon={<AddIcon />} onClick={addLaborLine} disabled={itemTypes.length === 0}>Agregar línea</Button>
-              )}
+              <Button size="small" startIcon={<AddIcon />} onClick={addLaborLine} disabled={itemTypes.length === 0}>Agregar línea</Button>
             </Box>
             {!hasPricesRead && (
               <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
-                Solo lectura: la mano de obra la carga quien tiene permiso de precios.
+                Cargá el rubro y la cantidad.
               </Typography>
             )}
             {hasPricesRead && repeatedLaborTypeIds.size > 0 && (
@@ -1562,7 +1561,7 @@ function BudgetsPageContent() {
               return (
               <Grid container spacing={1} key={idx} alignItems="center">
                 <Grid size={{ xs: 12, md: hasPricesRead ? 4 : 6 }}>
-                  <TextField select fullWidth size="small" label="Rubro" value={line.budget_item_type_id} disabled={!hasPricesRead}
+                  <TextField select fullWidth size="small" label="Rubro" value={line.budget_item_type_id}
                     onChange={(e) => {
                       const newTypeId = Number(e.target.value);
                       const rate = rateForItemType(newTypeId);
@@ -1582,8 +1581,8 @@ function BudgetsPageContent() {
                     {itemTypes.map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}
                   </TextField>
                 </Grid>
-                <Grid size={{ xs: hasPricesRead ? 6 : 12, md: hasPricesRead ? 2 : 6 }}>
-                  <TextField type="number" size="small" fullWidth label={perDay ? 'Días' : 'Cantidad'} value={line.quantity} disabled={!hasPricesRead}
+                <Grid size={{ xs: hasPricesRead ? 6 : 10, md: hasPricesRead ? 2 : 5 }}>
+                  <TextField type="number" size="small" fullWidth label={perDay ? 'Días' : 'Cantidad'} value={line.quantity}
                     onChange={(e) => updateLaborLine(idx, { quantity: Number(e.target.value) })}
                     helperText={quantityHelper}
                   />
@@ -1611,11 +1610,9 @@ function BudgetsPageContent() {
                     </Grid>
                   </>
                 )}
-                {hasPricesRead && (
-                  <Grid size={{ xs: 1, md: 0.5 }}>
-                    <IconButton size="small" color="error" onClick={() => removeLaborLine(idx)}><DeleteIcon fontSize="small" /></IconButton>
-                  </Grid>
-                )}
+                <Grid size={{ xs: hasPricesRead ? 1 : 2, md: hasPricesRead ? 0.5 : 1 }}>
+                  <IconButton size="small" color="error" onClick={() => removeLaborLine(idx)}><DeleteIcon fontSize="small" /></IconButton>
+                </Grid>
               </Grid>
               );
             })}
@@ -1684,7 +1681,7 @@ function BudgetsPageContent() {
               <Box>
                 <Typography fontWeight="bold">Detalle de mano de obra</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Se muestra debajo del total en la vista del presupuesto.{!hasPricesRead && ' Solo lectura.'}
+                  Se muestra debajo del total en la vista del presupuesto.
                 </Typography>
                 <Stack spacing={1.5} sx={{ mt: 1 }}>
                   {form.laborLines.map((line, idx) => {
@@ -1695,7 +1692,7 @@ function BudgetsPageContent() {
                           {idx + 1} - {itemType?.name || line.itemType?.name} - {formatLaborQuantity(line, itemType)}
                         </Typography>
                         <TextField size="small" fullWidth multiline minRows={1} maxRows={6} label="Descripción"
-                          value={line.description ?? ''} disabled={!hasPricesRead}
+                          value={line.description ?? ''}
                           onChange={(e) => updateLaborLine(idx, { description: e.target.value })} />
                       </Box>
                     );
