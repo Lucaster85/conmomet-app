@@ -182,10 +182,6 @@ function AdditionalsContent() {
         </Box>
       </Box>
 
-      <Typography variant="body2" color="text.secondary" mb={2}>
-        Trabajos urgentes que arrancan ya, sin pedido de cotización ni presupuesto aprobado. Cada adicional es un proyecto propio, con o sin proyecto padre.
-      </Typography>
-
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
 
       <Paper sx={{ p: 2, mb: 2 }}>

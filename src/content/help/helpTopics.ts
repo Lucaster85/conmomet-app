@@ -149,14 +149,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'adicionales.md',
   },
   {
-    id: 'bitacora',
+    id: 'seguimiento',
     category: 'Gestión de Clientes',
-    title: 'Bitácora de proyectos y adicionales',
+    title: 'Seguimiento de proyectos y adicionales',
     keywords: [
-      'bitacora', 'bitácora', 'nota', 'notas', 'seguimiento', 'registro', 'fotos', 'foto',
+      'seguimiento', 'nota', 'notas', 'bitacora', 'bitácora', 'registro', 'fotos', 'foto',
       'celular', 'obra', 'proyecto', 'adicional', 'se compro', 'se compró', 'trabajo realizado',
     ],
-    file: 'bitacora.md',
+    file: 'seguimiento.md',
   },
   {
     id: 'presupuestos',

@@ -539,10 +539,10 @@ export default function AdditionalDetailPage() {
         </Typography>
       </Paper>
 
-      {/* Bitácora: notas de seguimiento con fecha y fotos (solo agregar). Es la del proyecto del adicional. */}
+      {/* Seguimiento: notas de seguimiento con fecha y fotos (solo agregar). Es la del proyecto del adicional. */}
       {can('project_logs_read') && (
         <Paper sx={{ p: 2, mb: 2 }}>
-          <Typography variant="h6" fontWeight={700} mb={0.5}>Bitácora</Typography>
+          <Typography variant="h6" fontWeight={700} mb={0.5}>Seguimiento</Typography>
           <Typography variant="body2" color="text.secondary" mb={2}>
             Notas de seguimiento con fecha: qué se compró, qué se hizo. Se pueden sumar fotos.
           </Typography>

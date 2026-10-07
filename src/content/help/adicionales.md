@@ -54,11 +54,11 @@ margen 0.
 
 Desde esa misma sección se puede **crear un material o un proveedor** nuevo al vuelo (con "Agregar…").
 
-## Bitácora del adicional
+## Seguimiento del adicional
 
-En la ficha del adicional hay una sección **Bitácora** para ir dejando notas de seguimiento con fecha ("se compró
-material para…", "se hizo…"), con fotos opcionales. Es la bitácora del proyecto del adicional y se puede cargar
-desde el celular. Ver el tema **Bitácora de proyectos y adicionales**.
+En la ficha del adicional hay una sección **Seguimiento** para ir dejando notas de seguimiento con fecha ("se compró
+material para…", "se hizo…"), con fotos opcionales. Es el seguimiento del proyecto del adicional y se puede cargar
+desde el celular. Ver el tema **Seguimiento de proyectos y adicionales**.
 
 ## Nombre y descripción compartidos con el presupuesto
 

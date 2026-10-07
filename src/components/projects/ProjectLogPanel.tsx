@@ -36,8 +36,8 @@ const dayLabel = (iso: string) => {
 
 const timeLabel = (iso: string) => new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
-// Bitácora de un proyecto o adicional: notas de seguimiento con fecha, autor y fotos. Se usa en la
-// pestaña "Bitácora" de la ficha de un proyecto y en la ficha de un adicional. Pensada para
+// Seguimiento de un proyecto o adicional: notas de seguimiento con fecha, autor y fotos. Se usa en la
+// pestaña "Seguimiento" de la ficha de un proyecto y en la ficha de un adicional. Pensada para
 // cargarse desde el celular (un campo, un botón de foto, un botón de enviar) y leerse igual en
 // escritorio. Es un registro de solo agregar: no hay edición ni borrado.
 export default function ProjectLogPanel({ projectId }: Props) {
@@ -68,7 +68,7 @@ export default function ProjectLogPanel({ projectId }: Props) {
       setEntries(result.data);
       setHasMore(result.has_more);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar la bitácora');
+      setError(err instanceof Error ? err.message : 'Error al cargar el seguimiento');
     } finally {
       setLoading(false);
     }
@@ -188,7 +188,7 @@ export default function ProjectLogPanel({ projectId }: Props) {
       {loading ? (
         <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>
       ) : entries.length === 0 ? (
-        <Alert severity="info">Todavía no hay notas en la bitácora.</Alert>
+        <Alert severity="info">Todavía no hay notas de seguimiento.</Alert>
       ) : (
         <Stack spacing={2}>
           {groups.map((group) => (

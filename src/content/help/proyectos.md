@@ -42,11 +42,11 @@ quedó un **borrador viejo** de ese tipo, sigue generando su subproyecto con el 
 como antes (ver el tema **Presupuestos**); mientras el presupuesto esté en borrador, cada vez que se
 guarde se actualizan las bolsas de horas por rubro del proyecto.
 
-## Bitácora
+## Seguimiento
 
-Cada proyecto tiene una pestaña **Bitácora**, donde se van dejando notas de seguimiento con **fecha, hora y
+Cada proyecto tiene una pestaña **Seguimiento**, donde se van dejando notas de seguimiento con **fecha, hora y
 autor** (y fotos opcionales): qué se compró, qué se hizo. Se carga igual desde el celular que desde la
-computadora. Es un registro de solo agregar. Ver el tema **Bitácora de proyectos y adicionales**.
+computadora. Es un registro de solo agregar. Ver el tema **Seguimiento de proyectos y adicionales**.
 
 ## Asignar Supervisores del Cliente
 

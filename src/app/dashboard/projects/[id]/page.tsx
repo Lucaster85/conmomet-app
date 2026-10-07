@@ -153,7 +153,7 @@ export default function ProjectDetailPage() {
   const adicionalesTabIndex = hasAdicionalesTab ? nextTabIndex++ : 99;
   const horasTabIndex = nextTabIndex++;
   const planillaTabIndex = nextTabIndex++;
-  const bitacoraTabIndex = hasLogRead ? nextTabIndex++ : 99;
+  const seguimientoTabIndex = hasLogRead ? nextTabIndex++ : 99;
   const presupuestoTabIndex = hasBudgetsRead ? nextTabIndex++ : 99;
   const panolTabIndex = hasToolsRead ? nextTabIndex++ : 99;
 
@@ -290,7 +290,7 @@ export default function ProjectDetailPage() {
     ...(hasAdicionalesTab ? [{ label: `Adicionales (${project.subproject_count ?? project.subprojects?.length ?? 0})` }] : []),
     { label: 'Horas' },
     { label: 'Planilla Diaria' },
-    ...(hasLogRead ? [{ label: 'Bitácora' }] : []),
+    ...(hasLogRead ? [{ label: 'Seguimiento' }] : []),
     ...(hasBudgetsRead ? [{ label: 'Presupuesto' }] : []),
     ...(hasToolsRead ? [{ label: 'Pañol' }] : []),
   ];
@@ -303,7 +303,7 @@ export default function ProjectDetailPage() {
     ...(hasAdicionalesTab ? [{ key: 'adicionales', label: 'Adicionales', icon: <SubprojectsIcon />, badge: project.subproject_count ?? project.subprojects?.length ?? 0, onClick: () => setTab(adicionalesTabIndex) }] : []),
     { key: 'horas', label: 'Horas', icon: <HoursIcon />, onClick: () => setTab(horasTabIndex) },
     { key: 'planilla', label: 'Planilla', icon: <DailyLogIcon />, onClick: () => setTab(planillaTabIndex) },
-    ...(hasLogRead ? [{ key: 'bitacora', label: 'Bitácora', icon: <LogIcon />, onClick: () => setTab(bitacoraTabIndex) }] : []),
+    ...(hasLogRead ? [{ key: 'seguimiento', label: 'Seguimiento', icon: <LogIcon />, onClick: () => setTab(seguimientoTabIndex) }] : []),
     ...(hasBudgetsRead ? [{ key: 'presupuesto', label: 'Presupuesto', icon: <BudgetTabIcon />, onClick: () => setTab(presupuestoTabIndex) }] : []),
     ...(hasToolsRead ? [{ key: 'panol', label: 'Pañol', icon: <PanolIcon />, onClick: () => setTab(panolTabIndex) }] : []),
   ];
@@ -926,10 +926,10 @@ export default function ProjectDetailPage() {
         </Paper>
       )}
 
-      {/* Tab Bitácora: notas de seguimiento con fecha y fotos (solo agregar) */}
-      {tab === bitacoraTabIndex && (
+      {/* Tab Seguimiento: notas de seguimiento con fecha y fotos (solo agregar) */}
+      {tab === seguimientoTabIndex && (
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>Bitácora</Typography>
+          <Typography variant="h6" sx={{ mb: 2 }}>Seguimiento</Typography>
           <ProjectLogPanel projectId={project.id} />
         </Paper>
       )}

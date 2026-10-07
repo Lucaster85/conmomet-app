@@ -5123,7 +5123,7 @@ export class AdditionalService {
   }
 }
 
-// ============== Bitácora de proyectos/adicionales ==============
+// ============== Seguimiento de proyectos/adicionales ==============
 // Notas de seguimiento con fecha, autor y fotos opcionales. Registro de solo agregar: no hay
 // edición ni borrado — una nota equivocada se corrige con otra nueva. La fecha la pone el servidor.
 
@@ -5152,7 +5152,7 @@ export class ProjectLogService {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/project-logs/${projectId}${qs}`);
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'Error al obtener la bitácora');
+      throw new Error(error.error || 'Error al obtener el seguimiento');
     }
     return response.json();
   }
