@@ -129,7 +129,10 @@ Una vez marcada, el ciclo es:
 1. **Cargar Precio** (ver arriba) — obligatorio antes de poder presentar.
 2. **Presentar Presupuesto** — lo manda a administración del cliente (un contacto distinto del
    supervisor de obra que aprobó el remito).
-3. Administración lo **aprueba** o lo **rechaza**.
+3. Administración lo **aprueba** o lo **rechaza**. Al aprobarlo se puede indicar, de forma opcional,
+   qué **contacto de administración** del cliente lo aprobó: se elige de una lista con búsqueda, y
+   si no está cargado se escribe su nombre y se elige **"Agregar «nombre»"** para darlo de alta ahí
+   mismo (pide nombre y apellido).
 
 **Si administración rechaza el presupuesto** (por ejemplo, porque no está de acuerdo con la
 cantidad de horas declaradas), se rechaza **toda la OCA** — aunque ya estuviera aprobada por el

@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Card, CardContent, Stack, Button, InputAdornment, Autocomplete, TextField } from '@mui/material';
+import { Box, Typography, Card, CardContent, Stack, Button, InputAdornment, Autocomplete, TextField, Chip } from '@mui/material';
 import GearSpinner from '@/components/GearSpinner';
 import { SettingsOutlined as TitleIcon } from '@mui/icons-material';
 import CurrencyInput from '@/components/CurrencyInput';
@@ -18,11 +18,17 @@ export default function SystemSettingsPage() {
   const [ocaBudgetUserId, setOcaBudgetUserId] = useState<number | null>(null);
   const [savingOcaBudgetUser, setSavingOcaBudgetUser] = useState(false);
 
+  // Alícuotas de IVA de Facturación. Arranca solo con 21%; el cliente agrega las que necesite.
+  const [ivaRates, setIvaRates] = useState<number[]>([21]);
+  const [newIvaRate, setNewIvaRate] = useState('');
+  const [savingIva, setSavingIva] = useState(false);
+
   useEffect(() => {
     SystemSettingService.get()
       .then((settings) => {
         setMaxLoanAmount(Number(settings.max_loan_amount_ars));
         setOcaBudgetUserId(settings.oca_budget_notification_user_id ?? null);
+        setIvaRates(settings.invoice_iva_rates && settings.invoice_iva_rates.length > 0 ? settings.invoice_iva_rates : [21]);
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar la configuración'))
       .finally(() => setLoading(false));
@@ -55,6 +61,33 @@ export default function SystemSettingsPage() {
       setError(err instanceof Error ? err.message : 'Error al guardar la configuración');
     } finally {
       setSavingOcaBudgetUser(false);
+    }
+  };
+
+  const handleAddIvaRate = () => {
+    const rate = Number(newIvaRate.replace(',', '.'));
+    if (newIvaRate.trim() === '' || !Number.isFinite(rate) || rate < 0 || rate > 100 || Math.abs(Math.round(rate * 100) - rate * 100) > 1e-9) {
+      setError('Ingresá una alícuota entre 0 y 100, con hasta 2 decimales.');
+      return;
+    }
+    if (ivaRates.includes(rate)) {
+      setError('Esa alícuota ya está en la lista.');
+      return;
+    }
+    setIvaRates([...ivaRates, rate].sort((a, b) => a - b));
+    setNewIvaRate('');
+  };
+
+  const handleSaveIvaRates = async () => {
+    setSavingIva(true);
+    try {
+      const updated = await SystemSettingService.update({ invoice_iva_rates: ivaRates });
+      setIvaRates(updated.invoice_iva_rates && updated.invoice_iva_rates.length > 0 ? updated.invoice_iva_rates : [21]);
+      setSuccess('Alícuotas de IVA actualizadas correctamente.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar las alícuotas de IVA');
+    } finally {
+      setSavingIva(false);
     }
   };
 
@@ -111,6 +144,41 @@ export default function SystemSettingsPage() {
             />
             <Button variant="contained" onClick={handleSaveOcaBudgetUser} disabled={savingOcaBudgetUser} sx={{ alignSelf: 'flex-start' }}>
               {savingOcaBudgetUser ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Card sx={{ maxWidth: 480, borderRadius: 3, mt: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="h6" fontWeight={600} mb={0.5}>Facturación — Alícuotas de IVA</Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Alícuotas que se pueden elegir al cargar una factura. Las facturas ya cargadas guardan la
+            que usaron, así que quitar una de la lista no las modifica.
+          </Typography>
+          <Stack spacing={2}>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              {ivaRates.map((rate) => (
+                <Chip
+                  key={rate}
+                  label={`${rate.toLocaleString('es-AR', { maximumFractionDigits: 2 })}%`}
+                  onDelete={ivaRates.length > 1 ? () => setIvaRates(ivaRates.filter((r) => r !== rate)) : undefined}
+                />
+              ))}
+            </Box>
+            <Box display="flex" gap={1}>
+              <TextField
+                label="Nueva alícuota" size="small" value={newIvaRate}
+                onChange={(e) => setNewIvaRate(e.target.value.replace(/[^\d.,]/g, ''))}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddIvaRate(); } }}
+                InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                inputProps={{ inputMode: 'decimal' }}
+                sx={{ maxWidth: 180 }}
+              />
+              <Button variant="outlined" onClick={handleAddIvaRate}>Agregar</Button>
+            </Box>
+            <Button variant="contained" onClick={handleSaveIvaRates} disabled={savingIva} sx={{ alignSelf: 'flex-start' }}>
+              {savingIva ? 'Guardando…' : 'Guardar'}
             </Button>
           </Stack>
         </CardContent>

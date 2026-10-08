@@ -9,6 +9,7 @@ import {
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import DateField from '../../../components/DateField';
+import QuoteRequestDueChip from '../../../components/quote-requests/QuoteRequestDueChip';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   RefreshOutlined as RefreshIcon, RequestQuoteOutlined as TitleIcon,
@@ -35,26 +36,9 @@ const STATUS_LABELS: Record<QuoteRequest['status'], { label: string; color: 'def
 // Presupuesto mezclados y ya ordenados por el backend.
 const HISTORY_EVENT_LABELS: Record<QuoteRequestHistoryEntry['event'], string> = {
   assigned: 'Asignado', delivered: 'Entregado a gerencia', returned: 'Devuelto al responsable',
-  reassigned: 'Reasignado', cancelled: 'Cancelado', reopened: 'Reabierto', quoted: 'Marcado como cotizado',
+  reassigned: 'Reasignado', cancelled: 'Cancelado', reopened: 'Reabierto', quoted: 'Cotizado, se avisó a los participantes',
   budget_sent: 'Presupuesto enviado al cliente', budget_approved: 'Presupuesto aprobado', budget_rejected: 'Presupuesto rechazado',
 };
-
-// Mismo criterio que daysExpired en budgets/page.tsx: puramente visual, nunca bloquea nada.
-function daysUntil(dueDate: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const deadline = new Date(dueDate + 'T00:00:00');
-  return Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function dueDateChip(dueDate: string): { label: string; color: 'default' | 'warning' | 'error' } {
-  const days = daysUntil(dueDate);
-  if (days < 0) return { label: `Vencido hace ${Math.abs(days)} día${Math.abs(days) === 1 ? '' : 's'}`, color: 'error' };
-  if (days === 0) return { label: 'Vence hoy', color: 'error' };
-  if (days <= 2) return { label: `Vence en ${days} día${days === 1 ? '' : 's'}`, color: 'error' };
-  if (days <= 7) return { label: `Vence en ${days} días`, color: 'warning' };
-  return { label: `Vence en ${days} días`, color: 'default' };
-}
 
 // GET /users trae permisos como objetos anidados (role.permissions + permissions), a diferencia
 // de utils/auth.ts#userHasPermission que espera el user de la sesión ya aplanado a string[].
@@ -443,7 +427,6 @@ function QuoteRequestsPageContent() {
         ) : (
           <Stack spacing={2}>
             {quoteRequests.map((qr) => {
-              const chip = dueDateChip(qr.due_date);
               return (
                 <Card key={qr.id} sx={{ p: 2, borderRadius: 2 }}>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
@@ -459,7 +442,7 @@ function QuoteRequestsPageContent() {
                     <Chip label={STATUS_LABELS[qr.status].label} color={STATUS_LABELS[qr.status].color} size="small" />
                   </Box>
                   <Typography variant="body2" color="text.secondary">{qr.client?.razonSocial}</Typography>
-                  <Chip label={chip.label} color={chip.color} size="small" sx={{ mt: 1 }} />
+                  <Box mt={1}><QuoteRequestDueChip quoteRequest={qr} /></Box>
                   {(qr.assignees || []).length > 0 && (
                     <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 1 }}>
                       Responsables: {qr.assignees!.map((a) => `${a.name} ${a.lastname}`).join(', ')}
@@ -494,7 +477,6 @@ function QuoteRequestsPageContent() {
                 <TableRow><TableCell colSpan={8} align="center">No hay Pedidos de Cotización</TableCell></TableRow>
               ) : (
                 quoteRequests.map((qr) => {
-                  const chip = dueDateChip(qr.due_date);
                   return (
                     <TableRow key={qr.id} hover>
                       <TableCell>{qr.number}</TableCell>
@@ -502,7 +484,7 @@ function QuoteRequestsPageContent() {
                       <TableCell>{qr.title}</TableCell>
                       <TableCell>{qr.client?.razonSocial}</TableCell>
                       <TableCell><Chip label={STATUS_LABELS[qr.status].label} color={STATUS_LABELS[qr.status].color} size="small" /></TableCell>
-                      <TableCell><Chip label={chip.label} color={chip.color} size="small" /></TableCell>
+                      <TableCell><QuoteRequestDueChip quoteRequest={qr} /></TableCell>
                       <TableCell>{(qr.assignees || []).map((a) => `${a.name} ${a.lastname}`).join(', ') || '—'}</TableCell>
                       <TableCell>{renderActions(qr)}</TableCell>
                     </TableRow>

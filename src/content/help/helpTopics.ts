@@ -171,6 +171,18 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'presupuestos.md',
   },
   {
+    id: 'facturacion',
+    category: 'Facturación',
+    title: 'Facturación',
+    keywords: [
+      'factura', 'facturas', 'facturar', 'facturacion', 'facturación', 'iva', 'alicuota', 'alícuota',
+      'saldo', 'por facturar', 'cobro', 'cobrada', 'cobranza', 'anular', 'corregir', 'sin factura',
+      'factura libre', 'cuit', 'arca', 'afip', 'anticipo', 'avance', 'mano de obra', 'materiales',
+      'punto de venta', 'comprobante', 'pdf',
+    ],
+    file: 'facturacion.md',
+  },
+  {
     id: 'materiales',
     category: 'Pañol',
     title: 'Materiales y Proveedores',

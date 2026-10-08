@@ -20,9 +20,13 @@ Cotización):
   muestran tomándolo de acá, no hay que volver a escribirlo.
 - **Descripción** y **Fecha de recepción** (cuándo lo mandó el cliente).
 - **Vencimiento de presentación*** (obligatorio) — hasta cuándo hay tiempo de mandarle la
-  cotización al cliente. Es el dato más importante del módulo: se ve siempre, como un cartel de
-  color que indica cuántos días quedan (o hace cuántos días que venció). Es solo una alerta
-  visual — vencido igual se puede seguir trabajando con normalidad, no bloquea nada.
+  cotización al cliente. Es el dato más importante del módulo: mientras el pedido está en curso
+  se ve como un cartel de color que indica cuántos días quedan (o hace cuántos días que venció).
+  Es solo una alerta visual — vencido igual se puede seguir trabajando con normalidad, no
+  bloquea nada. **Cuando el presupuesto se envía al cliente, el vencimiento desaparece** y en su
+  lugar aparece un cartel verde **"Enviado el dd/mm"**: ya no queda nada por vigilar. Pasada la
+  fecha sigue diciendo "Enviado", no "Vencido". En un pedido **cancelado** no se muestra nada.
+  Si el pedido se reabre para volver a cotizar (ver más abajo), el vencimiento vuelve a mostrarse.
 - **Responsables**: una o más personas que van a armar el presupuesto. Se puede elegir más de
   una.
 - **Adjuntar documento**: el o los archivos que mandó el cliente (el pliego), en cualquier formato.
@@ -117,6 +121,8 @@ cualquier punto del camino.
   usar gerencia). Así **Cotizado** siempre significa que la cotización efectivamente salió, y no
   puede quedar un pedido dado por cerrado con el presupuesto todavía en Borrador. Si al final se
   decide no cotizar, el camino es **Cancelar**.
+  **Al enviar el presupuesto se avisa a todos los que participaron del pedido** (ver "Avisos"
+  más abajo), no solo a quien lo armó.
 - Si más adelante hay que **volver a cotizar sobre el mismo pedido** (por ejemplo, el cliente
   rechazó el presupuesto y se duplica para rehacerlo manteniendo el vínculo), el pedido **vuelve
   solo a En progreso** y reaparece en los avisos.
@@ -179,6 +185,17 @@ un **push** — aunque no tengas la app abierta — en estos cuatro momentos: te
 te entregan un presupuesto para validar, te lo devuelven, o se envía un presupuesto al cliente.
 Tocar la notificación te lleva directo a la pantalla correspondiente.
 
+**Cuando se envía el presupuesto al cliente**, el aviso (push y registro en la línea de tiempo
+del pedido) le llega a **todos los que participaron del pedido**, sin repetir a nadie y sin
+incluir a quien lo envió:
+
+- los responsables actuales;
+- quienes fueron responsables o recibieron el pedido en algún momento del ida y vuelta;
+- quien cargó el Pedido de Cotización;
+- quien armó el presupuesto.
+
+Un presupuesto que no nació de un Pedido de Cotización avisa solo a quien lo armó.
+
 ### Activar las notificaciones en tu dispositivo
 
 Se activan desde el ícono de tu usuario (arriba a la derecha) → **Notificaciones**. Hay que
@@ -204,10 +221,11 @@ avisa: se corrige desactivando y volviendo a activar.
 ## Quién puede hacer qué
 
 - **Gerencia** (quien gestiona pedidos): carga el pedido, lo edita, elige y cambia
-  responsables, lo devuelve al responsable, lo marca como cotizado, lo cancela o lo reabre. Es
-  también quien **envía el presupuesto al cliente**.
+  responsables, lo devuelve al responsable, lo cancela o lo reabre. Es también quien **envía
+  el presupuesto al cliente**, y es ese envío —no un botón— el que deja el pedido como
+  Cotizado.
 - **Responsable de cotizar**: ve los pedidos que tiene asignados, arma el presupuesto y lo
   **entrega a gerencia**. No puede editar el pedido (ni cambiarle el vencimiento ni
   reasignarlo), ni enviarle el presupuesto al cliente — su trabajo termina al entregarlo.
 
-<!-- ref: conmomet-app/src/app/dashboard/quote-requests/page.tsx, conmomet-app/src/components/common/QuoteRequestAlert.tsx, conmomet-app/src/components/common/DeliverToManagementDialog.tsx, conmomet-app/src/components/common/PushNotificationsDialog.tsx, conmomet-app/src/utils/push.ts, api_conmomet/helpers/pushService.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/controllers/budgetController.js, api_conmomet/models/quoteRequestStatusLog.js -->
+<!-- ref: conmomet-app/src/app/dashboard/quote-requests/page.tsx, conmomet-app/src/components/common/QuoteRequestAlert.tsx, conmomet-app/src/components/common/DeliverToManagementDialog.tsx, conmomet-app/src/components/common/PushNotificationsDialog.tsx, conmomet-app/src/utils/push.ts, api_conmomet/helpers/pushService.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/controllers/budgetController.js, api_conmomet/services/quoteRequestLogService.js, api_conmomet/models/quoteRequestStatusLog.js, conmomet-app/src/utils/quoteRequestDue.ts, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx -->

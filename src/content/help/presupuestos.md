@@ -8,8 +8,10 @@ Un presupuesto se puede crear suelto, como siempre, o nacer de un **Pedido de Co
 el tema **Pedidos de Cotización**) — en ese caso llega con el cliente y la planta ya
 precargados y **bloqueados** (no se pueden cambiar), y queda vinculado para siempre a ese
 pedido. En el listado se ve un cartel con el número del pedido y su vencimiento de presentación;
-en el Ver/Imprimir sale el número del pedido como un dato más, **sin el vencimiento** (esa fecha
-es interna, no tiene por qué salir en lo que se le manda al cliente).
+**cuando el presupuesto se envía al cliente, el vencimiento desaparece** y el cartel pasa a decir
+**"Enviado el dd/mm"** (ya no hay nada que vigilar). En el Ver/Imprimir sale el número del pedido
+como un dato más, **sin el vencimiento** (esa fecha es interna, no tiene por qué salir en lo que
+se le manda al cliente).
 
 En el listado, si el presupuesto viene de un pedido que **tenés asignado**, aparece una etiqueta
 de color: **"Asignado a vos"** mientras te toca armarlo, o **"A validar por vos"** si te lo
@@ -201,7 +203,10 @@ acceso directo y lo que se quiere es modificarlo.
   pero no necesariamente ponerlo en manos del cliente. Si no tenés ese permiso, el botón no
   aparece (ver el tema **Pedidos de Cotización**).
 - **"Aprobar"**: opcionalmente se completa quién lo aprobó (un contacto/Supervisor del
-  cliente) y se puede subir el documento firmado (o subirlo más adelante). Una vez aprobado, el
+  cliente) y se puede subir el documento firmado (o subirlo más adelante). El contacto se
+  elige de una lista con búsqueda; si no está cargado, se escribe su nombre y se elige
+  **"Agregar «nombre»"** para darlo de alta ahí mismo (pide nombre y apellido) sin salir del
+  diálogo. Una vez aprobado, el
   mismo botón sirve para **reemplazar el documento firmado** sin cambiar de estado.
 - **"Rechazar"**: pide un **motivo obligatorio**.
 
@@ -213,14 +218,33 @@ ida y vuelta interno entre quien lo arma y gerencia. Cuando el presupuesto ya ti
 rubros y los materiales, el responsable usa el botón **"Entregar a gerencia"** — está acá mismo,
 en la fila del presupuesto — y elige quién lo recibe: el pedido pasa a **A validar** y gerencia
 carga los márgenes y lo envía (ver el tema **Pedidos de Cotización**). Apenas el presupuesto se
-envía al cliente, el Pedido de Cotización se marca automáticamente como cumplido.
+envía al cliente, el Pedido de Cotización se marca automáticamente como cumplido y se **avisa a
+todos los que participaron del pedido** (responsables actuales y anteriores, quien cargó el pedido
+y quien armó el presupuesto, menos quien lo envió) — con una notificación y un registro en la
+línea de tiempo del pedido. Si el presupuesto no nació de un pedido, el aviso le llega solo a
+quien lo armó.
 
 ## Bonificación
 
 Botón **"Bonificación"** (solo con permiso para ver precios), disponible únicamente sobre
-presupuestos **Enviados** o **Aprobados**. Dos porcentajes independientes — uno para mano de
-obra y otro para materiales, entre 0 y 100 — que se aplican sobre los totales, sin tocar las
-líneas originales.
+presupuestos **Enviados**. Dos porcentajes independientes — uno para mano de obra y otro para
+materiales, entre 0 y 100 — que se aplican sobre los totales, sin tocar las líneas originales.
+
+**Un presupuesto aprobado ya no admite bonificaciones**: el descuento se negocia mientras el
+cliente decide, y una vez aprobado queda fijo. Es lo que permite facturar sobre un importe que
+no cambia. Si hay que ajustar el descuento, hay que hacerlo antes de aprobar. Cada cambio de
+bonificación queda registrado en la auditoría con el valor anterior y el nuevo.
+
+## Los totales son "+ IVA"
+
+Todos los importes de un presupuesto son **netos**: el total lleva la leyenda **"+ IVA"** al lado
+(en el listado, el formulario, el Ver/Imprimir y la pestaña Presupuesto del proyecto). El IVA se
+calcula recién al facturar (ver el tema **Facturación**).
+
+Los presupuestos **aprobados** muestran en el listado un cartel con su **estado de facturación**
+(*Sin facturar*, *Facturado parcial*, *Facturado* o *Facturado y cobrado*), visible para quien tiene
+acceso a Facturación. Tocarlo lleva directo al detalle de facturación de ese presupuesto, donde se
+ve cuánto queda por facturar y se registran las facturas.
 
 ## Generar Proyecto
 
@@ -293,4 +317,4 @@ Alguien sin permiso de precios igual puede armar el presupuesto — crear y edit
 obra (rubro y cantidad) y los materiales con su margen, duplicarlo y generar el proyecto — pero no ve
 ni define los valores de mano de obra, ni envía ni imprime.
 
-<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js -->
+<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts -->

@@ -41,7 +41,6 @@ import {
   Switch,
   FormControlLabel,
   Autocomplete,
-  createFilterOptions,
 } from '@mui/material';
 import {
   ExpandMoreOutlined as ExpandMoreIcon,
@@ -90,16 +89,7 @@ import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import CurrencyInput from '../../../components/CurrencyInput';
 import { useAuth } from '../../../utils/auth';
-
-// Mismo patrón "creatable" que budgets/page.tsx para elegir el contacto de administración del
-// cliente que aprueba el presupuesto — dar de alta uno nuevo pide más de un dato (nombre y
-// apellido por separado), así que la opción sintética abre un mini diálogo en vez de crear directo.
-interface AdminContactOption {
-  id?: number;
-  label: string;
-  inputValue?: string;
-}
-const adminContactFilter = createFilterOptions<AdminContactOption>();
+import ClientContactSelect from '../../../components/clients/ClientContactSelect';
 
 const STATUS_COLORS: Record<Oca['status'], 'warning' | 'info' | 'success' | 'error' | 'default'> = {
   pendiente: 'warning',
@@ -195,7 +185,7 @@ export default function OcasPage() {
     { open: false, oca: null, supervisors: [], approvedBySupervisorId: '' }
   );
   // Alta rápida de contacto de administración (ClientSupervisor type='administracion') al
-  // aprobar el presupuesto — mismo criterio que budgets/page.tsx.
+  // aprobar el presupuesto: ClientContactSelect abre este mini-diálogo, que pide nombre y apellido.
   const [adminContactQuickAdd, setAdminContactQuickAdd] = useState<{ open: boolean; name: string; lastname: string; email: string; phone: string }>(
     { open: false, name: '', lastname: '', email: '', phone: '' }
   );
@@ -1236,15 +1226,6 @@ export default function OcasPage() {
     } catch {
       // sin lista de supervisores no bloquea la aprobación — el campo es opcional
     }
-  };
-
-  const handleAdminContactSelectChange = (newValue: AdminContactOption | null) => {
-    if (!newValue) { setApproveBudgetDialog(prev => ({ ...prev, approvedBySupervisorId: '' })); return; }
-    if (newValue.inputValue) {
-      setAdminContactQuickAdd({ open: true, name: newValue.inputValue, lastname: '', email: '', phone: '' });
-      return;
-    }
-    if (newValue.id) setApproveBudgetDialog(prev => ({ ...prev, approvedBySupervisorId: newValue.id as number }));
   };
 
   const handleConfirmAdminContactQuickAdd = async () => {
@@ -3235,25 +3216,14 @@ export default function OcasPage() {
               <Typography variant="body2" color="text.secondary">
                 Confirma que administración del cliente dio conformidad al presupuesto presentado.
               </Typography>
-              <Autocomplete<AdminContactOption>
-                options={approveBudgetDialog.supervisors.map(s => ({ id: s.id, label: `${s.lastname}, ${s.name}` }))}
-                value={(() => {
-                  const s = approveBudgetDialog.supervisors.find(sup => sup.id === approveBudgetDialog.approvedBySupervisorId);
-                  return s ? { id: s.id, label: `${s.lastname}, ${s.name}` } : null;
-                })()}
-                onChange={(_, val) => handleAdminContactSelectChange(val)}
-                getOptionLabel={(option) => option.label}
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                filterOptions={(options, params) => {
-                  const filtered = adminContactFilter(options, params);
-                  const { inputValue } = params;
-                  const exists = options.some((o) => o.label.toLowerCase() === inputValue.toLowerCase());
-                  if (inputValue !== '' && !exists) {
-                    filtered.push({ label: `Agregar "${inputValue}"`, inputValue });
-                  }
-                  return filtered;
-                }}
-                renderInput={(params) => <TextField {...params} label="Contacto de administración (opcional)" placeholder="Buscar..." />}
+              <ClientContactSelect
+                size="medium"
+                contacts={approveBudgetDialog.supervisors}
+                value={approveBudgetDialog.approvedBySupervisorId === '' ? null : approveBudgetDialog.approvedBySupervisorId}
+                onChange={(contact) => setApproveBudgetDialog(prev => ({ ...prev, approvedBySupervisorId: contact ? contact.id : '' }))}
+                onCreateRequest={(name) => setAdminContactQuickAdd({ open: true, name, lastname: '', email: '', phone: '' })}
+                label="Contacto de administración (opcional)"
+                placeholder="Buscar..."
               />
             </Stack>
           </DialogContent>
@@ -3263,7 +3233,7 @@ export default function OcasPage() {
           </DialogActions>
         </Dialog>
 
-        {/* Alta rápida de contacto de administración — abierta desde el Autocomplete de arriba */}
+        {/* Alta rápida de contacto de administración — abierta desde el selector de arriba */}
         <Dialog open={adminContactQuickAdd.open} onClose={() => setAdminContactQuickAdd({ ...adminContactQuickAdd, open: false })} maxWidth="xs" fullWidth>
           <DialogTitle>Nuevo Contacto de Administración</DialogTitle>
           <DialogContent>

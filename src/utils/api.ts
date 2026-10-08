@@ -1,4 +1,5 @@
 import { TokenManager } from './auth';
+import type { TaxCondition } from './cuit';
 
 declare global {
   interface Window {
@@ -68,6 +69,9 @@ export interface Client {
   razonSocial: string;
   email: string;
   phone?: string;
+  // Datos fiscales opcionales (Facturación / ARCA). El CUIT viene sin guiones.
+  cuit?: string | null;
+  tax_condition?: TaxCondition | null;
   is_active: boolean;
   createdAt: string;
   updatedAt?: string;
@@ -77,6 +81,8 @@ export interface CreateClientData {
   razonSocial: string;
   email: string;
   phone?: string;
+  cuit?: string | null;
+  tax_condition?: TaxCondition | null;
   is_active?: boolean;
 }
 
@@ -1723,6 +1729,8 @@ export interface Budget {
   // esta relación (ver FLOWS.md flujo 27).
   // `assigned_to_me` lo calcula el backend desde los responsables del PC (withTotals) — llega
   // como booleano, no viene la lista de responsables.
+  // Solo en presupuestos aprobados y para quien tiene invoices_read (chip en el listado).
+  billing_status?: { status: BillingStatus; has_pending_payment: boolean; has_balance: boolean };
   quoteRequest?: {
     id: number;
     number: string;
@@ -1951,8 +1959,11 @@ export interface QuoteRequest {
   createdBy?: { id: number; name: string; lastname: string };
   assignees?: { id: number; name: string; lastname: string }[];
   files?: QuoteRequestFile[];
-  budgets?: { id: number; number: string; status: string; title: string; created_by?: number }[];
+  budgets?: { id: number; number: string; status: string; title: string; created_by?: number; sent_at?: string | null }[];
   createdAt: string;
+  // Cuándo salió la cotización al cliente (último presupuesto enviado y no rechazado) — reemplaza
+  // al vencimiento en el chip una vez que el PC está cotizado.
+  last_sent_at?: string | null;
   // Último comentario del ida y vuelta dirigido a MÍ (resuelto por el backend según el usuario
   // de la request) — liviano a propósito, para el aviso del tablero. El hilo completo se pide
   // aparte con getHistory().
@@ -3951,6 +3962,8 @@ export interface SystemSetting {
   max_loan_amount_ars: number;
   oca_budget_notification_user_id?: number | null;
   ocaBudgetNotificationUser?: { id: number; name: string; lastname: string };
+  // Alícuotas de IVA disponibles al cargar una factura. Arranca solo con 21%.
+  invoice_iva_rates?: number[] | null;
 }
 
 export class SystemSettingService {
@@ -3961,7 +3974,7 @@ export class SystemSettingService {
     return data.data;
   }
 
-  static async update(data: { max_loan_amount_ars?: number; oca_budget_notification_user_id?: number | null }): Promise<SystemSetting> {
+  static async update(data: { max_loan_amount_ars?: number; oca_budget_notification_user_id?: number | null; invoice_iva_rates?: number[] }): Promise<SystemSetting> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -3970,6 +3983,275 @@ export class SystemSettingService {
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al actualizar la configuración');
     const result = await response.json();
     return result.data;
+  }
+}
+
+// --- FACTURACIÓN ---
+export type VoucherType = 'A' | 'B' | 'C' | 'E' | 'sin_factura';
+export type InvoiceStatus = 'pending' | 'paid' | 'cancelled';
+export type InvoiceConcept = 'materials' | 'labor' | 'other';
+export type BillingStatus = 'unbilled' | 'partial' | 'billed' | 'billed_and_paid';
+
+export interface InvoiceLine {
+  id?: number;
+  concept: InvoiceConcept;
+  description?: string | null;
+  percent?: number | null;
+  net_amount: number;
+  base_gross_amount?: number | null;
+  base_discount_percent?: number | null;
+  base_net_amount?: number | null;
+}
+
+export interface Invoice {
+  id: number;
+  voucher_type: VoucherType;
+  pos_number: number | null;
+  number: number | null;
+  issue_date: string;
+  due_date: string | null;
+  client_id: number;
+  budget_id: number | null;
+  project_id: number | null;
+  currency: BudgetCurrency;
+  exchange_rate: number | null;
+  net_amount: number;
+  iva_rate: number;
+  iva_amount: number;
+  total_amount: number;
+  status: InvoiceStatus;
+  paid_at: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  file_url: string | null;
+  file_name: string | null;
+  // Comprobante de pago, opcional, adjuntado al marcar la factura como cobrada.
+  payment_file_url?: string | null;
+  payment_file_name?: string | null;
+  notes: string | null;
+  createdAt?: string;
+  client?: { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null };
+  budget?: { id: number; number: string; title: string; status: string } | null;
+  project?: { id: number; code: string; name: string; is_additional?: boolean } | null;
+  createdBy?: { id: number; name: string; lastname: string };
+  lines: InvoiceLine[];
+}
+
+// Bruto, % de bonificación y neto de un concepto del presupuesto (por moneda).
+export interface BillingBase { gross: number; discount_percent: number; net: number }
+export type BillingByCurrency<T> = Record<BudgetCurrency, { materials: T; labor: T }>;
+
+export interface BudgetBillingSummary {
+  budget_id: number;
+  bases: BillingByCurrency<BillingBase>;
+  billed: BillingByCurrency<number>;
+  balances: BillingByCurrency<number>;
+  billed_percent: BillingByCurrency<number>;
+  covered_by_reserved: BillingByCurrency<boolean>;
+  has_balance: boolean;
+  has_materials_balance: boolean;
+  billing_status: BillingStatus;
+  pending_invoices_count: number;
+  pending_amount: Record<BudgetCurrency, number>;
+  has_pending_payment: boolean;
+  // null = el presupuesto todavía no tiene proyecto. Son las horas PROPIAS del proyecto, no el
+  // consolidado con sus adicionales.
+  project_progress: { budgeted_hours_own: number; consumed_hours_own: number; progress_percent: number | null } | null;
+  labor_billed_percent: number;
+  labor_hours_billed_equivalent: number | null;
+  overbilled_labor: boolean;
+}
+
+export interface BillableBudget {
+  id: number;
+  number: string;
+  title: string;
+  status: string;
+  currency: BudgetCurrency;
+  approved_at: string | null;
+  sent_at: string | null;
+  labor_discount_percent: number | null;
+  material_discount_percent: number | null;
+  project_id: number | null;
+  client?: { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null };
+  project?: { id: number; code: string; name: string; is_additional?: boolean; parent?: { id: number; code: string; name: string } | null } | null;
+  quoteRequest?: { id: number; number: string; client_quote_number?: string | null; title: string } | null;
+  billing: BudgetBillingSummary;
+}
+
+export interface IvaInfo { rates: number[]; default_rate: number }
+
+export interface HourBucket { budget_item_type_id: number | null; item_type_name: string; budgeted_hours: number; consumed_hours: number }
+
+export interface BudgetBillingDetail {
+  budget: Omit<BillableBudget, 'billing'>;
+  billing: BudgetBillingSummary;
+  hour_buckets: HourBucket[];
+  invoices: Invoice[];
+  has_reserved_records: boolean;
+  iva: IvaInfo;
+}
+
+export interface InvoiceLineInput {
+  concept: InvoiceConcept;
+  description?: string;
+  // El usuario carga el porcentaje O el monto; el servidor recalcula el otro contra la base real.
+  percent?: number;
+  net_amount?: number;
+}
+
+export interface InvoiceInput {
+  voucher_type: VoucherType;
+  pos_number?: number | null;
+  number?: number | null;
+  issue_date: string;
+  due_date?: string | null;
+  currency: BudgetCurrency;
+  exchange_rate?: number | null;
+  iva_rate?: number;
+  budget_id?: number | null;
+  client_id?: number | null;
+  project_id?: number | null;
+  notes?: string | null;
+  paid_at?: string | null;
+  lines: InvoiceLineInput[];
+  file?: File | null;
+}
+
+export interface InvoiceFilters {
+  status?: InvoiceStatus;
+  client_id?: number;
+  voucher_type?: VoucherType;
+  date_from?: string;
+  date_to?: string;
+  budget_id?: number;
+  project_id?: number;
+}
+
+export interface BillableFilters {
+  client_id?: number;
+  billing_status?: BillingStatus;
+  has_pending_payment?: boolean;
+  q?: string;
+}
+
+export interface InvoiceProjectOption { id: number; code: string; name: string; is_additional?: boolean; parent?: { id: number; code: string; name: string } | null }
+
+export interface InvoiceClientOption { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; is_active: boolean }
+
+export class InvoiceService {
+  private static buildFormData(input: InvoiceInput): FormData {
+    const formData = new FormData();
+    const append = (key: string, value: unknown) => {
+      if (value !== undefined && value !== null && value !== '') formData.append(key, String(value));
+    };
+    append('voucher_type', input.voucher_type);
+    append('pos_number', input.pos_number);
+    append('number', input.number);
+    append('issue_date', input.issue_date);
+    append('due_date', input.due_date);
+    append('currency', input.currency);
+    append('exchange_rate', input.exchange_rate);
+    append('iva_rate', input.iva_rate);
+    append('budget_id', input.budget_id);
+    append('client_id', input.client_id);
+    append('project_id', input.project_id);
+    append('notes', input.notes);
+    append('paid_at', input.paid_at);
+    formData.append('lines', JSON.stringify(input.lines));
+    if (input.file) formData.append('file', input.file);
+    return formData;
+  }
+
+  private static async parse<T>(response: Response, fallback: string): Promise<T> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallback);
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  private static query(params?: object): string {
+    const search = new URLSearchParams();
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') search.append(key, String(value));
+    });
+    const text = search.toString();
+    return text ? `?${text}` : '';
+  }
+
+  static async getBillables(filters?: BillableFilters): Promise<{ data: BillableBudget[]; iva: IvaInfo }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/billables${this.query(filters)}`);
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al obtener los presupuestos a facturar');
+    return response.json();
+  }
+
+  static async getBillable(budgetId: number): Promise<BudgetBillingDetail> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/billables/${budgetId}`);
+    return this.parse(response, 'Error al obtener el detalle de facturación');
+  }
+
+  static async getAll(filters?: InvoiceFilters): Promise<Invoice[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices${this.query(filters)}`);
+    return this.parse(response, 'Error al obtener las facturas');
+  }
+
+  static async get(id: number): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}`);
+    return this.parse(response, 'Error al obtener la factura');
+  }
+
+  // Clientes para el filtro y la factura libre: cuelga de /invoices, no requiere clients_read.
+  static async getClientOptions(): Promise<InvoiceClientOption[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/client-options`);
+    return this.parse(response, 'Error al obtener los clientes');
+  }
+
+  static async getProjectOptions(clientId: number): Promise<InvoiceProjectOption[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/project-options?client_id=${clientId}`);
+    return this.parse(response, 'Error al obtener los proyectos del cliente');
+  }
+
+  static async create(input: InvoiceInput): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' },
+      body: this.buildFormData(input),
+    });
+    return this.parse(response, 'Error al registrar la factura');
+  }
+
+  // Corrección de una factura mal cargada (requiere invoices_correct).
+  static async update(id: number, input: InvoiceInput): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' },
+      body: this.buildFormData(input),
+    });
+    return this.parse(response, 'Error al corregir la factura');
+  }
+
+  // `receipt`: comprobante de pago, opcional.
+  static async pay(id: number, paidAt: string, receipt?: File | null): Promise<Invoice> {
+    const formData = new FormData();
+    formData.append('paid_at', paidAt);
+    if (receipt) formData.append('file', receipt);
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/pay`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' },
+      body: formData,
+    });
+    return this.parse(response, 'Error al marcar la factura como cobrada');
+  }
+
+  static async cancel(id: number, reason: string): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/cancel`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    return this.parse(response, 'Error al anular la factura');
   }
 }
 

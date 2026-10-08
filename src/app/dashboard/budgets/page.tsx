@@ -12,6 +12,10 @@ import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import CurrencyInput from '../../../components/CurrencyInput';
 import DeliverToManagementDialog from '../../../components/common/DeliverToManagementDialog';
+import QuoteRequestDueChip from '../../../components/quote-requests/QuoteRequestDueChip';
+import TotalWithTax from '../../../components/budgets/TotalWithTax';
+import ClientContactSelect from '../../../components/clients/ClientContactSelect';
+import { BILLING_STATUS_LABELS } from '../../../utils/billing';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, RefreshOutlined as RefreshIcon,
   ContentCopyOutlined as DuplicateIcon, VisibilityOutlined as ViewIcon, PlayArrowOutlined as GenerateIcon,
@@ -71,16 +75,6 @@ interface MaterialUnitOption {
 }
 const materialUnitFilter = createFilterOptions<MaterialUnitOption>();
 
-// Mismo patrón "creatable" para elegir quién aprobó del lado del cliente (ClientSupervisor).
-// Igual que Material, dar de alta uno nuevo pide más de un dato (nombre y apellido por
-// separado), así que la opción sintética abre un mini diálogo en vez de crear directo.
-interface SupervisorOption {
-  id?: number;
-  label: string; // "Apellido, Nombre" ya armado, para no repetir el getOptionLabel en dos formatos
-  inputValue?: string;
-}
-const supervisorFilter = createFilterOptions<SupervisorOption>();
-
 function formatMoney(value: number | string, currency: BudgetCurrency) {
   const symbol = currency === 'USD' ? 'US$' : '$';
   return `${symbol}${(Number(value) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -133,18 +127,6 @@ function daysExpired(budget: Budget): number | null {
   const deadline = new Date(sentAt.getTime() + budget.validity_days * 24 * 60 * 60 * 1000);
   const diffDays = Math.floor((Date.now() - deadline.getTime()) / (24 * 60 * 60 * 1000));
   return diffDays > 0 ? diffDays : null;
-}
-
-// Vencimiento de presentación del PC vinculado — mismo criterio "visual, no bloquea" que
-// daysExpired de arriba, pero sobre quoteRequest.due_date en vez de sent_at+validity_days
-// (ver quote-requests/page.tsx#dueDateChip, misma lógica duplicada a propósito por ser un
-// helper de 4 líneas sin estado compartido).
-function quoteRequestDueChip(dueDate: string): { label: string; color: 'default' | 'warning' | 'error' } {
-  const days = Math.ceil((new Date(dueDate + 'T00:00:00').getTime() - new Date().setHours(0, 0, 0, 0)) / (24 * 60 * 60 * 1000));
-  if (days < 0) return { label: `PC vencido hace ${Math.abs(days)} día(s)`, color: 'error' };
-  if (days <= 2) return { label: `PC vence en ${days}d`, color: 'error' };
-  if (days <= 7) return { label: `PC vence en ${days}d`, color: 'warning' };
-  return { label: `PC vence en ${days}d`, color: 'default' };
 }
 
 // Etiqueta para el listado cuando el presupuesto está asignado a quien está mirando (vía los
@@ -228,8 +210,8 @@ function BudgetsPageContent() {
   const [materialQuickAdd, setMaterialQuickAdd] = useState<{ open: boolean; lineIdx: number; description: string; materialUnitId: string; providerId: number | null; cost: string; currency: BudgetCurrency }>(
     { open: false, lineIdx: -1, description: '', materialUnitId: '', providerId: null, cost: '', currency: 'ARS' }
   );
-  // Alta rápida de contacto (ClientSupervisor) al aprobar — mismo criterio que Material,
-  // pide más de un dato así que abre un mini-diálogo en vez de crear directo.
+  // Alta rápida de contacto (ClientSupervisor) al aprobar: pide más de un dato (nombre y
+  // apellido por separado), así que ClientContactSelect abre este mini-diálogo en vez de crear directo.
   const [supervisorQuickAdd, setSupervisorQuickAdd] = useState<{ open: boolean; name: string; lastname: string; email: string; phone: string }>(
     { open: false, name: '', lastname: '', email: '', phone: '' }
   );
@@ -1038,15 +1020,6 @@ function BudgetsPageContent() {
     }
   };
 
-  const handleSupervisorSelectChange = (newValue: SupervisorOption | null) => {
-    if (!newValue) { setApprovedBySupervisorId(''); return; }
-    if (newValue.inputValue) {
-      setSupervisorQuickAdd({ open: true, name: newValue.inputValue, lastname: '', email: '', phone: '' });
-      return;
-    }
-    if (newValue.id) setApprovedBySupervisorId(String(newValue.id));
-  };
-
   const handleConfirmSupervisorQuickAdd = async () => {
     if (!statusDialog.budget || !supervisorQuickAdd.name.trim() || !supervisorQuickAdd.lastname.trim()) {
       setError('Nombre y apellido son obligatorios');
@@ -1200,11 +1173,18 @@ function BudgetsPageContent() {
                       {daysExpired(b) !== null && (
                         <Chip label={`Vencido hace ${daysExpired(b)} día(s)`} color="warning" size="small" variant="outlined" sx={{ ml: 0.5 }} />
                       )}
-                      {b.quoteRequest && (
+                      {b.billing_status && (
                         <Chip
-                          label={`${b.quoteRequest.number} · ${quoteRequestDueChip(b.quoteRequest.due_date).label}`}
-                          color={quoteRequestDueChip(b.quoteRequest.due_date).color}
+                          label={BILLING_STATUS_LABELS[b.billing_status.status].label}
+                          color={BILLING_STATUS_LABELS[b.billing_status.status].color}
                           size="small" variant="outlined" sx={{ ml: 0.5 }} clickable
+                          onClick={() => router.push(`/dashboard/billing/${b.id}`)}
+                        />
+                      )}
+                      {b.quoteRequest && (
+                        <QuoteRequestDueChip
+                          quoteRequest={b.quoteRequest} budget={b} prefix={b.quoteRequest.number}
+                          variant="outlined" sx={{ ml: 0.5 }} clickable
                           onClick={() => router.push(`/dashboard/quote-requests?view=${b.quoteRequest!.id}`)}
                         />
                       )}
@@ -1234,6 +1214,7 @@ function BudgetsPageContent() {
                     </Box>
                     <Typography variant="body2">
                       {hasPricesRead ? formatTotals(b.totals_by_currency) : `Materiales: ${formatTotals(b.materials_totals_by_currency)}`}
+                      <TotalWithTax />
                     </Typography>
                     {b.project && (
                       <Chip
@@ -1270,7 +1251,7 @@ function BudgetsPageContent() {
                       {canGenerateProject(b) && (
                         <Tooltip title="Generar Proyecto"><IconButton size="small" color="success" onClick={() => handleGenerateProject(b)}><GenerateIcon fontSize="small" /></IconButton></Tooltip>
                       )}
-                      {hasPricesRead && (b.status === 'sent' || b.status === 'approved') && (
+                      {hasPricesRead && b.status === 'sent' && (
                         <Tooltip title="Bonificación"><IconButton size="small" color="warning" onClick={() => handleOpenDiscountDialog(b)}><DiscountIcon fontSize="small" /></IconButton></Tooltip>
                       )}
                       <Tooltip title={additionalHasLiveBudget(b) ? 'El adicional ya tiene un presupuesto en curso' : 'Duplicar'}>
@@ -1316,11 +1297,18 @@ function BudgetsPageContent() {
                         {daysExpired(b) !== null && (
                           <Chip label={`Vencido hace ${daysExpired(b)} día(s)`} color="warning" size="small" variant="outlined" sx={{ ml: 0.5 }} />
                         )}
-                        {b.quoteRequest && (
+                        {b.billing_status && (
                           <Chip
-                            label={`${b.quoteRequest.number} · ${quoteRequestDueChip(b.quoteRequest.due_date).label}`}
-                            color={quoteRequestDueChip(b.quoteRequest.due_date).color}
+                            label={BILLING_STATUS_LABELS[b.billing_status.status].label}
+                            color={BILLING_STATUS_LABELS[b.billing_status.status].color}
                             size="small" variant="outlined" sx={{ ml: 0.5 }} clickable
+                            onClick={() => router.push(`/dashboard/billing/${b.id}`)}
+                          />
+                        )}
+                        {b.quoteRequest && (
+                          <QuoteRequestDueChip
+                            quoteRequest={b.quoteRequest} budget={b} prefix={b.quoteRequest.number}
+                            variant="outlined" sx={{ ml: 0.5 }} clickable
                             onClick={() => router.push(`/dashboard/quote-requests?view=${b.quoteRequest!.id}`)}
                           />
                         )}
@@ -1348,7 +1336,7 @@ function BudgetsPageContent() {
                           </Box>
                         )}
                       </TableCell>
-                      <TableCell>{formatTotals(hasPricesRead ? b.totals_by_currency : b.materials_totals_by_currency)}</TableCell>
+                      <TableCell><TotalWithTax>{formatTotals(hasPricesRead ? b.totals_by_currency : b.materials_totals_by_currency)}</TotalWithTax></TableCell>
                       <TableCell>
                         {b.project ? (
                           <Tooltip title={`Ver proyecto: ${b.project.code} - ${b.project.name}`}>
@@ -1387,7 +1375,7 @@ function BudgetsPageContent() {
                         {canGenerateProject(b) && (
                           <Tooltip title="Generar Proyecto"><IconButton size="small" color="success" onClick={() => handleGenerateProject(b)}><GenerateIcon fontSize="small" /></IconButton></Tooltip>
                         )}
-                        {hasPricesRead && (b.status === 'sent' || b.status === 'approved') && (
+                        {hasPricesRead && b.status === 'sent' && (
                           <Tooltip title="Bonificación"><IconButton size="small" color="warning" onClick={() => handleOpenDiscountDialog(b)}><DiscountIcon fontSize="small" /></IconButton></Tooltip>
                         )}
                         <Tooltip title={additionalHasLiveBudget(b) ? 'El adicional ya tiene un presupuesto en curso' : 'Duplicar'}>
@@ -1661,6 +1649,7 @@ function BudgetsPageContent() {
                   {hasPricesRead && (
                     <Typography variant="h6" fontWeight="bold">
                       Total: {formatMoney(laborTotal('ARS') + materialsTotal('ARS'), 'ARS')} {(laborTotal('USD') + materialsTotal('USD')) > 0 && `+ ${formatMoney(laborTotal('USD') + materialsTotal('USD'), 'USD')}`}
+                      <TotalWithTax />
                     </Typography>
                   )}
                   {hasCostsRead && (totalMargin('ARS') !== 0 || totalMargin('USD') !== 0) && (
@@ -1796,27 +1785,12 @@ function BudgetsPageContent() {
                   Quién aprobó del lado del cliente (opcional, se puede completar más adelante) —
                   distinto de quién carga esto en el sistema.
                 </Typography>
-                <Autocomplete<SupervisorOption>
-                  size="small"
-                  fullWidth
-                  options={statusDialogSupervisors.map(s => ({ id: s.id, label: `${s.lastname}, ${s.name}` }))}
-                  value={(() => {
-                    const s = statusDialogSupervisors.find(sup => String(sup.id) === approvedBySupervisorId);
-                    return s ? { id: s.id, label: `${s.lastname}, ${s.name}` } : null;
-                  })()}
-                  onChange={(_, newValue) => handleSupervisorSelectChange(newValue)}
-                  getOptionLabel={(option) => option.label}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  filterOptions={(options, params) => {
-                    const filtered = supervisorFilter(options, params);
-                    const { inputValue } = params;
-                    const exists = options.some((o) => o.label.toLowerCase() === inputValue.toLowerCase());
-                    if (inputValue !== '' && !exists) {
-                      filtered.push({ label: `Agregar "${inputValue}"`, inputValue });
-                    }
-                    return filtered;
-                  }}
-                  renderInput={(params) => <TextField {...params} label="Aprobado por (contacto del cliente)" />}
+                <ClientContactSelect
+                  contacts={statusDialogSupervisors}
+                  value={approvedBySupervisorId ? Number(approvedBySupervisorId) : null}
+                  onChange={(contact) => setApprovedBySupervisorId(contact ? String(contact.id) : '')}
+                  onCreateRequest={(name) => setSupervisorQuickAdd({ open: true, name, lastname: '', email: '', phone: '' })}
+                  label="Aprobado por (contacto del cliente)"
                 />
               </Box>
               <Box>
@@ -1901,7 +1875,7 @@ function BudgetsPageContent() {
         onError={(msg) => setError(msg)}
       />
 
-      {/* Alta rápida de contacto del cliente (ClientSupervisor) — abierta desde el Autocomplete de arriba */}
+      {/* Alta rápida de contacto del cliente (ClientSupervisor) — abierta desde el selector de arriba */}
       <Dialog open={supervisorQuickAdd.open} onClose={() => setSupervisorQuickAdd({ ...supervisorQuickAdd, open: false })} maxWidth="xs" fullWidth>
         <DialogTitle>Nuevo Contacto del Cliente</DialogTitle>
         <DialogContent>
@@ -2034,7 +2008,7 @@ function BudgetsPageContent() {
                     {hasPricesRead && (printBudget.material_discount_percent ?? 0) > 0 && (
                       <Typography variant="body2" color="text.secondary">Bonificación material: {printBudget.material_discount_percent}%</Typography>
                     )}
-                    {hasPricesRead && <Typography variant="h6" fontWeight="bold">Total: {formatTotals(printBudget.totals_by_currency)}</Typography>}
+                    {hasPricesRead && <Typography variant="h6" fontWeight="bold">Total: <TotalWithTax>{formatTotals(printBudget.totals_by_currency)}</TotalWithTax></Typography>}
                   </Box>
                 </>
               )}

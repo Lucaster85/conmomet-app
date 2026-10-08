@@ -7,6 +7,7 @@ import {
   Typography,
   Alert,
   Divider,
+  MenuItem,
 } from '@mui/material';
 import { SaveOutlined as SaveIcon } from '@mui/icons-material';
 import {
@@ -15,6 +16,7 @@ import {
   Client
 } from '../../../utils/api';
 import GearSpinner from '../../../components/GearSpinner';
+import { maskCuit, isValidCuit, formatCuit, TAX_CONDITION_LABELS, TaxCondition } from '../../../utils/cuit';
 
 interface ClientFormProps {
   client?: Client;
@@ -29,7 +31,10 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
     razonSocial: client?.razonSocial || '',
     email: client?.email || '',
     phone: client?.phone || '',
+    tax_condition: client?.tax_condition || null,
   });
+  // El CUIT se edita con la máscara XX-XXXXXXXX-X y se envía solo con dígitos.
+  const [cuit, setCuit] = useState(formatCuit(client?.cuit));
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,7 +59,11 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
     if (!emailRegex.test(formData.email)) {
       return 'El email no tiene un formato válido';
     }
-    
+
+    if (cuit && !isValidCuit(cuit)) {
+      return 'El CUIT no es válido: revisá los 11 dígitos (el último es verificador)';
+    }
+
     return null;
   };
 
@@ -73,11 +82,13 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
       setError('');
       setSuccess('');
 
+      const payload: CreateClientData = { ...formData, cuit: cuit ? cuit.replace(/\D/g, '') : null };
+
       if (isEditing && client) {
-        await ClientService.update(client.id, formData);
+        await ClientService.update(client.id, payload);
         setSuccess('Cliente actualizado exitosamente');
       } else {
-        await ClientService.create(formData);
+        await ClientService.create(payload);
         setSuccess('Cliente creado exitosamente');
       }
       
@@ -145,6 +156,43 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
             placeholder="cliente@ejemplo.com"
             required
           />
+        </Box>
+
+        {/* Datos fiscales: los usa Facturación y dejan preparada la integración con ARCA */}
+        <Divider sx={{ my: 2 }} />
+        <Typography variant="h6" gutterBottom>
+          Datos Fiscales
+        </Typography>
+
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2
+        }}>
+          <TextField
+            fullWidth
+            label="CUIT"
+            name="cuit"
+            value={cuit}
+            onChange={(e) => setCuit(maskCuit(e.target.value))}
+            placeholder="30-12345678-9"
+            inputProps={{ inputMode: 'numeric' }}
+            error={cuit.length === 13 && !isValidCuit(cuit)}
+            helperText={cuit.length === 13 && !isValidCuit(cuit) ? 'El dígito verificador no coincide' : 'Opcional'}
+          />
+          <TextField
+            select
+            fullWidth
+            label="Condición frente al IVA"
+            value={formData.tax_condition || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, tax_condition: (e.target.value || null) as TaxCondition | null }))}
+            helperText="Opcional"
+          >
+            <MenuItem value=""><em>Sin especificar</em></MenuItem>
+            {(Object.keys(TAX_CONDITION_LABELS) as TaxCondition[]).map((key) => (
+              <MenuItem key={key} value={key}>{TAX_CONDITION_LABELS[key]}</MenuItem>
+            ))}
+          </TextField>
         </Box>
 
         {/* Información de Contacto */}

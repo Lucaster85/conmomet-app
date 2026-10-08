@@ -6,11 +6,22 @@ Clientes**. Desde la ficha de cada cliente también se administran sus **Supervi
 
 ## Alta y edición de un cliente
 
-Con el botón **"Nuevo Cliente"**, solo tres campos:
+Con el botón **"Nuevo Cliente"**:
 
 - **Razón Social*** (obligatorio).
 - **Email*** (obligatorio, con formato válido).
 - **Teléfono** (opcional).
+- **CUIT** (opcional): se escribe con o sin guiones y el formulario lo muestra como
+  `XX-XXXXXXXX-X`. Tiene que tener **11 dígitos** y el último (el **dígito verificador**) tiene
+  que coincidir: si no, el sistema avisa y no deja guardar. Se guarda sin guiones.
+- **Condición frente al IVA** (opcional): Responsable Inscripto, Monotributo, IVA Exento,
+  Consumidor Final o IVA No Responsable.
+
+El CUIT y la condición de IVA son los **datos fiscales** del cliente. No son obligatorios, pero
+conviene cargarlos: es lo que usa **Facturación** para identificar a quién se le factura, y lo
+que deja preparado el sistema para la integración con ARCA. Se ven en el listado de clientes y
+se puede **buscar un cliente por su CUIT**, con o sin guiones. El CUIT no es único: si un mismo
+cliente está cargado dos veces (por ejemplo, una por planta), puede repetirse.
 
 ## Desactivar un cliente
 
@@ -61,4 +72,4 @@ es un historial que no se puede borrar.
 Es un concepto totalmente aparte de la tarifa que se carga en una OCA de Horas Hombre — son dos
 precios independientes que no se mezclan.
 
-<!-- ref: conmomet-app/src/app/dashboard/clients/page.tsx, conmomet-app/src/app/dashboard/clients/ClientForm.tsx, conmomet-app/src/app/dashboard/clients/ClientSupervisorsDialog.tsx, conmomet-app/src/app/dashboard/clients/ClientItemRatesDialog.tsx, api_conmomet/controllers/clientController.js, api_conmomet/controllers/clientSupervisorController.js, api_conmomet/controllers/clientItemRateController.js, api_conmomet/controllers/budgetItemTypeController.js -->
+<!-- ref: conmomet-app/src/app/dashboard/clients/page.tsx, conmomet-app/src/app/dashboard/clients/ClientForm.tsx, conmomet-app/src/app/dashboard/clients/ClientSupervisorsDialog.tsx, conmomet-app/src/app/dashboard/clients/ClientItemRatesDialog.tsx, api_conmomet/controllers/clientController.js, api_conmomet/helpers/cuit.js, conmomet-app/src/utils/cuit.ts, api_conmomet/controllers/clientSupervisorController.js, api_conmomet/controllers/clientItemRateController.js, api_conmomet/controllers/budgetItemTypeController.js -->

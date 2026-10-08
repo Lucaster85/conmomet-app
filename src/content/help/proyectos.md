@@ -18,6 +18,7 @@ Si el presupuesto tenía un **rubro repetido** en varias líneas (ej. dos línea
 precios distintos), las horas de ese rubro se **suman en una sola bolsa**. Si el rubro es **por
 días**, las horas cotizadas son **días × 9**: 2 días cotizados aparecen como 18 hs. En la pestaña
 **Presupuesto** del proyecto cada línea se ve como "2 días (18 hs)" o "20 hs", con su descripción.
+El total de esa pestaña lleva la leyenda **"+ IVA"**: los importes son netos.
 
 ## Adicionales y subproyectos
 
@@ -59,4 +60,4 @@ Esta asignación es la que habilita, más adelante, cargar horas **PEP OCA/PEP R
 supervisor en **Carga de Horas** (ver ese tema para el detalle) — sin un supervisor asignado al
 proyecto, esa opción no aparece.
 
-<!-- ref: conmomet-app/src/app/dashboard/additionals/page.tsx, conmomet-app/src/app/dashboard/projects/page.tsx, conmomet-app/src/app/dashboard/projects/[id]/page.tsx, api_conmomet/controllers/projectController.js, api_conmomet/services/projectFactory.js -->
+<!-- ref: conmomet-app/src/app/dashboard/additionals/page.tsx, conmomet-app/src/app/dashboard/projects/page.tsx, conmomet-app/src/app/dashboard/projects/[id]/page.tsx, api_conmomet/controllers/projectController.js, api_conmomet/services/projectFactory.js, conmomet-app/src/components/budgets/TotalWithTax.tsx -->

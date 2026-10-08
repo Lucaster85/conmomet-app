@@ -40,6 +40,7 @@ import ClientSupervisorsDialog from './ClientSupervisorsDialog';
 import ClientItemRatesDialog from './ClientItemRatesDialog';
 import { useAuth } from '../../../utils/auth';
 import GearSpinner from '../../../components/GearSpinner';
+import { formatCuit, TAX_CONDITION_LABELS } from '../../../utils/cuit';
 
 export default function ClientsPage() {
   const { user } = useAuth();
@@ -88,10 +89,13 @@ export default function ClientsPage() {
 
   const filteredClients = clients.filter((client) => {
     const q = search.toLowerCase();
+    // El CUIT se busca con o sin guiones.
+    const qDigits = search.replace(/\D/g, '');
     return (
       client.razonSocial.toLowerCase().includes(q) ||
       client.email.toLowerCase().includes(q) ||
-      (client.phone && client.phone.includes(q))
+      (client.phone && client.phone.includes(q)) ||
+      (qDigits.length > 0 && !!client.cuit && client.cuit.includes(qDigits))
     );
   });
 
@@ -188,7 +192,7 @@ export default function ClientsPage() {
 
       {/* Search Bar */}
       <TextField
-        placeholder="Buscar por razón social o email..."
+        placeholder="Buscar por razón social, email o CUIT..."
         fullWidth
         size="small"
         sx={{ mb: 3 }}
@@ -236,6 +240,13 @@ export default function ClientsPage() {
                         📞 {client.phone}
                       </Typography>
                     )}
+                    {(client.cuit || client.tax_condition) && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        {client.cuit ? `CUIT ${formatCuit(client.cuit)}` : ''}
+                        {client.cuit && client.tax_condition ? ' · ' : ''}
+                        {client.tax_condition ? TAX_CONDITION_LABELS[client.tax_condition] : ''}
+                      </Typography>
+                    )}
                     <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
                       Desde: {formatDate(client.createdAt)}
                     </Typography>
@@ -273,6 +284,7 @@ export default function ClientsPage() {
                 <TableCell><strong>Nombre / Razón Social</strong></TableCell>
                 <TableCell><strong>Email</strong></TableCell>
                 <TableCell><strong>Teléfono</strong></TableCell>
+                <TableCell><strong>CUIT</strong></TableCell>
                 <TableCell><strong>Fecha Creación</strong></TableCell>
                 <TableCell><strong>Estado</strong></TableCell>
                 <TableCell align="center"><strong>Acciones</strong></TableCell>
@@ -281,7 +293,7 @@ export default function ClientsPage() {
             <TableBody>
               {filteredClients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                     <Typography variant="body2" color="text.secondary">
                       No hay clientes registrados
                     </Typography>
@@ -298,6 +310,14 @@ export default function ClientsPage() {
                     </TableCell>
                     <TableCell>{client.email}</TableCell>
                     <TableCell>{client.phone || '—'}</TableCell>
+                    <TableCell>
+                      {client.cuit ? formatCuit(client.cuit) : '—'}
+                      {client.tax_condition && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {TAX_CONDITION_LABELS[client.tax_condition]}
+                        </Typography>
+                      )}
+                    </TableCell>
                     <TableCell>{formatDate(client.createdAt)}</TableCell>
                     <TableCell>
                       <Chip label={client.is_active ? 'Activo' : 'Inactivo'} size="small" color={client.is_active ? 'success' : 'default'} />

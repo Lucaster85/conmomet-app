@@ -22,6 +22,7 @@ import ProjectCodeLabel from '../../../../components/projects/ProjectCodeLabel';
 import ProjectLogPanel from '../../../../components/projects/ProjectLogPanel';
 import IconTileGrid, { IconTileItem } from '../../../../components/common/IconTileGrid';
 import GearSpinner from '../../../../components/GearSpinner';
+import TotalWithTax from '../../../../components/budgets/TotalWithTax';
 import {
   Project, ProjectService, TimeEntry, TimeEntryService, BudgetCurrency,
   WorkDayLog, WorkDayLogWeek, AssetAssignment, AssetAssignmentService, AssetAssignmentStatus,
@@ -914,11 +915,11 @@ export default function ProjectDetailPage() {
                     {(project.budget.material_discount_percent ?? 0) > 0 && (
                       <Typography variant="body2" color="text.secondary">Bonificación material: {project.budget.material_discount_percent}%</Typography>
                     )}
-                    <Typography variant="h6" fontWeight="bold">Total: {formatTotals(project.budget.totals_by_currency)}</Typography>
+                    <Typography variant="h6" fontWeight="bold">Total: <TotalWithTax>{formatTotals(project.budget.totals_by_currency)}</TotalWithTax></Typography>
                   </>
                 ) : (
                   // Sin budget_prices_read no hay total general (incluiría la mano de obra): solo el subtotal de materiales.
-                  <Typography variant="h6" fontWeight="bold">Materiales: {formatTotals(project.budget.materials_totals_by_currency)}</Typography>
+                  <Typography variant="h6" fontWeight="bold">Materiales: <TotalWithTax>{formatTotals(project.budget.materials_totals_by_currency)}</TotalWithTax></Typography>
                 )}
               </Box>
             </Box>

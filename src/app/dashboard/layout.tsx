@@ -51,6 +51,7 @@ import {
   LocalAtmOutlined as LocalAtmIcon,
   LocalShippingOutlined as LocalShippingIcon,
   ReceiptLongOutlined as ReceiptLongIcon,
+  ReceiptOutlined as InvoiceIcon,
   RequestQuoteOutlined as RequestQuoteIcon,
   PostAddOutlined as AdditionalIcon,
   DescriptionOutlined as QuoteRequestIcon,
@@ -124,6 +125,14 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Pedidos de Cotización', icon: <QuoteRequestIcon />, path: '/dashboard/quote-requests', requiredPermission: 'quote_requests_read' },
       { text: 'Presupuestos', icon: <RequestQuoteIcon />, path: '/dashboard/budgets', requiredPermission: 'budgets_read' },
       { text: 'Remitos / OCAs', icon: <ReceiptLongIcon />, path: '/dashboard/ocas', requiredPermission: 'ocas_read' },
+    ]
+  },
+  // Separada de "Contabilidad" (todo del lado de costos y personal): va a crecer con
+  // comprobantes, cobranzas, cuenta corriente e integración con ARCA.
+  {
+    title: 'Facturación',
+    items: [
+      { text: 'Facturación', icon: <InvoiceIcon />, path: '/dashboard/billing', requiredPermission: 'invoices_read' },
     ]
   },
   {
