@@ -720,7 +720,9 @@ export interface Employee {
   hire_date: string;
   termination_date?: string;
   status: 'active' | 'inactive' | 'vacation' | 'medical_leave';
-  hourly_rate: number;
+  // Ausentes cuando el usuario no tiene employee_salaries_read — el backend borra estos campos
+  // antes de serializar (ver api_conmomet/controllers/employeeController.js#stripSalaryFields).
+  hourly_rate?: number;
   pay_type: 'hourly' | 'monthly' | 'biweekly_fixed';
   monthly_salary?: number;
   user_id?: number;
@@ -732,7 +734,7 @@ export interface Employee {
   sizes?: EmployeeSize[];
   vacation_days_override?: number | null;
   user?: { id: number; email: string; name: string; lastname: string };
-  category?: Category;
+  category?: Omit<Category, 'guild_hourly_rate'> & { guild_hourly_rate?: number };
   invitation_status?: 'pending' | 'expired' | null;
   createdAt: string;
 }
@@ -806,7 +808,7 @@ export interface TimeEntry {
   voided_by?: number;
   voided_at?: string;
   void_reason?: string;
-  employee?: { id: number; name: string; lastname: string; hourly_rate: number; pay_type?: string };
+  employee?: { id: number; name: string; lastname: string; pay_type?: string };
   plant?: { id: number; name: string };
   project?: { id: number; name: string; code: string };
   registeredBy?: { id: number; name: string; lastname: string };
