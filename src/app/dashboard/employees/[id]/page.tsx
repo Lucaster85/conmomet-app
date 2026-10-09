@@ -27,6 +27,7 @@ import BadgeIcon from '@mui/icons-material/BadgeOutlined';
 import WorkIcon from '@mui/icons-material/WorkOutlined';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoneyOutlined';
 import CheckroomIcon from '@mui/icons-material/CheckroomOutlined';
+import AddIcon from '@mui/icons-material/AddOutlined';
 import PersonIcon from '@mui/icons-material/PersonOutlined';
 import BeachAccessIcon from '@mui/icons-material/BeachAccessOutlined';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospitalOutlined';
@@ -46,10 +47,13 @@ import {
   CategoryService, Category,
   DocumentCategoryService, DocumentCategory, PlantService, Plant,
   EmployeeInvitationService, EmployeeInvitationStatus, InviteResult,
+  SafetyEquipment, SafetyEquipmentService,
+  EmployeeSize, EmployeeSizeService, EppItem, EppItemService,
 } from '@/utils/api';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
 import InviteEmployeeDialog, { buildInviteMessage } from '@/components/InviteEmployeeDialog';
+import EppDeliveriesList from '@/components/safety-equipment/EppDeliveriesList';
 import { buildWhatsAppLink } from '@/utils/whatsapp';
 import { isFixedSalaryPayType, payTypeLabel } from '@/utils/payType';
 
@@ -125,6 +129,17 @@ function EmployeeDetailPageContent() {
   const [concepts, setConcepts] = useState<PayrollConcept[]>([]);
   const [loadingRates, setLoadingRates] = useState(false);
   const [ratesLoaded, setRatesLoaded] = useState(false);
+
+  // EPP tab state
+  const [eppDeliveries, setEppDeliveries] = useState<SafetyEquipment[]>([]);
+  const [loadingEpp, setLoadingEpp] = useState(false);
+  const [eppLoaded, setEppLoaded] = useState(false);
+
+  // Talles adicionales (card "Talles (EPP)" en Información General)
+  const [eppCatalog, setEppCatalog] = useState<EppItem[]>([]);
+  const [sizeDialogOpen, setSizeDialogOpen] = useState(false);
+  const [sizeForm, setSizeForm] = useState({ epp_item_id: '', size: '' });
+  const [savingSize, setSavingSize] = useState(false);
   const [rateForm, setRateForm] = useState<{
     concept_id: number | '';
     rate: number;
@@ -155,9 +170,12 @@ function EmployeeDetailPageContent() {
       setLoading(true);
       const empData = await EmployeeService.getById(employeeId);
       setEmployee(empData);
-      
+
       const docsData = await EntityDocumentService.getAll('employee', employeeId);
       setDocuments(docsData);
+
+      const catalog = await EppItemService.getAll();
+      setEppCatalog(catalog);
     } catch (err: unknown) {
       const e = err as Error;
       setError(e.message || 'Error al cargar los datos del empleado');
@@ -413,10 +431,58 @@ function EmployeeDetailPageContent() {
     }
   };
 
+  const loadEpp = async () => {
+    try {
+      setLoadingEpp(true);
+      const deliveries = await SafetyEquipmentService.getAll({ employee_id: employeeId });
+      setEppDeliveries(deliveries);
+      setEppLoaded(true);
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Error al cargar EPP');
+    } finally {
+      setLoadingEpp(false);
+    }
+  };
+
+  const handleOpenSizeDialog = (existing?: EmployeeSize) => {
+    setSizeForm(existing ? { epp_item_id: String(existing.epp_item_id), size: existing.size } : { epp_item_id: '', size: '' });
+    setSizeDialogOpen(true);
+  };
+
+  const handleSaveSize = async () => {
+    if (!sizeForm.epp_item_id || !sizeForm.size) {
+      setError('Elegí un artículo y un talle.');
+      return;
+    }
+    if (savingSize) return;
+    setSavingSize(true);
+    try {
+      await EmployeeSizeService.upsert(employeeId, { epp_item_id: Number(sizeForm.epp_item_id), size: sizeForm.size });
+      setSuccess('Talle guardado');
+      setSizeDialogOpen(false);
+      loadData();
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Error al guardar el talle');
+    } finally {
+      setSavingSize(false);
+    }
+  };
+
+  const handleDeleteSize = async (existing: EmployeeSize) => {
+    try {
+      await EmployeeSizeService.upsert(employeeId, { epp_item_id: existing.epp_item_id, size: '' });
+      setSuccess('Talle eliminado');
+      loadData();
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Error al eliminar el talle');
+    }
+  };
+
   // Lazy load per tab
   useEffect(() => {
     if (tabValue === 2) loadAttendance(attDateFrom, attDateTo);
     if (tabValue === 3 && !leaveLoaded) loadLeave();
+    if (tabValue === 5 && !eppLoaded) loadEpp();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabValue]);
 
@@ -442,6 +508,7 @@ function EmployeeDetailPageContent() {
           <Tab label="Presentismo" />
           <Tab label="Vacaciones y Licencias" />
           <Tab label="Tarifas" />
+          <Tab label="EPP" />
         </Tabs>
       </Paper>
 
@@ -576,6 +643,30 @@ function EmployeeDetailPageContent() {
                         <Typography variant="body1" fontWeight={500}>{employee.pant_size || 'No registrado'}</Typography>
                       </Box>
                     </Stack>
+
+                    {(employee.sizes || []).length > 0 && (
+                      <>
+                        <Divider sx={{ my: 2 }} />
+                        <Stack spacing={1}>
+                          {(employee.sizes || []).map((s) => (
+                            <Box key={s.id} display="flex" justifyContent="space-between" alignItems="center">
+                              <Box>
+                                <Typography variant="caption" color="text.secondary" display="block">{s.eppItem?.name || 'Artículo'}</Typography>
+                                <Typography variant="body1" fontWeight={500}>{s.size}</Typography>
+                              </Box>
+                              <Box>
+                                <IconButton size="small" onClick={() => handleOpenSizeDialog(s)}><EditIcon fontSize="small" /></IconButton>
+                                <IconButton size="small" color="error" onClick={() => handleDeleteSize(s)}><DeleteIcon fontSize="small" /></IconButton>
+                              </Box>
+                            </Box>
+                          ))}
+                        </Stack>
+                      </>
+                    )}
+
+                    <Button size="small" startIcon={<AddIcon />} onClick={() => handleOpenSizeDialog()} sx={{ mt: 2 }}>
+                      Agregar talle
+                    </Button>
                   </CardContent>
                 </Card>
 
@@ -1322,6 +1413,28 @@ function EmployeeDetailPageContent() {
         </Box>
       )}
 
+      {/* Tab 5 — EPP */}
+      {tabValue === 5 && (
+        <Box>
+          {loadingEpp ? (
+            <Box display="flex" justifyContent="center" py={6}><GearSpinner /></Box>
+          ) : (
+            <Stack spacing={2}>
+              <Box display="flex" justifyContent="flex-end">
+                <Button
+                  variant="contained"
+                  startIcon={<CheckroomIcon />}
+                  onClick={() => router.push(`/dashboard/safety-equipment?employee_id=${employeeId}`)}
+                >
+                  Registrar Entrega
+                </Button>
+              </Box>
+              <EppDeliveriesList deliveries={eppDeliveries} variant="compact" emptyMessage="No hay entregas de EPP registradas" />
+            </Stack>
+          )}
+        </Box>
+      )}
+
       {/* Upload/Edit Dialog */}
       <Dialog open={uploadDialog} onClose={() => setUploadDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingDoc ? 'Editar Documento' : 'Registrar Documento / Vencimiento'}</DialogTitle>
@@ -1523,6 +1636,30 @@ function EmployeeDetailPageContent() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setHistoryDialog(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Talle adicional (Dialog) */}
+      <Dialog open={sizeDialogOpen} onClose={() => setSizeDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Talle adicional</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField label="Artículo *" select fullWidth value={sizeForm.epp_item_id}
+              onChange={(e) => setSizeForm({ ...sizeForm, epp_item_id: e.target.value })}
+              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
+              <option value="">Seleccionar artículo</option>
+              {eppCatalog.filter(i => i.size_type !== 'none').map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+            </TextField>
+            <TextField label="Talle *" fullWidth value={sizeForm.size}
+              onChange={(e) => setSizeForm({ ...sizeForm, size: e.target.value })}
+              placeholder="Ej: XL, 44" />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSizeDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSaveSize} variant="contained" disabled={savingSize}>
+            {savingSize ? <GearSpinner size={20} /> : 'Guardar'}
+          </Button>
         </DialogActions>
       </Dialog>
 

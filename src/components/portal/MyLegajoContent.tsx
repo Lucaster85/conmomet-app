@@ -166,6 +166,12 @@ export default function MyLegajoContent() {
                   <Typography variant="caption" color="text.secondary">Pantalón</Typography>
                   <Typography variant="body1" fontWeight={500}>{employee.pant_size || 'No registrado'}</Typography>
                 </Box>
+                {(employee.sizes || []).map((s) => (
+                  <Box key={s.id}>
+                    <Typography variant="caption" color="text.secondary">{s.eppItem?.name || 'Artículo'}</Typography>
+                    <Typography variant="body1" fontWeight={500}>{s.size}</Typography>
+                  </Box>
+                ))}
               </Box>
 
               <Box mt={3} p={2} bgcolor="info.50" borderRadius={2}>

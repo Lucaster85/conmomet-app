@@ -698,6 +698,14 @@ export interface Category {
   updatedAt?: string;
 }
 
+export interface EmployeeSize {
+  id: number;
+  employee_id: number;
+  epp_item_id: number;
+  size: string;
+  eppItem?: EppItem;
+}
+
 export interface Employee {
   id: number;
   name: string;
@@ -721,6 +729,7 @@ export interface Employee {
   shoe_size?: string;
   shirt_size?: string;
   pant_size?: string;
+  sizes?: EmployeeSize[];
   vacation_days_override?: number | null;
   user?: { id: number; email: string; name: string; lastname: string };
   category?: Category;
@@ -3014,6 +3023,8 @@ export interface EppItem {
   category: EppCategory;
   size_type: EppSizeType;
   is_active: boolean;
+  lifespan_months?: number | null;
+  notify_days_before?: number | null;
 }
 
 export class EppItemService {
@@ -3024,7 +3035,7 @@ export class EppItemService {
     return (await response.json()).data || [];
   }
 
-  static async create(payload: { name: string; category: EppCategory; size_type: EppSizeType }): Promise<EppItem> {
+  static async create(payload: { name: string; category: EppCategory; size_type: EppSizeType; lifespan_months?: number | null; notify_days_before?: number | null }): Promise<EppItem> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/epp-items`, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -3036,7 +3047,7 @@ export class EppItemService {
     return (await response.json()).data;
   }
 
-  static async update(id: number, payload: { name?: string; category?: EppCategory; size_type?: EppSizeType }): Promise<EppItem> {
+  static async update(id: number, payload: { name?: string; category?: EppCategory; size_type?: EppSizeType; lifespan_months?: number | null; notify_days_before?: number | null }): Promise<EppItem> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/epp-items/${id}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
@@ -3058,6 +3069,9 @@ export class EppItemService {
 }
 
 // Safety Equipment Service
+export type SafetyEquipmentAlertStatus = 'pending' | 'warned' | 'expired_warned' | 'renewed';
+export type SafetyEquipmentComputedStatus = 'permanent' | 'valid' | 'expiring_soon' | 'expired' | 'renewed';
+
 export interface SafetyEquipment {
   id: number;
   employee_id: number;
@@ -3066,28 +3080,94 @@ export interface SafetyEquipment {
   quantity: number;
   delivered_date: string;
   return_date?: string;
+  expiration_date?: string | null;
+  notify_days_before?: number;
+  alert_status?: SafetyEquipmentAlertStatus;
+  computed_status?: SafetyEquipmentComputedStatus;
+  previous_record_id?: number | null;
+  renewed_at?: string | null;
   condition?: 'new' | 'good' | 'worn' | 'damaged';
   notes?: string;
+  signature_url?: string | null;
+  signature_key?: string | null;
+  signature_name?: string | null;
   employee?: Employee;
   eppItem?: EppItem;
+  renewedBy?: { id: number; name: string; lastname: string };
 }
 
+export type SafetyEquipmentStatusFilter = 'current' | 'renewed' | 'permanent' | 'expired' | 'expiring_soon' | 'alert';
+
 export class SafetyEquipmentService {
-  static async getAll(employee_id?: number): Promise<SafetyEquipment[]> {
-    const url = employee_id ? `${API_BASE_URL}/safety-equipment?employee_id=${employee_id}` : `${API_BASE_URL}/safety-equipment`;
-    const response = await TokenManager.authenticatedFetch(url);
+  static async getAll(filters?: { employee_id?: number; epp_item_id?: number; category?: EppCategory; date_from?: string; date_to?: string; status?: SafetyEquipmentStatusFilter }): Promise<SafetyEquipment[]> {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => { if (v) params.append(k, String(v)); });
+    }
+    const query = params.toString();
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/safety-equipment${query ? `?${query}` : ''}`);
     if (!response.ok) throw new Error('Error al obtener EPP');
     return (await response.json()).data || [];
   }
 
-  static async create(payload: { employee_id: number; epp_item_id: number; size_delivered?: string; quantity?: number; delivered_date: string; condition?: string; notes?: string }): Promise<SafetyEquipment> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/safety-equipment`, {
+  static async create(payload: { employee_id: number; epp_item_id: number; size_delivered?: string; quantity?: number; delivered_date: string; expiration_date?: string | null; condition?: string; notes?: string }, signature?: File | null): Promise<SafetyEquipment> {
+    const formData = new FormData();
+    formData.append('employee_id', String(payload.employee_id));
+    formData.append('epp_item_id', String(payload.epp_item_id));
+    if (payload.size_delivered) formData.append('size_delivered', payload.size_delivered);
+    formData.append('quantity', String(payload.quantity ?? 1));
+    formData.append('delivered_date', payload.delivered_date);
+    // Siempre se manda la clave, aunque sea '' (equivalente a null): el backend decide si
+    // calcula el vencimiento automáticamente mirando si la clave está presente en el body, no
+    // si vale null — con FormData no se puede mandar `null` literal (se tipearía "null").
+    formData.append('expiration_date', payload.expiration_date ?? '');
+    if (payload.condition) formData.append('condition', payload.condition);
+    if (payload.notes) formData.append('notes', payload.notes);
+    if (signature) formData.append('signature', signature);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/safety-equipment`, {
       method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al registrar EPP');
+    }
+    return (await response.json()).data;
+  }
+
+  static async update(id: number, payload: Partial<{ epp_item_id: number; size_delivered: string; quantity: number; delivered_date: string; return_date: string | null; expiration_date: string | null; condition: string; notes: string }>): Promise<SafetyEquipment> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/safety-equipment/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(payload),
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Error al registrar EPP');
+      throw new Error(error.error || 'Error al actualizar EPP');
+    }
+    return (await response.json()).data;
+  }
+}
+
+// Talles adicionales de EPP por empleado (además de los 3 básicos — shoe_size/shirt_size/pant_size
+// — que siguen siendo columnas de Employee).
+export class EmployeeSizeService {
+  static async list(employeeId: number): Promise<EmployeeSize[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${employeeId}/sizes`);
+    if (!response.ok) throw new Error('Error al obtener talles');
+    return (await response.json()).data || [];
+  }
+
+  static async upsert(employeeId: number, payload: { epp_item_id: number; size: string }): Promise<EmployeeSize | null> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${employeeId}/sizes`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al guardar el talle');
     }
     return (await response.json()).data;
   }

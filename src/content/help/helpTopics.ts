@@ -33,6 +33,17 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'carga-horas.md',
   },
   {
+    id: 'epp',
+    category: 'Personal',
+    title: 'Entrega de EPP, vencimientos y talles',
+    keywords: [
+      'epp', 'elemento de proteccion', 'elemento de protección', 'entrega', 'vencimiento',
+      'renovacion', 'renovación', 'talle', 'botin', 'botín', 'pantalon', 'pantalón', 'guantes',
+      'catalogo', 'catálogo', 'vida util', 'vida útil', 'casco',
+    ],
+    file: 'epp.md',
+  },
+  {
     id: 'liquidaciones',
     category: 'Contabilidad',
     title: 'Liquidaciones',
