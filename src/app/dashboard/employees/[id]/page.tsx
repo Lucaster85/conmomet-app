@@ -601,22 +601,6 @@ function EmployeeDetailPageContent() {
                       <Typography variant="h6" fontWeight={600}>Talles (EPP)</Typography>
                     </Box>
                     <Divider sx={{ mb: 2.5 }} />
-                    <Stack spacing={1.5}>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">Calzado</Typography>
-                        <Typography variant="body1" fontWeight={500}>{employee.shoe_size || 'No registrado'}</Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">Remera / Camisa</Typography>
-                        <Typography variant="body1" fontWeight={500}>{employee.shirt_size || 'No registrado'}</Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">Pantalón</Typography>
-                        <Typography variant="body1" fontWeight={500}>{employee.pant_size || 'No registrado'}</Typography>
-                      </Box>
-                    </Stack>
-
-                    <Divider sx={{ my: 2 }} />
                     <EmployeeSizesPanel
                       employeeId={employeeId}
                       sizes={employee.sizes || []}

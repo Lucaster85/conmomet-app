@@ -13,6 +13,10 @@ import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import CurrencyInput from '../../../components/CurrencyInput';
 import InviteEmployeeDialog from '../../../components/InviteEmployeeDialog';
 import GearSpinner from '../../../components/GearSpinner';
+import DniField from '../../../components/DniField';
+import CuitField from '../../../components/CuitField';
+import PhoneField from '../../../components/PhoneField';
+import EmailField from '../../../components/EmailField';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, VisibilityOutlined as VisibilityIcon,
@@ -20,9 +24,10 @@ import {
 } from '@mui/icons-material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { useRouter } from 'next/navigation';
-import { Employee, EmployeeService, CreateEmployeeData, User, UserService, CategoryService, Category } from '../../../utils/api';
+import { Employee, EmployeeService, CreateEmployeeData, User, UserService, CategoryService, Category, EppItem, EppItemService, EmployeeSizeService } from '../../../utils/api';
 import { isFixedSalaryPayType } from '../../../utils/payType';
 import { TokenManager, userHasPermission } from '../../../utils/auth';
+import { validateDni, validateCuit, validatePhone, validateEmail } from '../../../utils/validators';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'success' | 'error' | 'warning' | 'info' }> = {
   active: { label: 'Activo', color: 'success' },
@@ -53,6 +58,9 @@ export default function EmployeesPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [processing, setProcessing] = useState(false);
+  // Se prende al intentar guardar con algún campo inválido, para revelar todos los errores
+  // inline de una — hasta entonces, cada campo solo muestra su error al perder el foco.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
   const [inviteTarget, setInviteTarget] = useState<Employee | null>(null);
@@ -60,9 +68,18 @@ export default function EmployeesPage() {
   const emptyForm: CreateEmployeeData & { status?: string; pay_type?: string; monthly_salary?: number; vacation_days_override?: number | null } = {
     name: '', lastname: '', dni: '', cuil: '', address: '', phone: '', email: '',
     position: '', hire_date: '', birth_date: '', hourly_rate: 0, pay_type: 'hourly', monthly_salary: 0, notes: '',
-    shoe_size: '', shirt_size: '', pant_size: '', user_id: undefined, vacation_days_override: null, category_id: null,
+    user_id: undefined, vacation_days_override: null, category_id: null,
   };
   const [form, setForm] = useState(emptyForm);
+
+  // Los 3 talles básicos ya no son columnas de Employee: viven en EmployeeSizes, asociados al
+  // artículo del catálogo correspondiente. Se resuelven por nombre (mismos 3 que
+  // helpers/seed.js#seedBasicEppItems garantiza en el backend) una vez cargado el catálogo. Si
+  // alguno no se encuentra (se renombró en el catálogo), ese campo del formulario se oculta en
+  // vez de romper el alta/edición.
+  const emptySizesForm = { shoe_size: '', shirt_size: '', pant_size: '' };
+  const [sizesForm, setSizesForm] = useState(emptySizesForm);
+  const [basicSizeItems, setBasicSizeItems] = useState<{ shoe?: EppItem; shirt?: EppItem; pant?: EppItem }>({});
 
   const loadEmployees = async () => {
     try {
@@ -95,8 +112,21 @@ export default function EmployeesPage() {
     }
   };
 
+  const loadBasicSizeItems = async () => {
+    try {
+      const catalog = await EppItemService.getAll();
+      setBasicSizeItems({
+        shoe: catalog.find(i => i.name === 'Botín de Seguridad'),
+        shirt: catalog.find(i => i.name === 'Camiseta de Trabajo'),
+        pant: catalog.find(i => i.name === 'Pantalón de Trabajo'),
+      });
+    } catch (err) {
+      console.error('Error loading EPP catalog for sizes:', err);
+    }
+  };
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadEmployees(); loadUsers(); loadCategories(); }, []);
+  useEffect(() => { loadEmployees(); loadUsers(); loadCategories(); loadBasicSizeItems(); }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (!loading) loadEmployees(); }, [showInactive]);
 
@@ -114,11 +144,14 @@ export default function EmployeesPage() {
   const handleOpenCreate = () => {
     setEditingEmployee(null);
     setForm({ ...emptyForm });
+    setSizesForm({ ...emptySizesForm });
+    setSubmitAttempted(false);
     setOpenDialog(true);
   };
 
-  const handleOpenEdit = (emp: Employee) => {
+  const handleOpenEdit = async (emp: Employee) => {
     setEditingEmployee(emp);
+    setSubmitAttempted(false);
     setForm({
       name: emp.name, lastname: emp.lastname, dni: emp.dni, cuil: emp.cuil,
       address: emp.address || '', phone: emp.phone || '', email: emp.email || '',
@@ -126,18 +159,43 @@ export default function EmployeesPage() {
       pay_type: emp.pay_type || 'hourly',
       monthly_salary: emp.monthly_salary || 0,
       notes: emp.notes || '', status: emp.status,
-      shoe_size: emp.shoe_size || '', shirt_size: emp.shirt_size || '', pant_size: emp.pant_size || '',
       user_id: emp.user_id || undefined,
       vacation_days_override: emp.vacation_days_override,
       category_id: emp.category_id || null,
     });
+    setSizesForm({ ...emptySizesForm });
     setOpenDialog(true);
+
+    // El listado (GET /employees) no trae `sizes` — se pide el detalle (GET /employees/:id)
+    // solo al abrir el diálogo de edición, para no abultar el fetch de la lista con un dato
+    // que ahí no se muestra.
+    try {
+      const full = await EmployeeService.getById(emp.id);
+      setSizesForm({
+        shoe_size: full.sizes?.find(s => s.epp_item_id === basicSizeItems.shoe?.id)?.size || '',
+        shirt_size: full.sizes?.find(s => s.epp_item_id === basicSizeItems.shirt?.id)?.size || '',
+        pant_size: full.sizes?.find(s => s.epp_item_id === basicSizeItems.pant?.id)?.size || '',
+      });
+    } catch (err) {
+      console.error('Error loading employee sizes:', err);
+    }
   };
 
   const handleSubmit = async () => {
     const isFixedSalary = isFixedSalaryPayType(form.pay_type);
-    if (!form.name || !form.lastname || !form.dni || !form.cuil || !form.hire_date) {
-      setError('Nombre, Apellido, DNI, CUIL y Fecha de ingreso son obligatorios');
+    if (!form.name || !form.lastname || !form.hire_date) {
+      setError('Nombre, Apellido y Fecha de ingreso son obligatorios');
+      return;
+    }
+    const hasFieldErrors = [
+      validateDni(form.dni, { required: true }),
+      validateCuit(form.cuil, { required: true }),
+      validatePhone(form.phone || '', { required: false }),
+      validateEmail(form.email || '', { required: false }),
+    ].some(Boolean);
+    if (hasFieldErrors) {
+      setSubmitAttempted(true);
+      setError('Revisá los campos marcados en rojo');
       return;
     }
     if (canSeeSalaries && !isFixedSalary && !form.hourly_rate) {
@@ -151,13 +209,33 @@ export default function EmployeesPage() {
     if (processing) return;
     setProcessing(true);
     try {
+      let saved: Employee;
       if (editingEmployee) {
-        await EmployeeService.update(editingEmployee.id, form);
+        saved = await EmployeeService.update(editingEmployee.id, form);
         setSuccess('Empleado actualizado');
       } else {
-        await EmployeeService.create(form);
+        saved = await EmployeeService.create(form);
         setSuccess('Empleado creado');
       }
+
+      // Los 3 talles básicos ya no viajan en el payload del empleado: se guardan aparte, una
+      // vez que el empleado existe (en alta, recién ahí tiene id). Mejor esfuerzo: si falla,
+      // no tapa el éxito de haber guardado el empleado — mismo criterio que loadUsers/
+      // loadCategories en esta misma página.
+      const sizesToSave: [number | undefined, string][] = [
+        [basicSizeItems.shoe?.id, sizesForm.shoe_size],
+        [basicSizeItems.shirt?.id, sizesForm.shirt_size],
+        [basicSizeItems.pant?.id, sizesForm.pant_size],
+      ];
+      for (const [epp_item_id, size] of sizesToSave) {
+        if (!epp_item_id) continue;
+        try {
+          await EmployeeSizeService.upsert(saved.id, { epp_item_id, size });
+        } catch (err) {
+          console.error('Error saving employee size:', err);
+        }
+      }
+
       setOpenDialog(false);
       loadEmployees();
     } catch (err) {
@@ -454,8 +532,8 @@ export default function EmployeesPage() {
               <TextField label="Apellido *" fullWidth value={form.lastname} onChange={(e) => setForm({ ...form, lastname: e.target.value })} />
             </Box>
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
-              <TextField label="DNI *" fullWidth value={form.dni} onChange={(e) => setForm({ ...form, dni: e.target.value })} />
-              <TextField label="CUIL *" fullWidth value={form.cuil} onChange={(e) => setForm({ ...form, cuil: e.target.value })} />
+              <DniField label="DNI *" fullWidth required value={form.dni} onChange={(val) => setForm({ ...form, dni: val })} forceShowError={submitAttempted} />
+              <CuitField label="CUIL *" fullWidth required value={form.cuil} onChange={(val) => setForm({ ...form, cuil: val })} forceShowError={submitAttempted} />
             </Box>
             <TextField label="Puesto" fullWidth value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} placeholder="Ej: Soldador, Tornero" />
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
@@ -509,8 +587,8 @@ export default function EmployeesPage() {
               )}
             </Box>
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
-              <TextField label="Teléfono" fullWidth value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <TextField label="Email" fullWidth value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <PhoneField label="Teléfono" fullWidth value={form.phone || ''} onChange={(val) => setForm({ ...form, phone: val })} forceShowError={submitAttempted} />
+              <EmailField label="Email" fullWidth value={form.email || ''} onChange={(val) => setForm({ ...form, email: val })} forceShowError={submitAttempted} />
             </Box>
             <AddressAutocomplete label="Dirección" fullWidth value={form.address ?? ''} onChange={(v) => setForm({ ...form, address: v })} />
             <Divider sx={{ my: 1 }}>
@@ -524,14 +602,24 @@ export default function EmployeesPage() {
               onChange={(e) => setForm({ ...form, vacation_days_override: e.target.value ? Number(e.target.value) : null })} 
               helperText="Dejar vacío para usar la escala legal (Art. 150 LCT). Poner 0 para empleados sin vacaciones."
             />
-            <Divider sx={{ my: 1 }}>
-              <Typography variant="caption" color="text.secondary">Talles (para EPP)</Typography>
-            </Divider>
-            <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
-              <TextField label="Talle Calzado" fullWidth value={form.shoe_size} onChange={(e) => setForm({ ...form, shoe_size: e.target.value })} placeholder="Ej: 42" />
-              <TextField label="Talle Remera" fullWidth value={form.shirt_size} onChange={(e) => setForm({ ...form, shirt_size: e.target.value })} placeholder="Ej: L, XL" />
-              <TextField label="Talle Pantalón" fullWidth value={form.pant_size} onChange={(e) => setForm({ ...form, pant_size: e.target.value })} placeholder="Ej: 44, M" />
-            </Box>
+            {(basicSizeItems.shoe || basicSizeItems.shirt || basicSizeItems.pant) && (
+              <>
+                <Divider sx={{ my: 1 }}>
+                  <Typography variant="caption" color="text.secondary">Talles (para EPP)</Typography>
+                </Divider>
+                <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
+                  {basicSizeItems.shoe && (
+                    <TextField label="Talle Calzado" fullWidth value={sizesForm.shoe_size} onChange={(e) => setSizesForm({ ...sizesForm, shoe_size: e.target.value })} placeholder="Ej: 42" />
+                  )}
+                  {basicSizeItems.shirt && (
+                    <TextField label="Talle Remera" fullWidth value={sizesForm.shirt_size} onChange={(e) => setSizesForm({ ...sizesForm, shirt_size: e.target.value })} placeholder="Ej: L, XL" />
+                  )}
+                  {basicSizeItems.pant && (
+                    <TextField label="Talle Pantalón" fullWidth value={sizesForm.pant_size} onChange={(e) => setSizesForm({ ...sizesForm, pant_size: e.target.value })} placeholder="Ej: 44, M" />
+                  )}
+                </Box>
+              </>
+            )}
             <Divider sx={{ my: 1 }} />
             {editingEmployee && (
               <TextField label="Estado" select fullWidth value={form.status || 'active'} onChange={(e) => setForm({ ...form, status: e.target.value })}

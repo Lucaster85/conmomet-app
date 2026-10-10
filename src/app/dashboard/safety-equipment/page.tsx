@@ -236,8 +236,9 @@ export default function SafetyEquipmentPage() {
       .catch(() => setSelectedEmployeeSizes([]));
   }, [form.employee_id]);
 
-  // Auto pre-fill size when employee or item changes. Un talle adicional exacto para este
-  // artículo (EmployeeSizes) tiene prioridad; si no hay, cae a la heurística por categoría.
+  // Auto pre-fill size when employee or item changes. Match exacto contra EmployeeSizes — ya
+  // cubre los talles básicos (Botín/Camiseta/Pantalón) desde que se backfillearon, así que no
+  // hace falta ninguna heurística por categoría.
   useEffect(() => {
     if (!selectedEppItem || !selectedEmployee) return;
     if (selectedEppItem.size_type === 'none') {
@@ -248,19 +249,6 @@ export default function SafetyEquipmentPage() {
     const exactMatch = selectedEmployeeSizes.find(s => s.epp_item_id === selectedEppItem.id)?.size;
     if (exactMatch) {
       setForm(f => ({ ...f, size_delivered: exactMatch }));
-      return;
-    }
-
-    let prefill = '';
-    if (selectedEppItem.category === 'footwear' && selectedEmployee.shoe_size) {
-      prefill = selectedEmployee.shoe_size;
-    } else if (selectedEppItem.category === 'clothing' && selectedEppItem.size_type === 'alpha' && selectedEmployee.shirt_size) {
-      prefill = selectedEmployee.shirt_size;
-    } else if (selectedEppItem.category === 'hand_protection' && selectedEmployee.shirt_size) {
-      prefill = selectedEmployee.shirt_size;
-    }
-    if (prefill) {
-      setForm(f => ({ ...f, size_delivered: prefill }));
     }
   }, [selectedEppItem, selectedEmployee, selectedEmployeeSizes]);
 
