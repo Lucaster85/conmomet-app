@@ -13,6 +13,10 @@ import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import CurrencyInput from '../../../components/CurrencyInput';
 import InviteEmployeeDialog from '../../../components/InviteEmployeeDialog';
 import GearSpinner from '../../../components/GearSpinner';
+import DniField from '../../../components/DniField';
+import CuitField from '../../../components/CuitField';
+import PhoneField from '../../../components/PhoneField';
+import EmailField from '../../../components/EmailField';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, VisibilityOutlined as VisibilityIcon,
@@ -23,6 +27,7 @@ import { useRouter } from 'next/navigation';
 import { Employee, EmployeeService, CreateEmployeeData, User, UserService, CategoryService, Category, EppItem, EppItemService, EmployeeSizeService } from '../../../utils/api';
 import { isFixedSalaryPayType } from '../../../utils/payType';
 import { TokenManager, userHasPermission } from '../../../utils/auth';
+import { validateDni, validateCuit, validatePhone, validateEmail } from '../../../utils/validators';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'success' | 'error' | 'warning' | 'info' }> = {
   active: { label: 'Activo', color: 'success' },
@@ -53,6 +58,9 @@ export default function EmployeesPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [processing, setProcessing] = useState(false);
+  // Se prende al intentar guardar con algún campo inválido, para revelar todos los errores
+  // inline de una — hasta entonces, cada campo solo muestra su error al perder el foco.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
   const [inviteTarget, setInviteTarget] = useState<Employee | null>(null);
@@ -137,11 +145,13 @@ export default function EmployeesPage() {
     setEditingEmployee(null);
     setForm({ ...emptyForm });
     setSizesForm({ ...emptySizesForm });
+    setSubmitAttempted(false);
     setOpenDialog(true);
   };
 
   const handleOpenEdit = async (emp: Employee) => {
     setEditingEmployee(emp);
+    setSubmitAttempted(false);
     setForm({
       name: emp.name, lastname: emp.lastname, dni: emp.dni, cuil: emp.cuil,
       address: emp.address || '', phone: emp.phone || '', email: emp.email || '',
@@ -173,8 +183,19 @@ export default function EmployeesPage() {
 
   const handleSubmit = async () => {
     const isFixedSalary = isFixedSalaryPayType(form.pay_type);
-    if (!form.name || !form.lastname || !form.dni || !form.cuil || !form.hire_date) {
-      setError('Nombre, Apellido, DNI, CUIL y Fecha de ingreso son obligatorios');
+    if (!form.name || !form.lastname || !form.hire_date) {
+      setError('Nombre, Apellido y Fecha de ingreso son obligatorios');
+      return;
+    }
+    const hasFieldErrors = [
+      validateDni(form.dni, { required: true }),
+      validateCuit(form.cuil, { required: true }),
+      validatePhone(form.phone || '', { required: false }),
+      validateEmail(form.email || '', { required: false }),
+    ].some(Boolean);
+    if (hasFieldErrors) {
+      setSubmitAttempted(true);
+      setError('Revisá los campos marcados en rojo');
       return;
     }
     if (canSeeSalaries && !isFixedSalary && !form.hourly_rate) {
@@ -511,8 +532,8 @@ export default function EmployeesPage() {
               <TextField label="Apellido *" fullWidth value={form.lastname} onChange={(e) => setForm({ ...form, lastname: e.target.value })} />
             </Box>
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
-              <TextField label="DNI *" fullWidth value={form.dni} onChange={(e) => setForm({ ...form, dni: e.target.value })} />
-              <TextField label="CUIL *" fullWidth value={form.cuil} onChange={(e) => setForm({ ...form, cuil: e.target.value })} />
+              <DniField label="DNI *" fullWidth required value={form.dni} onChange={(val) => setForm({ ...form, dni: val })} forceShowError={submitAttempted} />
+              <CuitField label="CUIL *" fullWidth required value={form.cuil} onChange={(val) => setForm({ ...form, cuil: val })} forceShowError={submitAttempted} />
             </Box>
             <TextField label="Puesto" fullWidth value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} placeholder="Ej: Soldador, Tornero" />
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
@@ -566,8 +587,8 @@ export default function EmployeesPage() {
               )}
             </Box>
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
-              <TextField label="Teléfono" fullWidth value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <TextField label="Email" fullWidth value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <PhoneField label="Teléfono" fullWidth value={form.phone || ''} onChange={(val) => setForm({ ...form, phone: val })} forceShowError={submitAttempted} />
+              <EmailField label="Email" fullWidth value={form.email || ''} onChange={(val) => setForm({ ...form, email: val })} forceShowError={submitAttempted} />
             </Box>
             <AddressAutocomplete label="Dirección" fullWidth value={form.address ?? ''} onChange={(v) => setForm({ ...form, address: v })} />
             <Divider sx={{ my: 1 }}>

@@ -20,6 +20,9 @@ import {
 import GearSpinner from '../../../components/GearSpinner';
 import { SaveOutlined as SaveIcon, ContentCopyOutlined as ContentCopyIcon } from '@mui/icons-material';
 import FeedbackModal from '../../../components/FeedbackModal';
+import CuitField from '../../../components/CuitField';
+import PhoneField from '../../../components/PhoneField';
+import EmailField from '../../../components/EmailField';
 import {
   UserService,
   LookupService,
@@ -32,6 +35,8 @@ import {
   Employee,
 } from '../../../utils/api';
 import { TokenManager, userHasPermission } from '../../../utils/auth';
+import { digitsOnly } from '../../../utils/cuit';
+import { validateCuit, validatePhone, validateEmail } from '../../../utils/validators';
 
 // Solo lo que expone GET /lookup/roles (filtrado por jerarquía): nunca `permissions` ni `key`.
 // `currentOnly` marca el rol ya asignado al usuario que se edita cuando el lookup lo excluyó
@@ -74,6 +79,9 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
+  // Se prende al intentar guardar con algún campo inválido, para revelar todos los errores
+  // inline de una — hasta entonces, cada campo solo muestra su error al perder el foco.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // GET /lookup/roles: solo verifyToken (no roles_read), y ya viene filtrado por jerarquía
   // (solo roles de nivel menor al del usuario logueado) — así un "Administrador" con
@@ -166,7 +174,9 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
         lastname: emp.lastname || prev.lastname,
         email: emp.email || prev.email,
         phone: emp.phone || prev.phone,
-        cuit: emp.cuil || prev.cuit,
+        // `Employees.cuil` admite guiones (dato legacy); se limpia acá para que no entre "sucio"
+        // al campo y dispare un error inline espurio apenas se vincula el empleado.
+        cuit: emp.cuil ? digitsOnly(emp.cuil) : prev.cuit,
       }));
     } else {
       setFormData(prev => ({ ...prev, employee_id: undefined }));
@@ -177,9 +187,7 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
   const validateForm = (): string | null => {
     if (!formData.name.trim()) return 'El nombre es obligatorio';
     if (!formData.lastname.trim()) return 'El apellido es obligatorio';
-    if (!formData.email.trim()) return 'El email es obligatorio';
     if (!formData.role_id) return 'Debe seleccionar un rol';
-    if (!formData.cuit.trim()) return 'El CUIT es obligatorio';
 
     if (!isEditing) {
       const selectedRole = roles.find(r => r.id === formData.role_id);
@@ -188,26 +196,24 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
       }
     }
 
-    // Validar email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      return 'El email no tiene un formato válido';
-    }
-    
-    // Validar CUIT (debe ser numérico)
-    if (!/^\d+$/.test(formData.cuit)) {
-      return 'El CUIT debe contener solo números';
-    }
-    
+    const hasFieldErrors = [
+      validateEmail(formData.email, { required: true }),
+      validateCuit(formData.cuit, { required: true }),
+      validatePhone(formData.phone || '', { required: false }),
+      validatePhone(formData.celphone || '', { required: false }),
+    ].some(Boolean);
+    if (hasFieldErrors) return 'Revisá los campos marcados en rojo';
+
     return null;
   };
 
   // Manejar envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validateForm();
     if (validationError) {
+      setSubmitAttempted(true);
       setError(validationError);
       return;
     }
@@ -351,15 +357,14 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
           flexDirection: { xs: 'column', sm: 'row' },
           gap: 2
         }}>
-          <TextField
+          <EmailField
             fullWidth
             label="Email *"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            placeholder="usuario@ejemplo.com"
             required
+            value={formData.email}
+            onChange={(val) => setFormData(prev => ({ ...prev, email: val }))}
+            placeholder="usuario@ejemplo.com"
+            forceShowError={submitAttempted}
           />
         </Box>
 
@@ -368,14 +373,13 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
           flexDirection: { xs: 'column', sm: 'row' },
           gap: 2
         }}>
-          <TextField
+          <CuitField
             fullWidth
             label="CUIT *"
-            name="cuit"
-            value={formData.cuit}
-            onChange={handleInputChange}
-            placeholder="11111111111"
             required
+            value={formData.cuit}
+            onChange={(val) => setFormData(prev => ({ ...prev, cuit: val }))}
+            forceShowError={submitAttempted}
           />
 
           <FormControl fullWidth required>
@@ -408,22 +412,22 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
           flexDirection: { xs: 'column', sm: 'row' }, 
           gap: 2 
         }}>
-          <TextField
+          <PhoneField
             fullWidth
             label="Teléfono Fijo"
-            name="phone"
-            value={formData.phone}
-            onChange={handleInputChange}
-            placeholder="011-1234-5678"
+            value={formData.phone || ''}
+            onChange={(val) => setFormData(prev => ({ ...prev, phone: val }))}
+            placeholder="01112345678"
+            forceShowError={submitAttempted}
           />
 
-          <TextField
+          <PhoneField
             fullWidth
             label="Teléfono Celular"
-            name="celphone"
-            value={formData.celphone}
-            onChange={handleInputChange}
-            placeholder="11-1234-5678"
+            value={formData.celphone || ''}
+            onChange={(val) => setFormData(prev => ({ ...prev, celphone: val }))}
+            placeholder="1112345678"
+            forceShowError={submitAttempted}
           />
         </Box>
 
