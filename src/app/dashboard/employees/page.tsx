@@ -22,6 +22,7 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { useRouter } from 'next/navigation';
 import { Employee, EmployeeService, CreateEmployeeData, User, UserService, CategoryService, Category } from '../../../utils/api';
 import { isFixedSalaryPayType } from '../../../utils/payType';
+import { TokenManager, userHasPermission } from '../../../utils/auth';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'success' | 'error' | 'warning' | 'info' }> = {
   active: { label: 'Activo', color: 'success' },
@@ -32,6 +33,16 @@ const STATUS_LABELS: Record<string, { label: string; color: 'success' | 'error' 
 
 export default function EmployeesPage() {
   const router = useRouter();
+
+  // Gating por permiso real del usuario logueado — el backend ya lo valida (403/campos
+  // borrados si falta), esto es para no mostrar botones/campos que después van a fallar o a
+  // mostrar datos que el backend ya no manda. Mismo patrón que dashboard/roles/page.tsx.
+  const currentUser = TokenManager.getUser();
+  const canCreate = userHasPermission(currentUser, 'employees_write');
+  const canUpdate = userHasPermission(currentUser, 'employees_update');
+  const canDeleteEmployees = userHasPermission(currentUser, 'employees_delete');
+  const canSeeSalaries = userHasPermission(currentUser, 'employee_salaries_read');
+
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -111,7 +122,7 @@ export default function EmployeesPage() {
     setForm({
       name: emp.name, lastname: emp.lastname, dni: emp.dni, cuil: emp.cuil,
       address: emp.address || '', phone: emp.phone || '', email: emp.email || '',
-      position: emp.position || '', hire_date: emp.hire_date, birth_date: emp.birth_date || '', hourly_rate: emp.hourly_rate,
+      position: emp.position || '', hire_date: emp.hire_date, birth_date: emp.birth_date || '', hourly_rate: emp.hourly_rate ?? 0,
       pay_type: emp.pay_type || 'hourly',
       monthly_salary: emp.monthly_salary || 0,
       notes: emp.notes || '', status: emp.status,
@@ -129,11 +140,11 @@ export default function EmployeesPage() {
       setError('Nombre, Apellido, DNI, CUIL y Fecha de ingreso son obligatorios');
       return;
     }
-    if (!isFixedSalary && !form.hourly_rate) {
+    if (canSeeSalaries && !isFixedSalary && !form.hourly_rate) {
       setError('El valor hora es obligatorio para empleados por hora');
       return;
     }
-    if (isFixedSalary && !form.monthly_salary) {
+    if (canSeeSalaries && isFixedSalary && !form.monthly_salary) {
       setError(form.pay_type === 'biweekly_fixed' ? 'El sueldo quincenal es obligatorio para empleados quincenales' : 'El sueldo mensual es obligatorio para empleados mensualizados');
       return;
     }
@@ -211,7 +222,9 @@ export default function EmployeesPage() {
         </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadEmployees} size="small">Actualizar</Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} size="small">Nuevo Empleado</Button>
+          {canCreate && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} size="small">Nuevo Empleado</Button>
+          )}
         </Box>
       </Box>
 
@@ -253,11 +266,13 @@ export default function EmployeesPage() {
                     <Typography variant="subtitle1" fontWeight="bold">{emp.lastname}, {emp.name}</Typography>
                     <Typography variant="body2" color="text.secondary">DNI: {emp.dni}</Typography>
                     {emp.position && <Typography variant="body2">{emp.position}</Typography>}
-                    <Typography variant="body2" fontWeight="medium">
-                      {emp.pay_type === 'monthly' ? `${formatCurrency(emp.monthly_salary || 0)} /mes (Fijo)`
-                        : emp.pay_type === 'biweekly_fixed' ? `${formatCurrency(emp.monthly_salary || 0)} /quincena (Fijo)`
-                        : `${formatCurrency(emp.hourly_rate)} /hora`}
-                    </Typography>
+                    {canSeeSalaries && (
+                      <Typography variant="body2" fontWeight="medium">
+                        {emp.pay_type === 'monthly' ? `${formatCurrency(emp.monthly_salary || 0)} /mes (Fijo)`
+                          : emp.pay_type === 'biweekly_fixed' ? `${formatCurrency(emp.monthly_salary || 0)} /quincena (Fijo)`
+                          : `${formatCurrency(emp.hourly_rate ?? 0)} /hora`}
+                      </Typography>
+                    )}
                     <Chip label={STATUS_LABELS[emp.status]?.label || emp.status} color={STATUS_LABELS[emp.status]?.color || 'default'} size="small" sx={{ mt: 0.5 }} />
                     {!emp.user_id && emp.invitation_status && (
                       <Chip
@@ -270,11 +285,15 @@ export default function EmployeesPage() {
                   </Box>
                   <Box>
                     <IconButton size="small" color="info" onClick={() => router.push(`/dashboard/employees/${emp.id}`)}><VisibilityIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" color="primary" onClick={() => handleOpenEdit(emp)}><EditIcon fontSize="small" /></IconButton>
+                    {canUpdate && (
+                      <IconButton size="small" color="primary" onClick={() => handleOpenEdit(emp)}><EditIcon fontSize="small" /></IconButton>
+                    )}
                     {!emp.user_id && (
                       <IconButton size="small" sx={{ color: '#25D366' }} onClick={() => setInviteTarget(emp)}><WhatsAppIcon fontSize="small" /></IconButton>
                     )}
-                    <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, employee: emp })}><DeleteIcon fontSize="small" /></IconButton>
+                    {canDeleteEmployees && (
+                      <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, employee: emp })}><DeleteIcon fontSize="small" /></IconButton>
+                    )}
                   </Box>
                 </Box>
               </Card>
@@ -292,14 +311,14 @@ export default function EmployeesPage() {
                 <TableCell><strong>Empleado</strong></TableCell>
                 <TableCell><strong>DNI</strong></TableCell>
                 <TableCell><strong>Puesto</strong></TableCell>
-                <TableCell><strong>Remuneración</strong></TableCell>
+                {canSeeSalaries && <TableCell><strong>Remuneración</strong></TableCell>}
                 <TableCell><strong>Estado</strong></TableCell>
                 <TableCell align="center"><strong>Acciones</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4 }}><Typography variant="body2" color="text.secondary">No hay empleados</Typography></TableCell></TableRow>
+                <TableRow><TableCell colSpan={canSeeSalaries ? 6 : 5} align="center" sx={{ py: 4 }}><Typography variant="body2" color="text.secondary">No hay empleados</Typography></TableCell></TableRow>
               ) : (
                 filtered.map((emp) => (
                   <TableRow key={emp.id} hover>
@@ -323,22 +342,28 @@ export default function EmployeesPage() {
                     </TableCell>
                     <TableCell>{emp.dni}</TableCell>
                     <TableCell>{emp.position || '—'}</TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{isFixedSalaryPayType(emp.pay_type) ? formatCurrency(emp.monthly_salary || 0) : formatCurrency(emp.hourly_rate)}</Typography>
-                      <Typography variant="caption" color="text.secondary">{emp.pay_type === 'monthly' ? 'por mes' : emp.pay_type === 'biweekly_fixed' ? 'por quincena' : 'por hora'}</Typography>
-                    </TableCell>
+                    {canSeeSalaries && (
+                      <TableCell>
+                        <Typography variant="body2">{isFixedSalaryPayType(emp.pay_type) ? formatCurrency(emp.monthly_salary || 0) : formatCurrency(emp.hourly_rate ?? 0)}</Typography>
+                        <Typography variant="caption" color="text.secondary">{emp.pay_type === 'monthly' ? 'por mes' : emp.pay_type === 'biweekly_fixed' ? 'por quincena' : 'por hora'}</Typography>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Chip label={STATUS_LABELS[emp.status]?.label || emp.status} color={STATUS_LABELS[emp.status]?.color || 'default'} size="small" />
                     </TableCell>
                     <TableCell align="center">
                       <Tooltip title="Ver Legajo"><IconButton size="small" color="info" onClick={() => router.push(`/dashboard/employees/${emp.id}`)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
-                      <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(emp)}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      {canUpdate && (
+                        <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(emp)}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      )}
                       {!emp.user_id && (
                         <Tooltip title="Invitar al portal">
                           <IconButton size="small" sx={{ color: '#25D366' }} onClick={() => setInviteTarget(emp)}><WhatsAppIcon fontSize="small" /></IconButton>
                         </Tooltip>
                       )}
-                      <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, employee: emp })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                      {canDeleteEmployees && (
+                        <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, employee: emp })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -437,22 +462,26 @@ export default function EmployeesPage() {
               <DateField label="Fecha Ingreso *" fullWidth value={form.hire_date} onChange={(val) => setForm({ ...form, hire_date: val })} InputLabelProps={{ shrink: true }} />
               <DateField label="Fecha Nacimiento" fullWidth value={form.birth_date || ''} onChange={(val) => setForm({ ...form, birth_date: val })} InputLabelProps={{ shrink: true }} />
             </Box>
-            <TextField label="Tipo de Pago" select fullWidth value={form.pay_type || 'hourly'}
-              onChange={(e) => setForm({ ...form, pay_type: e.target.value })}
-              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-              <option value="hourly">Jornalizado (por hora)</option>
-              <option value="monthly">Mensualizado (sueldo fijo mensual)</option>
-              <option value="biweekly_fixed">Quincenal (sueldo fijo por quincena)</option>
-            </TextField>
-            {isFixedSalaryPayType(form.pay_type) ? (
-              <CurrencyInput
-                label={form.pay_type === 'biweekly_fixed' ? 'Sueldo Quincenal (Fijo) *' : 'Sueldo Mensual *'}
-                fullWidth
-                value={form.monthly_salary || 0}
-                onChange={(value) => setForm({ ...form, monthly_salary: value ?? 0 })}
-              />
-            ) : (
-              <CurrencyInput label="Arreglo Particular (valor hora) *" fullWidth value={form.hourly_rate} onChange={(value) => setForm({ ...form, hourly_rate: value ?? 0 })} helperText="Valor hora acordado con el empleado" />
+            {canSeeSalaries && (
+              <>
+                <TextField label="Tipo de Pago" select fullWidth value={form.pay_type || 'hourly'}
+                  onChange={(e) => setForm({ ...form, pay_type: e.target.value })}
+                  SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
+                  <option value="hourly">Jornalizado (por hora)</option>
+                  <option value="monthly">Mensualizado (sueldo fijo mensual)</option>
+                  <option value="biweekly_fixed">Quincenal (sueldo fijo por quincena)</option>
+                </TextField>
+                {isFixedSalaryPayType(form.pay_type) ? (
+                  <CurrencyInput
+                    label={form.pay_type === 'biweekly_fixed' ? 'Sueldo Quincenal (Fijo) *' : 'Sueldo Mensual *'}
+                    fullWidth
+                    value={form.monthly_salary || 0}
+                    onChange={(value) => setForm({ ...form, monthly_salary: value ?? 0 })}
+                  />
+                ) : (
+                  <CurrencyInput label="Arreglo Particular (valor hora) *" fullWidth value={form.hourly_rate} onChange={(value) => setForm({ ...form, hourly_rate: value ?? 0 })} helperText="Valor hora acordado con el empleado" />
+                )}
+              </>
             )}
             <Box>
               <TextField
@@ -470,7 +499,7 @@ export default function EmployeesPage() {
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </TextField>
-              {form.category_id && categories.find(c => c.id === form.category_id) && (
+              {canSeeSalaries && form.category_id && categories.find(c => c.id === form.category_id) && (
                 <Box mt={1} p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
                   <Typography variant="caption" color="text.secondary">Valor hora CCT</Typography>
                   <Typography variant="body2" fontWeight={700} color="primary.main">

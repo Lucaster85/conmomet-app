@@ -72,6 +72,12 @@ export default function DashboardPage() {
     : [];
   const hasPermission = (permission: string) => permissions.includes('admin_granted') || permissions.includes(permission);
   const quickAccessItems = QUICK_ACCESS_ITEMS.filter((item) => hasPermission(item.requiredPermission));
+  // Antes no hacía falta chequear esto acá: todo rol real tenía casi todos los permisos. Con un
+  // rol acotado (ej. "Seguridad e Higiene": employees_read + safety_equipment_read, sin nada de
+  // Contabilidad) estos fetches sin gating 401eaban en cada carga de la portada.
+  const canSeeDocuments = hasPermission('documents_read');
+  const canSeeSalaryAdvances = hasPermission('salary_advances_read');
+  const canSeeLoans = hasPermission('loans_read');
 
   const [expiringDocs, setExpiringDocs] = useState<EntityDocument[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
@@ -92,6 +98,10 @@ export default function DashboardPage() {
   const [file, setFile] = useState<File | null>(null);
 
   const fetchExpirations = async () => {
+    if (!canSeeDocuments) {
+      setLoadingDocs(false);
+      return;
+    }
     try {
       setLoadingDocs(true);
       const allDocs = await EntityDocumentService.getAll();
@@ -117,13 +127,17 @@ export default function DashboardPage() {
   };
 
   const fetchPendingRequests = async () => {
+    if (!canSeeSalaryAdvances && !canSeeLoans) {
+      setLoadingRequests(false);
+      return;
+    }
     try {
       setLoadingRequests(true);
       const [advances, advancesToPay, loans, loansToPay] = await Promise.all([
-        SalaryAdvanceService.getAll({ status: 'pending' }),
-        SalaryAdvanceService.getAll({ status: 'approved', paid: false }),
-        LoanService.getAll({ status: 'pending' }),
-        LoanService.getAll({ status: 'approved' }),
+        canSeeSalaryAdvances ? SalaryAdvanceService.getAll({ status: 'pending' }) : Promise.resolve([]),
+        canSeeSalaryAdvances ? SalaryAdvanceService.getAll({ status: 'approved', paid: false }) : Promise.resolve([]),
+        canSeeLoans ? LoanService.getAll({ status: 'pending' }) : Promise.resolve([]),
+        canSeeLoans ? LoanService.getAll({ status: 'approved' }) : Promise.resolve([]),
       ]);
       setPendingAdvances(advances.length);
       setAdvancesPendingPayment(advancesToPay.length);
@@ -139,6 +153,7 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchExpirations();
     fetchPendingRequests();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRenewSubmit = async () => {
@@ -202,6 +217,7 @@ export default function DashboardPage() {
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
         
         {/* Widget: Alertas de Vencimientos */}
+        {canSeeDocuments && (
         <Paper
           sx={{
             flex: '1 1 500px',
@@ -389,8 +405,10 @@ export default function DashboardPage() {
             </Stack>
           )}
         </Paper>
+        )}
 
         {/* Widget: Adelantos y Préstamos pendientes */}
+        {(canSeeSalaryAdvances || canSeeLoans) && (
         <Paper
           sx={{
             flex: '1 1 300px',
@@ -414,31 +432,36 @@ export default function DashboardPage() {
             <Box display="flex" justifyContent="center" py={2}><GearSpinner size={28} /></Box>
           ) : (
             <Stack spacing={2.5}>
-              <Box onClick={() => router.push('/dashboard/salary-advances')} sx={{ cursor: 'pointer', p: 1.5, borderRadius: 2, '&:hover': { bgcolor: 'grey.50' } }}>
-                <Typography fontWeight="bold" mb={0.75}>Adelantos</Typography>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-                  <Typography variant="body2" color="text.secondary">Pend. de aprobación</Typography>
-                  <Chip label={pendingAdvances} color={pendingAdvances > 0 ? 'warning' : 'success'} size="small" />
+              {canSeeSalaryAdvances && (
+                <Box onClick={() => router.push('/dashboard/salary-advances')} sx={{ cursor: 'pointer', p: 1.5, borderRadius: 2, '&:hover': { bgcolor: 'grey.50' } }}>
+                  <Typography fontWeight="bold" mb={0.75}>Adelantos</Typography>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                    <Typography variant="body2" color="text.secondary">Pend. de aprobación</Typography>
+                    <Chip label={pendingAdvances} color={pendingAdvances > 0 ? 'warning' : 'success'} size="small" />
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">Pend. de pago</Typography>
+                    <Chip label={advancesPendingPayment} color={advancesPendingPayment > 0 ? 'info' : 'success'} size="small" />
+                  </Box>
                 </Box>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Typography variant="body2" color="text.secondary">Pend. de pago</Typography>
-                  <Chip label={advancesPendingPayment} color={advancesPendingPayment > 0 ? 'info' : 'success'} size="small" />
+              )}
+              {canSeeLoans && (
+                <Box onClick={() => router.push('/dashboard/loans')} sx={{ cursor: 'pointer', p: 1.5, borderRadius: 2, '&:hover': { bgcolor: 'grey.50' } }}>
+                  <Typography fontWeight="bold" mb={0.75}>Préstamos</Typography>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                    <Typography variant="body2" color="text.secondary">Pend. de aprobación</Typography>
+                    <Chip label={pendingLoans} color={pendingLoans > 0 ? 'warning' : 'success'} size="small" />
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">Pend. de pago</Typography>
+                    <Chip label={loansPendingPayment} color={loansPendingPayment > 0 ? 'info' : 'success'} size="small" />
+                  </Box>
                 </Box>
-              </Box>
-              <Box onClick={() => router.push('/dashboard/loans')} sx={{ cursor: 'pointer', p: 1.5, borderRadius: 2, '&:hover': { bgcolor: 'grey.50' } }}>
-                <Typography fontWeight="bold" mb={0.75}>Préstamos</Typography>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-                  <Typography variant="body2" color="text.secondary">Pend. de aprobación</Typography>
-                  <Chip label={pendingLoans} color={pendingLoans > 0 ? 'warning' : 'success'} size="small" />
-                </Box>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Typography variant="body2" color="text.secondary">Pend. de pago</Typography>
-                  <Chip label={loansPendingPayment} color={loansPendingPayment > 0 ? 'info' : 'success'} size="small" />
-                </Box>
-              </Box>
+              )}
             </Stack>
           )}
         </Paper>
+        )}
 
         {/* Other future widgets can go here */}
         {/* Oculto en mobile: redundante con la grilla de accesos rápidos de arriba */}

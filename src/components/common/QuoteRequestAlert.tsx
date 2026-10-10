@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Box, Paper, Typography, Chip, Button, Stack } from '@mui/material';
 import { RequestQuoteOutlined as QuoteIcon } from '@mui/icons-material';
 import { QuoteRequestService, QuoteRequest } from '../../utils/api';
-import { useAuth } from '../../utils/auth';
+import { useAuth, userHasPermission } from '../../utils/auth';
 
 // Aviso simple (sin infraestructura de notificaciones push, ver PLAN del módulo) para quien
 // tiene un Pedido de Cotización asignado — cubre los dos lados del ping-pong responsable ↔
@@ -21,13 +21,14 @@ export default function QuoteRequestAlert() {
   const router = useRouter();
   const { user } = useAuth();
   const userId = user?.id;
+  const hasAccess = userHasPermission(user, 'quote_requests_read');
 
   const [toBuild, setToBuild] = useState<QuoteRequest[]>([]);
   const [toValidate, setToValidate] = useState<QuoteRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userId) {
+    if (!userId || !hasAccess) {
       setLoading(false);
       return;
     }
@@ -38,11 +39,11 @@ export default function QuoteRequestAlert() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [userId]);
+  }, [userId, hasAccess]);
 
   const total = toBuild.length + toValidate.length;
 
-  if (!userId || loading || total === 0) return null;
+  if (!userId || !hasAccess || loading || total === 0) return null;
 
   return (
     <Paper

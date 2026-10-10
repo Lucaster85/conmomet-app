@@ -18,6 +18,7 @@ import {
 import DateField from '../../../components/DateField';
 import SignaturePad from '../../../components/SignaturePad';
 import EppDeliveriesList from '../../../components/safety-equipment/EppDeliveriesList';
+import EmployeeSizesPanel from '../../../components/safety-equipment/EmployeeSizesPanel';
 import {
   SafetyEquipment, SafetyEquipmentService, SafetyEquipmentStatusFilter,
   Employee, EmployeeService,
@@ -78,6 +79,7 @@ export default function SafetyEquipmentPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyEmployee, setHistoryEmployee] = useState<Employee | null>(null);
   const [employeeHistory, setEmployeeHistory] = useState<SafetyEquipment[]>([]);
+  const [employeeSizesInDialog, setEmployeeSizesInDialog] = useState<EmployeeSize[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Filters
@@ -196,8 +198,12 @@ export default function SafetyEquipmentPage() {
     setHistoryOpen(true);
     setLoadingHistory(true);
     try {
-      const history = await SafetyEquipmentService.getAll({ employee_id: emp.id });
+      const [history, sizes] = await Promise.all([
+        SafetyEquipmentService.getAll({ employee_id: emp.id }),
+        EmployeeSizeService.list(emp.id),
+      ]);
       setEmployeeHistory(history);
+      setEmployeeSizesInDialog(sizes);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar historial');
     } finally {
@@ -587,12 +593,29 @@ export default function SafetyEquipmentPage() {
           {loadingHistory ? (
             <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>
           ) : (
-            <EppDeliveriesList
-              deliveries={employeeHistory}
-              variant="compact"
-              onRenew={handleRenew}
-              emptyMessage="Este empleado no tiene entregas de EPP registradas"
-            />
+            <Stack spacing={3}>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={600} mb={1}>Talles</Typography>
+                {historyEmployee && (
+                  <EmployeeSizesPanel
+                    employeeId={historyEmployee.id}
+                    sizes={employeeSizesInDialog}
+                    catalog={allEppItems}
+                    onChanged={() => handleOpenEmployeeHistory(historyEmployee)}
+                    onError={setError}
+                  />
+                )}
+              </Box>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={600} mb={1}>Entregas</Typography>
+                <EppDeliveriesList
+                  deliveries={employeeHistory}
+                  variant="compact"
+                  onRenew={handleRenew}
+                  emptyMessage="Este empleado no tiene entregas de EPP registradas"
+                />
+              </Box>
+            </Stack>
           )}
         </DialogContent>
         <DialogActions>

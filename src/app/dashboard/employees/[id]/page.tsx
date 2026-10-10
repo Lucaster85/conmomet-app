@@ -27,7 +27,6 @@ import BadgeIcon from '@mui/icons-material/BadgeOutlined';
 import WorkIcon from '@mui/icons-material/WorkOutlined';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoneyOutlined';
 import CheckroomIcon from '@mui/icons-material/CheckroomOutlined';
-import AddIcon from '@mui/icons-material/AddOutlined';
 import PersonIcon from '@mui/icons-material/PersonOutlined';
 import BeachAccessIcon from '@mui/icons-material/BeachAccessOutlined';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospitalOutlined';
@@ -48,14 +47,16 @@ import {
   DocumentCategoryService, DocumentCategory, PlantService, Plant,
   EmployeeInvitationService, EmployeeInvitationStatus, InviteResult,
   SafetyEquipment, SafetyEquipmentService,
-  EmployeeSize, EmployeeSizeService, EppItem, EppItemService,
+  EppItem, EppItemService,
 } from '@/utils/api';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
 import InviteEmployeeDialog, { buildInviteMessage } from '@/components/InviteEmployeeDialog';
 import EppDeliveriesList from '@/components/safety-equipment/EppDeliveriesList';
+import EmployeeSizesPanel from '@/components/safety-equipment/EmployeeSizesPanel';
 import { buildWhatsAppLink } from '@/utils/whatsapp';
 import { isFixedSalaryPayType, payTypeLabel } from '@/utils/payType';
+import { TokenManager, userHasPermission } from '@/utils/auth';
 
 const STATUS_CONFIG = {
   permanent: { label: 'Permanente', color: 'default', icon: <CheckCircleIcon fontSize="small" /> },
@@ -78,6 +79,11 @@ function EmployeeDetailPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const employeeId = Number(params.id);
+
+  // Separado de employees_read: quien no tiene este permiso no ve montos de sueldo ni la
+  // pestaña "Tarifas" (ver helpers/seed.js#employee_salaries_read en el backend).
+  const currentUser = TokenManager.getUser();
+  const canSeeSalaries = userHasPermission(currentUser, 'employee_salaries_read');
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [documents, setDocuments] = useState<EntityDocument[]>([]);
@@ -135,11 +141,9 @@ function EmployeeDetailPageContent() {
   const [loadingEpp, setLoadingEpp] = useState(false);
   const [eppLoaded, setEppLoaded] = useState(false);
 
-  // Talles adicionales (card "Talles (EPP)" en Información General)
+  // Talles adicionales (card "Talles (EPP)" en Información General) — catálogo para
+  // EmployeeSizesPanel, que maneja su propio diálogo de alta/edición.
   const [eppCatalog, setEppCatalog] = useState<EppItem[]>([]);
-  const [sizeDialogOpen, setSizeDialogOpen] = useState(false);
-  const [sizeForm, setSizeForm] = useState({ epp_item_id: '', size: '' });
-  const [savingSize, setSavingSize] = useState(false);
   const [rateForm, setRateForm] = useState<{
     concept_id: number | '';
     rate: number;
@@ -192,7 +196,7 @@ function EmployeeDetailPageContent() {
 
   // Load rates when tab 4 is selected
   useEffect(() => {
-    if (tabValue === 4 && !ratesLoaded) {
+    if (tabValue === 4 && canSeeSalaries && !ratesLoaded) {
       setLoadingRates(true);
       Promise.all([
         EmployeeRateService.getByEmployee(employeeId),
@@ -205,7 +209,7 @@ function EmployeeDetailPageContent() {
         setError(err instanceof Error ? err.message : 'Error al cargar tarifas');
       }).finally(() => setLoadingRates(false));
     }
-  }, [tabValue, ratesLoaded, employeeId]);
+  }, [tabValue, ratesLoaded, employeeId, canSeeSalaries]);
 
   // Portal invitation: solo consulta si el empleado no tiene ya un usuario vinculado.
   useEffect(() => {
@@ -444,40 +448,6 @@ function EmployeeDetailPageContent() {
     }
   };
 
-  const handleOpenSizeDialog = (existing?: EmployeeSize) => {
-    setSizeForm(existing ? { epp_item_id: String(existing.epp_item_id), size: existing.size } : { epp_item_id: '', size: '' });
-    setSizeDialogOpen(true);
-  };
-
-  const handleSaveSize = async () => {
-    if (!sizeForm.epp_item_id || !sizeForm.size) {
-      setError('Elegí un artículo y un talle.');
-      return;
-    }
-    if (savingSize) return;
-    setSavingSize(true);
-    try {
-      await EmployeeSizeService.upsert(employeeId, { epp_item_id: Number(sizeForm.epp_item_id), size: sizeForm.size });
-      setSuccess('Talle guardado');
-      setSizeDialogOpen(false);
-      loadData();
-    } catch (err: unknown) {
-      setError((err as Error).message || 'Error al guardar el talle');
-    } finally {
-      setSavingSize(false);
-    }
-  };
-
-  const handleDeleteSize = async (existing: EmployeeSize) => {
-    try {
-      await EmployeeSizeService.upsert(employeeId, { epp_item_id: existing.epp_item_id, size: '' });
-      setSuccess('Talle eliminado');
-      loadData();
-    } catch (err: unknown) {
-      setError((err as Error).message || 'Error al eliminar el talle');
-    }
-  };
-
   // Lazy load per tab
   useEffect(() => {
     if (tabValue === 2) loadAttendance(attDateFrom, attDateTo);
@@ -503,12 +473,12 @@ function EmployeeDetailPageContent() {
 
       <Paper sx={{ mb: 3 }}>
         <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)} variant="scrollable" scrollButtons="auto">
-          <Tab label="Información General" />
-          <Tab label="Documentos y Vencimientos" />
-          <Tab label="Presentismo" />
-          <Tab label="Vacaciones y Licencias" />
-          <Tab label="Tarifas" />
-          <Tab label="EPP" />
+          <Tab value={0} label="Información General" />
+          <Tab value={1} label="Documentos y Vencimientos" />
+          <Tab value={2} label="Presentismo" />
+          <Tab value={3} label="Vacaciones y Licencias" />
+          {canSeeSalaries && <Tab value={4} label="Tarifas" />}
+          <Tab value={5} label="EPP" />
         </Tabs>
       </Paper>
 
@@ -603,16 +573,18 @@ function EmployeeDetailPageContent() {
                       <Typography variant="caption" color="text.secondary">Tipo de Pago</Typography>
                       <Typography variant="body1" fontWeight={500}>{payTypeLabel(employee.pay_type)}</Typography>
                     </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        {employee.pay_type === 'monthly' ? 'Sueldo Mensual' : employee.pay_type === 'biweekly_fixed' ? 'Sueldo Quincenal' : 'Valor Hora'}
-                      </Typography>
-                      <Typography variant="body1" fontWeight={600} color="primary">
-                        {isFixedSalaryPayType(employee.pay_type)
-                          ? `$${Number(employee.monthly_salary || 0).toLocaleString('es-AR')}`
-                          : `$${Number(employee.hourly_rate).toLocaleString('es-AR')}/h`}
-                      </Typography>
-                    </Grid>
+                    {canSeeSalaries && (
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {employee.pay_type === 'monthly' ? 'Sueldo Mensual' : employee.pay_type === 'biweekly_fixed' ? 'Sueldo Quincenal' : 'Valor Hora'}
+                        </Typography>
+                        <Typography variant="body1" fontWeight={600} color="primary">
+                          {isFixedSalaryPayType(employee.pay_type)
+                            ? `$${Number(employee.monthly_salary || 0).toLocaleString('es-AR')}`
+                            : `$${Number(employee.hourly_rate || 0).toLocaleString('es-AR')}/h`}
+                        </Typography>
+                      </Grid>
+                    )}
                   </Grid>
                 </CardContent>
               </Card>
@@ -644,29 +616,14 @@ function EmployeeDetailPageContent() {
                       </Box>
                     </Stack>
 
-                    {(employee.sizes || []).length > 0 && (
-                      <>
-                        <Divider sx={{ my: 2 }} />
-                        <Stack spacing={1}>
-                          {(employee.sizes || []).map((s) => (
-                            <Box key={s.id} display="flex" justifyContent="space-between" alignItems="center">
-                              <Box>
-                                <Typography variant="caption" color="text.secondary" display="block">{s.eppItem?.name || 'Artículo'}</Typography>
-                                <Typography variant="body1" fontWeight={500}>{s.size}</Typography>
-                              </Box>
-                              <Box>
-                                <IconButton size="small" onClick={() => handleOpenSizeDialog(s)}><EditIcon fontSize="small" /></IconButton>
-                                <IconButton size="small" color="error" onClick={() => handleDeleteSize(s)}><DeleteIcon fontSize="small" /></IconButton>
-                              </Box>
-                            </Box>
-                          ))}
-                        </Stack>
-                      </>
-                    )}
-
-                    <Button size="small" startIcon={<AddIcon />} onClick={() => handleOpenSizeDialog()} sx={{ mt: 2 }}>
-                      Agregar talle
-                    </Button>
+                    <Divider sx={{ my: 2 }} />
+                    <EmployeeSizesPanel
+                      employeeId={employeeId}
+                      sizes={employee.sizes || []}
+                      catalog={eppCatalog}
+                      onChanged={loadData}
+                      onError={setError}
+                    />
                   </CardContent>
                 </Card>
 
@@ -1116,7 +1073,7 @@ function EmployeeDetailPageContent() {
       )}
 
       {/* Tab 4 — Tarifas */}
-      {tabValue === 4 && (
+      {tabValue === 4 && canSeeSalaries && (
         <Box>
           {loadingRates ? (
             <Box display="flex" justifyContent="center" py={6}><GearSpinner /></Box>
@@ -1636,30 +1593,6 @@ function EmployeeDetailPageContent() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setHistoryDialog(false)}>Cerrar</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Talle adicional (Dialog) */}
-      <Dialog open={sizeDialogOpen} onClose={() => setSizeDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Talle adicional</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="Artículo *" select fullWidth value={sizeForm.epp_item_id}
-              onChange={(e) => setSizeForm({ ...sizeForm, epp_item_id: e.target.value })}
-              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-              <option value="">Seleccionar artículo</option>
-              {eppCatalog.filter(i => i.size_type !== 'none').map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </TextField>
-            <TextField label="Talle *" fullWidth value={sizeForm.size}
-              onChange={(e) => setSizeForm({ ...sizeForm, size: e.target.value })}
-              placeholder="Ej: XL, 44" />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSizeDialogOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSaveSize} variant="contained" disabled={savingSize}>
-            {savingSize ? <GearSpinner size={20} /> : 'Guardar'}
-          </Button>
         </DialogActions>
       </Dialog>
 
