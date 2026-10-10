@@ -154,18 +154,9 @@ export default function MyLegajoContent() {
               <Divider sx={{ mb: 3 }} />
 
               <Box display="flex" flexDirection="column" gap={2}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Calzado</Typography>
-                  <Typography variant="body1" fontWeight={500}>{employee.shoe_size || 'No registrado'}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Remera / Camisa</Typography>
-                  <Typography variant="body1" fontWeight={500}>{employee.shirt_size || 'No registrado'}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Pantalón</Typography>
-                  <Typography variant="body1" fontWeight={500}>{employee.pant_size || 'No registrado'}</Typography>
-                </Box>
+                {(employee.sizes || []).length === 0 && (
+                  <Typography variant="body2" color="text.secondary">No hay talles registrados.</Typography>
+                )}
                 {(employee.sizes || []).map((s) => (
                   <Box key={s.id}>
                     <Typography variant="caption" color="text.secondary">{s.eppItem?.name || 'Artículo'}</Typography>

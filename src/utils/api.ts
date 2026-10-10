@@ -728,9 +728,6 @@ export interface Employee {
   user_id?: number;
   category_id?: number | null;
   notes?: string;
-  shoe_size?: string;
-  shirt_size?: string;
-  pant_size?: string;
   sizes?: EmployeeSize[];
   vacation_days_override?: number | null;
   user?: { id: number; email: string; name: string; lastname: string };
@@ -756,9 +753,6 @@ export interface CreateEmployeeData {
   user_id?: number;
   category_id?: number | null;
   notes?: string;
-  shoe_size?: string;
-  shirt_size?: string;
-  pant_size?: string;
   vacation_days_override?: number | null;
 }
 
