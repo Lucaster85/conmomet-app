@@ -280,12 +280,118 @@ export class RoleService {
 // permiso de gestión completa del recurso (roles_read). Sirven para poblar selects, como el
 // de rol en UserForm.tsx, sin dar acceso al menú "Roles y Permisos". /lookup/roles ya viene
 // filtrado por jerarquía desde el backend (solo roles de nivel menor al del usuario logueado).
+// Tipos mínimos devueltos por /lookup/* — a propósito más chicos que el recurso completo
+// (Project, Vehicle, etc.), ver conmomet-app/CLAUDE.md "selects que traen datos de otro módulo".
+export interface LookupProject {
+  id: number;
+  name: string;
+  code?: string | null;
+  client_id?: number;
+  plant_id?: number;
+  is_additional?: boolean;
+  parent?: { id: number; code: string } | null;
+}
+export interface LookupProjectSupervisor {
+  id: number;
+  name: string;
+  lastname: string;
+}
+export interface LookupVehicle {
+  id: number;
+  brand?: string;
+  model?: string;
+  plate?: string;
+}
+export interface LookupHoliday {
+  date: string;
+}
+export interface LookupBudgetItemType {
+  id: number;
+  name: string;
+  unit_type: 'hours' | 'units' | 'days';
+}
+export interface LookupPayrollConcept {
+  id: number;
+  name: string;
+  is_crane_hours?: boolean;
+}
+export interface LookupPayPeriod {
+  id: number;
+  start_date: string;
+  end_date: string;
+  status: string;
+}
+
 export class LookupService {
   static async getRoles(): Promise<Pick<Role, 'id' | 'name' | 'level' | 'has_dashboard_access'>[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/roles`);
     if (!response.ok) {
       throw new Error('Error al obtener los roles disponibles');
     }
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getProjects(params?: { client_id?: number; status?: string; plant_id?: number; include_children?: boolean; is_additional?: boolean }): Promise<LookupProject[]> {
+    let url = `${API_BASE_URL}/lookup/projects`;
+    if (params) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) qs.append(key, String(value));
+      });
+      const query = qs.toString();
+      if (query) url += `?${query}`;
+    }
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener proyectos');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getProjectSupervisors(projectId: number): Promise<LookupProjectSupervisor[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/projects/${projectId}/supervisors`);
+    if (!response.ok) throw new Error('Error al obtener supervisores');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getVehicles(params?: { is_active?: boolean }): Promise<LookupVehicle[]> {
+    let url = `${API_BASE_URL}/lookup/vehicles`;
+    if (params?.is_active !== undefined) url += `?is_active=${params.is_active}`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener vehículos');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getHolidays(year?: number): Promise<LookupHoliday[]> {
+    const params = year ? `?year=${year}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/holidays${params}`);
+    if (!response.ok) throw new Error('Error al obtener feriados');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getBudgetItemTypes(isActive?: boolean): Promise<LookupBudgetItemType[]> {
+    let url = `${API_BASE_URL}/lookup/budget-item-types`;
+    if (isActive !== undefined) url += `?is_active=${isActive}`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener rubros de presupuesto');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getPayrollConcepts(activeOnly = false): Promise<LookupPayrollConcept[]> {
+    const params = activeOnly ? '?active=true' : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/payroll-concepts${params}`);
+    if (!response.ok) throw new Error('Error al obtener conceptos');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getPayPeriods(): Promise<LookupPayPeriod[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/pay-periods`);
+    if (!response.ok) throw new Error('Error al obtener quincenas');
     const data = await response.json();
     return data.data || [];
   }

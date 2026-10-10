@@ -1,5 +1,42 @@
 # Conmomet App — Instrucciones para Claude Code
 
+## Regla obligatoria: selects que traen datos de otro módulo usan un endpoint `/lookup/*`
+
+Cuando un select de un formulario necesita listar registros que pertenecen a **otro módulo**
+del sistema (ej: Carga de Horas necesita el combo de Proyectos, que es un módulo de Gestión de
+Clientes), el combo **no debe pegarle al endpoint CRUD completo de ese módulo**
+(`GET /projects`, `GET /vehicles`, etc.). En vez de eso, se agrega/reusa un endpoint
+`GET /lookup/<recurso>` en `api_conmomet/controllers/lookupController.js` (registrado en
+`routes/index.js` solo con `verifyToken`, sin `authPermission`).
+
+Por qué: `authPermission` deriva el permiso requerido del primer segmento de la URL — así que
+pegarle al endpoint completo obliga a otorgarle al rol el permiso de "gestión completa" de ese
+módulo entero (y automáticamente le destraba su ítem de menú), solo para poder llenar un combo.
+Con un endpoint `/lookup/*` separado, el permiso del select queda desacoplado del permiso de
+gestión del módulo de origen.
+
+Reglas concretas:
+
+- El endpoint `/lookup/*` devuelve **solo los campos que el select realmente usa** (id + lo que
+  se muestra/filtra), nunca el payload completo del recurso. En el frontend, cada uno tiene su
+  propio tipo mínimo (`LookupProject`, `LookupVehicle`, etc. en `src/utils/api.ts`) — no reusar
+  el tipo completo del recurso, sería mentir sobre qué campos están disponibles.
+- Si el select depende de otro select ya elegido (ej: Supervisor depende del Proyecto elegido),
+  el lookup se anida bajo el recurso padre: `GET /lookup/projects/:id/supervisors`.
+- Si el combo ya pertenece al **mismo módulo** que el formulario que lo usa (ej: el combo de
+  Rubros dentro del propio formulario de Presupuesto), no aplica esta regla — seguir usando el
+  endpoint normal, ya tiene sentido que comparta permiso.
+- Excepción: si el recurso referenciado **no tiene ítem de menú propio** (ej:
+  `client-supervisors`, que solo vive dentro de un diálogo de Clientes), no hace falta
+  lookup-ificarlo — otorgar el permiso `_read` directo no expone ningún módulo nuevo.
+- Referencia de implementación: `GET /lookup/roles` (el primero, para el combo de Rol en
+  `UserForm.tsx`) y los agregados para Carga de Horas (`/lookup/projects`,
+  `/lookup/projects/:id/supervisors`, `/lookup/vehicles`, `/lookup/holidays`,
+  `/lookup/budget-item-types`, `/lookup/payroll-concepts`, `/lookup/pay-periods`).
+
+Esta regla es para selects **nuevos** de acá en adelante — no es una migración retroactiva de
+los combos que ya existen fuera de Carga de Horas.
+
 ## Regla obligatoria: mobile-first en TODO módulo nuevo
 
 Cualquier página o módulo nuevo (dashboard/*, portal/*) que liste registros se construye

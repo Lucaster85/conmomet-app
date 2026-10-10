@@ -17,14 +17,10 @@ import {
 } from '@mui/icons-material';
 import {
   Employee, EmployeeService, Plant, PlantService,
-  Project, ProjectService,
   TimeEntry, TimeEntryService, CreateTimeEntryData,
-  PayrollConcept, PayrollConceptService,
-  Vehicle, VehicleService,
-  ClientSupervisor, ClientSupervisorService,
-  PayPeriod, PayPeriodService,
-  Holiday, HolidayService,
-  BudgetItemType, BudgetItemTypeService
+  ClientSupervisorService,
+  LookupService, LookupProject, LookupProjectSupervisor, LookupVehicle,
+  LookupPayPeriod, LookupHoliday, LookupBudgetItemType, LookupPayrollConcept
 } from '../../../utils/api';
 import { formatProjectOptionLabel } from '../../../utils/projectCode';
 import { isFixedSalaryPayType } from '../../../utils/payType';
@@ -62,13 +58,13 @@ export default function TimeEntriesPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [plants, setPlants] = useState<Plant[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [concepts, setConcepts] = useState<PayrollConcept[]>([]);
-  const [itemTypes, setItemTypes] = useState<BudgetItemType[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [payPeriods, setPayPeriods] = useState<PayPeriod[]>([]);
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
-  const [supervisorsCache, setSupervisorsCache] = useState<Record<number, ClientSupervisor[]>>({});
+  const [projects, setProjects] = useState<LookupProject[]>([]);
+  const [concepts, setConcepts] = useState<LookupPayrollConcept[]>([]);
+  const [itemTypes, setItemTypes] = useState<LookupBudgetItemType[]>([]);
+  const [vehicles, setVehicles] = useState<LookupVehicle[]>([]);
+  const [payPeriods, setPayPeriods] = useState<LookupPayPeriod[]>([]);
+  const [holidays, setHolidays] = useState<LookupHoliday[]>([]);
+  const [supervisorsCache, setSupervisorsCache] = useState<Record<number, LookupProjectSupervisor[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -179,12 +175,12 @@ export default function TimeEntriesPage() {
       const [emps, plts, projs, concs, vehs, periods, hols, types] = await Promise.all([
         EmployeeService.getAll('active'),
         PlantService.getAll(),
-        ProjectService.getAll({ status: 'active', include_children: true }),
-        PayrollConceptService.getAll(true), // active only
-        VehicleService.getAll({ is_active: true }), // active only
-        PayPeriodService.getAll(),
-        HolidayService.getAll(),
-        BudgetItemTypeService.getAll(true), // active only
+        LookupService.getProjects({ status: 'active', include_children: true }),
+        LookupService.getPayrollConcepts(true), // active only
+        LookupService.getVehicles({ is_active: true }), // active only
+        LookupService.getPayPeriods(),
+        LookupService.getHolidays(),
+        LookupService.getBudgetItemTypes(true), // active only
       ]);
       setEmployees(emps);
       setPlants(plts);
@@ -237,7 +233,7 @@ export default function TimeEntriesPage() {
       if (!proj) return;
 
       // Get project supervisors
-      let sups = await ProjectService.getSupervisors(projectId);
+      let sups: LookupProjectSupervisor[] = await LookupService.getProjectSupervisors(projectId);
 
       // Fallback: If no supervisors are assigned to this project, load all client supervisors
       if ((!sups || sups.length === 0) && proj.client_id) {
