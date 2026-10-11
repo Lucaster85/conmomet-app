@@ -208,6 +208,20 @@ en ese momento), el sistema rechaza el guardado y muestra el mismo mensaje en un
 el mismo botón **Recargar** — tus cambios no se pierden en silencio, pero tampoco se guardan
 solos: hay que volver a cargarlos después de recargar.
 
+## Historial
+
+Al pie del formulario de edición, y también en **Ver / Imprimir**, hay una sección
+**Historial** con todos los cambios que tuvo el presupuesto: quién agregó o quitó qué
+material o rubro de mano de obra, quién cambió un dato general (título, cliente, notas, etc.)
+y quién lo envió, aprobó o rechazó — con fecha y, si corresponde, el motivo. Se ve aunque no
+tengas permiso para editar: si armaste un presupuesto y después alguien le borró materiales o
+cambió un valor, lo vas a ver ahí.
+
+Los montos respetan los mismos permisos que el resto del presupuesto: sin ver precios de mano
+de obra no vas a ver esos valores en el historial, y sin ver costos de materiales tampoco vas
+a ver esos. Lo que sí se ve siempre es **qué** cambió y **quién** lo hizo, aunque el valor en
+sí quede oculto.
+
 ## El ciclo de estados
 
 **Borrador** → **Enviado** → **Aprobado** o **Rechazado**.
@@ -331,4 +345,4 @@ Alguien sin permiso de precios igual puede armar el presupuesto — crear y edit
 obra (rubro y cantidad) y los materiales con su margen, duplicarlo y generar el proyecto — pero no ve
 ni define los valores de mano de obra, ni envía ni imprime.
 
-<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts, api_conmomet/services/budgetMaterialService.js, api_conmomet/controllers/additionalController.js, conmomet-app/src/utils/apiErrors.ts, FLOWS.md §35 -->
+<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts, api_conmomet/services/budgetMaterialService.js, api_conmomet/controllers/additionalController.js, conmomet-app/src/utils/apiErrors.ts, api_conmomet/services/auditLogService.js, api_conmomet/helpers/budgetAuditDiff.js, api_conmomet/helpers/budgetAuditDescribe.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/budgets/BudgetHistoryPanel.tsx, FLOWS.md §35 -->

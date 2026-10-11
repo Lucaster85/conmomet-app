@@ -1889,6 +1889,54 @@ export interface CreateBudgetData {
   materialItems?: BudgetMaterialItem[];
 }
 
+// Línea afectada en un cambio de mano de obra/materiales dentro del historial — ver
+// api_conmomet/helpers/budgetAuditDescribe.js (es el mismo objeto que escribe el backend).
+// unit_price/currency/estimated_total (mano de obra) y material_cost_snapshot/
+// material_cost_currency (materiales) pueden faltar: el backend los pela sin el permiso
+// correspondiente (ver BudgetHistoryEntry).
+export interface BudgetHistoryLine {
+  description?: string | null;
+  item_type?: string | null;
+  quantity: number;
+  material_unit?: string | null;
+  provider?: string | null;
+  unit_price?: number | null;
+  currency?: BudgetCurrency | null;
+  estimated_total?: number | null;
+  total_price?: number | null;
+  margin_percent?: number | null;
+  material_cost_snapshot?: number | null;
+  material_cost_currency?: BudgetCurrency | null;
+}
+
+export interface BudgetHistoryLinesContext {
+  revision: number;
+  added: BudgetHistoryLine[];
+  removed: BudgetHistoryLine[];
+  changed: { before: BudgetHistoryLine; after: BudgetHistoryLine }[];
+}
+
+export interface BudgetHistoryFieldsContext {
+  revision: number;
+  changes: { field: string; before: unknown; after: unknown }[];
+}
+
+// Una fila de AuditLogs ya pelada por permiso (ver GET /budgets/:id/history y
+// helpers/budgetTotals.js#peelAuditContext) — `context` es null cuando el campo entero está
+// gateado (totals_by_currency/discount_percent sin budget_prices_read) y el actor no lo puede
+// ver, no cuando el backend no guardó nada.
+export interface BudgetHistoryEntry {
+  id: number;
+  action: 'create' | 'update' | 'delete';
+  field_changed: 'fields' | 'labor_lines' | 'material_items' | 'status' | 'totals_by_currency' | 'discount_percent' | string | null;
+  previous_value: string | null;
+  new_value: string | null;
+  notes: string | null;
+  context: BudgetHistoryLinesContext | BudgetHistoryFieldsContext | Record<string, unknown> | null;
+  actor: { id: number; name: string; lastname: string } | null;
+  at: string;
+}
+
 export interface BudgetMaterialImportRow {
   description: string;
   quantity: number;
@@ -2048,6 +2096,16 @@ export class BudgetService {
     }
     const data = await response.json();
     return data.data;
+  }
+
+  // Historial de cambios (ver FLOWS.md §35, Etapa 3). Deriva budgets_read, sin permiso nuevo
+  // — visible aunque el presupuesto ya no esté en draft. beforeId pagina hacia atrás (cursor
+  // por id), igual que ProjectLogService.
+  static async getHistory(id: number, beforeId?: number): Promise<{ data: BudgetHistoryEntry[]; has_more: boolean }> {
+    const qs = beforeId ? `?before_id=${beforeId}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}/history${qs}`);
+    if (!response.ok) throw new Error('Error al obtener el historial del presupuesto');
+    return response.json();
   }
 
   static async importMaterials(file: File): Promise<BudgetMaterialImportRow[]> {

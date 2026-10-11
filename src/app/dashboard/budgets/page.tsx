@@ -14,6 +14,7 @@ import CurrencyInput from '../../../components/CurrencyInput';
 import DeliverToManagementDialog from '../../../components/common/DeliverToManagementDialog';
 import QuoteRequestDueChip from '../../../components/quote-requests/QuoteRequestDueChip';
 import TotalWithTax from '../../../components/budgets/TotalWithTax';
+import BudgetHistoryPanel from '../../../components/budgets/BudgetHistoryPanel';
 import ClientContactSelect from '../../../components/clients/ClientContactSelect';
 import { BILLING_STATUS_LABELS } from '../../../utils/billing';
 import {
@@ -1785,6 +1786,13 @@ function BudgetsPageContent() {
             )}
 
             <TextField label="Notas internas" fullWidth multiline rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+
+            {editingBudget && (
+              <>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mt: 1 }}>Historial</Typography>
+                <BudgetHistoryPanel budgetId={editingBudget.id} />
+              </>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -2142,6 +2150,15 @@ function BudgetsPageContent() {
                   <Typography variant="body2">{printBudget.notes}</Typography>
                 </Box>
               )}
+            </Box>
+          )}
+          {/* Fuera de .print-area a propósito: es historial interno, no va en el documento que
+              se imprime o se le muestra al cliente. Visible aunque no se tenga permiso de
+              edición — es justo el caso de quien solo puede Ver (ver FLOWS.md §35). */}
+          {printBudget && (
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="subtitle2" fontWeight={700}>Historial</Typography>
+              <BudgetHistoryPanel budgetId={printBudget.id} />
             </Box>
           )}
         </DialogContent>
