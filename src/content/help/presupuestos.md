@@ -194,6 +194,20 @@ El ícono del ojo abre la **vista** del presupuesto, con los botones **Editar** 
 directo el formulario de ese presupuesto, sin volver al listado: es útil cuando se llega por un
 acceso directo y lo que se quiere es modificarlo.
 
+## Edición simultánea
+
+Si otra persona ya tiene este presupuesto abierto en edición, aparece un aviso amarillo con su
+nombre apenas vos también lo abrís — los dos pueden seguir editando, pero si ambos guardan,
+gana el último (como siempre pasó). Para que eso no te tome por sorpresa, si mientras estás
+editando la otra persona guarda sus cambios, aparece un aviso rojo avisando quién fue y cuándo,
+con un botón **Recargar**: trae lo que esa persona guardó y descarta lo que tenías cargado sin
+guardar todavía.
+
+Si llegás a apretar **Guardar** sin haber visto ese aviso (por ejemplo, porque guardaron justo
+en ese momento), el sistema rechaza el guardado y muestra el mismo mensaje en un diálogo, con
+el mismo botón **Recargar** — tus cambios no se pierden en silencio, pero tampoco se guardan
+solos: hay que volver a cargarlos después de recargar.
+
 ## El ciclo de estados
 
 **Borrador** → **Enviado** → **Aprobado** o **Rechazado**.
@@ -317,4 +331,4 @@ Alguien sin permiso de precios igual puede armar el presupuesto — crear y edit
 obra (rubro y cantidad) y los materiales con su margen, duplicarlo y generar el proyecto — pero no ve
 ni define los valores de mano de obra, ni envía ni imprime.
 
-<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts -->
+<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts, api_conmomet/services/budgetMaterialService.js, api_conmomet/controllers/additionalController.js, conmomet-app/src/utils/apiErrors.ts, FLOWS.md §35 -->

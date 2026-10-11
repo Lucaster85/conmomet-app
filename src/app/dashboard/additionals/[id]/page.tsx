@@ -21,6 +21,7 @@ import {
   MaterialProvider, MaterialUnit, Project,
 } from '../../../../utils/api';
 import { useAuth } from '../../../../utils/auth';
+import { ConflictError } from '../../../../utils/apiErrors';
 import { findPrice } from '../../../../utils/materialPrices';
 import { BUDGET_STATUS_CHIP, PROJECT_STATUS_LABELS } from '../../../../utils/additionalStatus';
 
@@ -231,6 +232,7 @@ export default function AdditionalDetailPage() {
       setError('Todas las líneas tienen que tener un material del catálogo');
       return;
     }
+    if (!budget) return;
     setSavingMaterials(true);
     try {
       // Sin margen ni precio al cliente: este módulo no los ve ni los edita.
@@ -242,11 +244,18 @@ export default function AdditionalDetailPage() {
         quantity: Number(item.quantity) || 0,
         material_unit_id: item.material_unit_id,
         ...(hasCostsRead ? { material_cost_snapshot: item.material_cost_snapshot ?? null, material_cost_currency: item.material_cost_currency ?? null } : {}),
-      })));
+      })), budget.revision);
       setItems(saved);
+      // Trae la revision nueva del presupuesto — sin esto, el próximo guardado volvería a
+      // mandar la revision vieja y chocaría con un 409 (ver FLOWS.md §35).
+      applyAdditional(await AdditionalService.get(id));
       setSuccess('Materiales guardados');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar los materiales');
+      if (err instanceof ConflictError) {
+        setError(`${err.message} Recargá la página para ver los cambios y volver a guardar.`);
+      } else {
+        setError(err instanceof Error ? err.message : 'Error al guardar los materiales');
+      }
     } finally {
       setSavingMaterials(false);
     }

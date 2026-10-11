@@ -34,6 +34,7 @@ import {
   QuoteRequestService,
 } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
+import { ConflictError } from '../../../utils/apiErrors';
 import ProviderPriceAutocomplete from '../../../components/materials/ProviderPriceAutocomplete';
 import MaterialSelect from '../../../components/materials/MaterialSelect';
 import { downloadMaterialsTemplate, exportMaterialsSheet } from '../../../utils/materialsExcel';
@@ -62,6 +63,7 @@ const emptyForm = () => ({
   notes: '',
   work_order_number: '',
   quote_request_id: '',
+  revision: 0,
   laborLines: [] as BudgetLaborLine[],
   materialItems: [] as BudgetMaterialItem[],
 });
@@ -196,6 +198,16 @@ function BudgetsPageContent() {
   // el proyecto" en vivo mientras se arma el presupuesto, sin depender de haber guardado antes
   // (ver FLOWS.md, Fase 2 Parte A.1).
   const [linkedProjectHourBuckets, setLinkedProjectHourBuckets] = useState<HourBucket[]>([]);
+  // Presencia + concurrencia (ver FLOWS.md §35): quién más está editando este presupuesto ahora
+  // (heartbeat cada 30s), y si alguien guardó una revision más nueva que la que tiene el form.
+  // dialogRevisionRef (no state) evita comparar contra un `form.revision` potencialmente
+  // desactualizado dentro del cierre del heartbeat.
+  const [editors, setEditors] = useState<{ user_id: number; name: string; lastname: string }[]>([]);
+  const [staleWarning, setStaleWarning] = useState<{ last_edited_by: { name: string; lastname: string } | null } | null>(null);
+  const [conflictDialog, setConflictDialog] = useState<{ open: boolean; last_edited_by: { name: string; lastname: string } | null; last_edited_at: string | null }>(
+    { open: false, last_edited_by: null, last_edited_at: null }
+  );
+  const dialogRevisionRef = useRef(0);
 
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; budget: Budget | null }>({ open: false, budget: null });
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; budget: Budget | null; target: string }>({ open: false, budget: null, target: '' });
@@ -353,40 +365,103 @@ function BudgetsPageContent() {
     setEditingBudget(null);
     setForm(emptyForm());
     setLinkedProjectHourBuckets([]);
+    setEditors([]);
+    setStaleWarning(null);
     setOpenDialog(true);
   };
 
-  const handleOpenEdit = async (budget: Budget) => {
-    setEditingBudget(budget);
-    setForm({
-      title: budget.title,
-      client_id: String(budget.client_id),
-      plant_id: budget.plant_id ? String(budget.plant_id) : '',
-      currency: budget.currency,
-      parent_project_id: budget.parent_project_id ? String(budget.parent_project_id) : '',
-      existing_project_id: budget.existing_project_id ? String(budget.existing_project_id) : '',
-      description: budget.description || '',
-      start_date: budget.start_date || '',
-      end_date: budget.end_date || '',
-      validity_days: budget.validity_days ?? 15,
-      notes: budget.notes || '',
-      work_order_number: budget.work_order_number || '',
-      quote_request_id: budget.quote_request_id ? String(budget.quote_request_id) : '',
-      laborLines: budget.laborLines || [],
-      materialItems: budget.materialItems || [],
-    });
-    if (budget.project_id) {
-      try {
-        const proj = await ProjectService.getById(budget.project_id);
-        setLinkedProjectHourBuckets(proj.hour_buckets || []);
-      } catch {
-        setLinkedProjectHourBuckets([]);
-      }
-    } else {
+  // Factoriza el llenado del form a partir de un Budget — la usan handleOpenEdit (primera
+  // apertura) y handleReloadStale (recargar tras un conflicto), para no duplicar el mapeo.
+  const fillFormFromBudget = (budget: Budget) => ({
+    title: budget.title,
+    client_id: String(budget.client_id),
+    plant_id: budget.plant_id ? String(budget.plant_id) : '',
+    currency: budget.currency,
+    parent_project_id: budget.parent_project_id ? String(budget.parent_project_id) : '',
+    existing_project_id: budget.existing_project_id ? String(budget.existing_project_id) : '',
+    description: budget.description || '',
+    start_date: budget.start_date || '',
+    end_date: budget.end_date || '',
+    validity_days: budget.validity_days ?? 15,
+    notes: budget.notes || '',
+    work_order_number: budget.work_order_number || '',
+    quote_request_id: budget.quote_request_id ? String(budget.quote_request_id) : '',
+    revision: budget.revision,
+    laborLines: budget.laborLines || [],
+    materialItems: budget.materialItems || [],
+  });
+
+  const loadLinkedProjectHourBuckets = async (projectId?: number) => {
+    if (!projectId) {
+      setLinkedProjectHourBuckets([]);
+      return;
+    }
+    try {
+      const proj = await ProjectService.getById(projectId);
+      setLinkedProjectHourBuckets(proj.hour_buckets || []);
+    } catch {
       setLinkedProjectHourBuckets([]);
     }
+  };
+
+  const handleOpenEdit = async (budgetFromList: Budget) => {
+    setEditors([]);
+    setStaleWarning(null);
+    // Refetch: el `budget` que viene del listado puede estar desactualizado desde el montaje
+    // de la página — abrir con datos viejos es la misma raíz del bug de Etapa 1 (ver FLOWS.md
+    // §35). GET /budgets/:id siempre trae la revision y las líneas vigentes.
+    const budget = await BudgetService.getById(budgetFromList.id);
+    setEditingBudget(budget);
+    setForm(fillFormFromBudget(budget));
+    dialogRevisionRef.current = budget.revision;
+    await loadLinkedProjectHourBuckets(budget.project_id);
     setOpenDialog(true);
   };
+
+  // Recargar tras detectar que alguien más guardó (aviso rojo o diálogo de conflicto al
+  // guardar) — trae la versión vigente y descarta los cambios locales sin guardar.
+  const handleReloadStale = async () => {
+    if (!editingBudget) return;
+    const fresh = await BudgetService.getById(editingBudget.id);
+    setEditingBudget(fresh);
+    setForm(fillFormFromBudget(fresh));
+    dialogRevisionRef.current = fresh.revision;
+    await loadLinkedProjectHourBuckets(fresh.project_id);
+    setStaleWarning(null);
+    setConflictDialog({ open: false, last_edited_by: null, last_edited_at: null });
+  };
+
+  // Heartbeat de presencia (ver FLOWS.md §35): al abrir el diálogo de un presupuesto existente,
+  // y cada 30s mientras siga abierto. El cleanup libera la sesión al cerrar/desmontar/cambiar
+  // de presupuesto — cubre los tres casos con el mismo efecto.
+  const editingBudgetId = editingBudget?.id;
+  useEffect(() => {
+    if (!openDialog || !editingBudgetId) return;
+    let active = true;
+    const budgetId = editingBudgetId;
+
+    const tick = async () => {
+      try {
+        const res = await BudgetService.editSession(budgetId);
+        if (!active) return;
+        setEditors(res.editors);
+        if (res.revision > dialogRevisionRef.current) {
+          setStaleWarning({ last_edited_by: res.last_edited_by });
+        }
+      } catch {
+        // Un heartbeat fallido no es crítico — se reintenta en el próximo tick, nunca bloquea
+        // la edición.
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 30000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+      BudgetService.editSession(budgetId, { release: true }).catch(() => {});
+    };
+  }, [openDialog, editingBudgetId]);
 
   // Value del <select> de relación: '' | `existing:<id>` ("adicional de" ya no existe acá).
   const projectLinkValue = form.existing_project_id ? `existing:${form.existing_project_id}` : '';
@@ -957,6 +1032,8 @@ function BudgetsPageContent() {
         // backend conserva el valor de las líneas existentes y deja en 0 las nuevas.
         laborLines: form.laborLines,
         materialItems: form.materialItems,
+        // Control de concurrencia (ver FLOWS.md §35) — solo aplica a update, create no lo manda.
+        revision: editingBudget ? form.revision : undefined,
       };
       if (editingBudget) {
         await BudgetService.update(editingBudget.id, payload);
@@ -968,7 +1045,11 @@ function BudgetsPageContent() {
       setOpenDialog(false);
       loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar');
+      if (err instanceof ConflictError) {
+        setConflictDialog({ open: true, last_edited_by: err.last_edited_by, last_edited_at: err.last_edited_at });
+      } else {
+        setError(err instanceof Error ? err.message : 'Error al guardar');
+      }
     } finally {
       setProcessing(false);
     }
@@ -1414,6 +1495,19 @@ function BudgetsPageContent() {
                 ))}
               </Alert>
             )}
+            {editingBudget && editors.length > 0 && (
+              <Alert severity="warning">
+                {editors.map((e) => `${e.name} ${e.lastname}`).join(', ')}
+                {editors.length === 1 ? ' está editando' : ' están editando'} este presupuesto ahora mismo.
+                Si ambos guardan, el último sobrescribe al otro.
+              </Alert>
+            )}
+            {editingBudget && staleWarning && (
+              <Alert severity="error" action={<Button color="inherit" size="small" onClick={handleReloadStale}>Recargar</Button>}>
+                {staleWarning.last_edited_by ? `${staleWarning.last_edited_by.name} ${staleWarning.last_edited_by.lastname}` : 'Otro usuario'} guardó
+                cambios en este presupuesto. Recargá antes de seguir para no perder su trabajo.
+              </Alert>
+            )}
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 8 }}>
                 <TextField label="Título *" fullWidth value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
@@ -1762,6 +1856,21 @@ function BudgetsPageContent() {
         <DialogActions>
           <Button onClick={() => setDeleteDialog({ open: false, budget: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Conflicto de edición concurrente al guardar (409 budget_stale, ver FLOWS.md §35) */}
+      <Dialog open={conflictDialog.open} onClose={() => setConflictDialog({ open: false, last_edited_by: null, last_edited_at: null })} maxWidth="xs" fullWidth>
+        <DialogTitle>El presupuesto cambió</DialogTitle>
+        <DialogContent>
+          <Typography>
+            {conflictDialog.last_edited_by ? `${conflictDialog.last_edited_by.name} ${conflictDialog.last_edited_by.lastname}` : 'Otro usuario'} guardó
+            cambios en este presupuesto mientras lo editabas. Tus cambios no se guardaron.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConflictDialog({ open: false, last_edited_by: null, last_edited_at: null })}>Cerrar</Button>
+          <Button onClick={handleReloadStale} variant="contained">Recargar</Button>
         </DialogActions>
       </Dialog>
 

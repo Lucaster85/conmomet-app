@@ -1,5 +1,6 @@
 import { TokenManager } from './auth';
 import type { TaxCondition } from './cuit';
+import { ConflictError } from './apiErrors';
 
 declare global {
   interface Window {
@@ -1827,6 +1828,11 @@ export interface Budget {
   created_by: number;
   // Pedido de Cotización que originó este presupuesto (opcional — ver utils/api.ts#QuoteRequest)
   quote_request_id?: number | null;
+  // Control de concurrencia optimista (ver FLOWS.md §35): se manda tal cual se recibió en el
+  // próximo PUT. last_edited_by/last_edited_at son para el aviso de "Juan Pérez guardó cambios".
+  revision: number;
+  last_edited_by?: { id: number; name: string; lastname: string } | null;
+  last_edited_at?: string | null;
   client?: { id: number; razonSocial: string };
   plant?: { id: number; name: string };
   parentProject?: { id: number; name: string; code: string };
@@ -1876,6 +1882,9 @@ export interface CreateBudgetData {
   notes?: string;
   work_order_number?: string | null;
   quote_request_id?: number;
+  // Obligatorio en PUT /budgets/:id (ver BudgetService.update) — opcional acá porque create no
+  // lo usa (un presupuesto nuevo nace en revision 0 sin necesidad de mandarla).
+  revision?: number;
   laborLines?: BudgetLaborLine[];
   materialItems?: BudgetMaterialItem[];
 }
@@ -1935,10 +1944,36 @@ export class BudgetService {
     });
     if (!response.ok) {
       const error = await response.json();
+      if (response.status === 409 && error.error === 'budget_stale') {
+        throw new ConflictError(error.message || 'Otro usuario guardó cambios en este presupuesto.', {
+          current_revision: error.current_revision,
+          last_edited_by: error.last_edited_by || null,
+          last_edited_at: error.last_edited_at || null,
+        });
+      }
       throw new Error(error.error || 'Error al actualizar presupuesto');
     }
     const data = await response.json();
     return data.data;
+  }
+
+  // Heartbeat de presencia del diálogo de edición (ver FLOWS.md §35) — llamado al abrir, cada
+  // 30s mientras está abierto, y con { release: true } al cerrarlo/desmontar.
+  static async editSession(id: number, options?: { release?: boolean }): Promise<{
+    revision: number;
+    last_edited_by: { id: number; name: string; lastname: string } | null;
+    last_edited_at: string | null;
+    editors: { user_id: number; name: string; lastname: string; last_seen_at: string }[];
+  }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}/edit-session`, {
+      method: 'PUT',
+      body: JSON.stringify(options || {}),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al registrar la sesión de edición');
+    }
+    return response.json();
   }
 
   static async delete(id: number): Promise<void> {
@@ -5423,6 +5458,8 @@ export interface AdditionalBudgetSummary {
   rejection_reason?: string | null;
   rejected_at?: string | null;
   sent_at?: string | null;
+  // Control de concurrencia (ver FLOWS.md §35) — AdditionalService.updateMaterials la exige.
+  revision: number;
   // Solo en budget_history
   created_at?: string;
 }
@@ -5518,10 +5555,24 @@ export class AdditionalService {
     return this.parse<Additional>(response, 'Error al actualizar el adicional');
   }
 
-  // Materiales del presupuesto vigente (solo en borrador; 409 si ya se envió).
-  static async updateMaterials(id: number, items: AdditionalMaterialItem[]): Promise<AdditionalMaterialItem[]> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/${id}/materials`, { method: 'PUT', body: JSON.stringify({ items }) });
-    return this.parse<AdditionalMaterialItem[]>(response, 'Error al guardar los materiales');
+  // Materiales del presupuesto vigente (solo en borrador; 409 si ya se envió). `revision` es
+  // obligatoria (control de concurrencia, ver FLOWS.md §35) — viene del último GET/PUT del
+  // presupuesto del adicional.
+  static async updateMaterials(id: number, items: AdditionalMaterialItem[], revision: number): Promise<AdditionalMaterialItem[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/${id}/materials`, { method: 'PUT', body: JSON.stringify({ items, revision }) });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      if (response.status === 409 && error.error === 'budget_stale') {
+        throw new ConflictError(error.message || 'Otro usuario guardó cambios en este presupuesto.', {
+          current_revision: error.current_revision,
+          last_edited_by: error.last_edited_by || null,
+          last_edited_at: error.last_edited_at || null,
+        });
+      }
+      throw new Error(error.error || 'Error al guardar los materiales');
+    }
+    const data = await response.json();
+    return data.data;
   }
 
   // "Nuevo presupuesto" a partir del rechazado, vinculado al mismo adicional.
