@@ -3206,10 +3206,18 @@ export interface SalaryAdvanceDeletionAlert {
 // Campanita de notificaciones (ver FLOWS.md §37). Historial de los eventos que ya se mandaban
 // por push: a diferencia del push, acá queda registro consultable con leído/no leído.
 export type NotificationType =
+  // Eventos de acción: los dispara alguien haciendo click (FLOWS.md §28/§37).
   | 'quote_request_assigned'
   | 'quote_request_delivered'
   | 'quote_request_returned'
-  | 'budget_sent';
+  | 'budget_sent'
+  | 'tool_in_repair_assigned'
+  | 'oca_budget_pending'
+  // Eventos de reloj: los genera el barrido de vencimientos (FLOWS.md §38).
+  | 'document_expiring'
+  | 'document_expired'
+  | 'epp_expiring'
+  | 'epp_expired';
 
 export interface AppNotification {
   id: number;

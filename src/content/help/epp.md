@@ -64,7 +64,11 @@ entregas.
 
 Cada línea se puede **marcar como vista** con el ojito para despejar la pantalla; el contador de
 arriba sigue mostrando el total, y una entrega que pasa de "por vencer" a "vencida" vuelve a
-aparecer sola. Ver el tema **Pantalla de inicio: avisos y pendientes**.
+aparecer sola.
+
+El EPP por vencer y vencido también genera una **notificación en la campanita** del header, para
+quien tenga el permiso de este aviso. Se genera cuando alguien entra al sistema, no a una hora
+fija. Ver el tema **Avisos del inicio y campanita de notificaciones**.
 
 ## Talles adicionales
 

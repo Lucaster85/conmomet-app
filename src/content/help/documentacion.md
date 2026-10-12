@@ -88,13 +88,17 @@ Cada alerta tiene además dos botones para ir al detalle:
 Hoy el sistema marca los documentos por vencer o vencidos y los muestra en pantalla (en la
 ficha correspondiente y en el aviso del Inicio), pero **todavía no manda ningún mail ni
 notificación automática de aviso**. Para enterarse de un vencimiento, hay que entrar a revisar el
-Inicio o las fichas — no llega nada solo por ahora, y los vencimientos tampoco aparecen en la
-campanita del header (esa hoy solo registra novedades de pedidos de cotización y presupuestos).
+Inicio o las fichas — **no se manda ningún mail**.
+
+Lo que sí hay: cuando alguien entra al sistema, los documentos por vencer y vencidos generan una
+**notificación en la campanita** del header (y un aviso al celular, si lo tenés activado) para
+quien tenga permiso de Documentación. Aparece la próxima vez que alguien entra, no a una hora
+fija. Ver el tema **Avisos del inicio y campanita de notificaciones**.
 
 En el aviso del Inicio, los documentos que ya revisaste se pueden **marcar como vistos** con el
 ojito, para que la lista no tape el resto de la pantalla. El contador de arriba sigue mostrando
 cuántos hay en total, y un documento que pasa de "por vencer" a "vencido" (o que se renueva con
-otra fecha) vuelve a aparecer solo. Ver el tema **Pantalla de inicio: avisos y pendientes**.
+otra fecha) vuelve a aparecer solo. Ver el tema **Avisos del inicio y campanita de notificaciones**.
 
 ## Mis Documentos (Portal del Empleado)
 

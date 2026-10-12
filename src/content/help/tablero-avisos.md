@@ -74,12 +74,31 @@ como leída; también podés usar **"Marcar todas"**.
 Abrir la campanita **no** marca todo como leído: podés dejar algo sin leer a propósito, para
 acordarte de volver.
 
-Hoy la campanita registra cuatro cosas: que te asignaron un pedido de cotización, que te
-entregaron un presupuesto para validar, que te devolvieron uno para corregir, y que se envió un
-presupuesto al cliente. Los vencimientos de documentación, el EPP y las herramientas todavía no
-generan notificación — para esos, el lugar donde mirar sigue siendo el aviso del inicio.
+La campanita registra:
+
+- que te **asignaron** un pedido de cotización, que te **entregaron** un presupuesto para validar,
+  que te **devolvieron** uno para corregir, y que se **envió** un presupuesto al cliente;
+- que te quedó una **herramienta a cargo** para reparación;
+- que hay una **OCA aprobada esperando presupuesto** (solo al usuario configurado para eso);
+- que un **documento** o un **EPP** está por vencer o ya venció.
 
 Las notificaciones se guardan por **90 días**; las más viejas se borran solas.
+
+### Cuándo aparecen los avisos de vencimiento
+
+Hay una diferencia que conviene entender para no esperar algo que no va a pasar. Los avisos de
+pedidos, presupuestos, herramientas y OCAs se generan **en el momento exacto** en que alguien hace
+la acción, porque hay una persona del otro lado apretando un botón.
+
+Los de **vencimientos y EPP** son distintos: no los dispara nadie, los dispara el calendario. El
+sistema los revisa **cuando alguien entra a la app** (como máximo una vez por hora), así que:
+
+- la notificación te va a estar esperando en la campanita la próxima vez que entres;
+- **no** te va a llegar al celular a una hora fija si nadie abrió el sistema ese día.
+
+Si en algún momento hace falta que el aviso de vencimiento llegue al celular todos los días a una
+hora puntual aunque nadie entre, eso se puede agregar — es una configuración del servidor, no un
+cambio en la forma de usarlo.
 
 ## La campanita y el celular
 

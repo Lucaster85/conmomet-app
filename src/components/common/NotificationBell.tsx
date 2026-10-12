@@ -12,6 +12,10 @@ import {
   ReplyOutlined as ReturnedIcon,
   SendOutlined as SentIcon,
   DoneAllOutlined as MarkAllIcon,
+  BuildOutlined as RepairIcon,
+  DescriptionOutlined as DocumentIcon,
+  SecurityOutlined as EppIcon,
+  ErrorOutlineOutlined as ExpiredIcon,
 } from '@mui/icons-material';
 import { NotificationService, AppNotification, NotificationType } from '../../utils/api';
 import { useAuth } from '../../utils/auth';
@@ -31,6 +35,14 @@ const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
   quote_request_delivered: <ValidateIcon fontSize="small" color="info" />,
   quote_request_returned: <ReturnedIcon fontSize="small" color="warning" />,
   budget_sent: <SentIcon fontSize="small" color="success" />,
+  tool_in_repair_assigned: <RepairIcon fontSize="small" color="warning" />,
+  oca_budget_pending: <QuoteIcon fontSize="small" color="info" />,
+  // Vencido en rojo, por vencer en amarillo: el color es la única diferencia visual rápida entre
+  // "ya es tarde" y "te queda tiempo".
+  document_expiring: <DocumentIcon fontSize="small" color="warning" />,
+  document_expired: <ExpiredIcon fontSize="small" color="error" />,
+  epp_expiring: <EppIcon fontSize="small" color="warning" />,
+  epp_expired: <ExpiredIcon fontSize="small" color="error" />,
 };
 
 // Defensiva a propósito: con una fecha inválida, `getTime()` da NaN, TODAS las comparaciones de

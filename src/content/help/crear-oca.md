@@ -149,8 +149,12 @@ administración: cada una con su número, su tipo (Horas Hombre / Grúa) y el cl
 desaparece con solo cargar el precio, hace falta presentarlo.
 
 Las OCAs ya revisadas se pueden **marcar como vistas** con el ojito, sin que baje el contador del
-total. Si una vuelve a quedar pendiente de presupuesto después de un rechazo, reaparece sola. Ver
-el tema **Pantalla de inicio: avisos y pendientes**.
+total. Si una vuelve a quedar pendiente de presupuesto después de un rechazo, reaparece sola.
+
+Además, al aprobar una OCA marcándola como "requiere presupuesto", a ese usuario le llega una
+**notificación en la campanita** (y al celular, si lo tiene activado) en el momento. Lo mismo si se
+tilda el flag después, corrigiendo un olvido. Ver el tema **Avisos del inicio y campanita de
+notificaciones**.
 
 ## Anular una OCA
 

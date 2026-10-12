@@ -183,7 +183,7 @@ que dice si le toca armar el presupuesto o validarlo.
 Si tenés muchos pedidos asignados, podés **marcarlos como vistos** con el ojito para sacarlos del
 detalle sin perder la cuenta: el contador de arriba sigue mostrando el total. Si te dejan un
 comentario nuevo o te devuelven un pedido que ya habías marcado, vuelve a aparecer solo. Está
-explicado en el tema **Pantalla de inicio: avisos y pendientes**.
+explicado en el tema **Avisos del inicio y campanita de notificaciones**.
 
 Esos cuatro momentos — te asignan un pedido, te entregan un presupuesto para validar, te lo
 devuelven, o se envía un presupuesto al cliente — quedan además registrados en la **campanita** del
