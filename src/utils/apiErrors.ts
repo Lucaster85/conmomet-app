@@ -21,24 +21,35 @@ export class ForbiddenError extends Error {
 export const MSG_FORBIDDEN = 'No tenés autorización para realizar esta acción.';
 export const MSG_NO_ROLE = 'Tu usuario no tiene un rol asignado. Pedile a un administrador que te asigne uno.';
 
-// Lanzado cuando un guardado llega con una `revision` vieja — otro usuario guardó cambios en el
-// medio y el backend rechazó el guardado (409 `budget_stale`, ver FLOWS.md §35). La página debe
-// mostrar un diálogo propio (quién guardó, cuándo, y un botón Recargar), no el FeedbackModal
-// genérico de error.
+// Lanzado cuando un guardado se rechaza por concurrencia (ver FLOWS.md §35): 409 `budget_stale`
+// (otro usuario guardó una revision más nueva mientras tanto) o 409 `budget_locked` (otro
+// usuario tiene el candado de edición — no debería pasar en el flujo normal, porque el candado
+// ya bloquea la edición al abrir, pero puede darse en el margen de los ~30s del heartbeat). En
+// los dos casos la página debe mostrar un diálogo propio, no el FeedbackModal genérico de error.
 export class ConflictError extends Error {
-  current_revision: number;
+  reason: 'budget_stale' | 'budget_locked';
+  current_revision: number | null;
   last_edited_by: { id: number; name: string; lastname: string } | null;
   last_edited_at: string | null;
+  locked_by: { user_id: number; name: string; lastname: string } | null;
 
   constructor(
     message: string,
-    details: { current_revision: number; last_edited_by: { id: number; name: string; lastname: string } | null; last_edited_at: string | null }
+    details: {
+      reason: 'budget_stale' | 'budget_locked';
+      current_revision?: number | null;
+      last_edited_by?: { id: number; name: string; lastname: string } | null;
+      last_edited_at?: string | null;
+      locked_by?: { user_id: number; name: string; lastname: string } | null;
+    }
   ) {
     super(message);
     this.name = 'ConflictError';
-    this.current_revision = details.current_revision;
-    this.last_edited_by = details.last_edited_by;
-    this.last_edited_at = details.last_edited_at;
+    this.reason = details.reason;
+    this.current_revision = details.current_revision ?? null;
+    this.last_edited_by = details.last_edited_by ?? null;
+    this.last_edited_at = details.last_edited_at ?? null;
+    this.locked_by = details.locked_by ?? null;
   }
 }
 

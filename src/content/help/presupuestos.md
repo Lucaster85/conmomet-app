@@ -196,17 +196,17 @@ acceso directo y lo que se quiere es modificarlo.
 
 ## Edición simultánea
 
-Si otra persona ya tiene este presupuesto abierto en edición, aparece un aviso amarillo con su
-nombre apenas vos también lo abrís — los dos pueden seguir editando, pero si ambos guardan,
-gana el último (como siempre pasó). Para que eso no te tome por sorpresa, si mientras estás
-editando la otra persona guarda sus cambios, aparece un aviso rojo avisando quién fue y cuándo,
-con un botón **Recargar**: trae lo que esa persona guardó y descarta lo que tenías cargado sin
-guardar todavía.
+Un presupuesto en borrador solo lo puede editar una persona a la vez. Si alguien ya lo tiene
+abierto y vos también entrás a "Editar", lo vas a poder ver todo igual, pero con un aviso
+("Fulano tiene este presupuesto en edición ahora mismo") y sin poder cambiar nada ni guardar —
+los campos quedan atenuados y no responden al click. Apretando **Reintentar** volvés a chequear
+si ya se liberó.
 
-Si llegás a apretar **Guardar** sin haber visto ese aviso (por ejemplo, porque guardaron justo
-en ese momento), el sistema rechaza el guardado y muestra el mismo mensaje en un diálogo, con
-el mismo botón **Recargar** — tus cambios no se pierden en silencio, pero tampoco se guardan
-solos: hay que volver a cargarlos después de recargar.
+El presupuesto queda disponible de nuevo en cuanto la otra persona guarda o cierra el diálogo.
+Por ahora no hay un tiempo límite: si alguien lo deja abierto y se va sin cerrarlo (se le cerró
+la laptop, por ejemplo), el presupuesto queda tomado hasta que vuelva y lo cierre o guarde — no
+hay todavía una forma de "forzar" la entrada. Si esto te genera un problema real en el uso
+diario, avisá para priorizarlo.
 
 ## Historial
 

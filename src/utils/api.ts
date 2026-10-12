@@ -1994,9 +1994,16 @@ export class BudgetService {
       const error = await response.json();
       if (response.status === 409 && error.error === 'budget_stale') {
         throw new ConflictError(error.message || 'Otro usuario guardó cambios en este presupuesto.', {
+          reason: 'budget_stale',
           current_revision: error.current_revision,
           last_edited_by: error.last_edited_by || null,
           last_edited_at: error.last_edited_at || null,
+        });
+      }
+      if (response.status === 409 && error.error === 'budget_locked') {
+        throw new ConflictError(error.message || 'Otro usuario tiene este presupuesto en edición.', {
+          reason: 'budget_locked',
+          locked_by: error.locked_by || null,
         });
       }
       throw new Error(error.error || 'Error al actualizar presupuesto');
@@ -2005,13 +2012,15 @@ export class BudgetService {
     return data.data;
   }
 
-  // Heartbeat de presencia del diálogo de edición (ver FLOWS.md §35) — llamado al abrir, cada
-  // 30s mientras está abierto, y con { release: true } al cerrarlo/desmontar.
+  // Candado de edición (ver FLOWS.md §35) — llamado al abrir "Editar", cada 30s mientras sigue
+  // abierto, y con { release: true } al cerrarlo/desmontar. Sin TTL a propósito (por ahora):
+  // `locked_by` viene no-null hasta que quien lo tiene libera (guarda o cierra), no por
+  // inactividad.
   static async editSession(id: number, options?: { release?: boolean }): Promise<{
     revision: number;
     last_edited_by: { id: number; name: string; lastname: string } | null;
     last_edited_at: string | null;
-    editors: { user_id: number; name: string; lastname: string; last_seen_at: string }[];
+    locked_by: { user_id: number; name: string; lastname: string; since: string } | null;
   }> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}/edit-session`, {
       method: 'PUT',
@@ -5622,9 +5631,16 @@ export class AdditionalService {
       const error = await response.json().catch(() => ({}));
       if (response.status === 409 && error.error === 'budget_stale') {
         throw new ConflictError(error.message || 'Otro usuario guardó cambios en este presupuesto.', {
+          reason: 'budget_stale',
           current_revision: error.current_revision,
           last_edited_by: error.last_edited_by || null,
           last_edited_at: error.last_edited_at || null,
+        });
+      }
+      if (response.status === 409 && error.error === 'budget_locked') {
+        throw new ConflictError(error.message || 'Otro usuario tiene este presupuesto en edición.', {
+          reason: 'budget_locked',
+          locked_by: error.locked_by || null,
         });
       }
       throw new Error(error.error || 'Error al guardar los materiales');

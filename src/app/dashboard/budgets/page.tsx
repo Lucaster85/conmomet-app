@@ -199,15 +199,14 @@ function BudgetsPageContent() {
   // el proyecto" en vivo mientras se arma el presupuesto, sin depender de haber guardado antes
   // (ver FLOWS.md, Fase 2 Parte A.1).
   const [linkedProjectHourBuckets, setLinkedProjectHourBuckets] = useState<HourBucket[]>([]);
-  // Presencia + concurrencia (ver FLOWS.md §35): quién más está editando este presupuesto ahora
-  // (heartbeat cada 30s), y si alguien guardó una revision más nueva que la que tiene el form.
+  // Candado de edición (ver FLOWS.md §35): `lockedBy` no-null significa que OTRO usuario tiene
+  // el presupuesto en edición ahora mismo — el diálogo se abre en modo lectura. Sin TTL a
+  // propósito (por ahora): queda tomado hasta que quien lo tiene guarda o cierra, no por
+  // inactividad — expiración y "forzar toma de control" quedan pendientes de feedback real.
   // dialogRevisionRef (no state) evita comparar contra un `form.revision` potencialmente
-  // desactualizado dentro del cierre del heartbeat.
-  const [editors, setEditors] = useState<{ user_id: number; name: string; lastname: string }[]>([]);
-  const [staleWarning, setStaleWarning] = useState<{ last_edited_by: { name: string; lastname: string } | null } | null>(null);
-  const [conflictDialog, setConflictDialog] = useState<{ open: boolean; last_edited_by: { name: string; lastname: string } | null; last_edited_at: string | null }>(
-    { open: false, last_edited_by: null, last_edited_at: null }
-  );
+  // desactualizado dentro del cierre del heartbeat de renovación.
+  const [lockedBy, setLockedBy] = useState<{ user_id: number; name: string; lastname: string } | null>(null);
+  const [conflictDialog, setConflictDialog] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
   const dialogRevisionRef = useRef(0);
 
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; budget: Budget | null }>({ open: false, budget: null });
@@ -366,13 +365,13 @@ function BudgetsPageContent() {
     setEditingBudget(null);
     setForm(emptyForm());
     setLinkedProjectHourBuckets([]);
-    setEditors([]);
-    setStaleWarning(null);
+    setLockedBy(null);
     setOpenDialog(true);
   };
 
   // Factoriza el llenado del form a partir de un Budget — la usan handleOpenEdit (primera
-  // apertura) y handleReloadStale (recargar tras un conflicto), para no duplicar el mapeo.
+  // apertura) y handleReloadBudget (recargar tras un conflicto o al reintentar el candado),
+  // para no duplicar el mapeo.
   const fillFormFromBudget = (budget: Budget) => ({
     title: budget.title,
     client_id: String(budget.client_id),
@@ -405,9 +404,21 @@ function BudgetsPageContent() {
     }
   };
 
+  // Intenta tomar el candado de edición. `locked_by: null` en la respuesta significa "nadie más
+  // lo tiene" — ya sea porque estaba libre (ahora es nuestro) o porque ya lo teníamos nosotros.
+  // Si falla la llamada (red), no bloqueamos la edición por eso — el chequeo de verdad vive en
+  // el servidor al guardar (ver budgetController#update), esto es solo la UX de avisar antes.
+  const acquireLock = async (budgetId: number) => {
+    try {
+      const res = await BudgetService.editSession(budgetId);
+      setLockedBy(res.locked_by);
+    } catch {
+      setLockedBy(null);
+    }
+  };
+
   const handleOpenEdit = async (budgetFromList: Budget) => {
-    setEditors([]);
-    setStaleWarning(null);
+    setLockedBy(null);
     // Refetch: el `budget` que viene del listado puede estar desactualizado desde el montaje
     // de la página — abrir con datos viejos es la misma raíz del bug de Etapa 1 (ver FLOWS.md
     // §35). GET /budgets/:id siempre trae la revision y las líneas vigentes.
@@ -416,53 +427,45 @@ function BudgetsPageContent() {
     setForm(fillFormFromBudget(budget));
     dialogRevisionRef.current = budget.revision;
     await loadLinkedProjectHourBuckets(budget.project_id);
+    await acquireLock(budget.id);
     setOpenDialog(true);
   };
 
-  // Recargar tras detectar que alguien más guardó (aviso rojo o diálogo de conflicto al
-  // guardar) — trae la versión vigente y descarta los cambios locales sin guardar.
-  const handleReloadStale = async () => {
+  // Recarga el presupuesto vigente y reintenta tomar el candado — la usan tanto el diálogo de
+  // conflicto (rara vez: alguien guardó en el margen de los ~30s antes de que el candado te
+  // frenara) como el botón "Reintentar" del modo solo lectura (para ver si ya se liberó).
+  const handleReloadBudget = async () => {
     if (!editingBudget) return;
     const fresh = await BudgetService.getById(editingBudget.id);
     setEditingBudget(fresh);
     setForm(fillFormFromBudget(fresh));
     dialogRevisionRef.current = fresh.revision;
     await loadLinkedProjectHourBuckets(fresh.project_id);
-    setStaleWarning(null);
-    setConflictDialog({ open: false, last_edited_by: null, last_edited_at: null });
+    setConflictDialog({ open: false, message: '' });
+    await acquireLock(fresh.id);
   };
 
-  // Heartbeat de presencia (ver FLOWS.md §35): al abrir el diálogo de un presupuesto existente,
-  // y cada 30s mientras siga abierto. El cleanup libera la sesión al cerrar/desmontar/cambiar
-  // de presupuesto — cubre los tres casos con el mismo efecto.
+  // Mientras el candado es nuestro (lockedBy === null), lo renovamos cada 30s — no hay TTL que
+  // proteger hoy, pero deja last_seen_at al día para cuando se retome la expiración por
+  // inactividad (ver FLOWS.md §35). El cleanup libera el candado al cerrar/desmontar/cambiar de
+  // presupuesto; si nunca lo tomamos (estábamos en modo lectura), es un no-op inofensivo.
   const editingBudgetId = editingBudget?.id;
   useEffect(() => {
-    if (!openDialog || !editingBudgetId) return;
-    let active = true;
+    if (!openDialog || !editingBudgetId || lockedBy !== null) return;
     const budgetId = editingBudgetId;
 
-    const tick = async () => {
-      try {
-        const res = await BudgetService.editSession(budgetId);
-        if (!active) return;
-        setEditors(res.editors);
-        if (res.revision > dialogRevisionRef.current) {
-          setStaleWarning({ last_edited_by: res.last_edited_by });
-        }
-      } catch {
-        // Un heartbeat fallido no es crítico — se reintenta en el próximo tick, nunca bloquea
-        // la edición.
-      }
+    const tick = () => {
+      BudgetService.editSession(budgetId).catch(() => {
+        // Un heartbeat fallido no es crítico — se reintenta en el próximo tick.
+      });
     };
-    tick();
     const interval = setInterval(tick, 30000);
 
     return () => {
-      active = false;
       clearInterval(interval);
       BudgetService.editSession(budgetId, { release: true }).catch(() => {});
     };
-  }, [openDialog, editingBudgetId]);
+  }, [openDialog, editingBudgetId, lockedBy]);
 
   // Value del <select> de relación: '' | `existing:<id>` ("adicional de" ya no existe acá).
   const projectLinkValue = form.existing_project_id ? `existing:${form.existing_project_id}` : '';
@@ -1047,7 +1050,7 @@ function BudgetsPageContent() {
       loadData();
     } catch (err) {
       if (err instanceof ConflictError) {
-        setConflictDialog({ open: true, last_edited_by: err.last_edited_by, last_edited_at: err.last_edited_at });
+        setConflictDialog({ open: true, message: err.message });
       } else {
         setError(err instanceof Error ? err.message : 'Error al guardar');
       }
@@ -1496,19 +1499,16 @@ function BudgetsPageContent() {
                 ))}
               </Alert>
             )}
-            {editingBudget && editors.length > 0 && (
-              <Alert severity="warning">
-                {editors.map((e) => `${e.name} ${e.lastname}`).join(', ')}
-                {editors.length === 1 ? ' está editando' : ' están editando'} este presupuesto ahora mismo.
-                Si ambos guardan, el último sobrescribe al otro.
+            {editingBudget && lockedBy && (
+              <Alert severity="warning" action={<Button color="inherit" size="small" onClick={handleReloadBudget}>Reintentar</Button>}>
+                {lockedBy.name} {lockedBy.lastname} tiene este presupuesto en edición ahora mismo.
+                Podés verlo, pero no vas a poder guardar cambios hasta que termine.
               </Alert>
             )}
-            {editingBudget && staleWarning && (
-              <Alert severity="error" action={<Button color="inherit" size="small" onClick={handleReloadStale}>Recargar</Button>}>
-                {staleWarning.last_edited_by ? `${staleWarning.last_edited_by.name} ${staleWarning.last_edited_by.lastname}` : 'Otro usuario'} guardó
-                cambios en este presupuesto. Recargá antes de seguir para no perder su trabajo.
-              </Alert>
-            )}
+            <Box
+              inert={editingBudget && lockedBy ? true : undefined}
+              sx={editingBudget && lockedBy ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
+            >
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 8 }}>
                 <TextField label="Título *" fullWidth value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
@@ -1786,6 +1786,7 @@ function BudgetsPageContent() {
             )}
 
             <TextField label="Notas internas" fullWidth multiline rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            </Box>
 
             {editingBudget && (
               <>
@@ -1797,9 +1798,11 @@ function BudgetsPageContent() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={processing}>
-            {processing ? <GearSpinner size={20} /> : (editingBudget ? 'Guardar' : 'Crear')}
-          </Button>
+          {!(editingBudget && lockedBy) && (
+            <Button onClick={handleSubmit} variant="contained" disabled={processing}>
+              {processing ? <GearSpinner size={20} /> : (editingBudget ? 'Guardar' : 'Crear')}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
@@ -1867,18 +1870,17 @@ function BudgetsPageContent() {
         </DialogActions>
       </Dialog>
 
-      {/* Conflicto de edición concurrente al guardar (409 budget_stale, ver FLOWS.md §35) */}
-      <Dialog open={conflictDialog.open} onClose={() => setConflictDialog({ open: false, last_edited_by: null, last_edited_at: null })} maxWidth="xs" fullWidth>
+      {/* Conflicto de concurrencia al guardar (409 budget_stale o budget_locked, ver FLOWS.md
+          §35) — raro con el candado puesto: el modo solo lectura ya frena esto al abrir, esto
+          cubre el margen de los ~30s antes de que el candado alcance a avisar. */}
+      <Dialog open={conflictDialog.open} onClose={() => setConflictDialog({ open: false, message: '' })} maxWidth="xs" fullWidth>
         <DialogTitle>El presupuesto cambió</DialogTitle>
         <DialogContent>
-          <Typography>
-            {conflictDialog.last_edited_by ? `${conflictDialog.last_edited_by.name} ${conflictDialog.last_edited_by.lastname}` : 'Otro usuario'} guardó
-            cambios en este presupuesto mientras lo editabas. Tus cambios no se guardaron.
-          </Typography>
+          <Typography>{conflictDialog.message}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConflictDialog({ open: false, last_edited_by: null, last_edited_at: null })}>Cerrar</Button>
-          <Button onClick={handleReloadStale} variant="contained">Recargar</Button>
+          <Button onClick={() => setConflictDialog({ open: false, message: '' })}>Cerrar</Button>
+          <Button onClick={handleReloadBudget} variant="contained">Recargar</Button>
         </DialogActions>
       </Dialog>
 
@@ -2152,11 +2154,15 @@ function BudgetsPageContent() {
               )}
             </Box>
           )}
-          {/* Fuera de .print-area a propósito: es historial interno, no va en el documento que
-              se imprime o se le muestra al cliente. Visible aunque no se tenga permiso de
-              edición — es justo el caso de quien solo puede Ver (ver FLOWS.md §35). */}
+          {/* Fuera de .print-area Y con no-print a propósito: es historial interno, no va en
+              el documento que se imprime o se le muestra al cliente. El selector global de
+              impresión (globals.css) solo oculta lo que esté FUERA del portal que contiene
+              .print-area, no a los hermanos de .print-area dentro del mismo diálogo — por eso
+              hace falta la clase explícita, no alcanza con la ubicación. Visible aunque no se
+              tenga permiso de edición — es justo el caso de quien solo puede Ver (ver
+              FLOWS.md §35). */}
           {printBudget && (
-            <Box sx={{ mt: 3 }}>
+            <Box className="no-print" sx={{ mt: 3 }}>
               <Typography variant="subtitle2" fontWeight={700}>Historial</Typography>
               <BudgetHistoryPanel budgetId={printBudget.id} />
             </Box>
