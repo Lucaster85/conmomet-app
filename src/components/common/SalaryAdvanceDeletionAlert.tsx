@@ -1,22 +1,25 @@
 'use client';
-import React, { useEffect, useState } from 'react';
-import { Box, Paper, Typography, Stack, IconButton } from '@mui/material';
-import { WarningAmberOutlined as WarningIcon, CloseOutlined as CloseIcon } from '@mui/icons-material';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Box, Typography } from '@mui/material';
+import { WarningAmberOutlined as WarningIcon } from '@mui/icons-material';
 import { SalaryAdvanceDeletionAlertService, SalaryAdvanceDeletionAlert } from '../../utils/api';
-import { useAuth } from '../../utils/auth';
+import { useAuth, userHasPermission } from '../../utils/auth';
+import DashboardAlertCard, { DashboardAlertItem } from './DashboardAlertCard';
+import { useRegisterAlertSummary } from './AlertViewsProvider';
+import { ALERT_SHORT_LABEL } from '../../utils/alerts';
 
 const formatCurrency = (v: number) => `$${Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 const PAYMENT_METHOD_LABEL: Record<string, string> = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
 
-// Aviso simple (sin infraestructura de notificaciones genérica en el repo) para avisar a Socios
-// Gerentes cuando se anula un adelanto que ya estaba pagado. A diferencia de RepairToolsAlert,
-// este sí es descartable por usuario (se guarda en dismissed_by en el backend).
+// Aviso a Socios Gerentes cuando se anula un adelanto que ya estaba pagado.
+//
+// Fue el primer aviso descartable por usuario del repo, con su propia columna `dismissed_by`
+// (array JSON de user ids). Desde FLOWS.md §36 usa el mecanismo unificado de UserAlertViews: los
+// descartes que había se migraron en 20261012100002, la columna quedó deprecada y
+// `SalaryAdvanceDeletionAlertService.dismiss` ya no se llama desde el frontend.
 export default function SalaryAdvanceDeletionAlertWidget() {
   const { user } = useAuth();
-  const permissions: string[] = Array.isArray((user as unknown as Record<string, unknown>)?.permissions)
-    ? ((user as unknown as Record<string, unknown>).permissions as string[])
-    : [];
-  const hasAccess = permissions.includes('admin_granted') || permissions.includes('salary_advance_deletion_alerts_read');
+  const hasAccess = userHasPermission(user, 'salary_advance_deletion_alerts_read');
 
   const [alerts, setAlerts] = useState<SalaryAdvanceDeletionAlert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,67 +35,57 @@ export default function SalaryAdvanceDeletionAlertWidget() {
       .finally(() => setLoading(false));
   }, [hasAccess]);
 
-  const handleDismiss = async (id: number) => {
-    setAlerts((prev) => prev.filter((a) => a.id !== id));
-    try {
-      await SalaryAdvanceDeletionAlertService.dismiss(id);
-    } catch {
-      // Si falla el dismiss en el server, el aviso vuelve a aparecer en la próxima carga.
-    }
-  };
-
-  if (!hasAccess || loading || alerts.length === 0) return null;
-
   const formatPeriod = (p?: SalaryAdvanceDeletionAlert['payPeriod']) =>
     p ? `${p.type === 'first_half' ? '1ra' : '2da'} quincena ${p.month}/${p.year}` : 'sin quincena asignada';
 
-  return (
-    <Paper
-      sx={{
-        p: 3,
-        borderRadius: 2,
-        mb: 3,
-        borderLeft: '4px solid',
-        borderLeftColor: 'error.main',
-      }}
-    >
-      <Box display="flex" alignItems="center" gap={1} mb={2}>
-        <WarningIcon color="error" />
-        <Typography variant="h6" fontWeight="bold">Adelantos pagados anulados</Typography>
-      </Box>
-      <Stack spacing={1}>
-        {alerts.map((a) => (
-          <Box
-            key={a.id}
-            sx={{
-              p: 1.5,
-              borderRadius: 2,
-              bgcolor: 'grey.50',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: 1,
-            }}
-          >
-            <Box>
-              <Typography variant="body2">
-                Adelanto de <strong>{a.employee ? `${a.employee.lastname}, ${a.employee.name}` : `empleado #${a.employee_id}`}</strong> por{' '}
-                <strong>{formatCurrency(a.amount)}</strong>
-                {a.payment_method ? ` (${PAYMENT_METHOD_LABEL[a.payment_method] || a.payment_method})` : ''}, {formatPeriod(a.payPeriod)}.
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Motivo: &quot;{a.justification}&quot;
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Anulado por {a.deletedBy ? `${a.deletedBy.name} ${a.deletedBy.lastname}` : 'usuario desconocido'} el {new Date(a.created_at).toLocaleDateString('es-AR')}
-              </Typography>
-            </Box>
-            <IconButton size="small" onClick={() => handleDismiss(a.id)}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
+  const items: DashboardAlertItem[] = useMemo(
+    () =>
+      alerts.map((a) => ({
+        entity_id: a.id,
+        // Revisión fija: el registro de un adelanto anulado es inmutable, nunca hay nada nuevo
+        // que justifique volver a mostrarlo.
+        revision: '1',
+        content: (
+          <Box>
+            <Typography variant="body2">
+              Adelanto de <strong>{a.employee ? `${a.employee.lastname}, ${a.employee.name}` : `empleado #${a.employee_id}`}</strong> por{' '}
+              <strong>{formatCurrency(a.amount)}</strong>
+              {a.payment_method ? ` (${PAYMENT_METHOD_LABEL[a.payment_method] || a.payment_method})` : ''}, {formatPeriod(a.payPeriod)}.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Motivo: &quot;{a.justification}&quot;
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Anulado por {a.deletedBy ? `${a.deletedBy.name} ${a.deletedBy.lastname}` : 'usuario desconocido'} el {new Date(a.created_at).toLocaleDateString('es-AR')}
+            </Typography>
           </Box>
-        ))}
-      </Stack>
-    </Paper>
+        ),
+      })),
+    [alerts]
+  );
+
+  const ready = hasAccess && !loading;
+  useRegisterAlertSummary(
+    ready
+      ? {
+          type: 'salary_advance_deletion',
+          label: ALERT_SHORT_LABEL.salary_advance_deletion,
+          total: alerts.length,
+          href: '/dashboard/salary-advances',
+          color: 'error',
+        }
+      : null
+  );
+
+  if (!ready) return null;
+
+  return (
+    <DashboardAlertCard
+      type="salary_advance_deletion"
+      title="Adelantos pagados anulados"
+      icon={<WarningIcon />}
+      color="error"
+      items={items}
+    />
   );
 }

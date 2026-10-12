@@ -68,6 +68,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import { AlertViewsProvider } from '../../components/common/AlertViewsProvider';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
 import PushNotificationsDialog from '../../components/common/PushNotificationsDialog';
 import { reconcilePushSubscriptionOnLoad, unsubscribeFromPush, unsubscribeFromPushLocalOnly } from '../../utils/push';
@@ -415,6 +416,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <ThemeProvider theme={dashboardTheme}>
     <ProtectedRoute>
+    {/* Acuse de vista de los avisos del tablero (FLOWS.md §36). Va en el layout, no en la page:
+        una sola carga de GET /me/alert-views para toda la banda de avisos. */}
+    <AlertViewsProvider>
       <Box sx={{ display: 'flex' }}>
         {/* App Bar */}
         <AppBar
@@ -596,6 +600,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {children}
         </Box>
       </Box>
+    </AlertViewsProvider>
     </ProtectedRoute>
     </ThemeProvider>
   );

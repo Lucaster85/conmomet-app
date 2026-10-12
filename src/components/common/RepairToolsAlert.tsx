@@ -1,22 +1,23 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Box, Paper, Typography, Chip, Stack } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { BuildOutlined as RepairIcon } from '@mui/icons-material';
 import { SelfService, Tool } from '../../utils/api';
-import { useAuth } from '../../utils/auth';
+import { useAuth, userHasPermission } from '../../utils/auth';
+import DashboardAlertCard, { DashboardAlertItem } from './DashboardAlertCard';
+import { useRegisterAlertSummary } from './AlertViewsProvider';
+import { ALERT_SHORT_LABEL } from '../../utils/alerts';
 
-// Aviso simple (sin infraestructura de notificaciones — no hay precedente de eso en el repo) para
-// el empleado responsable de una reparación: se muestra en el home de dashboard y de portal, ya
-// que según el rol algunos usuarios solo entran a uno de los dos.
+// Aviso para el empleado responsable de una reparación, con acuse de vista (ver FLOWS.md §36). Se
+// muestra en el home de dashboard y de portal, ya que según el rol algunos usuarios solo entran a
+// uno de los dos — en el portal no hay provider de vistas montado y la tarjeta degrada a mostrar
+// todo, que es el comportamiento que tenía antes de este flujo.
 export default function RepairToolsAlert() {
   const router = useRouter();
   const { user } = useAuth();
   const employeeId = (user as unknown as Record<string, unknown>)?.employee_id;
-  const permissions: string[] = Array.isArray((user as unknown as Record<string, unknown>)?.permissions)
-    ? ((user as unknown as Record<string, unknown>).permissions as string[])
-    : [];
-  const hasToolsAccess = permissions.includes('admin_granted') || permissions.includes('tools_read');
+  const hasToolsAccess = userHasPermission(user, 'tools_read');
 
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,33 +33,18 @@ export default function RepairToolsAlert() {
       .finally(() => setLoading(false));
   }, [employeeId]);
 
-  if (!employeeId || loading || tools.length === 0) return null;
-
-  return (
-    <Paper
-      sx={{
-        p: 3,
-        borderRadius: 2,
-        mb: 3,
-        borderLeft: '4px solid',
-        borderLeftColor: 'warning.main',
-      }}
-    >
-      <Box display="flex" alignItems="center" gap={1} mb={2}>
-        <RepairIcon color="warning" />
-        <Typography variant="h6" fontWeight="bold">Herramientas en reparación asignadas a vos</Typography>
-        <Chip label={tools.length} color="warning" size="small" />
-      </Box>
-      <Stack spacing={1}>
-        {tools.map((tool) => (
+  const items: DashboardAlertItem[] = useMemo(
+    () =>
+      tools.map((tool) => ({
+        entity_id: tool.id,
+        // Reaparece si la herramienta cambió de estado (volvió de reparación y se re-envió).
+        revision: `${tool.status}`,
+        content: (
           <Box
-            key={tool.id}
             onClick={hasToolsAccess ? () => router.push(`/dashboard/tools/${tool.id}`) : undefined}
             sx={{
-              p: 1.5,
-              borderRadius: 2,
               cursor: hasToolsAccess ? 'pointer' : 'default',
-              '&:hover': hasToolsAccess ? { bgcolor: 'grey.50' } : undefined,
+              '&:hover': hasToolsAccess ? { opacity: 0.8 } : undefined,
             }}
           >
             <Typography fontWeight={600}>{tool.name}</Typography>
@@ -66,8 +52,33 @@ export default function RepairToolsAlert() {
               Código: {tool.reference_code}{tool.toolType?.name ? ` · ${tool.toolType.name}` : ''}
             </Typography>
           </Box>
-        ))}
-      </Stack>
-    </Paper>
+        ),
+      })),
+    [tools, hasToolsAccess, router]
+  );
+
+  const ready = !!employeeId && !loading;
+  useRegisterAlertSummary(
+    ready
+      ? {
+          type: 'tool_in_repair',
+          label: ALERT_SHORT_LABEL.tool_in_repair,
+          total: tools.length,
+          href: '/dashboard/tools',
+          color: 'warning',
+        }
+      : null
+  );
+
+  if (!ready) return null;
+
+  return (
+    <DashboardAlertCard
+      type="tool_in_repair"
+      title="Herramientas en reparación asignadas a vos"
+      icon={<RepairIcon />}
+      color="warning"
+      items={items}
+    />
   );
 }

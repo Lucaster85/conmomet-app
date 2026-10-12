@@ -177,8 +177,13 @@ alcance. Está explicado en el tema **Presupuestos**.
 ## Avisos
 
 Cargar un Pedido de Cotización nuevo, y cada vez que se reasigna en el ida y vuelta con
-gerencia, genera un aviso en el **Inicio** de la persona asignada — separado según si le toca
-armar el presupuesto o validarlo.
+gerencia, genera un aviso en el **Inicio** de la persona asignada — cada pedido con una etiqueta
+que dice si le toca armar el presupuesto o validarlo.
+
+Si tenés muchos pedidos asignados, podés **marcarlos como vistos** con el ojito para sacarlos del
+detalle sin perder la cuenta: el contador de arriba sigue mostrando el total. Si te dejan un
+comentario nuevo o te devuelven un pedido que ya habías marcado, vuelve a aparecer solo. Está
+explicado en el tema **Pantalla de inicio: avisos y pendientes**.
 
 Además, si activaste las notificaciones en tu celular o computadora (ver más abajo), te llega
 un **push** — aunque no tengas la app abierta — en estos cuatro momentos: te asignan un pedido,

@@ -13,8 +13,9 @@ no aparece como opción en el selector.
 
 ## Cómo se entera el responsable
 
-No hay una campanita de notificaciones en el sistema (todavía) — el aviso es un cartel simple que
-aparece apenas el responsable entra a la app, en la pantalla de inicio:
+Las reparaciones todavía no mandan notificación al celular (eso hoy solo funciona para pedidos de
+cotización y presupuestos) — el aviso es un cartel simple que aparece apenas el responsable entra
+a la app, en la pantalla de inicio:
 
 - Si tiene acceso al **panel** (dashboard), lo ve ahí.
 - Si solo tiene acceso al **portal** de autoservicio, lo ve ahí.
@@ -22,6 +23,12 @@ aparece apenas el responsable entra a la app, en la pantalla de inicio:
 
 El aviso lista todas las herramientas en reparación asignadas a esa persona, y desaparece solo
 cuando alguien cambia la herramienta de estado (por ejemplo, a "Disponible" una vez arreglada).
+
+En el **panel** (dashboard), cada herramienta se puede **marcar como vista** con el ojito para
+despejar la pantalla de inicio sin perder la cuenta: el contador de arriba sigue mostrando el
+total. En el **portal** del empleado el aviso se muestra siempre completo, porque ahí no está esa
+fila de contadores que conserve el número. Ver el tema **Pantalla de inicio: avisos y
+pendientes**.
 
 ## Reasignar el responsable
 

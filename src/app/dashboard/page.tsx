@@ -1,44 +1,27 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { Box, Typography, Paper, Stack, Chip, Button } from '@mui/material';
 import {
-  Box,
-  Typography,
-  Paper,
-  Stack,
-  Chip,
-  Button,
-  IconButton,
-  Tooltip
-} from '@mui/material';
-import {
-  WarningOutlined as WarningIcon,
-  ErrorOutlined as ErrorIcon,
   AssignmentOutlined as AssignmentIcon,
-  RefreshOutlined as RefreshIcon,
-  PaymentOutlined as PaymentIcon,
-  VisibilityOutlined as VisibilityIcon,
   BadgeOutlined as BadgeIcon,
   EventAvailableOutlined as EventAvailableIcon,
-  DescriptionOutlined as DescriptionIcon
-} from '@mui/icons-material';
-import { EntityDocumentService, EntityDocument, LoanService, SalaryAdvanceService } from '../../utils/api';
-import {
   RequestQuoteOutlined as RequestQuoteIcon,
 } from '@mui/icons-material';
+import { ClockIcon } from '@mui/x-date-pickers';
+import { LoanService, SalaryAdvanceService } from '../../utils/api';
 import FeedbackModal from '../../components/FeedbackModal';
 import GearSpinner from '../../components/GearSpinner';
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
-import DateField from '../../components/DateField';
-import { ClockIcon } from '@mui/x-date-pickers';
-import { useAuth } from '../../utils/auth';
+import { useAuth, userHasPermission } from '../../utils/auth';
 import IconTileGrid, { IconTileItem } from '../../components/common/IconTileGrid';
+import DashboardAlertSummaryBar from '../../components/common/DashboardAlertSummaryBar';
 import RepairToolsAlert from '../../components/common/RepairToolsAlert';
 import OcaBudgetAlert from '../../components/common/OcaBudgetAlert';
 import SalaryAdvanceDeletionAlert from '../../components/common/SalaryAdvanceDeletionAlert';
 import QuoteRequestAlert from '../../components/common/QuoteRequestAlert';
 import EppExpiringAlert from '../../components/common/EppExpiringAlert';
+import DocumentExpirationAlert from '../../components/common/DocumentExpirationAlert';
 
 // Accesos rápidos del home mobile: solo las 3 secciones de uso más frecuente, cada una
 // condicionada al permiso de lectura correspondiente (mismo criterio que el menú del drawer).
@@ -48,39 +31,16 @@ const QUICK_ACCESS_ITEMS: (IconTileItem & { requiredPermission: string })[] = [
   { key: 'attendance', label: 'Presentismo', path: '/dashboard/attendance', icon: <EventAvailableIcon />, requiredPermission: 'attendance_read' },
 ];
 
-// Los documentos no tienen ruta propia: los de empleado están en la pestaña "Documentos y
-// Vencimientos" de su ficha, y los de vehículo en el modal "Legajo Digital" que se abre desde
-// el listado. project/company todavía no tienen UI de documentos, así que para esos el único
-// "detalle" posible es el archivo adjunto (botón "Ver archivo").
-const DOC_DETAIL_PERMISSION: Partial<Record<EntityDocument['entity_type'], string>> = {
-  employee: 'employees_read',
-  vehicle: 'vehicles_read',
-};
-
-function docDetailHref(doc: EntityDocument): string | null {
-  if (!doc.entity_id) return null; // documento global, no hay ficha de origen
-  if (doc.entity_type === 'employee') return `/dashboard/employees/${doc.entity_id}?tab=documents&doc=${doc.id}`;
-  if (doc.entity_type === 'vehicle') return `/dashboard/vehicles?docs=${doc.entity_id}&doc=${doc.id}`;
-  return null;
-}
-
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const permissions: string[] = Array.isArray((user as unknown as Record<string, unknown>)?.permissions)
-    ? ((user as unknown as Record<string, unknown>).permissions as string[])
-    : [];
-  const hasPermission = (permission: string) => permissions.includes('admin_granted') || permissions.includes(permission);
-  const quickAccessItems = QUICK_ACCESS_ITEMS.filter((item) => hasPermission(item.requiredPermission));
+  const quickAccessItems = QUICK_ACCESS_ITEMS.filter((item) => userHasPermission(user, item.requiredPermission));
   // Antes no hacía falta chequear esto acá: todo rol real tenía casi todos los permisos. Con un
   // rol acotado (ej. "Seguridad e Higiene": employees_read + safety_equipment_read, sin nada de
   // Contabilidad) estos fetches sin gating 401eaban en cada carga de la portada.
-  const canSeeDocuments = hasPermission('documents_read');
-  const canSeeSalaryAdvances = hasPermission('salary_advances_read');
-  const canSeeLoans = hasPermission('loans_read');
+  const canSeeSalaryAdvances = userHasPermission(user, 'salary_advances_read');
+  const canSeeLoans = userHasPermission(user, 'loans_read');
 
-  const [expiringDocs, setExpiringDocs] = useState<EntityDocument[]>([]);
-  const [loadingDocs, setLoadingDocs] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -90,43 +50,7 @@ export default function DashboardPage() {
   const [loansPendingPayment, setLoansPendingPayment] = useState(0);
   const [loadingRequests, setLoadingRequests] = useState(true);
 
-  // Modals state
-  const [renewDialog, setRenewDialog] = useState(false);
-  const [resolveDialog, setResolveDialog] = useState(false);
-  const [editingDoc, setEditingDoc] = useState<EntityDocument | null>(null);
-  const [form, setForm] = useState({ expiration_date: '', notify_days_before: 15 });
-  const [file, setFile] = useState<File | null>(null);
-
-  const fetchExpirations = async () => {
-    if (!canSeeDocuments) {
-      setLoadingDocs(false);
-      return;
-    }
-    try {
-      setLoadingDocs(true);
-      const allDocs = await EntityDocumentService.getAll();
-      
-      const criticalDocs = allDocs.filter(doc => 
-        doc.computed_status === 'expiring_soon' || doc.computed_status === 'expired'
-      );
-      
-      criticalDocs.sort((a, b) => {
-        if (a.computed_status === 'expired' && b.computed_status !== 'expired') return -1;
-        if (a.computed_status !== 'expired' && b.computed_status === 'expired') return 1;
-        if (!a.expiration_date || !b.expiration_date) return 0;
-        return new Date(a.expiration_date).getTime() - new Date(b.expiration_date).getTime();
-      });
-
-      setExpiringDocs(criticalDocs);
-    } catch (err: unknown) {
-      const e = err as Error;
-      setError(e.message || 'Error al cargar alertas de vencimientos');
-    } finally {
-      setLoadingDocs(false);
-    }
-  };
-
-  const fetchPendingRequests = async () => {
+  const fetchPendingRequests = useCallback(async () => {
     if (!canSeeSalaryAdvances && !canSeeLoans) {
       setLoadingRequests(false);
       return;
@@ -148,63 +72,27 @@ export default function DashboardPage() {
     } finally {
       setLoadingRequests(false);
     }
-  };
+  }, [canSeeSalaryAdvances, canSeeLoans]);
 
   useEffect(() => {
-    fetchExpirations();
     fetchPendingRequests();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleRenewSubmit = async () => {
-    if (!editingDoc) return;
-    if (!file) return setError('El archivo es obligatorio para renovar');
-    if (!form.expiration_date) return setError('La nueva fecha de vencimiento es obligatoria');
-
-    try {
-      await EntityDocumentService.renew(editingDoc.id, {
-        expiration_date: form.expiration_date,
-        notify_days_before: form.notify_days_before
-      }, file);
-      setSuccess('Documento renovado correctamente');
-      setRenewDialog(false);
-      setEditingDoc(null);
-      setFile(null);
-      setForm({ expiration_date: '', notify_days_before: 15 });
-      fetchExpirations();
-    } catch (err: unknown) {
-      const e = err as Error;
-      setError(e.message || 'Error al renovar documento');
-    }
-  };
-
-  const handleResolveSubmit = async () => {
-    if (!editingDoc) return;
-    if (!file) return setError('Debe adjuntar el comprobante de pago/resolución');
-
-    try {
-      await EntityDocumentService.resolve(editingDoc.id, file);
-      setSuccess('Documento marcado como resuelto');
-      setResolveDialog(false);
-      setEditingDoc(null);
-      setFile(null);
-      fetchExpirations();
-    } catch (err: unknown) {
-      const e = err as Error;
-      setError(e.message || 'Error al resolver documento');
-    }
-  };
+  }, [fetchPendingRequests]);
 
   return (
     <Box>
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
+      {/* Contadores de todos los avisos — siempre visibles, incluso con todo marcado como visto
+          (ver FLOWS.md §36). Debajo, cada aviso solo abre su tarjeta si tiene algo sin ver. */}
+      <DashboardAlertSummaryBar />
+
+      <QuoteRequestAlert />
+      <DocumentExpirationAlert onError={setError} onSuccess={setSuccess} />
       <OcaBudgetAlert />
+      <EppExpiringAlert />
       <RepairToolsAlert />
       <SalaryAdvanceDeletionAlert />
-      <QuoteRequestAlert />
-      <EppExpiringAlert />
 
       {/* Accesos rápidos — prueba: solo mobile, en desktop ya está el menú del drawer siempre visible */}
       {quickAccessItems.length > 0 && (
@@ -213,201 +101,10 @@ export default function DashboardPage() {
         </Box>
       )}
 
-      {/* Content Sections */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-        
-        {/* Widget: Alertas de Vencimientos */}
-        {canSeeDocuments && (
-        <Paper
-          sx={{
-            flex: '1 1 500px',
-            p: 3,
-            borderRadius: 2,
-            transition: 'transform 0.25s ease, box-shadow 0.25s ease',
-            '&:hover': {
-              transform: 'translateY(-6px)',
-              boxShadow: '0 16px 40px rgba(0,0,0,0.14)',
-            },
-          }}
-        >
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-              Alertas de Vencimientos
-            </Typography>
-            <Chip 
-              label={`${expiringDocs.length} alertas`} 
-              color={expiringDocs.length > 0 ? "error" : "success"} 
-              size="small" 
-            />
-          </Box>
 
-          {loadingDocs ? (
-            <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>
-          ) : expiringDocs.length === 0 ? (
-            <Box textAlign="center" py={4} bgcolor="grey.50" borderRadius={2}>
-              <Typography color="text.secondary">¡Todo al día! No hay documentos por vencer.</Typography>
-            </Box>
-          ) : (
-            <Stack spacing={1.5}>
-              {expiringDocs.map((doc) => {
-                const isExpired = doc.computed_status === 'expired';
-
-                const entityLabel = doc.entity_name || 'Global';
-                const entityTypeLabel: Record<EntityDocument['entity_type'], string> = {
-                  employee: 'Empleado',
-                  vehicle: 'Vehículo',
-                  project: 'Proyecto',
-                  company: 'Empresa',
-                };
-                const typeLabel = entityTypeLabel[doc.entity_type] ?? doc.entity_type;
-
-                const detailHref = docDetailHref(doc);
-                const detailPermission = DOC_DETAIL_PERMISSION[doc.entity_type];
-                const canSeeDetail = !!detailHref && (!detailPermission || hasPermission(detailPermission));
-
-                return (
-                  <Box
-                    key={doc.id}
-                    sx={{
-                      border: 1,
-                      borderColor: isExpired ? 'error.light' : 'warning.light',
-                      borderRadius: 2,
-                      bgcolor: isExpired ? 'error.50' : 'warning.50',
-                      p: 2,
-                    }}
-                  >
-                    {/* Header row: icon + title + chip */}
-                    <Box display="flex" alignItems="flex-start" gap={1} mb={0.5}>
-                      {isExpired ? <ErrorIcon color="error" fontSize="small" sx={{ mt: 0.25, flexShrink: 0 }} /> : <WarningIcon color="warning" fontSize="small" sx={{ mt: 0.25, flexShrink: 0 }} />}
-                      <Box flex={1} minWidth={0}>
-                        <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-                          <Typography fontWeight="bold" sx={{ wordBreak: 'break-word' }}>{doc.title}</Typography>
-                          <Chip
-                            label={doc.entity_id ? `${typeLabel}: ${entityLabel}` : typeLabel}
-                            size="small"
-                            variant="outlined"
-                          />
-                        </Box>
-                        {doc.notes && (
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                            {doc.notes}
-                          </Typography>
-                        )}
-                        <Typography variant="caption" color={isExpired ? 'error' : 'warning.dark'} fontWeight="bold" display="block" sx={{ mt: 0.5 }}>
-                          {isExpired ? 'Venció el: ' : 'Vence el: '}
-                          {doc.expiration_date ? new Date(doc.expiration_date + 'T00:00:00').toLocaleDateString('es-AR') : ''}
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    {/* Action buttons — icon-only on mobile, full buttons on sm+ */}
-                    <Box sx={{ mt: 1.5, display: 'flex', gap: 1, justifyContent: { xs: 'flex-end', sm: 'flex-start' } }}>
-                      {/* Mobile: icon-only */}
-                      {doc.is_renewable ? (
-                        <Tooltip title="Renovar">
-                          <IconButton
-                            size="small"
-                            color="warning"
-                            sx={{ display: { xs: 'inline-flex', sm: 'none' }, bgcolor: 'warning.main', color: 'white', '&:hover': { bgcolor: 'warning.dark' } }}
-                            onClick={() => { setEditingDoc(doc); setForm({ expiration_date: '', notify_days_before: doc.notify_days_before || 15 }); setFile(null); setRenewDialog(true); }}
-                          >
-                            <RefreshIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      ) : (
-                        <Tooltip title="Pagar / Resolver">
-                          <IconButton
-                            size="small"
-                            sx={{ display: { xs: 'inline-flex', sm: 'none' }, bgcolor: 'success.main', color: 'white', '&:hover': { bgcolor: 'success.dark' } }}
-                            onClick={() => { setEditingDoc(doc); setFile(null); setResolveDialog(true); }}
-                          >
-                            <PaymentIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {canSeeDetail && (
-                        <Tooltip title="Ver detalle">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            sx={{ display: { xs: 'inline-flex', sm: 'none' }, border: 1, borderColor: 'primary.main' }}
-                            onClick={() => router.push(detailHref!)}
-                          >
-                            <VisibilityIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {doc.file_url && (
-                        <Tooltip title="Ver archivo">
-                          <IconButton
-                            size="small"
-                            color="info"
-                            sx={{ display: { xs: 'inline-flex', sm: 'none' }, border: 1, borderColor: 'info.main' }}
-                            onClick={() => window.open(doc.file_url, '_blank', 'noopener,noreferrer')}
-                          >
-                            <DescriptionIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-
-                      {/* Desktop: full buttons */}
-                      {doc.is_renewable ? (
-                        <Button
-                          size="small"
-                          variant="contained"
-                          color="warning"
-                          startIcon={<RefreshIcon />}
-                          sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-                          onClick={() => { setEditingDoc(doc); setForm({ expiration_date: '', notify_days_before: doc.notify_days_before || 15 }); setFile(null); setRenewDialog(true); }}
-                        >
-                          Renovar
-                        </Button>
-                      ) : (
-                        <Button
-                          size="small"
-                          variant="contained"
-                          color="success"
-                          startIcon={<PaymentIcon />}
-                          sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-                          onClick={() => { setEditingDoc(doc); setFile(null); setResolveDialog(true); }}
-                        >
-                          Pagar / Resolver
-                        </Button>
-                      )}
-                      {canSeeDetail && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="primary"
-                          startIcon={<VisibilityIcon />}
-                          sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-                          onClick={() => router.push(detailHref!)}
-                        >
-                          Ver detalle
-                        </Button>
-                      )}
-                      {doc.file_url && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="info"
-                          startIcon={<DescriptionIcon />}
-                          sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-                          onClick={() => window.open(doc.file_url, '_blank', 'noopener,noreferrer')}
-                        >
-                          Ver archivo
-                        </Button>
-                      )}
-                    </Box>
-                  </Box>
-                );
-              })}
-            </Stack>
-          )}
-        </Paper>
-        )}
-
-        {/* Widget: Adelantos y Préstamos pendientes */}
+        {/* Widget: Adelantos y Préstamos pendientes. Es puro contador, sin detalle por item, así
+            que no entra en el mecanismo de acuse de vista: no hay nada que ocupe pantalla de más. */}
         {(canSeeSalaryAdvances || canSeeLoans) && (
         <Paper
           sx={{
@@ -463,7 +160,6 @@ export default function DashboardPage() {
         </Paper>
         )}
 
-        {/* Other future widgets can go here */}
         {/* Oculto en mobile: redundante con la grilla de accesos rápidos de arriba */}
         <Paper
           sx={{
@@ -495,65 +191,6 @@ export default function DashboardPage() {
         </Paper>
 
       </Box>
-
-      {/* Renew Dialog */}
-      <Dialog open={renewDialog} onClose={() => setRenewDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Renovar Documento</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <Typography variant="body2" color="text.secondary">Estás renovando: <strong>{editingDoc?.title}</strong></Typography>
-            <Box display="flex" gap={2}>
-              <DateField 
-                label="Nueva Fecha de Vencimiento *" 
-                fullWidth 
-                value={form.expiration_date} 
-                onChange={(val) => setForm({ ...form, expiration_date: val })}
-                InputLabelProps={{ shrink: true }} 
-              />
-              <TextField 
-                label="Avisar días antes" 
-                type="number" 
-                fullWidth 
-                value={form.notify_days_before} 
-                onChange={(e) => setForm({ ...form, notify_days_before: Number(e.target.value) })}
-              />
-            </Box>
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>Nuevo archivo adjunto *</Typography>
-              <Button variant="outlined" component="label" fullWidth color={file ? 'success' : 'primary'}>
-                {file ? file.name : "Seleccionar Archivo (Requerido)"}
-                <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-              </Button>
-            </Box>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRenewDialog(false)}>Cancelar</Button>
-          <Button onClick={handleRenewSubmit} variant="contained" disabled={!form.expiration_date || !file}>Renovar</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Resolve Dialog */}
-      <Dialog open={resolveDialog} onClose={() => setResolveDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Pagar / Resolver Documento</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <Typography variant="body2" color="text.secondary">Estás marcando como resuelto: <strong>{editingDoc?.title}</strong></Typography>
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>Comprobante de Pago *</Typography>
-              <Button variant="outlined" component="label" fullWidth color={file ? 'success' : 'primary'}>
-                {file ? file.name : "Seleccionar Archivo (Requerido)"}
-                <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-              </Button>
-            </Box>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setResolveDialog(false)}>Cancelar</Button>
-          <Button onClick={handleResolveSubmit} variant="contained" color="success" disabled={!file}>Marcar Resuelto</Button>
-        </DialogActions>
-      </Dialog>
-
     </Box>
   );
 }

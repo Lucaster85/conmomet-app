@@ -62,6 +62,10 @@ desaparece solo cuando ya no hay nada vencido ni por vencer. Lo ve únicamente e
 **Gestión de Personal**, aunque otros perfiles tengan acceso al módulo de EPP para registrar
 entregas.
 
+Cada línea se puede **marcar como vista** con el ojito para despejar la pantalla; el contador de
+arriba sigue mostrando el total, y una entrega que pasa de "por vencer" a "vencida" vuelve a
+aparecer sola. Ver el tema **Pantalla de inicio: avisos y pendientes**.
+
 ## Talles adicionales
 
 El alta/edición de un empleado solo pide los 3 talles básicos (Calzado, Remera, Pantalón). Para

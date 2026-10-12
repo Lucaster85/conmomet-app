@@ -1,6 +1,7 @@
 import { TokenManager } from './auth';
 import type { TaxCondition } from './cuit';
 import { ConflictError } from './apiErrors';
+import type { AlertType, AlertItemRef } from './alerts';
 
 declare global {
   interface Window {
@@ -3200,6 +3201,43 @@ export interface SalaryAdvanceDeletionAlert {
   employee?: Pick<Employee, 'id' | 'name' | 'lastname'>;
   payPeriod?: Pick<PayPeriod, 'id' | 'month' | 'year' | 'type'>;
   deletedBy?: { id: number; name: string; lastname: string };
+}
+
+// Acuse de vista de los avisos del tablero (ver FLOWS.md §36). Vive en /me/*, así que no
+// requiere ningún permiso: cada usuario solo ve y toca sus propias vistas.
+export interface AlertView {
+  alert_type: AlertType;
+  entity_id: number;
+  revision: string;
+  seen_at: string;
+}
+
+export class AlertViewService {
+  static async getAll(): Promise<AlertView[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/alert-views`);
+    if (!response.ok) throw new Error('Error al obtener los avisos vistos');
+    return (await response.json()).data || [];
+  }
+
+  // Mismo endpoint para un item suelto y para "marcar todos como vistos".
+  static async markSeen(alertType: AlertType, items: AlertItemRef[]): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/alert-views`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alert_type: alertType, items }),
+    });
+    if (!response.ok) throw new Error('Error al marcar como visto');
+  }
+
+  // "Volver a mostrar todo" de un aviso.
+  static async reset(alertType: AlertType): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/alert-views`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alert_type: alertType }),
+    });
+    if (!response.ok) throw new Error('Error al volver a mostrar los avisos');
+  }
 }
 
 export class SalaryAdvanceDeletionAlertService {

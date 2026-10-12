@@ -144,10 +144,13 @@ El presupuesto rechazado queda guardado como historial en la OCA vieja.
 ### Aviso de presupuestos pendientes
 
 Un usuario configurado en **Configuración General → OCAs — Presupuestos** ve, arriba de todo en su
-dashboard, un aviso con la cantidad de OCAs aprobadas que requieren presupuesto y todavía no se
-presentaron a administración — separado por tipo (Horas Hombre / Grúa), cada uno con su propio
-link a la pestaña correspondiente. El aviso no desaparece con solo cargar el precio, hace falta
-presentarlo.
+dashboard, un aviso con las OCAs aprobadas que requieren presupuesto y todavía no se presentaron a
+administración: cada una con su número, su tipo (Horas Hombre / Grúa) y el cliente. El aviso no
+desaparece con solo cargar el precio, hace falta presentarlo.
+
+Las OCAs ya revisadas se pueden **marcar como vistas** con el ojito, sin que baje el contador del
+total. Si una vuelve a quedar pendiente de presupuesto después de un rechazo, reaparece sola. Ver
+el tema **Pantalla de inicio: avisos y pendientes**.
 
 ## Anular una OCA
 

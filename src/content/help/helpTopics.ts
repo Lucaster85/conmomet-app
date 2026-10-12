@@ -12,6 +12,21 @@ export interface HelpTopic {
 // que el resto de la app.
 export const HELP_TOPICS: HelpTopic[] = [
   {
+    // Categoría propia, mismo criterio que "Flota" y "Documentación": la pantalla de inicio es
+    // transversal — junta avisos de Clientes, Personal, Pañol y Documentación — así que no cuelga
+    // de ningún grupo del menú.
+    id: 'tablero-avisos',
+    category: 'Inicio',
+    title: 'Pantalla de inicio: avisos y pendientes',
+    keywords: [
+      'aviso', 'avisos', 'tablero', 'inicio', 'pantalla principal', 'pantalla de inicio',
+      'marcar como visto', 'visto', 'vistos', 'ojito', 'pendiente', 'pendientes', 'contador',
+      'contadores', 'notificacion', 'notificación', 'notificaciones', 'campanita', 'alerta',
+      'alertas', 'ocultar', 'volver a mostrar', 'resumen',
+    ],
+    file: 'tablero-avisos.md',
+  },
+  {
     id: 'crear-oca',
     category: 'Gestión de Clientes',
     title: 'Creación de OCAs (Remitos)',
