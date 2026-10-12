@@ -69,6 +69,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { AlertViewsProvider } from '../../components/common/AlertViewsProvider';
+import NotificationBell from '../../components/common/NotificationBell';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
 import PushNotificationsDialog from '../../components/common/PushNotificationsDialog';
 import { reconcilePushSubscriptionOnLoad, unsubscribeFromPush, unsubscribeFromPushLocalOnly } from '../../utils/push';
@@ -460,8 +461,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             </Typography>
 
-            {/* Usuario logueado */}
+            {/* Campanita + usuario logueado */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <NotificationBell />
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                 <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
                   {getUserDisplayName()}
@@ -522,7 +524,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <ListItemIcon>
               <NotificationsIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Notificaciones</ListItemText>
+            <ListItemText>Notificaciones en este dispositivo</ListItemText>
           </MenuItem>
           <Divider />
           <MenuItem onClick={handleLogout}>

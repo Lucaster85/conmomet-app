@@ -1505,9 +1505,20 @@ function BudgetsPageContent() {
                 Podés verlo, pero no vas a poder guardar cambios hasta que termine.
               </Alert>
             )}
+            {/* display/flexDirection/gap NO son decorativos: este Box envuelve los bloques del
+                formulario, que antes eran hijos directos del <Stack spacing={2}> de arriba y de
+                ahí sacaban su separación vertical. Al meterlos acá dejaron de recibirla, y como
+                cada <Grid container spacing={2}> lleva un margin-top negativo propio de MUI, cada
+                bloque se subía 16px y se montaba sobre el anterior (labels encima de los inputs).
+                El gap reproduce lo que hacía el Stack. Si se saca, el formulario se rompe. */}
             <Box
               inert={editingBudget && lockedBy ? true : undefined}
-              sx={editingBudget && lockedBy ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+                ...(editingBudget && lockedBy ? { opacity: 0.6, pointerEvents: 'none' } : {}),
+              }}
             >
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 8 }}>
@@ -1643,7 +1654,7 @@ function BudgetsPageContent() {
               ].filter(Boolean).join(' · ') || undefined;
               return (
               <Grid container spacing={1} key={idx} alignItems="center">
-                <Grid size={{ xs: 12, md: hasPricesRead ? 4 : 6 }}>
+                <Grid size={{ xs: 12, md: hasPricesRead ? 3.5 : 6 }}>
                   <TextField select fullWidth size="small" label="Rubro" value={line.budget_item_type_id}
                     onChange={(e) => {
                       const newTypeId = Number(e.target.value);
@@ -1686,7 +1697,11 @@ function BudgetsPageContent() {
                         <option value="USD">USD</option>
                       </TextField>
                     </Grid>
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    {/* md suma 12 exactos con el resto de la fila (3.5+2+2+2+2+0.5); en xs
+                        cierra en tres filas limpias (12 / 6+6 / 6+5+1). Si se cambia alguno de
+                        estos tamaños hay que rebalancear los demás: pasarse de 12 hace wrapear
+                        el último campo y descuadra la fila entera. */}
+                    <Grid size={{ xs: 5, md: 2 }}>
                       <Typography variant="body2" fontWeight="bold">
                         {formatMoney((line.quantity || 0) * (line.unit_price || 0), line.currency || form.currency)}
                       </Typography>

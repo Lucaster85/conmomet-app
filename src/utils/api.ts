@@ -3203,6 +3203,69 @@ export interface SalaryAdvanceDeletionAlert {
   deletedBy?: { id: number; name: string; lastname: string };
 }
 
+// Campanita de notificaciones (ver FLOWS.md §37). Historial de los eventos que ya se mandaban
+// por push: a diferencia del push, acá queda registro consultable con leído/no leído.
+export type NotificationType =
+  | 'quote_request_assigned'
+  | 'quote_request_delivered'
+  | 'quote_request_returned'
+  | 'budget_sent';
+
+export interface AppNotification {
+  id: number;
+  type: NotificationType;
+  title: string;
+  body?: string | null;
+  url?: string | null;
+  entity_type?: string | null;
+  entity_id?: number | null;
+  read_at?: string | null;
+  created_by?: number | null;
+  created_at: string;
+}
+
+export interface NotificationFeed {
+  data: AppNotification[];
+  unread_count: number;
+  has_more: boolean;
+  next_cursor: number | null;
+}
+
+export class NotificationService {
+  static async getAll(params: { limit?: number; before?: number; unread_only?: boolean } = {}): Promise<NotificationFeed> {
+    const qs = new URLSearchParams();
+    if (params.limit) qs.set('limit', String(params.limit));
+    if (params.before) qs.set('before', String(params.before));
+    if (params.unread_only) qs.set('unread_only', 'true');
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/notifications${suffix}`);
+    if (!response.ok) throw new Error('Error al obtener las notificaciones');
+    return response.json();
+  }
+
+  // Endpoint barato, solo para el badge: no trae ninguna fila.
+  static async getUnreadCount(): Promise<number> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/notifications/unread-count`);
+    if (!response.ok) throw new Error('Error al obtener el contador de notificaciones');
+    return (await response.json()).data?.unread_count ?? 0;
+  }
+
+  static async markRead(id: number): Promise<number> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/notifications/${id}/read`, {
+      method: 'POST',
+    });
+    if (!response.ok) throw new Error('Error al marcar la notificación como leída');
+    return (await response.json()).data?.unread_count ?? 0;
+  }
+
+  static async markAllRead(): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/notifications/read-all`, {
+      method: 'POST',
+    });
+    if (!response.ok) throw new Error('Error al marcar todas como leídas');
+  }
+}
+
 // Acuse de vista de los avisos del tablero (ver FLOWS.md §36). Vive en /me/*, así que no
 // requiere ningún permiso: cada usuario solo ve y toca sus propias vistas.
 export interface AlertView {

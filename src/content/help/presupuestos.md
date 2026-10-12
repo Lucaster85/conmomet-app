@@ -248,9 +248,9 @@ en la fila del presupuesto — y elige quién lo recibe: el pedido pasa a **A va
 carga los márgenes y lo envía (ver el tema **Pedidos de Cotización**). Apenas el presupuesto se
 envía al cliente, el Pedido de Cotización se marca automáticamente como cumplido y se **avisa a
 todos los que participaron del pedido** (responsables actuales y anteriores, quien cargó el pedido
-y quien armó el presupuesto, menos quien lo envió) — con una notificación y un registro en la
-línea de tiempo del pedido. Si el presupuesto no nació de un pedido, el aviso le llega solo a
-quien lo armó.
+y quien armó el presupuesto, menos quien lo envió) — con una entrada en la **campanita** del
+header, la notificación al celular si la tiene activada, y un registro en la línea de tiempo del
+pedido. Si el presupuesto no nació de un pedido, el aviso le llega solo a quien lo armó.
 
 ## Bonificación
 

@@ -17,12 +17,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     // de ningún grupo del menú.
     id: 'tablero-avisos',
     category: 'Inicio',
-    title: 'Pantalla de inicio: avisos y pendientes',
+    title: 'Avisos del inicio y campanita de notificaciones',
     keywords: [
       'aviso', 'avisos', 'tablero', 'inicio', 'pantalla principal', 'pantalla de inicio',
       'marcar como visto', 'visto', 'vistos', 'ojito', 'pendiente', 'pendientes', 'contador',
-      'contadores', 'notificacion', 'notificación', 'notificaciones', 'campanita', 'alerta',
-      'alertas', 'ocultar', 'volver a mostrar', 'resumen',
+      'contadores', 'notificacion', 'notificación', 'notificaciones', 'campanita', 'campana',
+      'alerta', 'alertas', 'ocultar', 'volver a mostrar', 'resumen', 'leido', 'leído', 'sin leer',
+      'no leidas', 'no leídas', 'marcar todas', 'historial', 'push', 'celular', 'badge',
+      'numerito', 'novedades',
     ],
     file: 'tablero-avisos.md',
   },

@@ -13,9 +13,9 @@ no aparece como opción en el selector.
 
 ## Cómo se entera el responsable
 
-Las reparaciones todavía no mandan notificación al celular (eso hoy solo funciona para pedidos de
-cotización y presupuestos) — el aviso es un cartel simple que aparece apenas el responsable entra
-a la app, en la pantalla de inicio:
+Las reparaciones todavía no mandan notificación al celular ni aparecen en la campanita del header
+(eso hoy solo funciona para pedidos de cotización y presupuestos) — el aviso es un cartel simple
+que aparece apenas el responsable entra a la app, en la pantalla de inicio:
 
 - Si tiene acceso al **panel** (dashboard), lo ve ahí.
 - Si solo tiene acceso al **portal** de autoservicio, lo ve ahí.

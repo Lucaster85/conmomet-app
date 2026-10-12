@@ -185,10 +185,16 @@ detalle sin perder la cuenta: el contador de arriba sigue mostrando el total. Si
 comentario nuevo o te devuelven un pedido que ya habías marcado, vuelve a aparecer solo. Está
 explicado en el tema **Pantalla de inicio: avisos y pendientes**.
 
-Además, si activaste las notificaciones en tu celular o computadora (ver más abajo), te llega
-un **push** — aunque no tengas la app abierta — en estos cuatro momentos: te asignan un pedido,
-te entregan un presupuesto para validar, te lo devuelven, o se envía un presupuesto al cliente.
-Tocar la notificación te lleva directo a la pantalla correspondiente.
+Esos cuatro momentos — te asignan un pedido, te entregan un presupuesto para validar, te lo
+devuelven, o se envía un presupuesto al cliente — quedan además registrados en la **campanita** del
+header, con estado leído / sin leer. Y si activaste las notificaciones en tu celular o computadora
+(ver más abajo), te llega un **push** en el momento, aunque no tengas la app abierta. Tocar la
+notificación (o la fila de la campanita) te lleva directo a la pantalla correspondiente.
+
+La diferencia importa: el push puede no llegarte (celular apagado, notificaciones sin activar),
+pero en la campanita **la novedad siempre queda**. Y como el push llega recortado, un comentario
+largo se lee completo en la campanita. Ver el tema **Avisos del inicio y campanita de
+notificaciones**.
 
 **Cuando se envía el presupuesto al cliente**, el aviso (push y registro en la línea de tiempo
 del pedido) le llega a **todos los que participaron del pedido**, sin repetir a nadie y sin

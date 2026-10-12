@@ -33,6 +33,7 @@ import { reconcilePushSubscriptionOnLoad, unsubscribeFromPush, unsubscribeFromPu
 import { onSessionExpired } from '../../utils/sessionExpiry';
 import SessionExpiredDialog from '../../components/SessionExpiredDialog';
 import { HeaderLogo, HeaderAvatarButton, HEADER_MIN_HEIGHT, HEADER_TOGGLE_ICON_SIZE } from '../../components/layout/HeaderChrome';
+import NotificationBell from '../../components/common/NotificationBell';
 import { PORTAL_MENU_ITEMS } from '../../components/portal/portalMenuItems';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -174,6 +175,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             )}
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <NotificationBell />
               <Box sx={{ display: { xs: 'none', sm: 'block' }, textAlign: 'right' }}>
                 <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
                   {getUserDisplayName()}
@@ -234,7 +236,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           </MenuItem>
           <MenuItem onClick={() => { handleProfileMenuClose(); setNotificationsOpen(true); }}>
             <ListItemIcon><NotificationsIcon fontSize="small" /></ListItemIcon>
-            <ListItemText>Notificaciones</ListItemText>
+            <ListItemText>Notificaciones en este dispositivo</ListItemText>
           </MenuItem>
           {user?.has_dashboard_access && (
             <MenuItem onClick={() => { handleProfileMenuClose(); router.push('/dashboard'); }}>

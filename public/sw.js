@@ -84,6 +84,21 @@ async function handlePush(event) {
     // payload vacío o no-JSON — nos quedamos con el fallback, nunca cortamos acá.
   }
 
+  // Avisarle a las pestañas abiertas que llegó un push, para que la campanita del header
+  // actualice su badge en el momento (ver FLOWS.md flujo 37). Es lo que evita tener un
+  // setInterval pegándole a la API desde cada pestaña abierta para siempre. Best-effort: si no
+  // hay ninguna pestaña, o el postMessage falla, el badge se actualiza igual en la próxima carga
+  // o al volver la pestaña al foco. NUNCA antes de showNotification y nunca con un return
+  // temprano: no mostrar la notificación tiene consecuencias serias (ver el comentario de abajo).
+  try {
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clients) {
+      client.postMessage({ type: 'push-received' });
+    }
+  } catch {
+    // sin pestañas abiertas o postMessage no disponible — no es un problema
+  }
+
   try {
     await self.registration.showNotification(data.title, {
       body: data.body,

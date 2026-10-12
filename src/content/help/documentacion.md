@@ -88,7 +88,8 @@ Cada alerta tiene además dos botones para ir al detalle:
 Hoy el sistema marca los documentos por vencer o vencidos y los muestra en pantalla (en la
 ficha correspondiente y en el aviso del Inicio), pero **todavía no manda ningún mail ni
 notificación automática de aviso**. Para enterarse de un vencimiento, hay que entrar a revisar el
-Inicio o las fichas — no llega nada solo por ahora.
+Inicio o las fichas — no llega nada solo por ahora, y los vencimientos tampoco aparecen en la
+campanita del header (esa hoy solo registra novedades de pedidos de cotización y presupuestos).
 
 En el aviso del Inicio, los documentos que ya revisaste se pueden **marcar como vistos** con el
 ojito, para que la lista no tape el resto de la pantalla. El contador de arriba sigue mostrando

@@ -57,14 +57,45 @@ En cualquier tarjeta donde hayas marcado cosas como vistas aparecen dos opciones
 Cada persona tiene sus propias marcas. Si marcás un aviso como visto, tus compañeros lo siguen
 viendo en su pantalla de inicio hasta que ellos lo marquen. Nunca estás escondiéndole algo a otro.
 
-## ¿Y las notificaciones al celular?
+## La campanita: qué pasó
 
-Son otra cosa, y conviven con esto. Los avisos de esta pantalla responden **"¿qué me falta
-hacer?"** y se recalculan cada vez que entrás. Las notificaciones push al celular avisan **"esto
-acaba de pasar"** en el momento en que pasa (hoy funcionan para pedidos de cotización y
-presupuestos; se activan desde el menú de tu usuario → "Notificaciones").
+Arriba a la derecha, al lado de tu avatar, hay una **campanita**. Es otra cosa distinta de los
+avisos del inicio, y conviene tener clara la diferencia:
 
-Marcar un aviso como visto acá no tiene ningún efecto sobre las notificaciones del celular, ni al
-revés.
+- Los **avisos del inicio** responden **"¿qué me falta hacer?"**. Se recalculan cada vez que
+  entrás, y desaparecen cuando el pendiente se resuelve.
+- La **campanita** responde **"¿qué pasó?"**. Es un historial: cada novedad queda ahí con su fecha,
+  aunque ya la hayas resuelto.
+
+El numerito rojo de la campanita cuenta las notificaciones **sin leer**. Al abrirla ves la lista,
+las no leídas resaltadas con un punto rojo. Tocar una te lleva directo a lo que avisa y la marca
+como leída; también podés usar **"Marcar todas"**.
+
+Abrir la campanita **no** marca todo como leído: podés dejar algo sin leer a propósito, para
+acordarte de volver.
+
+Hoy la campanita registra cuatro cosas: que te asignaron un pedido de cotización, que te
+entregaron un presupuesto para validar, que te devolvieron uno para corregir, y que se envió un
+presupuesto al cliente. Los vencimientos de documentación, el EPP y las herramientas todavía no
+generan notificación — para esos, el lugar donde mirar sigue siendo el aviso del inicio.
+
+Las notificaciones se guardan por **90 días**; las más viejas se borran solas.
+
+## La campanita y el celular
+
+Si activaste las notificaciones en tu celular o computadora (menú de tu usuario → **"Notificaciones
+en este dispositivo"**), cada novedad de la campanita te llega además como notificación al momento,
+aunque no tengas la app abierta.
+
+La ventaja de que además quede en la campanita: **si el push no te llega, la novedad no se pierde**.
+Antes, si tenías el celular apagado o nunca activaste las notificaciones, ese aviso no quedaba
+registrado en ningún lado. Ahora siempre podés entrar a la campanita y verlo. Y como al celular le
+llega un texto recortado, en la campanita los comentarios largos se leen completos.
+
+## Las dos cosas son independientes
+
+Marcar un aviso del inicio como visto **no** marca leída ninguna notificación de la campanita, ni al
+revés. Son dos preguntas distintas, y está bien que una misma novedad aparezca en los dos lugares:
+en la campanita como "esto pasó el martes", en el inicio como "esto todavía te falta hacer".
 
 <!-- ref: conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->
