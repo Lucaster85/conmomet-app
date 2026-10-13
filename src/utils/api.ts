@@ -1122,7 +1122,7 @@ export class PublicInvitationService {
 }
 
 export class ProjectService {
-  static async getAll(params?: { client_id?: number; status?: string; plant_id?: number; include_children?: boolean; without_budget?: boolean; is_additional?: boolean }): Promise<Project[]> {
+  static async getAll(params?: { client_id?: number; status?: string; plant_id?: number; include_children?: boolean; without_budget?: boolean; is_additional?: boolean; q?: string }): Promise<Project[]> {
     let url = `${API_BASE_URL}/projects`;
     if (params) {
       const qs = new URLSearchParams();
@@ -1132,6 +1132,7 @@ export class ProjectService {
       if (params.include_children) qs.append('include_children', 'true');
       if (params.without_budget) qs.append('without_budget', 'true');
       if (params.is_additional !== undefined) qs.append('is_additional', String(params.is_additional));
+      if (params.q) qs.append('q', params.q);
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);
@@ -1952,12 +1953,13 @@ export interface BudgetMaterialImportRow {
 }
 
 export class BudgetService {
-  static async getAll(params?: { status?: string; client_id?: number }): Promise<Budget[]> {
+  static async getAll(params?: { status?: string; client_id?: number; q?: string }): Promise<Budget[]> {
     let url = `${API_BASE_URL}/budgets`;
     if (params) {
       const qs = new URLSearchParams();
       if (params.status) qs.append('status', params.status);
       if (params.client_id) qs.append('client_id', params.client_id.toString());
+      if (params.q) qs.append('q', params.q);
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);
@@ -2216,13 +2218,16 @@ export interface QuoteRequestHistoryEntry {
 }
 
 export class QuoteRequestService {
-  static async getAll(params?: { status?: string; client_id?: number; assigned_to_me?: boolean }): Promise<QuoteRequest[]> {
+  static async getAll(params?: { status?: string; client_id?: number; assigned_to_me?: boolean; q?: string; assignee_id?: number; due?: 'overdue' | 'due_soon' }): Promise<QuoteRequest[]> {
     let url = `${API_BASE_URL}/quote-requests`;
     if (params) {
       const qs = new URLSearchParams();
       if (params.status) qs.append('status', params.status);
       if (params.client_id) qs.append('client_id', params.client_id.toString());
       if (params.assigned_to_me) qs.append('assigned_to_me', 'true');
+      if (params.q) qs.append('q', params.q);
+      if (params.assignee_id) qs.append('assignee_id', params.assignee_id.toString());
+      if (params.due) qs.append('due', params.due);
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);

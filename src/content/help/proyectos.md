@@ -60,4 +60,10 @@ Esta asignación es la que habilita, más adelante, cargar horas **PEP OCA/PEP R
 supervisor en **Carga de Horas** (ver ese tema para el detalle) — sin un supervisor asignado al
 proyecto, esa opción no aparece.
 
-<!-- ref: conmomet-app/src/app/dashboard/additionals/page.tsx, conmomet-app/src/app/dashboard/projects/page.tsx, conmomet-app/src/app/dashboard/projects/[id]/page.tsx, api_conmomet/controllers/projectController.js, api_conmomet/services/projectFactory.js, conmomet-app/src/components/budgets/TotalWithTax.tsx -->
+## Buscar y filtrar
+
+Arriba del listado hay una barra de búsqueda (por código o nombre del proyecto) y tres filtros:
+**Cliente**, **Planta** (se acota según el cliente elegido) y **Estado**. Como ya se dijo más
+arriba, los adicionales no aparecen acá aunque tengan un proyecto padre.
+
+<!-- ref: conmomet-app/src/app/dashboard/additionals/page.tsx, conmomet-app/src/app/dashboard/projects/page.tsx, conmomet-app/src/app/dashboard/projects/[id]/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, api_conmomet/controllers/projectController.js, api_conmomet/services/projectFactory.js, conmomet-app/src/components/budgets/TotalWithTax.tsx -->

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
+import ListFilters, { FilterSelect } from '../../../components/common/ListFilters';
 import CurrencyInput from '../../../components/CurrencyInput';
 import DeliverToManagementDialog from '../../../components/common/DeliverToManagementDialog';
 import QuoteRequestDueChip from '../../../components/quote-requests/QuoteRequestDueChip';
@@ -191,6 +192,15 @@ function BudgetsPageContent() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Filtros del listado — consultan al servidor (ver FLOWS.md flujo 39).
+  const [search, setSearch] = useState('');
+  const [filterClientId, setFilterClientId] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const hasActiveFilters = !!(search || filterClientId || filterStatus);
+  const clearFilters = () => {
+    setSearch(''); setFilterClientId(''); setFilterStatus('');
+  };
+
   const [openDialog, setOpenDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -255,21 +265,18 @@ function BudgetsPageContent() {
   const canDeliverBudget = (b: Budget) =>
     hasDeliverPermission && !!b.quoteRequest && b.quoteRequest.status === 'in_progress';
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const [bgs, its, mUnits, mats, mProviders, clis, plts, projsNoBudget] = await Promise.all([
-        BudgetService.getAll(),
-        BudgetItemTypeService.getAll(true),
-        MaterialUnitService.getAll(true),
-        MaterialService.getAll({ is_active: true }),
-        MaterialProviderService.getAll(),
-        ClientService.getAll({ is_active: true }),
-        PlantService.getAll(),
-        ProjectService.getAll({ without_budget: true }),
-      ]);
-      setBudgets(Array.isArray(bgs) ? bgs : []);
+  // Catálogos (rubros, unidades, materiales, proveedores, clientes, plantas, proyectos sin
+  // presupuesto): se cargan una sola vez, no en cada refiltrado del listado.
+  useEffect(() => {
+    Promise.all([
+      BudgetItemTypeService.getAll(true),
+      MaterialUnitService.getAll(true),
+      MaterialService.getAll({ is_active: true }),
+      MaterialProviderService.getAll(),
+      ClientService.getAll({ is_active: true }),
+      PlantService.getAll(),
+      ProjectService.getAll({ without_budget: true }),
+    ]).then(([its, mUnits, mats, mProviders, clis, plts, projsNoBudget]) => {
       setItemTypes(Array.isArray(its) ? its : []);
       setMaterialUnits(Array.isArray(mUnits) ? mUnits : []);
       setMaterials(Array.isArray(mats) ? mats : []);
@@ -277,14 +284,31 @@ function BudgetsPageContent() {
       setClients(Array.isArray(clis) ? clis : []);
       setPlants(Array.isArray(plts) ? plts : []);
       setProjectsWithoutBudget(Array.isArray(projsNoBudget) ? projsNoBudget : []);
+    }).catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar datos'));
+  }, []);
+
+  const loadBudgets = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const bgs = await BudgetService.getAll({
+        q: search || undefined,
+        client_id: filterClientId ? Number(filterClientId) : undefined,
+        status: filterStatus || undefined,
+      });
+      setBudgets(Array.isArray(bgs) ? bgs : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar datos');
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, filterClientId, filterStatus]);
 
-  useEffect(() => { loadData(); }, []);
+  // Los filtros consultan al servidor; la búsqueda por texto con un pequeño debounce.
+  useEffect(() => {
+    const timeout = setTimeout(loadBudgets, search ? 300 : 0);
+    return () => clearTimeout(timeout);
+  }, [loadBudgets, search]);
 
   // Tarifas del cliente elegido en el form — se recargan cada vez que cambia el cliente.
   useEffect(() => {
@@ -1047,7 +1071,7 @@ function BudgetsPageContent() {
         setSuccess('Presupuesto creado');
       }
       setOpenDialog(false);
-      loadData();
+      loadBudgets();
     } catch (err) {
       if (err instanceof ConflictError) {
         setConflictDialog({ open: true, message: err.message });
@@ -1065,7 +1089,7 @@ function BudgetsPageContent() {
       await BudgetService.delete(deleteDialog.budget.id);
       setDeleteDialog({ open: false, budget: null });
       setSuccess('Presupuesto eliminado');
-      loadData();
+      loadBudgets();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar');
     }
@@ -1099,7 +1123,7 @@ function BudgetsPageContent() {
       setApprovalFile(null);
       setApprovedBySupervisorId('');
       setSuccess('Estado actualizado');
-      loadData();
+      loadBudgets();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cambiar el estado');
     }
@@ -1134,7 +1158,7 @@ function BudgetsPageContent() {
       });
       setDuplicateDialog({ open: false, budget: null, keepQuoteRequest: false });
       setSuccess('Presupuesto duplicado como borrador');
-      loadData();
+      loadBudgets();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al duplicar');
     } finally {
@@ -1165,7 +1189,7 @@ function BudgetsPageContent() {
     try {
       await BudgetService.generateProject(budget.id);
       setSuccess('Proyecto generado correctamente');
-      loadData();
+      loadBudgets();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al generar el proyecto');
     }
@@ -1186,7 +1210,7 @@ function BudgetsPageContent() {
       await BudgetService.applyDiscount(discountDialog.budget.id, Number(discountDialog.labor) || 0, Number(discountDialog.material) || 0);
       setDiscountDialog({ open: false, budget: null, labor: '0', material: '0' });
       setSuccess('Bonificación aplicada');
-      loadData();
+      loadBudgets();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al aplicar la bonificación');
     }
@@ -1205,13 +1229,17 @@ function BudgetsPageContent() {
     window.print();
   };
 
-  if (loading) {
+  if (loading && budgets.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <GearSpinner />
       </Box>
     );
   }
+
+  const emptyMessage = hasActiveFilters
+    ? 'No hay presupuestos que coincidan con los filtros'
+    : 'No hay presupuestos registrados';
 
   return (
     <Box>
@@ -1221,7 +1249,7 @@ function BudgetsPageContent() {
           <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Presupuestos</Typography>
         </Box>
         <Box display="flex" gap={1}>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>
+          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadBudgets} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} size="small">Nuevo Presupuesto</Button>
         </Box>
       </Box>
@@ -1229,9 +1257,32 @@ function BudgetsPageContent() {
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
+      <ListFilters
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar por N° de presupuesto, título o N° de OT…"
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      >
+        <FilterSelect
+          label="Cliente"
+          value={filterClientId}
+          onChange={setFilterClientId}
+          emptyLabel="Todos los clientes"
+          options={clients.map((c) => ({ value: String(c.id), label: c.razonSocial }))}
+        />
+        <FilterSelect
+          label="Estado"
+          value={filterStatus}
+          onChange={setFilterStatus}
+          emptyLabel="Todos los estados"
+          options={Object.entries(STATUS_LABELS).map(([value, { label }]) => ({ value, label }))}
+        />
+      </ListFilters>
+
       {budgets.length === 0 ? (
         <Paper elevation={2} sx={{ py: 4, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">No hay presupuestos registrados</Typography>
+          <Typography variant="body2" color="text.secondary">{emptyMessage}</Typography>
         </Paper>
       ) : (
         <>
@@ -2005,7 +2056,7 @@ function BudgetsPageContent() {
         quoteRequest={deliverDialog.budget?.quoteRequest ?? null}
         budgetNumber={deliverDialog.budget?.number}
         onClose={() => setDeliverDialog({ open: false, budget: null })}
-        onDelivered={(msg) => { setSuccess(msg); loadData(); }}
+        onDelivered={(msg) => { setSuccess(msg); loadBudgets(); }}
         onError={(msg) => setError(msg)}
       />
 

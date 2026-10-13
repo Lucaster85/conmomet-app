@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
+import ListFilters, { FilterSelect } from '../../../components/common/ListFilters';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, OpenInNewOutlined as DetailIcon,
   RefreshOutlined as RefreshIcon, GroupsOutlined as TeamIcon, CheckCircleOutlined as CompleteIcon,
@@ -48,13 +49,16 @@ export default function ProjectsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Filtros del listado
-  const [filterCode, setFilterCode] = useState('');
-  const [filterName, setFilterName] = useState('');
-  const [filterClientId, setFilterClientId] = useState<number | ''>('');
-  const [filterPlantId, setFilterPlantId] = useState<number | ''>('');
-  const [filterStatus, setFilterStatus] = useState<string>('');
-  
+  // Filtros del listado — consultan al servidor (ver FLOWS.md flujo 39).
+  const [search, setSearch] = useState('');
+  const [filterClientId, setFilterClientId] = useState('');
+  const [filterPlantId, setFilterPlantId] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const hasActiveFilters = !!(search || filterClientId || filterPlantId || filterStatus);
+  const clearFilters = () => {
+    setSearch(''); setFilterClientId(''); setFilterPlantId(''); setFilterStatus('');
+  };
+
   const [openDialog, setOpenDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; project: Project | null }>({ open: false, project: null });
@@ -83,17 +87,30 @@ export default function ProjectsPage() {
     end_date: '',
   });
 
-  const loadData = async () => {
+  // Catálogos (clientes, plantas): se cargan una sola vez, no en cada refiltrado.
+  useEffect(() => {
+    Promise.all([
+      ClientService.getAll({ is_active: true }),
+      PlantService.getAll(),
+    ]).then(([clis, plts]) => {
+      setClients(Array.isArray(clis) ? clis : []);
+      setPlants(Array.isArray(plts) ? plts : []);
+    }).catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar datos'));
+  }, []);
+
+  const loadProjects = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [projs, clis, plts] = await Promise.all([
+      const projs = await ProjectService.getAll({
         // Los adicionales (con y sin padre) se listan solo en su módulo.
-        ProjectService.getAll({ is_additional: false }),
-        ClientService.getAll({ is_active: true }),
-        PlantService.getAll(),
-      ]);
-      
+        is_additional: false,
+        q: search || undefined,
+        client_id: filterClientId ? Number(filterClientId) : undefined,
+        plant_id: filterPlantId ? Number(filterPlantId) : undefined,
+        status: filterStatus || undefined,
+      });
+
       const rawProjects = Array.isArray(projs) ? projs : [];
       const sortedProjects = [...rawProjects].sort((a, b) => {
         const aFinished = a.status === 'completed' || a.status === 'cancelled';
@@ -104,14 +121,12 @@ export default function ProjectsPage() {
       });
 
       setProjects(sortedProjects);
-      setClients(Array.isArray(clis) ? clis : []);
-      setPlants(Array.isArray(plts) ? plts : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar datos');
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, filterClientId, filterPlantId, filterStatus]);
 
   const loadClientSupervisors = async (clientId: number) => {
     try {
@@ -135,9 +150,11 @@ export default function ProjectsPage() {
     }
   }, [form.client_id]);
 
+  // Los filtros consultan al servidor; la búsqueda por texto con un pequeño debounce.
   useEffect(() => {
-    loadData();
-  }, []);
+    const timeout = setTimeout(loadProjects, search ? 300 : 0);
+    return () => clearTimeout(timeout);
+  }, [loadProjects, search]);
 
   const handleOpenCreate = () => {
     setEditingProject(null);
@@ -215,7 +232,7 @@ export default function ProjectsPage() {
         setSuccess('Proyecto creado');
       }
       setOpenDialog(false);
-      loadData();
+      loadProjects();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
     } finally {
@@ -229,7 +246,7 @@ export default function ProjectsPage() {
       await ProjectService.delete(deleteDialog.project.id);
       setDeleteDialog({ open: false, project: null });
       setSuccess('Proyecto eliminado');
-      loadData();
+      loadProjects();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar');
     }
@@ -241,7 +258,7 @@ export default function ProjectsPage() {
       await ProjectService.update(completeDialog.project.id, { status: 'completed' });
       setCompleteDialog({ open: false, project: null });
       setSuccess('Proyecto finalizado');
-      loadData();
+      loadProjects();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al finalizar el proyecto');
     }
@@ -287,16 +304,11 @@ export default function ProjectsPage() {
     }
   };
 
-  const filteredProjects = projects.filter((proj) => {
-    if (filterCode && !proj.code?.toLowerCase().includes(filterCode.toLowerCase())) return false;
-    if (filterName && !proj.name.toLowerCase().includes(filterName.toLowerCase())) return false;
-    if (filterClientId && proj.client_id !== filterClientId) return false;
-    if (filterPlantId && proj.plant_id !== filterPlantId) return false;
-    if (filterStatus && proj.status !== filterStatus) return false;
-    return true;
-  });
+  const emptyMessage = hasActiveFilters
+    ? 'No hay proyectos que coincidan con los filtros'
+    : 'No hay proyectos';
 
-  if (loading) {
+  if (loading && projects.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <GearSpinner />
@@ -312,7 +324,7 @@ export default function ProjectsPage() {
           <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Proyectos</Typography>
         </Box>
         <Box display="flex" gap={1}>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>
+          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadProjects} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} size="small">Nuevo Proyecto</Button>
         </Box>
       </Box>
@@ -320,86 +332,45 @@ export default function ProjectsPage() {
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
-      {/* Filters */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField
-              label="Código"
-              size="small"
-              fullWidth
-              value={filterCode}
-              onChange={(e) => setFilterCode(e.target.value)}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField
-              label="Nombre del proyecto"
-              size="small"
-              fullWidth
-              value={filterName}
-              onChange={(e) => setFilterName(e.target.value)}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField
-              label="Cliente"
-              select
-              size="small"
-              fullWidth
-              value={filterClientId}
-              onChange={(e) => { setFilterClientId(e.target.value ? Number(e.target.value) : ''); setFilterPlantId(''); }}
-              SelectProps={{ native: true }}
-              InputLabelProps={{ shrink: true }}
-            >
-              <option value="">Todos los clientes</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.razonSocial}</option>)}
-            </TextField>
-          </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField
-              label="Planta"
-              select
-              size="small"
-              fullWidth
-              value={filterPlantId}
-              onChange={(e) => setFilterPlantId(e.target.value ? Number(e.target.value) : '')}
-              SelectProps={{ native: true }}
-              InputLabelProps={{ shrink: true }}
-            >
-              <option value="">Todas las plantas</option>
-              {plants
-                .filter((p) => !filterClientId || p.client_id === filterClientId)
-                .map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </TextField>
-          </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField
-              label="Estado"
-              select
-              size="small"
-              fullWidth
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              SelectProps={{ native: true }}
-              InputLabelProps={{ shrink: true }}
-            >
-              <option value="">Todos los estados</option>
-              {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </TextField>
-          </Grid>
-        </Grid>
-      </Paper>
+      <ListFilters
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar por código o nombre del proyecto…"
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      >
+        <FilterSelect
+          label="Cliente"
+          value={filterClientId}
+          onChange={(v) => { setFilterClientId(v); setFilterPlantId(''); }}
+          emptyLabel="Todos los clientes"
+          options={clients.map((c) => ({ value: String(c.id), label: c.razonSocial }))}
+        />
+        <FilterSelect
+          label="Planta"
+          value={filterPlantId}
+          onChange={setFilterPlantId}
+          emptyLabel="Todas las plantas"
+          options={plants
+            .filter((p) => !filterClientId || p.client_id === Number(filterClientId))
+            .map((p) => ({ value: String(p.id), label: p.name }))}
+        />
+        <FilterSelect
+          label="Estado"
+          value={filterStatus}
+          onChange={setFilterStatus}
+          emptyLabel="Todos los estados"
+          options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
+        />
+      </ListFilters>
 
       {/* Mobile view */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-        {filteredProjects.length === 0 ? (
-          <Typography color="text.secondary" textAlign="center" py={4}>No hay proyectos que coincidan con los filtros</Typography>
+        {projects.length === 0 ? (
+          <Typography color="text.secondary" textAlign="center" py={4}>{emptyMessage}</Typography>
         ) : (
           <Stack spacing={2}>
-            {filteredProjects.map((proj) => (
+            {projects.map((proj) => (
               <Card key={proj.id} sx={{ p: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
                   <Box>
@@ -466,14 +437,14 @@ export default function ProjectsPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredProjects.length === 0 ? (
+              {projects.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={hasBudgetsRead ? 7 : 6} align="center" sx={{ py: 4 }}>
-                    <Typography variant="body2" color="text.secondary">No hay proyectos que coincidan con los filtros</Typography>
+                    <Typography variant="body2" color="text.secondary">{emptyMessage}</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredProjects.map((proj) => (
+                projects.map((proj) => (
                   <TableRow key={proj.id} hover>
                     <TableCell><Typography variant="body2" color="text.secondary" fontWeight="medium">{proj.code}</Typography></TableCell>
                     <TableCell>

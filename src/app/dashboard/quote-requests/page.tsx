@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
@@ -10,6 +10,7 @@ import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import DateField from '../../../components/DateField';
 import QuoteRequestDueChip from '../../../components/quote-requests/QuoteRequestDueChip';
+import ListFilters, { FilterSelect } from '../../../components/common/ListFilters';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   RefreshOutlined as RefreshIcon, RequestQuoteOutlined as TitleIcon,
@@ -118,6 +119,17 @@ function QuoteRequestsPageContent() {
   const [success, setSuccess] = useState('');
   const [processing, setProcessing] = useState(false);
 
+  // Filtros del listado — consultan al servidor (ver FLOWS.md flujo 39).
+  const [search, setSearch] = useState('');
+  const [filterClientId, setFilterClientId] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterAssigneeId, setFilterAssigneeId] = useState('');
+  const [filterDue, setFilterDue] = useState<'' | 'overdue' | 'due_soon'>('');
+  const hasActiveFilters = !!(search || filterClientId || filterStatus || filterAssigneeId || filterDue);
+  const clearFilters = () => {
+    setSearch(''); setFilterClientId(''); setFilterStatus(''); setFilterAssigneeId(''); setFilterDue('');
+  };
+
   const [openDialog, setOpenDialog] = useState(false);
   const [editing, setEditing] = useState<QuoteRequest | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
@@ -135,30 +147,43 @@ function QuoteRequestsPageContent() {
 
   const assignableUsers = users.filter(canBeAssigned);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const [qrs, clis, plts, usrs] = await Promise.all([
-        QuoteRequestService.getAll(),
-        ClientService.getAll({ is_active: true }),
-        PlantService.getAll(),
-        UserService.getAll(),
-      ]);
-      setQuoteRequests(Array.isArray(qrs) ? qrs : []);
+  // Catálogos (clientes, plantas, usuarios): se cargan una sola vez, no en cada refiltrado.
+  useEffect(() => {
+    Promise.all([
+      ClientService.getAll({ is_active: true }),
+      PlantService.getAll(),
+      UserService.getAll(),
+    ]).then(([clis, plts, usrs]) => {
       setClients(Array.isArray(clis) ? clis : []);
       setPlants(Array.isArray(plts) ? plts : []);
       setUsers(Array.isArray(usrs) ? usrs : []);
+    }).catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar datos'));
+  }, []);
+
+  const loadQuoteRequests = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const qrs = await QuoteRequestService.getAll({
+        q: search || undefined,
+        client_id: filterClientId ? Number(filterClientId) : undefined,
+        status: filterStatus || undefined,
+        assignee_id: filterAssigneeId ? Number(filterAssigneeId) : undefined,
+        due: filterDue || undefined,
+      });
+      setQuoteRequests(Array.isArray(qrs) ? qrs : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar datos');
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, filterClientId, filterStatus, filterAssigneeId, filterDue]);
 
+  // Los filtros consultan al servidor; la búsqueda por texto con un pequeño debounce.
   useEffect(() => {
-    loadData();
-  }, []);
+    const timeout = setTimeout(loadQuoteRequests, search ? 300 : 0);
+    return () => clearTimeout(timeout);
+  }, [loadQuoteRequests, search]);
 
   // Línea de tiempo unificada PC + Presupuesto (ver FLOWS.md flujo 27g) — se carga al abrir el
   // detalle de un PC existente, en modo lectura o edición.
@@ -179,9 +204,12 @@ function QuoteRequestsPageContent() {
   // en el listado. Quien no puede editar (responsable) lo abre en modo lectura — antes caía
   // siempre en modo edición, que el backend le rechazaba al guardar (ver FLOWS.md flujo 27g,
   // §2.3: el responsable no tenía ninguna vía para leer su propio PC).
+  const deepLinkHandled = useRef(false);
   useEffect(() => {
+    if (deepLinkHandled.current) return;
     const viewId = searchParams.get('view');
     if (viewId && quoteRequests.length > 0) {
+      deepLinkHandled.current = true;
       const qr = quoteRequests.find((q) => q.id === Number(viewId));
       if (qr) handleOpenEdit(qr, !hasAssignPermission);
       router.replace('/dashboard/quote-requests');
@@ -250,7 +278,7 @@ function QuoteRequestsPageContent() {
 
       setOpenDialog(false);
       setSuccess(editing ? 'Pedido de Cotización actualizado.' : 'Pedido de Cotización creado.');
-      await loadData();
+      await loadQuoteRequests();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
     } finally {
@@ -263,7 +291,7 @@ function QuoteRequestsPageContent() {
     try {
       const updated = await QuoteRequestService.removeFile(editing.id, fileId);
       setEditing(updated);
-      await loadData();
+      await loadQuoteRequests();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar el archivo');
     }
@@ -276,7 +304,7 @@ function QuoteRequestsPageContent() {
       await QuoteRequestService.delete(deleteDialog.id);
       setDeleteDialog(null);
       setSuccess('Pedido de Cotización eliminado.');
-      await loadData();
+      await loadQuoteRequests();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar');
     } finally {
@@ -321,7 +349,7 @@ function QuoteRequestsPageContent() {
       );
       setStatusDialog({ open: false, qr: null, target: '' });
       setSuccess('Estado actualizado.');
-      await loadData();
+      await loadQuoteRequests();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cambiar el estado');
     } finally {
@@ -400,7 +428,11 @@ function QuoteRequestsPageContent() {
     </Box>
   );
 
-  if (loading) return <GearSpinner />;
+  if (loading && quoteRequests.length === 0) return <GearSpinner />;
+
+  const emptyMessage = hasActiveFilters
+    ? 'No hay Pedidos de Cotización que coincidan con los filtros'
+    : 'No hay Pedidos de Cotización';
 
   return (
     <Box>
@@ -410,7 +442,7 @@ function QuoteRequestsPageContent() {
           <Typography variant="h5" fontWeight="bold">Pedidos de Cotización</Typography>
         </Box>
         <Box display="flex" gap={1}>
-          <Button startIcon={<RefreshIcon />} onClick={loadData}>Actualizar</Button>
+          <Button startIcon={<RefreshIcon />} onClick={loadQuoteRequests}>Actualizar</Button>
           {hasAssignPermission && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>Nuevo Pedido</Button>
           )}
@@ -420,10 +452,52 @@ function QuoteRequestsPageContent() {
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
+      <ListFilters
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar por N° de pedido, título o N° del cliente…"
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      >
+        <FilterSelect
+          label="Cliente"
+          value={filterClientId}
+          onChange={setFilterClientId}
+          emptyLabel="Todos los clientes"
+          options={clients.map((c) => ({ value: String(c.id), label: c.razonSocial }))}
+        />
+        <FilterSelect
+          label="Estado"
+          value={filterStatus}
+          onChange={setFilterStatus}
+          emptyLabel="Todos los estados"
+          options={Object.entries(STATUS_LABELS).map(([value, { label }]) => ({ value, label }))}
+        />
+        {assignableUsers.length > 0 && (
+          <FilterSelect
+            label="Responsable"
+            value={filterAssigneeId}
+            onChange={setFilterAssigneeId}
+            emptyLabel="Todos los responsables"
+            options={assignableUsers.map((u) => ({ value: String(u.id), label: `${u.name} ${u.lastname}` }))}
+          />
+        )}
+        <FilterSelect
+          label="Vencimiento"
+          value={filterDue}
+          onChange={(v) => setFilterDue(v as '' | 'overdue' | 'due_soon')}
+          emptyLabel="Todos"
+          options={[
+            { value: 'overdue', label: 'Vencidos' },
+            { value: 'due_soon', label: 'Vencen esta semana' },
+          ]}
+        />
+      </ListFilters>
+
       {/* Mobile Cards */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
         {quoteRequests.length === 0 ? (
-          <Typography color="text.secondary" textAlign="center" py={4}>No hay Pedidos de Cotización</Typography>
+          <Typography color="text.secondary" textAlign="center" py={4}>{emptyMessage}</Typography>
         ) : (
           <Stack spacing={2}>
             {quoteRequests.map((qr) => {
@@ -474,7 +548,7 @@ function QuoteRequestsPageContent() {
             </TableHead>
             <TableBody>
               {quoteRequests.length === 0 ? (
-                <TableRow><TableCell colSpan={8} align="center">No hay Pedidos de Cotización</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} align="center">{emptyMessage}</TableCell></TableRow>
               ) : (
                 quoteRequests.map((qr) => {
                   return (

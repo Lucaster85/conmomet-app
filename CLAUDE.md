@@ -118,3 +118,44 @@ Cuando un campo es "elegir de una lista" y conviene poder **crear** una opción 
 del formulario, usar `src/components/common/CreatableSelect.tsx` (select genérico) en vez de un
 `Autocomplete` suelto con `createFilterOptions`. Ejemplos a copiar:
 `ProviderPriceAutocomplete` y `MaterialSelect` en `src/components/materials/`.
+
+## Regla obligatoria: todo panel de filtros usa `ListFilters` + `FilterSelect`
+
+Antes de esta regla había 4 variantes de panel de filtros convivientes en el repo (`Paper`+`Grid`
+con `TextField select native`, `TextField` suelto sin contenedor, `Card`+`CardContent` con
+`boxShadow` propio, `Paper` como fila flex), con inconsistencias de label, de opción vacía y de
+estética (ver `FLOWS.md` flujo 39). Está prohibido volver a armar un panel de filtros a mano.
+
+Usar siempre `src/components/common/ListFilters.tsx`:
+
+- `<ListFilters search={...} onSearchChange={...} searchPlaceholder="..." onClear={...} hasActiveFilters={...}>`
+  — el contenedor. La barra de búsqueda es **siempre el primer control**, a ancho completo, en
+  su propia fila — nunca un campo de texto más entre los selects.
+- `<FilterSelect label="Cliente" value={...} onChange={...} emptyLabel="Todos los clientes" options={[...]} />`
+  por cada select — reemplaza tanto al `TextField select native` como al `FormControl`+`Select`+`MenuItem`.
+- El botón "Limpiar filtros" lo pone el componente solo si se pasa `onClear` y `hasActiveFilters` es `true`.
+
+Convenciones de contenido (las impone el componente, no se pisan a mano):
+- Label del select **sin** el prefijo "Filtrar" — `"Cliente"`, no `"Filtrar Cliente"`.
+- Opción vacía en plural y descriptiva — `"Todos los clientes"`, `"Todas las plantas"`,
+  `"Todos los estados"` — nunca `""`, `"Todos"` ni `"all"`.
+
+Criterio server-side vs. client-side (no es libre, es por tipo de listado):
+- **Server-side** (manda los filtros como query params al `getAll` del servicio): todo listado
+  operativo que crece con el uso diario — Proyectos, Presupuestos, Pedidos de Cotización, OCAs,
+  Carga de Horas, Facturación, Adelantos, Asignaciones, EPP, Licencias, Materiales, Herramientas,
+  Adicionales, y también Clientes/Usuarios/Empleados/Plantas/Vehículos aunque crezcan más lento.
+  Razón: **ningún endpoint de listado de negocio pagina** (las únicas 3 excepciones son por
+  cursor: notificaciones, seguimiento de proyectos, historial de presupuestos) — un filtro
+  client-side queda roto en silencio el día que un listado se pagina, porque busca solo dentro de
+  la página ya cargada.
+- **Client-side** (`.filter()` en memoria sobre el array ya traído): solo catálogos chicos de
+  mantenimiento manual que se estancan en decenas de filas — Rubros, Unidades de Medida, Tipos de
+  Herramienta, Categorías, Gremios, Conceptos de Liquidación, Categorías de Costo Patronal,
+  Categorías de Documento, Roles.
+- El debounce (solo en la búsqueda de texto, los selects consultan al tocarlos) sigue el patrón de
+  `additionals/page.tsx`: `setTimeout(load, search ? 300 : 0)`.
+
+Migrados a este estándar: Proyectos (`dashboard/projects/page.tsx`), Pedidos de Cotización
+(`dashboard/quote-requests/page.tsx`) y Presupuestos (`dashboard/budgets/page.tsx`). El resto de
+los listados queda pendiente de migrar — ver `FLOWS.md` flujo 39 para la lista completa.

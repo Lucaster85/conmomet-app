@@ -22,6 +22,12 @@ cuando el pedido ya se cotizó o se canceló, porque ya no hay nada pendiente de
 El recorrido completo, desde que entra el pedido del cliente hasta que se genera el Proyecto,
 está graficado en el tema **Pedidos de Cotización**.
 
+## Buscar y filtrar
+
+Arriba del listado hay una barra de búsqueda (por N° de presupuesto, título o N° de OT) y dos
+filtros: **Cliente** y **Estado**. "Limpiar filtros" aparece una vez que hay algún filtro
+aplicado.
+
 ## Crear un presupuesto
 
 Con el botón **"Nuevo Presupuesto"**:
@@ -345,4 +351,4 @@ Alguien sin permiso de precios igual puede armar el presupuesto — crear y edit
 obra (rubro y cantidad) y los materiales con su margen, duplicarlo y generar el proyecto — pero no ve
 ni define los valores de mano de obra, ni envía ni imprime.
 
-<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts, api_conmomet/services/budgetMaterialService.js, api_conmomet/controllers/additionalController.js, conmomet-app/src/utils/apiErrors.ts, api_conmomet/services/auditLogService.js, api_conmomet/helpers/budgetAuditDiff.js, api_conmomet/helpers/budgetAuditDescribe.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/budgets/BudgetHistoryPanel.tsx, FLOWS.md §35 -->
+<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts, api_conmomet/services/budgetMaterialService.js, api_conmomet/controllers/additionalController.js, conmomet-app/src/utils/apiErrors.ts, api_conmomet/services/auditLogService.js, api_conmomet/helpers/budgetAuditDiff.js, api_conmomet/helpers/budgetAuditDescribe.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/budgets/BudgetHistoryPanel.tsx, FLOWS.md §35 -->
