@@ -140,6 +140,7 @@ estés escribiendo.
 Cada línea tiene **Material** (se puede buscar o crear uno nuevo al vuelo sin salir del
 formulario), **Proveedor**, **Cantidad**, **Unidad**, y — con permiso para ver costos — el
 **costo real** del material y un **margen %**, con los que se calcula solo el precio al cliente.
+La **Cantidad** admite decimales y las flechitas suben y bajan de 0,1 en 0,1 (ej. 2,5 m).
 
 En pantallas anchas (desde una laptop de 1024 px) las líneas se muestran como una **tabla alineada** bajo un encabezado
 (Material, Proveedor, Cant., Unidad, Costo real, Margen %, Total): los textos largos se cortan con
@@ -173,6 +174,21 @@ El proveedor es un dato interno: **no aparece** en la vista ni en la impresión 
 
 **Importante**: un material que todavía no tiene costo cargado para el proveedor elegido **no se
 puede presupuestar** — hay que cargarlo en la línea o desde el catálogo de Materiales.
+
+### Antigüedad del costo
+
+Con permiso de costos, debajo del campo **Costo real** aparece un texto chico que dice desde
+cuándo viene ese precio:
+
+- **"Actualizado hace X"** (minutos, horas, días, meses o años): el costo de la línea es el mismo
+  que tiene cargado ahora el proveedor en el catálogo, y esa es la antigüedad de ese precio.
+- **"Actualizado en este presupuesto"**: editaste el costo recién, en esta misma edición.
+- **"Precio desactualizado"** (en rojo, con un botón **"Actualizar a $X"**): el precio de ese
+  proveedor cambió en el catálogo **después** de que esta línea se cargó o se guardó por última
+  vez. El botón trae ese precio nuevo **a la línea** y recalcula el precio al cliente con el
+  margen de esa línea — el catálogo no se modifica, ya está al día.
+
+Esto se ve solo con permiso de costos y solo mientras el presupuesto está en **Borrador**.
 
 ### Importar materiales desde Excel
 
@@ -351,4 +367,4 @@ Alguien sin permiso de precios igual puede armar el presupuesto — crear y edit
 obra (rubro y cantidad) y los materiales con su margen, duplicarlo y generar el proyecto — pero no ve
 ni define los valores de mano de obra, ni envía ni imprime.
 
-<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts, api_conmomet/services/budgetMaterialService.js, api_conmomet/controllers/additionalController.js, conmomet-app/src/utils/apiErrors.ts, api_conmomet/services/auditLogService.js, api_conmomet/helpers/budgetAuditDiff.js, api_conmomet/helpers/budgetAuditDescribe.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/budgets/BudgetHistoryPanel.tsx, FLOWS.md §35 -->
+<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts, api_conmomet/services/budgetMaterialService.js, api_conmomet/controllers/additionalController.js, conmomet-app/src/utils/apiErrors.ts, api_conmomet/services/auditLogService.js, api_conmomet/helpers/budgetAuditDiff.js, api_conmomet/helpers/budgetAuditDescribe.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/budgets/BudgetHistoryPanel.tsx, conmomet-app/src/components/budgets/MaterialCostStatusLine.tsx, conmomet-app/src/utils/materialPrices.ts, conmomet-app/src/utils/dates.ts, FLOWS.md §35, FLOWS.md §19c -->

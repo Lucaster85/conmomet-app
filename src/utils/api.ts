@@ -1550,6 +1550,9 @@ export interface MaterialProviderPrice {
   provider?: MaterialProvider;
   cost: number | null;
   currency: BudgetCurrency | null;
+  // Último cambio REAL del precio (el backend no toca la fila si cost/currency no cambiaron).
+  // Base del label "Actualizado hace X" en la carga de materiales de un presupuesto (FLOWS.md §19c).
+  updatedAt?: string;
 }
 
 // Catálogo de Materiales. Todo costo es por proveedor (providerPrices).
@@ -1796,6 +1799,10 @@ export interface BudgetMaterialItem {
   material_cost_snapshot?: number | null;
   material_cost_currency?: BudgetCurrency | null;
   notes?: string;
+  // SOLO frontend, no es columna ni viaja con efecto al backend: marca que el usuario tocó el
+  // costo en esta sesión de edición, para distinguir "lo acabo de editar" de "quedó desactualizado
+  // porque el pañol cambió" (FLOWS.md §19c). Se resetea solo al recargar el form desde el servidor.
+  cost_edited?: boolean;
 }
 
 export interface Budget {

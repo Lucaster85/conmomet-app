@@ -40,7 +40,8 @@ import { ConflictError } from '../../../utils/apiErrors';
 import ProviderPriceAutocomplete from '../../../components/materials/ProviderPriceAutocomplete';
 import MaterialSelect from '../../../components/materials/MaterialSelect';
 import { downloadMaterialsTemplate, exportMaterialsSheet } from '../../../utils/materialsExcel';
-import { findPrice } from '../../../utils/materialPrices';
+import { findPrice, materialCostStatus } from '../../../utils/materialPrices';
+import MaterialCostStatusLine from '../../../components/budgets/MaterialCostStatusLine';
 import { formatLaborQuantity, formatHours, hoursPerDayFor, laborLineHours, lineHoursPerDay } from '../../../utils/laborFormat';
 import { formatProjectCode } from '../../../utils/projectCode';
 
@@ -287,6 +288,16 @@ function BudgetsPageContent() {
     }).catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar datos'));
   }, []);
 
+  // `materials` se cargó una sola vez en el mount: sin refrescarlo antes de comparar el costo de
+  // una línea contra el catálogo, cualquier chequeo de "¿el pañol cambió?" compararía contra datos
+  // viejos y generaría falsos "Precio desactualizado" (ver FLOWS.md §19c). Se llama al abrir/
+  // recargar un presupuesto para editar, y después de guardarlo (el guardado puede haber movido
+  // el catálogo si se editó un costo).
+  const refreshMaterials = async () => {
+    const mats = await MaterialService.getAll({ is_active: true });
+    setMaterials(Array.isArray(mats) ? mats : []);
+  };
+
   const loadBudgets = useCallback(async () => {
     try {
       setLoading(true);
@@ -445,8 +456,10 @@ function BudgetsPageContent() {
     setLockedBy(null);
     // Refetch: el `budget` que viene del listado puede estar desactualizado desde el montaje
     // de la página — abrir con datos viejos es la misma raíz del bug de Etapa 1 (ver FLOWS.md
-    // §35). GET /budgets/:id siempre trae la revision y las líneas vigentes.
-    const budget = await BudgetService.getById(budgetFromList.id);
+    // §35). GET /budgets/:id siempre trae la revision y las líneas vigentes. Mismo motivo para
+    // refrescar `materials`: si no, el label de antigüedad del precio compara contra el pañol
+    // viejo (ver FLOWS.md §19c).
+    const [budget] = await Promise.all([BudgetService.getById(budgetFromList.id), refreshMaterials()]);
     setEditingBudget(budget);
     setForm(fillFormFromBudget(budget));
     dialogRevisionRef.current = budget.revision;
@@ -460,7 +473,7 @@ function BudgetsPageContent() {
   // frenara) como el botón "Reintentar" del modo solo lectura (para ver si ya se liberó).
   const handleReloadBudget = async () => {
     if (!editingBudget) return;
-    const fresh = await BudgetService.getById(editingBudget.id);
+    const [fresh] = await Promise.all([BudgetService.getById(editingBudget.id), refreshMaterials()]);
     setEditingBudget(fresh);
     setForm(fillFormFromBudget(fresh));
     dialogRevisionRef.current = fresh.revision;
@@ -682,6 +695,24 @@ function BudgetsPageContent() {
     });
   };
 
+  // "Precio desactualizado" (ver FLOWS.md §19c): trae el precio vigente del pañol a la línea y
+  // recalcula el precio al cliente con el margen de ESA línea. El pañol no se toca — ya está al
+  // día, es la línea la que estaba vieja. No marca cost_edited: no es una edición del usuario.
+  const applyCatalogPrice = (idx: number) => {
+    const item = form.materialItems[idx];
+    const material = materials.find(m => m.id === item?.material_id);
+    const price = findPrice(material, item?.provider_id);
+    if (!price || price.cost == null) return;
+    const costValue = Number(price.cost);
+    updateMaterialItem(idx, {
+      material_cost_snapshot: costValue,
+      material_cost_currency: price.currency,
+      currency: price.currency,
+      unit_price: computeUnitPrice(costValue, item?.margin_percent ?? 0),
+      cost_edited: false,
+    });
+  };
+
   // Vincular un Material existente del catálogo a la línea (autocompleta descripción y
   // unidad), o abrir el mini-diálogo de alta rápida si el usuario tipeó algo nuevo. La línea
   // siempre queda vinculada al catálogo: sin costo real no se puede calcular el precio.
@@ -882,7 +913,7 @@ function BudgetsPageContent() {
     );
     const quantityField = (
       <TextField type="number" size="small" fullWidth label={lbl('Cant.')} value={item.quantity}
-        inputProps={{ min: 0 }}
+        inputProps={{ min: 0, step: 0.1, inputMode: 'decimal' }}
         onChange={(e) => updateMaterialItem(idx, { quantity: Number(e.target.value) })} />
     );
     const unitField = (
@@ -921,6 +952,7 @@ function BudgetsPageContent() {
             material_cost_currency: newCurrency,
             currency: newCurrency,
             unit_price: computeUnitPrice(newCost, item.margin_percent ?? 0),
+            cost_edited: true,
           });
         }}
       />
@@ -960,10 +992,17 @@ function BudgetsPageContent() {
       </Tooltip>
     );
 
+    // Antigüedad del costo de la línea (ver FLOWS.md §19c) — gatea igual que la columna de costo.
+    const materialForStatus = materials.find(m => m.id === item.material_id);
+    const costStatus = hasCostsRead ? materialCostStatus(item, materialForStatus) : null;
+    const costStatusLine = (
+      <MaterialCostStatusLine status={costStatus} dense={!stacked} onUseCatalogPrice={() => applyCatalogPrice(idx)} />
+    );
+
     if (!stacked) {
       return (
         <Box key={idx} sx={{
-          display: 'grid', gridTemplateColumns: materialGridTemplate, gap: 1, alignItems: 'center', py: 0.75, borderBottom: '1px solid', borderColor: 'divider',
+          py: 0.75, borderBottom: '1px solid', borderColor: 'divider',
           // Fuente y padding más chicos en la grilla de desktop para que entre todo en una fila
           // (desde 960px, ej. laptop de 1024). Mobile/tablet usan tarjetas con tamaño normal.
           '& .MuiInputBase-root, & .MuiTypography-body2': { fontSize: '0.75rem' },
@@ -971,14 +1010,24 @@ function BudgetsPageContent() {
           '& .MuiOutlinedInput-root:not(.MuiAutocomplete-inputRoot) .MuiOutlinedInput-input': { pl: '10px', pr: '6px' },
           '& .MuiAutocomplete-root .MuiOutlinedInput-root': { pl: '6px' },
         }}>
-          {materialField}
-          {providerField}
-          {quantityField}
-          {unitField}
-          {costField}
-          {marginField}
-          {totalField}
-          <Box textAlign="center">{removeButton}</Box>
+          <Box sx={{ display: 'grid', gridTemplateColumns: materialGridTemplate, gap: 1, alignItems: 'center' }}>
+            {materialField}
+            {providerField}
+            {quantityField}
+            {unitField}
+            {costField}
+            {marginField}
+            {totalField}
+            <Box textAlign="center">{removeButton}</Box>
+          </Box>
+          {costStatus && (
+            // Misma plantilla de columnas que la fila de inputs: arranca justo bajo "Costo real"
+            // (columna 5, solo existe con hasCostsRead — el mismo flag que gatea costStatus) y se
+            // extiende sobre Margen/Total/Quitar, sin ensanchar ninguna columna.
+            <Box sx={{ display: 'grid', gridTemplateColumns: materialGridTemplate, gap: 1, mt: 0.5 }}>
+              <Box sx={{ gridColumn: '5 / -1' }}>{costStatusLine}</Box>
+            </Box>
+          )}
         </Box>
       );
     }
@@ -999,6 +1048,7 @@ function BudgetsPageContent() {
             {costField}
             {marginField}
           </Box>
+          {costStatus && costStatusLine}
           {(
             <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
               <Typography variant="caption" color="text.secondary">Total</Typography>
@@ -1072,6 +1122,9 @@ function BudgetsPageContent() {
       }
       setOpenDialog(false);
       loadBudgets();
+      // Guardar puede haber movido el catálogo (costo editado en una línea): refrescarlo para que
+      // el label de antigüedad de la próxima edición no compare contra el pañol viejo.
+      refreshMaterials();
     } catch (err) {
       if (err instanceof ConflictError) {
         setConflictDialog({ open: true, message: err.message });

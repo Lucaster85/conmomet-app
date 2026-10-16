@@ -325,7 +325,7 @@ export default function AdditionalDetailPage() {
     );
     const quantityField = (
       <TextField type="number" size="small" fullWidth label={lbl('Cant.')} value={item.quantity} disabled={materialsReadOnly}
-        inputProps={{ min: 0 }} onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) })} />
+        inputProps={{ min: 0, step: 0.1, inputMode: 'decimal' }} onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) })} />
     );
     const unitField = (
       <TextField select size="small" fullWidth label={lbl('Unidad')} value={item.material_unit_id || ''} disabled={materialsReadOnly}
