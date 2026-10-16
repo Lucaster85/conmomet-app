@@ -19,6 +19,7 @@ import {
 } from '@mui/icons-material';
 import { NotificationService, AppNotification, NotificationType } from '../../utils/api';
 import { useAuth } from '../../utils/auth';
+import { relativeTime } from '../../utils/dates';
 
 // Campanita del header (ver FLOWS.md §37). Es el historial de lo que ya se manda por push: a
 // diferencia del push —que es fire-and-forget y si no llega no deja rastro— acá queda registro
@@ -44,27 +45,6 @@ const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
   epp_expiring: <EppIcon fontSize="small" color="warning" />,
   epp_expired: <ExpiredIcon fontSize="small" color="error" />,
 };
-
-// Defensiva a propósito: con una fecha inválida, `getTime()` da NaN, TODAS las comparaciones de
-// abajo dan false y se cae hasta el último return, que renderiza el string "Invalid Date" en la
-// campanita. Un formateador de fecha en la UI nunca debería poder mostrar eso — si la fecha no
-// sirve, mejor no decir nada que mentirle al usuario.
-function relativeTime(iso?: string | null): string {
-  if (!iso) return '';
-  const time = new Date(iso).getTime();
-  if (Number.isNaN(time)) return '';
-
-  const diff = Date.now() - time;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'ahora';
-  if (mins < 60) return `hace ${mins} min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `hace ${hours} h`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return 'ayer';
-  if (days < 30) return `hace ${days} días`;
-  return new Date(iso).toLocaleDateString('es-AR');
-}
 
 export default function NotificationBell() {
   const router = useRouter();
@@ -255,7 +235,7 @@ export default function NotificationBell() {
                     </Typography>
                   )}
                   <Typography variant="caption" color="text.secondary">
-                    {relativeTime(n.created_at)}
+                    {relativeTime(n.created_at, { maxDays: 30 })}
                   </Typography>
                 </Box>
                 {!n.read_at && (
