@@ -5,7 +5,7 @@ import type { AlertType, AlertItemRef } from './alerts';
 
 declare global {
   interface Window {
-    __ENV__?: { API_BASE_URL?: string; GOOGLE_PLACES_API_KEY?: string };
+    __ENV__?: { API_BASE_URL?: string; GOOGLE_PLACES_API_KEY?: string; CLARITY_PROJECT_ID?: string };
   }
 }
 

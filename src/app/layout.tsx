@@ -6,6 +6,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme';
 
 import MuiXProvider from "./MuiXProvider";
+import ClarityAnalytics from "../components/ClarityAnalytics";
 
 // Fuerza renderizado dinámico por request, para que process.env se lea en runtime
 export const dynamic = 'force-dynamic';
@@ -47,6 +48,7 @@ export default function RootLayout({
   const runtimeEnv = JSON.stringify({
     API_BASE_URL: process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || '',
     GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || '',
+    CLARITY_PROJECT_ID: process.env.CLARITY_PROJECT_ID || process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || '',
   }).replace(/</g, '\\u003c');
 
   return (
@@ -56,6 +58,7 @@ export default function RootLayout({
       >
         {/* Runtime env vars — leídas en el servidor, disponibles en el cliente */}
         <script dangerouslySetInnerHTML={{ __html: `window.__ENV__ = ${runtimeEnv};` }} />
+        <ClarityAnalytics />
         <ThemeProvider theme={theme}>
           <CssBaseline />
           <MuiXProvider>
