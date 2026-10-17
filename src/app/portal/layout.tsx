@@ -261,7 +261,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
         <SessionExpiredDialog />
 
-        <Container maxWidth="lg" sx={{ mt: { xs: 1.5, sm: 4 }, mb: 4, flexGrow: 1 }}>
+        {/* data-clarity-mask: enmascarado de respaldo para Microsoft Clarity (ver FLOWS.md flujo 40) */}
+        <Container maxWidth="lg" data-clarity-mask="true" sx={{ mt: { xs: 1.5, sm: 4 }, mb: 4, flexGrow: 1 }}>
           <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 2 }}>
             <Typography variant="body2" color="text.secondary">
               Hola, {getUserDisplayName()}!

@@ -583,6 +583,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Main content */}
         <Box
           component="main"
+          // Enmascarado de respaldo para Microsoft Clarity (ver FLOWS.md flujo 40). El control
+          // principal es el ajuste "Mask all content" del proyecto de Clarity; esto es la defensa
+          // en profundidad por si ese ajuste se desactivara por error.
+          data-clarity-mask="true"
           sx={{
             flexGrow: 1,
             px: 3,
