@@ -112,6 +112,11 @@ el detalle de qué se anuló, por cuánto y por qué (el empleado que lo anuló 
 la liquidación de ese empleado para esa quincena ya está Confirmada o Pagada, no se puede anular
 el adelanto — hay que esperar a que la corrección se pueda hacer sin tocar una liquidación cerrada.
 
+Un adelanto anulado **deja de aparecer** en el detalle y en el recibo de la liquidación (y en el
+total de Adelantos del Resumen de Gastos), no solo en el neto: si lo anulás y cargás uno nuevo
+por el monto correcto, al volver a **Generar** la quincena el detalle muestra únicamente el
+vigente.
+
 ## Retroactivos de gremio
 
 Si se aplica un aumento de Convenio Colectivo con fecha retroactiva, el sistema agrega
