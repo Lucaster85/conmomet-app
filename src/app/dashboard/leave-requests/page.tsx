@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack,
   Chip, MenuItem, Select, FormControl, InputLabel,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import DateField from '../../../components/DateField';
@@ -319,7 +320,7 @@ export default function LeaveRequestsPage() {
       )}
 
       {/* Form Dialog */}
-      <Dialog open={openDialog} onClose={() => !submitting && setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={openDialog} onClose={() => !submitting && setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Nueva Solicitud de Ausencia</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={3} sx={{ mt: 1 }}>
@@ -421,7 +422,7 @@ export default function LeaveRequestsPage() {
             {submitting ? <GearSpinner size={24} /> : 'Crear Solicitud'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

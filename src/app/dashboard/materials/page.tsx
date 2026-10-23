@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack, Chip, Switch, FormControlLabel,
   InputAdornment,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import CurrencyInput from '../../../components/CurrencyInput';
@@ -368,7 +369,7 @@ export default function MaterialsPage() {
         </TableContainer>
       </Box>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingItem ? 'Editar Material' : 'Nuevo Material'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -431,7 +432,7 @@ export default function MaterialsPage() {
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingItem ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       <ProvidersQuickDialog
         open={providersDialogOpen}
@@ -440,7 +441,7 @@ export default function MaterialsPage() {
         onChanged={reloadProviders}
       />
 
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })}>
+      <AppDialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })}>
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>¿Eliminar el material <strong>{deleteDialog.item?.description}</strong>?</Typography>
@@ -449,9 +450,9 @@ export default function MaterialsPage() {
           <Button onClick={() => setDeleteDialog({ open: false, item: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
-      <Dialog open={!!importPreview} onClose={() => setImportPreview(null)} maxWidth="md" fullWidth>
+      <AppDialog open={!!importPreview} onClose={() => setImportPreview(null)} maxWidth="md" fullWidth>
         <DialogTitle>Previsualización de importación</DialogTitle>
         <DialogContent>
           <TableContainer>
@@ -485,9 +486,9 @@ export default function MaterialsPage() {
           <Button onClick={() => setImportPreview(null)}>Cancelar</Button>
           <Button onClick={handleConfirmImport} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : 'Confirmar e importar'}</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
-      <Dialog open={historyDialog.open} onClose={() => setHistoryDialog({ open: false, item: null, entries: [], loading: false })} maxWidth="sm" fullWidth>
+      <AppDialog open={historyDialog.open} onClose={() => setHistoryDialog({ open: false, item: null, entries: [], loading: false })} maxWidth="sm" fullWidth>
         <DialogTitle>Historial de costos — {historyDialog.item?.description}</DialogTitle>
         <DialogContent>
           {historyDialog.loading ? (
@@ -520,7 +521,7 @@ export default function MaterialsPage() {
         <DialogActions>
           <Button onClick={() => setHistoryDialog({ open: false, item: null, entries: [], loading: false })}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

@@ -11,7 +11,6 @@ import {
   IconButton,
   Chip,
   Alert,
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogContentText,
@@ -25,6 +24,7 @@ import {
   Grid,
   Switch,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   AddOutlined as AddIcon,
   EditOutlined as EditIcon,
@@ -468,7 +468,7 @@ export default function RolesPage() {
       )}
 
       {/* Create / Edit Role dialog */}
-      <Dialog open={roleDialogOpen} onClose={() => setRoleDialogOpen(false)} maxWidth="xs" fullWidth
+      <AppDialog open={roleDialogOpen} onClose={() => setRoleDialogOpen(false)} maxWidth="xs" fullWidth
         PaperProps={{ sx: { borderRadius: '16px' } }}>
         <DialogTitle fontWeight={700}>
           {editingRole ? 'Editar rol' : 'Nuevo rol'}
@@ -514,10 +514,10 @@ export default function RolesPage() {
             {savingRole ? <GearSpinner size={18} /> : 'Guardar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Delete Role dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="xs" fullWidth
+      <AppDialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="xs" fullWidth
         PaperProps={{ sx: { borderRadius: '16px' } }}>
         <DialogTitle fontWeight={700}>Eliminar rol</DialogTitle>
         <DialogContent>
@@ -539,10 +539,10 @@ export default function RolesPage() {
             {deleting ? <GearSpinner size={18} /> : 'Eliminar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Manage Permissions dialog */}
-      <Dialog open={permDialogOpen} onClose={() => setPermDialogOpen(false)} maxWidth="sm" fullWidth
+      <AppDialog open={permDialogOpen} onClose={() => setPermDialogOpen(false)} maxWidth="sm" fullWidth
         PaperProps={{ sx: { borderRadius: '16px' } }}>
         <DialogTitle fontWeight={700}>
           Permisos de &quot;{permTarget?.name}&quot;
@@ -627,10 +627,10 @@ export default function RolesPage() {
             {savingPerms ? <GearSpinner size={18} /> : 'Guardar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Create Permission dialog */}
-      <Dialog open={createPermOpen} onClose={() => setCreatePermOpen(false)} maxWidth="xs" fullWidth
+      <AppDialog open={createPermOpen} onClose={() => setCreatePermOpen(false)} maxWidth="xs" fullWidth
         PaperProps={{ sx: { borderRadius: '16px' } }}>
         <DialogTitle fontWeight={700}>Nuevo permiso</DialogTitle>
         <DialogContent>
@@ -661,7 +661,7 @@ export default function RolesPage() {
             {creatingPerm ? <GearSpinner size={18} /> : 'Crear'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

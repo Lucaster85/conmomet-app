@@ -13,13 +13,13 @@ import {
   Chip,
   Alert,
   Tooltip,
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogContentText,
   DialogActions,
   Grid,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   AddOutlined as AddIcon,
   EditOutlined as EditIcon,
@@ -301,7 +301,7 @@ export default function ArticlesPage() {
       />
 
       {/* Delete confirmation */}
-      <Dialog
+      <AppDialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         PaperProps={{ sx: { borderRadius: '16px', p: 1 } }}
@@ -333,7 +333,7 @@ export default function ArticlesPage() {
             {deleting ? <GearSpinner size={18} /> : 'Eliminar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

@@ -6,10 +6,11 @@ import {
   Box, Typography, Paper, Tabs, Tab,
   Button, IconButton, Chip, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Tooltip, Stack,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  DialogTitle, DialogContent, DialogActions, TextField,
   Switch, FormControlLabel, Card, CardContent, Divider, Grid,
   LinearProgress, Alert
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import GearSpinner from '@/components/GearSpinner';
 import DateField from '../../../../components/DateField';
 import ArrowBackIcon from '@mui/icons-material/ArrowBackOutlined';
@@ -1217,7 +1218,7 @@ function EmployeeDetailPageContent() {
           )}
 
           {/* Rate Dialog */}
-          <Dialog open={rateDialogOpen} onClose={() => setRateDialogOpen(false)} maxWidth="sm" fullWidth>
+          <AppDialog open={rateDialogOpen} onClose={() => setRateDialogOpen(false)} maxWidth="sm" fullWidth>
             <DialogTitle>{editingRate ? 'Editar Tarifa' : 'Agregar Tarifa'}</DialogTitle>
             <DialogContent>
               <Stack spacing={2} sx={{ mt: 1 }}>
@@ -1276,10 +1277,10 @@ function EmployeeDetailPageContent() {
                 }
               }}>{editingRate ? 'Guardar' : 'Crear'}</Button>
             </DialogActions>
-          </Dialog>
+          </AppDialog>
 
           {/* Base Config Dialog */}
-          <Dialog open={baseConfigDialogOpen} onClose={() => setBaseConfigDialogOpen(false)} maxWidth="sm" fullWidth>
+          <AppDialog open={baseConfigDialogOpen} onClose={() => setBaseConfigDialogOpen(false)} maxWidth="sm" fullWidth>
             <DialogTitle>Editar Configuración Salarial Base</DialogTitle>
             <DialogContent>
               <Stack spacing={2} sx={{ mt: 1 }}>
@@ -1349,7 +1350,7 @@ function EmployeeDetailPageContent() {
                 }
               }}>Guardar Configuración</Button>
             </DialogActions>
-          </Dialog>
+          </AppDialog>
 
         </Box>
       )}
@@ -1377,7 +1378,7 @@ function EmployeeDetailPageContent() {
       )}
 
       {/* Upload/Edit Dialog */}
-      <Dialog open={uploadDialog} onClose={() => setUploadDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={uploadDialog} onClose={() => setUploadDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingDoc ? 'Editar Documento' : 'Registrar Documento / Vencimiento'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -1460,10 +1461,10 @@ function EmployeeDetailPageContent() {
           <Button onClick={() => setUploadDialog(false)}>Cancelar</Button>
           <Button onClick={handleUploadSubmit} variant="contained" disabled={!form.title || (hasExpiration && !form.expiration_date)}>Guardar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Renew Dialog */}
-      <Dialog open={renewDialog} onClose={() => setRenewDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={renewDialog} onClose={() => setRenewDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Renovar Documento</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -1497,10 +1498,10 @@ function EmployeeDetailPageContent() {
           <Button onClick={() => setRenewDialog(false)}>Cancelar</Button>
           <Button onClick={handleRenewSubmit} variant="contained" disabled={!form.expiration_date || !file}>Renovar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Resolve Dialog */}
-      <Dialog open={resolveDialog} onClose={() => setResolveDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={resolveDialog} onClose={() => setResolveDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Pagar / Resolver Documento</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -1518,10 +1519,10 @@ function EmployeeDetailPageContent() {
           <Button onClick={() => setResolveDialog(false)}>Cancelar</Button>
           <Button onClick={handleResolveSubmit} variant="contained" color="success" disabled={!file}>Marcar Resuelto</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* History Dialog */}
-      <Dialog open={historyDialog} onClose={() => setHistoryDialog(false)} maxWidth="md" fullWidth>
+      <AppDialog open={historyDialog} onClose={() => setHistoryDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle>Historial de Renovaciones</DialogTitle>
         <DialogContent>
           {loadingHistory ? (
@@ -1578,7 +1579,7 @@ function EmployeeDetailPageContent() {
         <DialogActions>
           <Button onClick={() => setHistoryDialog(false)}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       <InviteEmployeeDialog
         employee={employee}

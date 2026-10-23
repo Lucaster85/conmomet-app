@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, TextField, Stack,
-  Chip, Checkbox, FormControlLabel, Autocomplete, Dialog, DialogTitle,
+  Chip, Checkbox, FormControlLabel, Autocomplete, DialogTitle,
   DialogContent, DialogActions, Divider, IconButton, Tooltip, Switch, Grid, Alert
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import dayjs from 'dayjs';
 import { TimeField } from '@mui/x-date-pickers/TimeField';
 import FeedbackModal from '../../../components/FeedbackModal';
@@ -774,7 +775,7 @@ export default function TimeEntriesPage() {
       )}
 
       {/* Create Dialog */}
-      <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} maxWidth="md" fullWidth>
+      <AppDialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle>Nuevo Registro de Horas</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 1 }}>
@@ -1284,10 +1285,10 @@ export default function TimeEntriesPage() {
           <Button onClick={() => setOpenCreateDialog(false)}>Cancelar</Button>
           <Button onClick={handleCreate} variant="contained" size="large" disabled={processing}>{processing ? <GearSpinner size={20} /> : 'Guardar Registro'}</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Void Dialog */}
-      <Dialog open={voidDialog.open} onClose={() => setVoidDialog({ open: false, entry: null })} disableRestoreFocus maxWidth="sm" fullWidth>
+      <AppDialog open={voidDialog.open} onClose={() => setVoidDialog({ open: false, entry: null })} disableRestoreFocus maxWidth="sm" fullWidth>
         <DialogTitle>Anular Registro</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>
@@ -1306,7 +1307,7 @@ export default function TimeEntriesPage() {
           <Button onClick={() => setVoidDialog({ open: false, entry: null })}>Cancelar</Button>
           <Button onClick={handleVoid} color="error" variant="contained">Anular</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

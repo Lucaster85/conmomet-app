@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Switch,
   FormControlLabel, Stack, Chip, Divider,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
@@ -310,7 +311,7 @@ export default function PlantsPage() {
       </Box>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingPlant ? 'Editar Planta' : 'Nueva Planta'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -331,10 +332,10 @@ export default function PlantsPage() {
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingPlant ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Delete Dialog */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, plant: null })}>
+      <AppDialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, plant: null })}>
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>¿Eliminar la planta <strong>{deleteDialog.plant?.name}</strong>?</Typography>
@@ -343,9 +344,9 @@ export default function PlantsPage() {
           <Button onClick={() => setDeleteDialog({ open: false, plant: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
       {/* Requirements Dialog */}
-      <Dialog open={reqDialog.open} onClose={() => setReqDialog({ open: false, plant: null })} maxWidth="md" fullWidth>
+      <AppDialog open={reqDialog.open} onClose={() => setReqDialog({ open: false, plant: null })} maxWidth="md" fullWidth>
         <DialogTitle>Requisitos de Ingreso — {reqDialog.plant?.name}</DialogTitle>
         <DialogContent>
           {loadingReqs ? (
@@ -417,10 +418,10 @@ export default function PlantsPage() {
         <DialogActions>
           <Button onClick={() => setReqDialog({ open: false, plant: null })}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Compliance Dialog */}
-      <Dialog open={compDialog.open} onClose={() => { setCompDialog({ open: false, plant: null }); setExpandedEmp(null); }} maxWidth="md" fullWidth>
+      <AppDialog open={compDialog.open} onClose={() => { setCompDialog({ open: false, plant: null }); setExpandedEmp(null); }} maxWidth="md" fullWidth>
         <DialogTitle>Habilitaciones — {compDialog.plant?.name}</DialogTitle>
         <DialogContent>
           {loadingComp ? (
@@ -499,7 +500,7 @@ export default function PlantsPage() {
         <DialogActions>
           <Button onClick={() => { setCompDialog({ open: false, plant: null }); setExpandedEmp(null); }}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

@@ -3474,6 +3474,14 @@ export class SafetyEquipmentService {
     }
     return (await response.json()).data;
   }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/safety-equipment/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al eliminar la entrega');
+    }
+  }
 }
 
 // Talles adicionales de EPP por empleado (además de los 3 básicos — shoe_size/shirt_size/pant_size

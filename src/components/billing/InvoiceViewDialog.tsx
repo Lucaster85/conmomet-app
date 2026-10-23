@@ -1,8 +1,9 @@
 'use client';
 import React from 'react';
 import {
-  Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Link as MuiLink, Stack, Typography,
+  Box, Button, Chip, DialogActions, DialogContent, DialogTitle, Divider, Link as MuiLink, Stack, Typography,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { Invoice } from '../../utils/api';
 import {
   CONCEPT_LABELS, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS,
@@ -19,7 +20,7 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
   );
 
   return (
-    <Dialog open={!!invoice} onClose={onClose} fullWidth maxWidth="sm">
+    <AppDialog open={!!invoice} onClose={onClose} fullWidth maxWidth="sm">
       {invoice && (
         <>
           <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
@@ -86,6 +87,6 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
           <DialogActions><Button onClick={onClose}>Cerrar</Button></DialogActions>
         </>
       )}
-    </Dialog>
+    </AppDialog>
   );
 }

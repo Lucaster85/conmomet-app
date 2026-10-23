@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack,
   Chip, InputAdornment, Divider, MenuItem, Select, FormControl, InputLabel,
   FormHelperText, Switch, FormControlLabel
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
@@ -452,7 +453,7 @@ export default function EmployeesPage() {
       </Box>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingEmployee ? 'Editar Empleado' : 'Nuevo Empleado'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -637,10 +638,10 @@ export default function EmployeesPage() {
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingEmployee ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Delete Dialog */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, employee: null })}>
+      <AppDialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, employee: null })}>
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>¿Eliminar a <strong>{deleteDialog.employee?.name} {deleteDialog.employee?.lastname}</strong>?</Typography>
@@ -649,7 +650,7 @@ export default function EmployeesPage() {
           <Button onClick={() => setDeleteDialog({ open: false, employee: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       <InviteEmployeeDialog
         employee={inviteTarget}

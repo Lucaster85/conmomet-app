@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import {
   Box, Typography, Stack, IconButton, Button,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  DialogTitle, DialogContent, DialogActions, TextField,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import AddIcon from '@mui/icons-material/AddOutlined';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
@@ -84,7 +85,7 @@ export default function EmployeeSizesPanel({ employeeId, sizes, catalog, onChang
         Agregar talle
       </Button>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
+      <AppDialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Talle adicional</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -105,7 +106,7 @@ export default function EmployeeSizesPanel({ employeeId, sizes, catalog, onChang
             {saving ? <GearSpinner size={20} /> : 'Guardar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

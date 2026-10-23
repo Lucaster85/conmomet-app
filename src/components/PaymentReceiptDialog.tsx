@@ -1,7 +1,8 @@
 'use client';
 import React from 'react';
 import Image from 'next/image';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Divider } from '@mui/material';
+import { DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Divider } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { PrintOutlined as PrintIcon } from '@mui/icons-material';
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
@@ -30,7 +31,7 @@ export default function PaymentReceiptDialog({
   numInstallments, monthlyInterestPercent,
 }: PaymentReceiptDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle className="no-print">Recibo de Pago</DialogTitle>
       <DialogContent>
         <Box className="print-area" sx={{ p: 2 }}>
@@ -108,6 +109,6 @@ export default function PaymentReceiptDialog({
           Imprimir
         </Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

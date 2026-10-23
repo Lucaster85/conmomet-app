@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -12,6 +11,7 @@ import {
   IconButton,
   Alert,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { CloseOutlined as CloseIcon, DragIndicatorOutlined as DragIndicatorIcon } from '@mui/icons-material';
 import {
   DndContext,
@@ -187,7 +187,7 @@ export default function ArticleSortModal({
   };
 
   return (
-    <Dialog
+    <AppDialog
       open={open}
       onClose={handleClose}
       fullWidth
@@ -263,6 +263,6 @@ export default function ArticleSortModal({
           {saving ? <GearSpinner size={18} /> : 'Guardar orden'}
         </Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

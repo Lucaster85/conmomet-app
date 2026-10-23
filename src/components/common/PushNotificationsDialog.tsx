@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, Alert, Typography, Box } from '@mui/material';
+import { DialogTitle, DialogContent, DialogActions, Button, Stack, Alert, Typography, Box } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { NotificationsActiveOutlined as ActiveIcon, NotificationsOffOutlined as OffIcon } from '@mui/icons-material';
 import {
   getPushDiagnostics,
@@ -195,7 +196,7 @@ export default function PushNotificationsDialog({ open, onClose }: PushNotificat
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <AppDialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>Notificaciones</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -222,6 +223,6 @@ export default function PushNotificationsDialog({ open, onClose }: PushNotificat
           </Button>
         )}
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

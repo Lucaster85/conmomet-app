@@ -1,9 +1,10 @@
 'use client';
 import React from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  DialogTitle, DialogContent, DialogActions,
   Button, Typography, Box,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   ErrorOutline as ErrorIcon,
   CheckCircleOutline as SuccessIcon,
@@ -52,7 +53,7 @@ export default function FeedbackModal({ open, onClose, message, type = 'error', 
   if (!message) return null;
 
   return (
-    <Dialog
+    <AppDialog
       open={open}
       onClose={onClose}
       maxWidth="xs"
@@ -135,6 +136,6 @@ export default function FeedbackModal({ open, onClose, message, type = 'error', 
           </Button>
         )}
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

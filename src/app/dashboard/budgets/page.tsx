@@ -3,11 +3,12 @@ import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack, Chip, Divider, Grid, Alert, Link,
   Autocomplete, createFilterOptions, useMediaQuery, useTheme,
   FormControlLabel, Switch,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import ListFilters, { FilterSelect } from '../../../components/common/ListFilters';
@@ -1581,7 +1582,7 @@ function BudgetsPageContent() {
       )}
 
       {/* Create/Edit Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="lg" fullWidth fullScreen={isMobile}>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="lg" fullWidth fullScreen={isMobile}>
         <DialogTitle>
           {editingBudget ? 'Editar Presupuesto' : 'Nuevo Presupuesto'}
           {editingBudget?.quoteRequest?.client_quote_number && (
@@ -1923,10 +1924,10 @@ function BudgetsPageContent() {
             </Button>
           )}
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Alta rápida de Material — abierta desde el Autocomplete de Descripción */}
-      <Dialog open={materialQuickAdd.open} onClose={() => setMaterialQuickAdd({ ...materialQuickAdd, open: false })} maxWidth="xs" fullWidth>
+      <AppDialog open={materialQuickAdd.open} onClose={() => setMaterialQuickAdd({ ...materialQuickAdd, open: false })} maxWidth="xs" fullWidth>
         <DialogTitle>Nuevo Material</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -1975,10 +1976,10 @@ function BudgetsPageContent() {
           <Button onClick={() => setMaterialQuickAdd({ ...materialQuickAdd, open: false })}>Cancelar</Button>
           <Button onClick={handleConfirmMaterialQuickAdd} variant="contained">Crear y usar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Delete Dialog */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, budget: null })} maxWidth="xs" fullWidth>
+      <AppDialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, budget: null })} maxWidth="xs" fullWidth>
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>¿Eliminar el presupuesto <strong>{deleteDialog.budget?.number}</strong>?</Typography>
@@ -1987,12 +1988,12 @@ function BudgetsPageContent() {
           <Button onClick={() => setDeleteDialog({ open: false, budget: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Conflicto de concurrencia al guardar (409 budget_stale o budget_locked, ver FLOWS.md
           §35) — raro con el candado puesto: el modo solo lectura ya frena esto al abrir, esto
           cubre el margen de los ~30s antes de que el candado alcance a avisar. */}
-      <Dialog open={conflictDialog.open} onClose={() => setConflictDialog({ open: false, message: '' })} maxWidth="xs" fullWidth>
+      <AppDialog open={conflictDialog.open} onClose={() => setConflictDialog({ open: false, message: '' })} maxWidth="xs" fullWidth>
         <DialogTitle>El presupuesto cambió</DialogTitle>
         <DialogContent>
           <Typography>{conflictDialog.message}</Typography>
@@ -2001,10 +2002,10 @@ function BudgetsPageContent() {
           <Button onClick={() => setConflictDialog({ open: false, message: '' })}>Cerrar</Button>
           <Button onClick={handleReloadBudget} variant="contained">Recargar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Status Change Dialog */}
-      <Dialog open={statusDialog.open} onClose={() => { setStatusDialog({ open: false, budget: null, target: '' }); setApprovalFile(null); setRejectionReason(''); setApprovedBySupervisorId(''); }} maxWidth="sm" fullWidth>
+      <AppDialog open={statusDialog.open} onClose={() => { setStatusDialog({ open: false, budget: null, target: '' }); setApprovalFile(null); setRejectionReason(''); setApprovedBySupervisorId(''); }} maxWidth="sm" fullWidth>
         <DialogTitle>
           {statusDialog.target === 'sent' && 'Enviar Presupuesto'}
           {statusDialog.target === 'approved' && statusDialog.budget?.status === 'approved' && 'Subir Documento Firmado'}
@@ -2047,11 +2048,11 @@ function BudgetsPageContent() {
           <Button onClick={() => { setStatusDialog({ open: false, budget: null, target: '' }); setApprovalFile(null); setRejectionReason(''); setApprovedBySupervisorId(''); }}>Cancelar</Button>
           <Button onClick={handleChangeStatus} variant="contained">Confirmar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Bonificación post-presentación — separada del form de edición porque solo aplica
           desde "sent" en adelante, discriminada mano de obra / material (ver FLOWS.md) */}
-      <Dialog open={discountDialog.open} onClose={() => setDiscountDialog({ open: false, budget: null, labor: '0', material: '0' })} maxWidth="xs" fullWidth>
+      <AppDialog open={discountDialog.open} onClose={() => setDiscountDialog({ open: false, budget: null, labor: '0', material: '0' })} maxWidth="xs" fullWidth>
         <DialogTitle>Bonificación</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>Presupuesto <strong>{discountDialog.budget?.number}</strong></Typography>
@@ -2066,11 +2067,11 @@ function BudgetsPageContent() {
           <Button onClick={() => setDiscountDialog({ open: false, budget: null, labor: '0', material: '0' })}>Cancelar</Button>
           <Button onClick={handleApplyDiscount} variant="contained">Aplicar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Duplicar — solo pregunta si el duplicado sigue atado al mismo Pedido de Cotización. Un
           presupuesto sin PC se duplica directo, sin pasar por acá (ver FLOWS.md flujo 27). */}
-      <Dialog open={duplicateDialog.open} onClose={() => setDuplicateDialog({ open: false, budget: null, keepQuoteRequest: false })} maxWidth="xs" fullWidth>
+      <AppDialog open={duplicateDialog.open} onClose={() => setDuplicateDialog({ open: false, budget: null, keepQuoteRequest: false })} maxWidth="xs" fullWidth>
         <DialogTitle>Duplicar Presupuesto</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>A partir de <strong>{duplicateDialog.budget?.number}</strong></Typography>
@@ -2102,7 +2103,7 @@ function BudgetsPageContent() {
           <Button onClick={() => setDuplicateDialog({ open: false, budget: null, keepQuoteRequest: false })}>Cancelar</Button>
           <Button onClick={handleConfirmDuplicate} variant="contained" disabled={processing}>Duplicar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       <DeliverToManagementDialog
         open={deliverDialog.open}
@@ -2114,7 +2115,7 @@ function BudgetsPageContent() {
       />
 
       {/* Alta rápida de contacto del cliente (ClientSupervisor) — abierta desde el selector de arriba */}
-      <Dialog open={supervisorQuickAdd.open} onClose={() => setSupervisorQuickAdd({ ...supervisorQuickAdd, open: false })} maxWidth="xs" fullWidth>
+      <AppDialog open={supervisorQuickAdd.open} onClose={() => setSupervisorQuickAdd({ ...supervisorQuickAdd, open: false })} maxWidth="xs" fullWidth>
         <DialogTitle>Nuevo Contacto del Cliente</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -2132,10 +2133,10 @@ function BudgetsPageContent() {
           <Button onClick={() => setSupervisorQuickAdd({ ...supervisorQuickAdd, open: false })}>Cancelar</Button>
           <Button onClick={handleConfirmSupervisorQuickAdd} variant="contained">Crear y usar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Vista Ver/Imprimir — mismo patrón que OCAs y Liquidación: window.print() sobre .print-area */}
-      <Dialog open={!!printBudget} onClose={() => setPrintBudget(null)} maxWidth="md" fullWidth>
+      <AppDialog open={!!printBudget} onClose={() => setPrintBudget(null)} maxWidth="md" fullWidth>
         <DialogTitle>Presupuesto {printBudget?.number}</DialogTitle>
         <DialogContent>
           {printBudget && (
@@ -2303,7 +2304,7 @@ function BudgetsPageContent() {
           {/* Sin budget_prices_read la vista no incluye la mano de obra: imprimirla daría un presupuesto incompleto. */}
           {hasPricesRead && <Button onClick={handlePrint} variant="contained" startIcon={<PrintIcon />}>Imprimir</Button>}
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

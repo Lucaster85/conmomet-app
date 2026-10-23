@@ -1,9 +1,10 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, Typography,
+  DialogTitle, DialogContent, DialogActions, Button, Stack, Typography,
   Autocomplete, TextField,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { QuoteRequestService, UserService, User, Permission } from '../../utils/api';
 
 // Entregar el presupuesto a gerencia = pasar su Pedido de Cotización a "A validar"
@@ -74,7 +75,7 @@ export default function DeliverToManagementDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <AppDialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>Entregar a gerencia</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -108,6 +109,6 @@ export default function DeliverToManagementDialog({
         <Button onClick={onClose}>Cancelar</Button>
         <Button variant="contained" onClick={handleConfirm} disabled={processing}>Entregar</Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }
