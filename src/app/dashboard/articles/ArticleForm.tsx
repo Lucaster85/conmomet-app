@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -13,6 +12,7 @@ import {
   IconButton,
   Alert,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { CloseOutlined as CloseIcon, CloudUploadOutlined as CloudUploadIcon, ImageOutlined as ImageIcon } from '@mui/icons-material';
 import { MediaService, Media, CreateMediaData, UpdateMediaData } from '@/utils/api';
 import GearSpinner from '@/components/GearSpinner';
@@ -102,7 +102,7 @@ export default function ArticleForm({ open, onClose, onSuccess, editItem }: Arti
   };
 
   return (
-    <Dialog
+    <AppDialog
       open={open}
       onClose={onClose}
       fullWidth
@@ -231,6 +231,6 @@ export default function ArticleForm({ open, onClose, onSuccess, editItem }: Arti
           {loading ? <GearSpinner size={20} /> : isEditing ? 'Guardar cambios' : 'Crear artículo'}
         </Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

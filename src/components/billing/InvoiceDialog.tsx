@@ -1,9 +1,10 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert, Autocomplete, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton,
+  Alert, Autocomplete, Box, Button, DialogActions, DialogContent, DialogTitle, Divider, IconButton,
   InputAdornment, MenuItem, Stack, TextField, Typography, useMediaQuery, useTheme,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { DeleteOutline as DeleteIcon, UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
@@ -359,7 +360,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
   const budgetClient = detail?.budget.client;
 
   return (
-    <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="md" fullScreen={isMobile}>
+    <AppDialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="md" fullScreen={isMobile}>
       <DialogTitle>
         {isEditing ? 'Corregir factura' : isFree ? 'Factura libre' : 'Nueva factura'}
         {detail && (
@@ -541,6 +542,6 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
           {saving ? 'Guardando…' : isEditing ? 'Guardar corrección' : 'Registrar factura'}
         </Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

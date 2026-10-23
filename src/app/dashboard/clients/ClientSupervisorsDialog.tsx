@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -24,6 +23,7 @@ import {
   Stack,
   Zoom,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   CloseOutlined as CloseIcon,
   EditOutlined as EditIcon,
@@ -179,7 +179,7 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <AppDialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
           <Typography variant="h6" fontWeight="bold">
@@ -386,6 +386,6 @@ export default function ClientSupervisorsDialog({ open, onClose, client }: Clien
           Cerrar
         </Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

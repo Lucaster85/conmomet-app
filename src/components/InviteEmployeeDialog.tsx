@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Stack, Typography } from '@mui/material';
+import { DialogTitle, DialogContent, DialogActions, Button, TextField, Stack, Typography } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { Employee, EmployeeInvitationService, InviteResult } from '../utils/api';
 import { buildWhatsAppLink, normalizeArgentinaMobile } from '../utils/whatsapp';
 
@@ -42,7 +43,7 @@ export default function InviteEmployeeDialog({ employee, open, onClose, onSent, 
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <AppDialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>Invitar al Portal por WhatsApp</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -66,6 +67,6 @@ export default function InviteEmployeeDialog({ employee, open, onClose, onSent, 
           {sending ? 'Enviando…' : 'Confirmar y enviar'}
         </Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

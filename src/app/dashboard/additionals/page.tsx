@@ -3,8 +3,9 @@ import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack, Chip, Grid, InputAdornment,
+  DialogTitle, DialogContent, DialogActions, TextField, Stack, Chip, Grid, InputAdornment,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, PostAddOutlined as TitleIcon,
 } from '@mui/icons-material';
@@ -288,7 +289,7 @@ function AdditionalsContent() {
         </>
       )}
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Nuevo adicional</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -332,7 +333,7 @@ function AdditionalsContent() {
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button onClick={handleCreate} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : 'Crear'}</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

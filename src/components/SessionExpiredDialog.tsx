@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Dialog, DialogContent, DialogActions, Button, Box, Typography } from '@mui/material';
+import { DialogContent, DialogActions, Button, Box, Typography } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { onSessionExpired } from '../utils/sessionExpiry';
 
@@ -23,7 +24,7 @@ export default function SessionExpiredDialog() {
   };
 
   return (
-    <Dialog open={open} disableEscapeKeyDown>
+    <AppDialog open={open} disableEscapeKeyDown>
       <DialogContent sx={{ textAlign: 'center', pt: 4, px: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
           <AccessTimeIcon sx={{ fontSize: 48, color: 'warning.main' }} />
@@ -40,6 +41,6 @@ export default function SessionExpiredDialog() {
           Volver a iniciar sesión
         </Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

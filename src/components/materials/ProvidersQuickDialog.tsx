@@ -1,8 +1,9 @@
 'use client';
 import React, { useState } from 'react';
 import {
-  Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, TextField, Tooltip, Typography,
+  Alert, Box, Button, DialogActions, DialogContent, DialogTitle, IconButton, Stack, TextField, Tooltip, Typography,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   CheckOutlined as CheckIcon, CloseOutlined as CloseIcon, LockOutlined as LockIcon,
@@ -63,7 +64,7 @@ export default function ProvidersQuickDialog({ open, onClose, providers, onChang
   });
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <AppDialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>Proveedores</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" mb={2}>
@@ -119,6 +120,6 @@ export default function ProvidersQuickDialog({ open, onClose, providers, onChang
       <DialogActions>
         <Button onClick={onClose}>Cerrar</Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

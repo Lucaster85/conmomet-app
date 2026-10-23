@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, Select, InputLabel, FormControl, FormControlLabel, Checkbox, Divider, useTheme, useMediaQuery, Stack
+  DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, Select, InputLabel, FormControl, FormControlLabel, Checkbox, Divider, useTheme, useMediaQuery, Stack
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { DeleteOutlined as DeleteIcon, AddOutlined as AddIcon } from '@mui/icons-material';
 import { PayrollAdjustment, PayrollAdjustmentService, CreatePayrollAdjustmentData, Loan, LoanService } from '../../../../../utils/api';
 import CurrencyInput from '../../../../../components/CurrencyInput';
@@ -151,7 +152,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth fullScreen={isMobile}>
+    <AppDialog open={open} onClose={onClose} maxWidth="md" fullWidth fullScreen={isMobile}>
       <DialogTitle>Ajustes Manuales - {employeeName}</DialogTitle>
       <DialogContent>
         {error && <Typography color="error" variant="body2" mb={2}>{error}</Typography>}
@@ -345,6 +346,6 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
       <DialogActions>
         <Button onClick={onClose}>Cerrar</Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

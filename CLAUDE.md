@@ -159,3 +159,12 @@ Criterio server-side vs. client-side (no es libre, es por tipo de listado):
 Migrados a este estándar: Proyectos (`dashboard/projects/page.tsx`), Pedidos de Cotización
 (`dashboard/quote-requests/page.tsx`) y Presupuestos (`dashboard/budgets/page.tsx`). El resto de
 los listados queda pendiente de migrar — ver `FLOWS.md` flujo 39 para la lista completa.
+
+## Regla obligatoria: los diálogos usan `AppDialog`, no el `Dialog` de MUI
+
+El `Dialog` de MUI se cierra al clickear el backdrop, y un click accidental fuera de un formulario
+largo (ej: un presupuesto con muchos ítems cargados) descartaba todo lo ingresado. Todo diálogo/modal
+usa `src/components/common/AppDialog.tsx`: mismo API que `Dialog`, pero ignora `reason === 'backdropClick'`.
+Los diálogos se cierran solo desde sus botones (o con Escape). `DialogTitle`/`DialogContent`/`DialogActions`
+se siguen importando de `@mui/material`. Una regla de ESLint (`no-restricted-imports`) prohíbe importar
+`Dialog` de `@mui/material`.

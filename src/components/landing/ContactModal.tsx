@@ -4,7 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  Dialog,
   DialogContent,
   DialogTitle,
   IconButton,
@@ -13,6 +12,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { CloseOutlined as CloseIcon, SendOutlined as SendIcon } from '@mui/icons-material';
 import GearSpinner from '../GearSpinner';
 
@@ -92,7 +92,7 @@ export default function ContactModal({ open, onClose }: ContactModalProps) {
   };
 
   return (
-    <Dialog
+    <AppDialog
       open={open}
       onClose={handleClose}
       fullScreen={fullScreen}
@@ -214,6 +214,6 @@ export default function ContactModal({ open, onClose }: ContactModalProps) {
           </Box>
         </Box>
       </DialogContent>
-    </Dialog>
+    </AppDialog>
   );
 }

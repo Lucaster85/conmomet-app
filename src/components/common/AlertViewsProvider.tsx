@@ -21,7 +21,9 @@ export interface AlertSummary {
   label: string;
   /** Total SIN filtrar por vistos: es el "tenés 7 PC asignados" que el chip debe mostrar siempre. */
   total: number;
-  href: string;
+  /** Módulo al que lleva el chip. Sin href (ej. Vencimientos, que no tiene módulo propio) el chip
+   *  es solo informativo. */
+  href?: string;
   color?: 'info' | 'warning' | 'error' | 'primary' | 'success';
 }
 

@@ -1,10 +1,11 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper, Card, Dialog, DialogTitle, DialogContent,
+  Box, Typography, Button, Paper, Card, DialogTitle, DialogContent,
   DialogActions, TextField, Stack,
   Chip, Grid
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import {
@@ -188,7 +189,7 @@ export default function PayPeriodsPage() {
         )}
       </Grid>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Abrir Nueva Quincena</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -209,7 +210,7 @@ export default function PayPeriodsPage() {
             {processing ? <GearSpinner size={20} /> : 'Abrir Quincena'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

@@ -1,10 +1,11 @@
 'use client';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
+  DialogTitle, DialogContent, DialogActions, Button, TextField,
   Stack, Box, Typography, Alert, Divider, Paper,
   Select, MenuItem, InputLabel, FormControl,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import CurrencyInput from '@/components/CurrencyInput';
 import GearSpinner from '@/components/GearSpinner';
 import {
@@ -91,7 +92,7 @@ export default function ApplyCategoryBonusModal({ open, category, onClose, onSuc
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         Aplicar Suma No Remunerativa — {category?.name}{category?.guild?.name ? ` (${category.guild.name})` : ''}
       </DialogTitle>
@@ -171,6 +172,6 @@ export default function ApplyCategoryBonusModal({ open, category, onClose, onSuc
           {submitting ? 'Aplicando...' : 'Aplicar'}
         </Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

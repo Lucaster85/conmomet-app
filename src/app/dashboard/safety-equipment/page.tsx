@@ -3,10 +3,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, DialogTitle, DialogContent,
   DialogActions, TextField, Stack, Chip, IconButton, Tooltip, FormControlLabel, Checkbox, Grid,
   Tabs, Tab, InputAdornment,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import {
@@ -578,7 +579,7 @@ export default function SafetyEquipmentPage() {
       )}
 
       {/* ─── Employee History Dialog ─── */}
-      <Dialog open={historyOpen} onClose={() => setHistoryOpen(false)} maxWidth="md" fullWidth>
+      <AppDialog open={historyOpen} onClose={() => setHistoryOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center" gap={1} flexWrap="wrap">
             <Typography variant="h6">
@@ -624,10 +625,10 @@ export default function SafetyEquipmentPage() {
         <DialogActions>
           <Button onClick={() => setHistoryOpen(false)}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* ─── Delivery Dialog ─── */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{renewingFrom ? 'Renovar Entrega de EPP' : 'Registrar Entrega de EPP'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -717,10 +718,10 @@ export default function SafetyEquipmentPage() {
             {processing ? <GearSpinner size={20} /> : 'Registrar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* ─── Delete Dialog ─── */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })}>
+      <AppDialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })}>
         <DialogTitle>Eliminar Entrega de EPP</DialogTitle>
         <DialogContent>
           <Typography>
@@ -733,10 +734,10 @@ export default function SafetyEquipmentPage() {
           <Button onClick={() => setDeleteDialog({ open: false, item: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* ─── Catalog Management Dialog ─── */}
-      <Dialog open={catalogOpen} onClose={() => setCatalogOpen(false)} maxWidth="md" fullWidth>
+      <AppDialog open={catalogOpen} onClose={() => setCatalogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="h6">Catálogo de Artículos EPP</Typography>
@@ -798,10 +799,10 @@ export default function SafetyEquipmentPage() {
         <DialogActions>
           <Button onClick={() => setCatalogOpen(false)}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* ─── Catalog Create/Edit Sub-dialog ─── */}
-      <Dialog open={catalogDialogOpen} onClose={() => setCatalogDialogOpen(false)} maxWidth="xs" fullWidth>
+      <AppDialog open={catalogDialogOpen} onClose={() => setCatalogDialogOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>{editingCatalogItem ? 'Editar Artículo' : 'Nuevo Artículo'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -841,7 +842,7 @@ export default function SafetyEquipmentPage() {
             {processing ? <GearSpinner size={20} /> : (editingCatalogItem ? 'Guardar' : 'Crear')}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

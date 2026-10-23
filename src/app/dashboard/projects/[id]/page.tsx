@@ -5,9 +5,10 @@ import {
   Box, Typography, Paper, Card, Tabs, Tab, Chip, LinearProgress,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button,
   Grid, Divider, Stack, TextField, Autocomplete, Tooltip, Alert, Snackbar,
-  Dialog, DialogTitle, DialogContent, DialogActions, RadioGroup, Radio,
+  DialogTitle, DialogContent, DialogActions, RadioGroup, Radio,
   FormControlLabel, FormControl, FormLabel, IconButton,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   ArrowBackOutlined as BackIcon, AddOutlined as AddIcon, PrintOutlined as PrintIcon, SaveOutlined as SaveIcon,
   ChevronLeftOutlined as PrevIcon, ChevronRightOutlined as NextIcon, InfoOutlined as InfoIcon,
@@ -1071,7 +1072,7 @@ export default function ProjectDetailPage() {
       )}
 
       {/* PRINT DIALOG */}
-      <Dialog
+      <AppDialog
         open={printDialogOpen}
         onClose={() => setPrintDialogOpen(false)}
         maxWidth="lg"
@@ -1262,7 +1263,7 @@ export default function ProjectDetailPage() {
             Imprimir / Exportar PDF
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Toast Notification */}
       <Snackbar

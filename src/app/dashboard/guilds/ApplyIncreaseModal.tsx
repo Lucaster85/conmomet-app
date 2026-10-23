@@ -1,11 +1,12 @@
 'use client';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
+  DialogTitle, DialogContent, DialogActions, Button, TextField,
   Stack, Box, Typography, Checkbox, FormGroup, FormControlLabel,
   Alert, Divider, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { Guild, Category, Employee, EmployeeRate, GuildService, CategoryService, EmployeeService, EmployeeRateService } from '@/utils/api';
 import GearSpinner from '@/components/GearSpinner';
 
@@ -181,7 +182,7 @@ export default function ApplyIncreaseModal({ open, guild, onClose, onSuccess }: 
   const hasSelectedCategories = Object.values(selectedCategoryIds).some(v => v);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <AppDialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
         Aplicar aumento inmediato — {guild?.name} ({guild?.code})
       </DialogTitle>
@@ -366,6 +367,6 @@ export default function ApplyIncreaseModal({ open, guild, onClose, onSuccess }: 
           {submitting ? 'Aplicando...' : 'Aplicar aumento'}
         </Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }
