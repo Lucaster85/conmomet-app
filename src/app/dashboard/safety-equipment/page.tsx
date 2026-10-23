@@ -109,6 +109,7 @@ export default function SafetyEquipmentPage() {
   // Entrega vigente que se está renovando (si se abrió el diálogo desde el botón "Renovar").
   const [renewingFrom, setRenewingFrom] = useState<SafetyEquipment | null>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: SafetyEquipment | null }>({ open: false, item: null });
 
   // Catalog dialog
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -336,6 +337,19 @@ export default function SafetyEquipmentPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteDialog.item) return;
+    try {
+      await SafetyEquipmentService.delete(deleteDialog.item.id);
+      setDeleteDialog({ open: false, item: null });
+      setSuccess('Entrega de EPP eliminada');
+      await loadData();
+      if (historyEmployee) await handleOpenEmployeeHistory(historyEmployee);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar');
+    }
+  };
+
   // ─── Catalog Management ───
   const loadCatalog = async () => {
     try {
@@ -559,7 +573,7 @@ export default function SafetyEquipmentPage() {
         </Grid>
       </Paper>
 
-      <EppDeliveriesList deliveries={equipment} variant="full" onRenew={handleRenew} />
+      <EppDeliveriesList deliveries={equipment} variant="full" onRenew={handleRenew} onDelete={(e) => setDeleteDialog({ open: true, item: e })} />
       </Box>
       )}
 
@@ -600,6 +614,7 @@ export default function SafetyEquipmentPage() {
                   deliveries={employeeHistory}
                   variant="compact"
                   onRenew={handleRenew}
+                  onDelete={(e) => setDeleteDialog({ open: true, item: e })}
                   emptyMessage="Este empleado no tiene entregas de EPP registradas"
                 />
               </Box>
@@ -701,6 +716,22 @@ export default function SafetyEquipmentPage() {
           <Button onClick={handleSubmit} variant="contained" disabled={processing}>
             {processing ? <GearSpinner size={20} /> : 'Registrar'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Delete Dialog ─── */}
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })}>
+        <DialogTitle>Eliminar Entrega de EPP</DialogTitle>
+        <DialogContent>
+          <Typography>
+            ¿Eliminar la entrega de &quot;{deleteDialog.item?.eppItem?.name || 'este artículo'}&quot; a{' '}
+            {deleteDialog.item?.employee ? `${deleteDialog.item.employee.lastname}, ${deleteDialog.item.employee.name}` : 'este empleado'}?
+            Esta acción no se puede deshacer.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog({ open: false, item: null })}>Cancelar</Button>
+          <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
       </Dialog>
 

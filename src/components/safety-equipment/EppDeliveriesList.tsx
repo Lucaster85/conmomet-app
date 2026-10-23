@@ -4,7 +4,7 @@ import {
   Box, Typography, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Stack, Chip, IconButton, Tooltip, Button,
 } from '@mui/material';
-import { AutorenewOutlined as RenewIcon, DrawOutlined as SignatureIcon } from '@mui/icons-material';
+import { AutorenewOutlined as RenewIcon, DrawOutlined as SignatureIcon, DeleteOutlined as DeleteIcon } from '@mui/icons-material';
 import { SafetyEquipment } from '../../utils/api';
 import { CATEGORY_LABELS, CONDITION_COLORS, CONDITION_LABELS, EPP_STATUS_CONFIG, eppExpirationLabel } from '../../utils/epp';
 
@@ -19,12 +19,14 @@ interface EppDeliveriesListProps {
   // empleado y portal, donde el empleado ya está implícito en el contexto).
   variant?: 'full' | 'compact';
   onRenew?: (eq: SafetyEquipment) => void;
+  onDelete?: (eq: SafetyEquipment) => void;
   emptyMessage?: string;
 }
 
-export default function EppDeliveriesList({ deliveries, variant = 'full', onRenew, emptyMessage = 'No hay entregas registradas' }: EppDeliveriesListProps) {
+export default function EppDeliveriesList({ deliveries, variant = 'full', onRenew, onDelete, emptyMessage = 'No hay entregas registradas' }: EppDeliveriesListProps) {
   const showEmployee = variant === 'full';
-  const columnCount = (showEmployee ? 9 : 8) + (onRenew ? 1 : 0);
+  const showActions = !!onRenew || !!onDelete;
+  const columnCount = (showEmployee ? 9 : 8) + (showActions ? 1 : 0);
 
   return (
     <Box>
@@ -61,8 +63,15 @@ export default function EppDeliveriesList({ deliveries, variant = 'full', onRene
                     )}
                   </Box>
                   {e.notes && <Typography variant="caption" display="block" mt={1} color="text.secondary">{e.notes}</Typography>}
-                  {onRenew && renewable && (
-                    <Button size="small" startIcon={<RenewIcon />} onClick={() => onRenew(e)} sx={{ mt: 1 }}>Renovar</Button>
+                  {(onRenew || onDelete) && (
+                    <Box display="flex" gap={1} mt={1}>
+                      {onRenew && renewable && (
+                        <Button size="small" startIcon={<RenewIcon />} onClick={() => onRenew(e)}>Renovar</Button>
+                      )}
+                      {onDelete && (
+                        <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => onDelete(e)}>Eliminar</Button>
+                      )}
+                    </Box>
                   )}
                 </Card>
               );
@@ -86,7 +95,7 @@ export default function EppDeliveriesList({ deliveries, variant = 'full', onRene
                 <TableCell><strong>Vencimiento</strong></TableCell>
                 <TableCell><strong>Notas</strong></TableCell>
                 <TableCell align="center"><strong>Firma</strong></TableCell>
-                {onRenew && <TableCell align="center"><strong>Acciones</strong></TableCell>}
+                {showActions && <TableCell align="center"><strong>Acciones</strong></TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -123,12 +132,19 @@ export default function EppDeliveriesList({ deliveries, variant = 'full', onRene
                           </Tooltip>
                         )}
                       </TableCell>
-                      {onRenew && (
+                      {showActions && (
                         <TableCell align="center">
-                          {renewable && (
+                          {onRenew && renewable && (
                             <Tooltip title="Renovar">
                               <IconButton size="small" color="primary" onClick={() => onRenew(e)}>
                                 <RenewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                          {onDelete && (
+                            <Tooltip title="Eliminar">
+                              <IconButton size="small" color="error" onClick={() => onDelete(e)}>
+                                <DeleteIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                           )}

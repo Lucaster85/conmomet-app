@@ -54,6 +54,15 @@ entrega con el mismo empleado, artículo y talle ya cargados, solo falta confirm
 Los artículos **sin vencimiento** (como los guantes) nunca se reemplazan entre sí: cada entrega
 queda como un registro independiente, porque se entregan a demanda y pueden coexistir.
 
+## Eliminar una entrega mal cargada
+
+El botón **"Eliminar"** (ícono junto a cada entrega, tanto en el listado general como en el
+historial del empleado) borra una entrega que se cargó por error — empleado o artículo
+equivocado, fecha mal tipeada, un duplicado. Pide confirmación antes de borrar y no se puede
+deshacer. Requiere el permiso `safety_equipment_delete`, que no viene asignado a ningún rol por
+defecto — hay que otorgarlo desde **Configuración → Roles** a quien vaya a corregir estas
+cargas.
+
 ## Aviso de vencimientos en el inicio
 
 Si hay EPP vencido o por vencer, aparece un aviso en la portada del dashboard con el empleado,
