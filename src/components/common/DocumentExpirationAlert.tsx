@@ -316,7 +316,8 @@ export default function DocumentExpirationAlert({ onError, onSuccess }: Document
           type: 'entity_document',
           label: ALERT_SHORT_LABEL.entity_document,
           total: expiringDocs.length,
-          href: '/dashboard/documents',
+          // Sin href a propósito: los documentos no tienen módulo propio (viven en la ficha de cada
+          // entidad), así que el chip es solo informativo.
           color: 'error',
         }
       : null

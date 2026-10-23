@@ -3,7 +3,10 @@
 Arriba de todo hay una fila de **contadores**, bajo el título "Tus pendientes". Ahí está, de un
 vistazo, cuántas cosas tenés esperándote de cada tipo: pedidos de cotización, vencimientos de
 documentación, OCAs a presupuestar, EPP por vencer, herramientas en reparación. Cada contador es
-clickeable y te lleva al listado completo de ese módulo.
+clickeable y te lleva al listado completo de ese módulo. La excepción son los **vencimientos**: la
+documentación no tiene un módulo propio (cada documento vive en la ficha de su empleado o
+vehículo), así que ese contador es solo informativo. El detalle está en la tarjeta "Alertas de
+Vencimientos", y desde ahí se llega a la ficha de cada documento con "Ver detalle".
 
 Debajo aparecen los **avisos con detalle**: una tarjeta por tema, con la lista de los items
 concretos y los botones para actuar sobre ellos.

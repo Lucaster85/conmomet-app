@@ -36,8 +36,10 @@ export default function DashboardAlertSummaryBar() {
             label={`${chip.label}: ${chip.total}`}
             color={chip.color || 'default'}
             size="small"
-            onClick={() => router.push(chip.href)}
-            sx={{ cursor: 'pointer' }}
+            // Sin href (Vencimientos: los documentos no tienen módulo propio) el chip es solo
+            // informativo, sin click.
+            onClick={chip.href ? () => router.push(chip.href!) : undefined}
+            sx={chip.href ? { cursor: 'pointer' } : undefined}
           />
         ))}
       </Box>
