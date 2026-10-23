@@ -102,6 +102,14 @@ export default function PortalPayroll() {
                           .reduce((sum: number, a: PayrollAdjustment) => sum + Number(a.amount), 0)).toLocaleString()}
                       </Typography>
                     </Grid>
+                    <Grid size={{ xs: 6 }}>
+                      <Typography variant="caption" color="text.secondary">Recibo / Depósito</Typography>
+                      <Typography variant="body2" color="info.main" fontWeight={500}>
+                        $ {Number((payroll.adjustments || [])
+                          .filter((a: PayrollAdjustment) => a.type === 'deposit')
+                          .reduce((sum: number, a: PayrollAdjustment) => sum + Number(a.amount), 0)).toLocaleString()}
+                      </Typography>
+                    </Grid>
                   </Grid>
 
                   <Box mt={3} p={2} bgcolor="grey.50" borderRadius={2} display="flex" justifyContent="space-between" alignItems="center">

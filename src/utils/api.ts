@@ -4672,7 +4672,7 @@ export class InvoiceService {
 export interface PayrollAdjustment {
   id: number;
   payroll_entry_id: number;
-  type: 'bonus' | 'deduction';
+  type: 'bonus' | 'deduction' | 'deposit';
   label: string;
   amount: number;
   is_auto: boolean;
@@ -4684,7 +4684,7 @@ export interface PayrollAdjustment {
 
 export interface CreatePayrollAdjustmentData {
   payroll_entry_id: number;
-  type: 'bonus' | 'deduction';
+  type: 'bonus' | 'deduction' | 'deposit';
   label: string;
   amount: number;
 }
