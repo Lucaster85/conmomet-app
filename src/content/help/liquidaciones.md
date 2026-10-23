@@ -26,6 +26,38 @@ siga en Borrador**, cada vez que se genera se recalcula sola con los datos que h
 ese momento (horas, vacaciones, licencias, faltas). En cuanto se **Confirma**, deja de
 recalcularse.
 
+## Buscar un empleado en el listado
+
+Arriba de la lista de la quincena hay una barra de búsqueda por **nombre o apellido** del
+empleado. Funciona con cualquier parte del nombre, sin importar mayúsculas ni tildes, y con
+varias palabras a la vez ("juan perez" encuentra a "Pérez, Juan"). **"Limpiar filtros"** vuelve
+a mostrar a todos.
+
+Ojo: **Imprimir**, **Imprimir Detalles**, **Exportar Horas** y **Exportar Planilla** trabajan sobre lo que está
+filtrado en pantalla. Si buscaste a un empleado y tocás alguno de esos botones, sale solo ese
+empleado; para sacar la quincena completa, limpiá el filtro antes.
+
+## Recibo / Depósito y la planilla de la quincena
+
+Además de **Premio / Extra** y **Descuento**, en **Gestión de ajustes** hay un tercer tipo:
+**Recibo / Depósito**. Sirve para registrar la parte del sueldo que se paga por depósito (o con
+recibo) en vez de en efectivo. **Resta del neto igual que un descuento**, así que el **Sueldo
+Neto** pasa a ser lo que se le paga al empleado en efectivo. En el listado tiene su propia
+columna **Depósito**, y en el detalle y el recibo aparece como línea aparte
+("Recibo / Depósito (descripción)"), separada de las retenciones. El empleado también lo ve en su
+portal.
+
+El botón **Exportar Planilla** baja un Excel con una fila por empleado (APELLIDO, Nombre) y estas
+columnas:
+
+- **QUINCENA**: el total de la quincena, con premios y sin descuentos (el sueldo bruto).
+- **DESCUENTOS**: adelantos + cuotas de préstamo (tanto las cuotas fijas como las descontadas a
+  discreción) + los ajustes de tipo Descuento.
+- **DEPOSITO**: los ajustes de tipo Recibo / Depósito.
+- **EFECTIVO**: lo que se cobra en mano = Quincena − Descuentos − Depósito.
+
+Al final hay una fila de totales con la suma de cada columna.
+
 ## Qué entra en el cálculo
 
 - **Horas trabajadas** y sus **extras** (50% y 100%).
@@ -100,6 +132,11 @@ obligatoria**, y genera un aviso en el dashboard visible solo para el rol **Soci
 el detalle de qué se anuló, por cuánto y por qué (el empleado que lo anuló no ve este aviso). Si
 la liquidación de ese empleado para esa quincena ya está Confirmada o Pagada, no se puede anular
 el adelanto — hay que esperar a que la corrección se pueda hacer sin tocar una liquidación cerrada.
+
+Un adelanto anulado **deja de aparecer** en el detalle y en el recibo de la liquidación (y en el
+total de Adelantos del Resumen de Gastos), no solo en el neto: si lo anulás y cargás uno nuevo
+por el monto correcto, al volver a **Generar** la quincena el detalle muestra únicamente el
+vigente.
 
 ## Retroactivos de gremio
 
