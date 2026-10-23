@@ -67,7 +67,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
       setLoading(true);
       await PayrollAdjustmentService.create({
         payroll_entry_id: payrollEntryId,
-        type: form.type as 'bonus' | 'deduction',
+        type: form.type as 'bonus' | 'deduction' | 'deposit',
         label: form.label,
         amount: form.amount
       });
@@ -157,17 +157,18 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
       <DialogContent>
         {error && <Typography color="error" variant="body2" mb={2}>{error}</Typography>}
 
-        <Typography variant="subtitle2" mb={1} mt={1}>Agregar Premio o Retención manual</Typography>
+        <Typography variant="subtitle2" mb={1} mt={1}>Agregar Premio, Retención o Depósito manual</Typography>
         <Box display="flex" gap={2} mb={3} alignItems="flex-start" flexWrap="wrap">
           <FormControl sx={{ minWidth: 150, width: isMobile ? '100%' : 'auto', flexShrink: 0 }} size="small">
             <InputLabel>Tipo</InputLabel>
             <Select
               value={form.type || 'bonus'}
               label="Tipo"
-              onChange={(e) => setForm({ ...form, type: e.target.value as 'bonus' | 'deduction' })}
+              onChange={(e) => setForm({ ...form, type: e.target.value as 'bonus' | 'deduction' | 'deposit' })}
             >
               <MenuItem value="bonus">Premio / Extra</MenuItem>
               <MenuItem value="deduction">Descuento</MenuItem>
+              <MenuItem value="deposit">Recibo / Depósito</MenuItem>
             </Select>
           </FormControl>
 
@@ -324,11 +325,11 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
                   adjustments.map((a) => (
                     <TableRow key={a.id}>
                       <TableCell>
-                        {a.type === 'bonus' ? 'Premio/Extra' : 'Descuento'}
+                        {a.type === 'bonus' ? 'Premio/Extra' : a.type === 'deposit' ? 'Recibo/Depósito' : 'Descuento'}
                       </TableCell>
                       <TableCell>{a.label}</TableCell>
-                      <TableCell align="right" sx={{ color: a.type === 'deduction' ? 'error.main' : 'success.main' }}>
-                        {a.type === 'deduction' ? '-' : '+'}${Number(a.amount).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      <TableCell align="right" sx={{ color: a.type === 'bonus' ? 'success.main' : a.type === 'deposit' ? 'info.main' : 'error.main' }}>
+                        {a.type === 'bonus' ? '+' : '-'}${Number(a.amount).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell align="center">
                         <IconButton size="small" color="error" onClick={() => handleDelete(a.id)} disabled={a.is_auto}>

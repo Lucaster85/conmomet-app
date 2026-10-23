@@ -32,6 +32,10 @@ const formatPeriodLabel = (p: PayPeriod) => {
 // Sin mayúsculas ni tildes, para que "perez" encuentre a "Pérez".
 const normalizeSearch = (v: string) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
+// Suma los ajustes de un tipo ('bonus' | 'deduction' | 'deposit') — evita repetir filter().reduce().
+const sumByType = (adjustments: PayrollAdjustment[] | undefined, type: PayrollAdjustment['type']) =>
+  (adjustments || []).filter((a) => a.type === type).reduce((sum, a) => sum + Number(a.amount), 0);
+
 const formatAdvanceLabel = (adv: { payment_method?: string; date: string }) => {
   const method = adv.payment_method === 'efectivo' ? 'Efvo' : adv.payment_method === 'transferencia' ? 'Transf' : '';
   const date = new Date(adv.date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
@@ -317,6 +321,56 @@ export default function PayrollPage() {
     }
   };
 
+  // Planilla de pago de la quincena: una fila por empleado con Quincena (bruto), Descuentos
+  // (adelantos + cuotas de préstamo + ajustes "Descuento"), Depósito (ajustes "Recibo/Depósito")
+  // y Efectivo (neto a cobrar = Quincena − Descuentos − Depósito). Ver FLOWS.md §42.
+  const handleExportPayrollSheet = async () => {
+    if (!period || filteredEntries.length === 0) return;
+
+    try {
+      const XLSX = await import('xlsx');
+      const monthName = MONTHS[(period.month ?? 1) - 1];
+
+      const header = ['EMPLEADO', 'QUINCENA', 'DESCUENTOS', 'DEPOSITO', 'EFECTIVO'];
+      const rows: (string | number)[][] = [
+        header,
+        ...filteredEntries.map((e) => [
+          `${e.employee?.lastname}, ${e.employee?.name}`,
+          Number(e.gross_amount || 0),
+          Number(e.advances_deducted || 0) + Number(e.loan_installments_deducted || 0) + sumByType(e.adjustments, 'deduction'),
+          sumByType(e.adjustments, 'deposit'),
+          Number(e.net_amount || 0),
+        ]),
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const lastDataRow = rows.length; // fila (1-based) del último empleado
+      const totalsRow = lastDataRow + 1;
+      const moneyFormat = '_-"$"\\ * #,##0.00_-;\\-"$"\\ * #,##0.00_-;_-"$"\\ * "-"??_-;_-@_-';
+
+      // Fila de totales con SUM, igual que la planilla manual.
+      ['B', 'C', 'D', 'E'].forEach((col) => {
+        ws[`${col}${totalsRow}`] = { t: 'n', f: `SUM(${col}2:${col}${lastDataRow})` };
+      });
+      for (let r = 2; r <= totalsRow; r++) {
+        ['B', 'C', 'D', 'E'].forEach((col) => {
+          const cell = ws[`${col}${r}`];
+          if (cell) cell.z = moneyFormat;
+        });
+      }
+      ws['!ref'] = `A1:E${totalsRow}`;
+      ws['!cols'] = [{ wch: 32 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Planilla');
+
+      const qNum = period.type === 'first_half' ? '1' : '2';
+      XLSX.writeFile(wb, `Planilla_Q${qNum}_${monthName}_${period.year}.xlsx`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al exportar a Excel');
+    }
+  };
+
   if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
 
   return (
@@ -367,6 +421,15 @@ export default function PayrollPage() {
                   sx={{ display: filteredEntries.length > 0 ? 'inline-flex' : 'none' }}
                 >
                   Exportar Horas
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<ExcelIcon sx={{ color: '#217346' }} />}
+                  onClick={handleExportPayrollSheet}
+                  sx={{ display: filteredEntries.length > 0 ? 'inline-flex' : 'none' }}
+                >
+                  Exportar Planilla
                 </Button>
               </Box>
             </Box>
@@ -517,6 +580,12 @@ export default function PayrollPage() {
                     })()}
                   </Grid>
                   <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" display="block">Depósito</Typography>
+                    <Typography variant="body2" fontWeight="medium">
+                      {sumByType(e.adjustments, 'deposit') > 0 ? `-${formatCurrency(sumByType(e.adjustments, 'deposit'))}` : '—'}
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary" display="block">Sueldo Neto</Typography>
                     <Typography variant="body2" fontWeight="bold" color="success.dark">{formatCurrency(e.net_amount)}</Typography>
                   </Grid>
@@ -591,6 +660,7 @@ export default function PayrollPage() {
                 <TableCell align="right"><strong>Adelantos</strong></TableCell>
                 <TableCell align="right"><strong>Otros Haberes</strong></TableCell>
                 <TableCell align="right"><strong>Retenciones</strong></TableCell>
+                <TableCell align="right"><strong>Depósito</strong></TableCell>
                 <TableCell align="right"><strong>Sueldo Neto</strong></TableCell>
                 <TableCell align="center"><strong>Estado</strong></TableCell>
                 <TableCell align="center" className="no-print"><strong>Acciones</strong></TableCell>
@@ -700,6 +770,13 @@ export default function PayrollPage() {
                           {deductions > 0 ? (
                             <Typography variant="body2" color="error.main" fontWeight="medium">
                               -{formatCurrency(deductions)}
+                            </Typography>
+                          ) : '—'}
+                        </TableCell>
+                        <TableCell align="right">
+                          {sumByType(e.adjustments, 'deposit') > 0 ? (
+                            <Typography variant="body2" color="info.main" fontWeight="medium">
+                              -{formatCurrency(sumByType(e.adjustments, 'deposit'))}
                             </Typography>
                           ) : '—'}
                         </TableCell>
@@ -1159,7 +1236,15 @@ export default function PayrollPage() {
                       <Typography variant="body2" color="error.main">-{formatCurrency(a.amount)}</Typography>
                     </Box>
                   ))}
-                  {Number(detailEntry.advances_deducted) === 0 && Number(detailEntry.loan_installments_deducted) === 0 && (!detailEntry.adjustments || detailEntry.adjustments.filter((a: { type: string }) => a.type === 'deduction').length === 0) && (
+                  {detailEntry.adjustments?.filter((a: { type: string }) => a.type === 'deposit').map((a: { id: number; label: string; amount: number }) => (
+                    <Box display="flex" justifyContent="space-between" key={a.id}>
+                      <Typography variant="body2" color="info.main">
+                        Recibo / Depósito ({a.label})
+                      </Typography>
+                      <Typography variant="body2" color="info.main">-{formatCurrency(a.amount)}</Typography>
+                    </Box>
+                  ))}
+                  {Number(detailEntry.advances_deducted) === 0 && Number(detailEntry.loan_installments_deducted) === 0 && (!detailEntry.adjustments || detailEntry.adjustments.filter((a: { type: string }) => a.type === 'deduction' || a.type === 'deposit').length === 0) && (
                     <Typography variant="body2" color="text.secondary">Sin deducciones</Typography>
                   )}
                 </Stack>
@@ -1563,7 +1648,15 @@ export default function PayrollPage() {
                       <Typography variant="caption" color="error.main">-{formatCurrency(a.amount)}</Typography>
                     </Box>
                   ))}
-                  {Number(entry.advances_deducted) === 0 && Number(entry.loan_installments_deducted) === 0 && (!entry.adjustments || entry.adjustments.filter((a: PayrollAdjustment) => a.type === 'deduction').length === 0) && (
+                  {entry.adjustments?.filter((a: PayrollAdjustment) => a.type === 'deposit').map((a: PayrollAdjustment) => (
+                    <Box display="flex" justifyContent="space-between" key={a.id}>
+                      <Typography variant="caption" color="info.main">
+                        Recibo / Depósito ({a.label})
+                      </Typography>
+                      <Typography variant="caption" color="info.main">-{formatCurrency(a.amount)}</Typography>
+                    </Box>
+                  ))}
+                  {Number(entry.advances_deducted) === 0 && Number(entry.loan_installments_deducted) === 0 && (!entry.adjustments || entry.adjustments.filter((a: PayrollAdjustment) => a.type === 'deduction' || a.type === 'deposit').length === 0) && (
                     <Typography variant="caption" color="text.secondary">Sin deducciones</Typography>
                   )}
                 </Stack>
