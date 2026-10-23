@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, DialogTitle, DialogContent,
@@ -19,6 +19,7 @@ import { isFixedSalaryPayType, payTypeLabel } from '../../../../../utils/payType
 import { useParams, useRouter } from 'next/navigation';
 import PayrollAdjustmentsModal from './PayrollAdjustmentsModal';
 import RateChangesModal from './RateChangesModal';
+import ListFilters from '@/components/common/ListFilters';
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -27,6 +28,9 @@ const formatPeriodLabel = (p: PayPeriod) => {
   const month = MONTHS[(p.month ?? 1) - 1];
   return `${half} de ${month} ${p.year}`;
 };
+
+// Sin mayúsculas ni tildes, para que "perez" encuentre a "Pérez".
+const normalizeSearch = (v: string) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
 const formatAdvanceLabel = (adv: { payment_method?: string; date: string }) => {
   const method = adv.payment_method === 'efectivo' ? 'Efvo' : adv.payment_method === 'transferencia' ? 'Transf' : '';
@@ -43,6 +47,7 @@ export default function PayrollPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [entries, setEntries] = useState<PayrollEntry[]>([]);
+  const [search, setSearch] = useState('');
   const [period, setPeriod] = useState<PayPeriod | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -62,6 +67,18 @@ export default function PayrollPage() {
   const [signEntry, setSignEntry] = useState<any>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [savingSignature, setSavingSignature] = useState(false);
+
+  // Filtro en memoria a propósito: GET /payroll/:id ya trae la quincena completa (acotada por la
+  // cantidad de empleados, no crece con el uso) y no pagina. Cada palabra tiene que aparecer en
+  // "apellido nombre", así "juan perez" encuentra a "Pérez, Juan".
+  const filteredEntries = useMemo(() => {
+    const terms = normalizeSearch(search).split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return entries;
+    return entries.filter((e) => {
+      const haystack = normalizeSearch(`${e.employee?.lastname ?? ''} ${e.employee?.name ?? ''}`);
+      return terms.every((t) => haystack.includes(t));
+    });
+  }, [entries, search]);
 
   useEffect(() => {
     const handleAfterPrint = () => {
@@ -186,7 +203,7 @@ export default function PayrollPage() {
   };
 
   const handleExportHours = async () => {
-    if (!period || entries.length === 0) return;
+    if (!period || filteredEntries.length === 0) return;
 
     try {
       const XLSX = await import('xlsx');
@@ -207,7 +224,7 @@ export default function PayrollPage() {
           'Hs Regulares', 'Hs Extra 50%', 'Hs Extra 100%', 'Hs Especial', 'Hs Licencia/enfermedad', 'Hs Vacaciones',
           'Hs PEP', 'Hs PEP 50%', 'Hs PEP 100%'
         ],
-        ...entries.map(e => {
+        ...filteredEntries.map(e => {
           const isFixedSalary = isFixedSalaryPayType(e.employee?.pay_type);
           const rawReg = Number(e.total_regular_hours || 0);
           const ot50 = Number(e.total_overtime_50_hours || 0);
@@ -340,14 +357,14 @@ export default function PayrollPage() {
                 size="small"
               />
               <Box className="no-print" display="flex" gap={1}>
-                <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrint} sx={{ display: entries.length > 0 ? 'inline-flex' : 'none' }}>Imprimir</Button>
-                <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrintAll} sx={{ display: entries.length > 0 ? 'inline-flex' : 'none' }}>Imprimir Detalles</Button>
+                <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrint} sx={{ display: filteredEntries.length > 0 ? 'inline-flex' : 'none' }}>Imprimir</Button>
+                <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrintAll} sx={{ display: filteredEntries.length > 0 ? 'inline-flex' : 'none' }}>Imprimir Detalles</Button>
                 <Button
                   variant="outlined"
                   size="small"
                   startIcon={<ExcelIcon sx={{ color: '#217346' }} />}
                   onClick={handleExportHours}
-                  sx={{ display: entries.length > 0 ? 'inline-flex' : 'none' }}
+                  sx={{ display: filteredEntries.length > 0 ? 'inline-flex' : 'none' }}
                 >
                   Exportar Horas
                 </Button>
@@ -355,6 +372,18 @@ export default function PayrollPage() {
             </Box>
           </Box>
         </Paper>
+      )}
+
+      {entries.length > 0 && (
+        <Box className="no-print">
+          <ListFilters
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Buscar por nombre o apellido del empleado…"
+            onClear={() => setSearch('')}
+            hasActiveFilters={search.trim() !== ''}
+          />
+        </Box>
       )}
 
       <Box className={isPrintingAll ? "no-print" : ""}>
@@ -369,11 +398,15 @@ export default function PayrollPage() {
             <Button variant="contained" color="secondary" startIcon={<CalcIcon />} onClick={handleGenerate}>Generar Ahora</Button>
           )}
         </Paper>
+      ) : filteredEntries.length === 0 ? (
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography color="text.secondary">No hay empleados que coincidan con la búsqueda.</Typography>
+        </Paper>
       ) : isMobile ? (
         /* Mobile View (Cards) */
         <Stack spacing={2} className="no-print">
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {entries.map((e: any) => (
+          {filteredEntries.map((e: any) => (
             <Card 
               key={e.id} 
               sx={{ 
@@ -565,7 +598,7 @@ export default function PayrollPage() {
             </TableHead>
             <TableBody>
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {entries.map((e: any) => (
+              {filteredEntries.map((e: any) => (
                 <TableRow key={e.id as number} hover>
                   <TableCell>
                     <Typography variant="body2" fontWeight="bold">{(e.employee as Record<string, string>)?.lastname}, {(e.employee as Record<string, string>)?.name}</Typography>
@@ -1223,7 +1256,7 @@ export default function PayrollPage() {
             } 
           }}
         >
-          {entries.map((entry) => (
+          {filteredEntries.map((entry) => (
             <Box 
               key={entry.id} 
               sx={{ 

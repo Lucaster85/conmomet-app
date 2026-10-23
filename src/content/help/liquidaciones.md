@@ -26,6 +26,17 @@ siga en Borrador**, cada vez que se genera se recalcula sola con los datos que h
 ese momento (horas, vacaciones, licencias, faltas). En cuanto se **Confirma**, deja de
 recalcularse.
 
+## Buscar un empleado en el listado
+
+Arriba de la lista de la quincena hay una barra de búsqueda por **nombre o apellido** del
+empleado. Funciona con cualquier parte del nombre, sin importar mayúsculas ni tildes, y con
+varias palabras a la vez ("juan perez" encuentra a "Pérez, Juan"). **"Limpiar filtros"** vuelve
+a mostrar a todos.
+
+Ojo: **Imprimir**, **Imprimir Detalles** y **Exportar Horas** trabajan sobre lo que está
+filtrado en pantalla. Si buscaste a un empleado y tocás alguno de esos botones, sale solo ese
+empleado; para sacar la quincena completa, limpiá el filtro antes.
+
 ## Qué entra en el cálculo
 
 - **Horas trabajadas** y sus **extras** (50% y 100%).
