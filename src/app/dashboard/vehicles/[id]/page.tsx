@@ -4,8 +4,9 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   Box, Typography, Paper, Chip, Button, Stack, Grid, Card,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  DialogTitle, DialogContent, DialogActions, TextField,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { ArrowBackOutlined as BackIcon, PrintOutlined as PrintIcon, SwapHorizOutlined as StatusIcon, OpenInNewOutlined as OpenIcon } from '@mui/icons-material';
 import { QRCodeSVG } from 'qrcode.react';
 import FeedbackModal from '../../../../components/FeedbackModal';
@@ -241,7 +242,7 @@ export default function VehicleDetailPage() {
         </Grid>
       </Grid>
 
-      <Dialog open={statusDialog.open} onClose={() => setStatusDialog({ open: false, status: 'available', notes: '' })} maxWidth="xs" fullWidth>
+      <AppDialog open={statusDialog.open} onClose={() => setStatusDialog({ open: false, status: 'available', notes: '' })} maxWidth="xs" fullWidth>
         <DialogTitle>Cambiar estado</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -258,7 +259,7 @@ export default function VehicleDetailPage() {
           <Button onClick={() => setStatusDialog({ open: false, status: 'available', notes: '' })}>Cancelar</Button>
           <Button onClick={handleSubmitStatus} variant="contained">Guardar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

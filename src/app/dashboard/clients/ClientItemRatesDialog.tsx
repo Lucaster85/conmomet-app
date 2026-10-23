@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -23,6 +22,7 @@ import {
   Switch,
   FormControlLabel,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import CurrencyInput from '../../../components/CurrencyInput';
 import {
   CloseOutlined as CloseIcon,
@@ -161,7 +161,7 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
             <Typography variant="h6" fontWeight="bold">Tarifas por Rubro</Typography>
@@ -255,10 +255,10 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={onClose} variant="outlined" size="small">Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Historial de una tarifa puntual — log append-only, ver FLOWS.md */}
-      <Dialog open={historyDialog.open} onClose={() => setHistoryDialog({ open: false, itemType: null, entries: [], loading: false })} maxWidth="xs" fullWidth>
+      <AppDialog open={historyDialog.open} onClose={() => setHistoryDialog({ open: false, itemType: null, entries: [], loading: false })} maxWidth="xs" fullWidth>
         <DialogTitle>Historial — {historyDialog.itemType?.name}</DialogTitle>
         <DialogContent>
           {historyDialog.loading ? (
@@ -282,10 +282,10 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
         <DialogActions>
           <Button onClick={() => setHistoryDialog({ open: false, itemType: null, entries: [], loading: false })}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Alta rápida de rubro — mismo form que dashboard/budget-item-types/page.tsx */}
-      <Dialog open={newItemType.open} onClose={() => setNewItemType({ open: false, form: emptyItemTypeForm() })} maxWidth="xs" fullWidth>
+      <AppDialog open={newItemType.open} onClose={() => setNewItemType({ open: false, form: emptyItemTypeForm() })} maxWidth="xs" fullWidth>
         <DialogTitle>Nuevo Rubro</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -330,7 +330,7 @@ export default function ClientItemRatesDialog({ open, onClose, client }: ClientI
           <Button onClick={() => setNewItemType({ open: false, form: emptyItemTypeForm() })}>Cancelar</Button>
           <Button onClick={handleCreateItemType} variant="contained">Crear</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </>
   );
 }

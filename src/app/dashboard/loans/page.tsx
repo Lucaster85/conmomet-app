@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, Stack, TextField, InputAdornment,
   MenuItem, FormControl, InputLabel, Select
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   AddOutlined as AddIcon, DeleteOutlined as DeleteIcon, VisibilityOutlined as VisibilityIcon,
   RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon,
@@ -641,7 +642,7 @@ export default function LoansPage() {
       </Box>
 
       {/* Create / Approve Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+      <AppDialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>{approvingLoan ? 'Aprobar Préstamo Solicitado' : 'Otorgar Préstamo a Empleado'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -787,10 +788,10 @@ export default function LoansPage() {
             {processing ? <GearSpinner size={20} /> : (approvingLoan ? 'Aprobar Préstamo' : 'Registrar Préstamo')}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Delete Dialog */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })}>
+      <AppDialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })}>
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>
@@ -801,10 +802,10 @@ export default function LoansPage() {
           <Button onClick={() => setDeleteDialog({ open: false, item: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Detail Dialog: descuentos e intereses aplicados */}
-      <Dialog open={!!detailLoan} onClose={() => setDetailLoan(null)} maxWidth="md" fullWidth>
+      <AppDialog open={!!detailLoan} onClose={() => setDetailLoan(null)} maxWidth="md" fullWidth>
         <DialogTitle>
           Detalle de Movimientos
           {detailLoan?.employee && (
@@ -981,10 +982,10 @@ export default function LoansPage() {
         <DialogActions>
           <Button onClick={() => setDetailLoan(null)}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Rechazar préstamo */}
-      <Dialog open={!!rejectTarget} onClose={() => setRejectTarget(null)} maxWidth="sm" fullWidth>
+      <AppDialog open={!!rejectTarget} onClose={() => setRejectTarget(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Rechazar Préstamo</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1.5 }}>
@@ -1000,10 +1001,10 @@ export default function LoansPage() {
             {processing ? 'Rechazando...' : 'Rechazar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Confirmar pago de préstamo */}
-      <Dialog open={!!markPaidTarget} onClose={() => setMarkPaidTarget(null)} maxWidth="sm" fullWidth>
+      <AppDialog open={!!markPaidTarget} onClose={() => setMarkPaidTarget(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Confirmar Pago de Préstamo</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1.5 }}>
@@ -1046,10 +1047,10 @@ export default function LoansPage() {
             {processing ? 'Confirmando...' : 'Confirmar Pago'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Aplicar interés mensual */}
-      <Dialog open={!!interestTarget} onClose={() => setInterestTarget(null)} maxWidth="sm" fullWidth>
+      <AppDialog open={!!interestTarget} onClose={() => setInterestTarget(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Aplicar Interés Mensual</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1.5 }}>
@@ -1079,10 +1080,10 @@ export default function LoansPage() {
             {processing ? 'Aplicando...' : 'Aplicar Interés'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Liquidación por baja del empleado (renuncia/despido) */}
-      <Dialog open={!!settleTarget} onClose={() => setSettleTarget(null)} maxWidth="sm" fullWidth>
+      <AppDialog open={!!settleTarget} onClose={() => setSettleTarget(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Liquidar Préstamo por Baja</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1.5 }}>
@@ -1121,7 +1122,7 @@ export default function LoansPage() {
             {processing ? 'Liquidando...' : 'Liquidar Préstamo'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {receiptLoan && receiptLoan.signature_url && (
         <PaymentReceiptDialog

@@ -3,10 +3,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack, Chip, ToggleButtonGroup, ToggleButton,
   Autocomplete,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import {
@@ -347,7 +348,7 @@ export default function AssetAssignmentsPage() {
       </Box>
 
       {/* ─── Create Dialog ─── */}
-      <Dialog open={openCreate} onClose={() => setOpenCreate(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={openCreate} onClose={() => setOpenCreate(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Nueva Asignación</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -424,10 +425,10 @@ export default function AssetAssignmentsPage() {
           <Button onClick={() => setOpenCreate(false)}>Cancelar</Button>
           <Button onClick={handleSubmitCreate} variant="contained">{createForm.deliverNow ? 'Entregar' : 'Reservar'}</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* ─── Deliver Dialog (confirmar entrega de una reserva) ─── */}
-      <Dialog open={deliverDialog.open} onClose={() => setDeliverDialog({ ...deliverDialog, open: false })} maxWidth="xs" fullWidth>
+      <AppDialog open={deliverDialog.open} onClose={() => setDeliverDialog({ ...deliverDialog, open: false })} maxWidth="xs" fullWidth>
         <DialogTitle>Confirmar entrega — {deliverDialog.item && assetLabel(deliverDialog.item)}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -452,10 +453,10 @@ export default function AssetAssignmentsPage() {
           <Button onClick={() => setDeliverDialog({ ...deliverDialog, open: false })}>Cancelar</Button>
           <Button onClick={handleSubmitDeliver} variant="contained">Confirmar entrega</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* ─── Return Dialog ─── */}
-      <Dialog open={returnDialog.open} onClose={() => setReturnDialog({ ...returnDialog, open: false })} maxWidth="xs" fullWidth>
+      <AppDialog open={returnDialog.open} onClose={() => setReturnDialog({ ...returnDialog, open: false })} maxWidth="xs" fullWidth>
         <DialogTitle>Registrar devolución — {returnDialog.item && assetLabel(returnDialog.item)}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -498,10 +499,10 @@ export default function AssetAssignmentsPage() {
           <Button onClick={() => setReturnDialog({ ...returnDialog, open: false })}>Cancelar</Button>
           <Button onClick={handleSubmitReturn} variant="contained">Registrar devolución</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* ─── Cancel Reservation Dialog ─── */}
-      <Dialog open={cancelDialog.open} onClose={() => setCancelDialog({ open: false, item: null })}>
+      <AppDialog open={cancelDialog.open} onClose={() => setCancelDialog({ open: false, item: null })}>
         <DialogTitle>Cancelar reserva</DialogTitle>
         <DialogContent>
           <Typography>¿Cancelar la reserva de <strong>{cancelDialog.item && assetLabel(cancelDialog.item)}</strong>? Vuelve a quedar disponible.</Typography>
@@ -510,7 +511,7 @@ export default function AssetAssignmentsPage() {
           <Button onClick={() => setCancelDialog({ open: false, item: null })}>Volver</Button>
           <Button onClick={handleConfirmCancel} color="error" variant="contained">Cancelar reserva</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

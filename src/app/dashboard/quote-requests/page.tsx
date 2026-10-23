@@ -3,9 +3,10 @@ import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack, Chip, Autocomplete, Link, useMediaQuery, useTheme,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import DateField from '../../../components/DateField';
@@ -571,7 +572,7 @@ function QuoteRequestsPageContent() {
       </Box>
 
       {/* Alta / Edición / Ver */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>{viewOnly ? `Ver ${editing?.number}` : editing ? `Editar ${editing.number}` : 'Nuevo Pedido de Cotización'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -724,10 +725,10 @@ function QuoteRequestsPageContent() {
             <Button variant="contained" onClick={handleSubmit} disabled={processing}>Guardar</Button>
           )}
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Confirmar eliminación */}
-      <Dialog open={!!deleteDialog} onClose={() => setDeleteDialog(null)}>
+      <AppDialog open={!!deleteDialog} onClose={() => setDeleteDialog(null)}>
         <DialogTitle>Eliminar Pedido de Cotización</DialogTitle>
         <DialogContent>
           <Typography>¿Eliminar {deleteDialog?.number}? Esta acción no se puede deshacer.</Typography>
@@ -736,10 +737,10 @@ function QuoteRequestsPageContent() {
           <Button onClick={() => setDeleteDialog(null)}>Cancelar</Button>
           <Button color="error" variant="contained" onClick={handleDelete} disabled={processing}>Eliminar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Cambio de estado (handoff) */}
-      <Dialog open={statusDialog.open} onClose={() => setStatusDialog({ open: false, qr: null, target: '' })} maxWidth="xs" fullWidth>
+      <AppDialog open={statusDialog.open} onClose={() => setStatusDialog({ open: false, qr: null, target: '' })} maxWidth="xs" fullWidth>
         <DialogTitle>
           {statusDialog.target === 'pending_review' && 'Entregar a gerencia'}
           {statusDialog.target === 'in_progress' && statusDialog.qr?.status === 'pending_review' && 'Devolver al responsable'}
@@ -794,7 +795,7 @@ function QuoteRequestsPageContent() {
             Confirmar
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

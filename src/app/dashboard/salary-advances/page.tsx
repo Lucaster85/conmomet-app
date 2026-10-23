@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, DialogTitle, DialogContent,
   DialogActions, TextField, Stack, Chip, Autocomplete, Grid, useTheme, useMediaQuery
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import CurrencyInput from '../../../components/CurrencyInput';
@@ -636,7 +637,7 @@ export default function SalaryAdvancesPage() {
         </TableContainer>
       </Box>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>Registrar Adelanto</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1.5 }}>
@@ -730,10 +731,10 @@ export default function SalaryAdvancesPage() {
             {processing ? <GearSpinner size={20} /> : `Registrar ${selectedEmployees.length > 1 ? `(${selectedEmployees.length})` : ''}`}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Aprobar adelanto */}
-      <Dialog open={!!approveTarget} onClose={() => setApproveTarget(null)} maxWidth="sm" fullWidth>
+      <AppDialog open={!!approveTarget} onClose={() => setApproveTarget(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Aprobar Adelanto</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1.5 }}>
@@ -798,10 +799,10 @@ export default function SalaryAdvancesPage() {
             {processing ? 'Aprobando...' : 'Aprobar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Rechazar adelanto */}
-      <Dialog open={!!rejectTarget} onClose={() => setRejectTarget(null)} maxWidth="sm" fullWidth>
+      <AppDialog open={!!rejectTarget} onClose={() => setRejectTarget(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Rechazar Adelanto</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1.5 }}>
@@ -817,10 +818,10 @@ export default function SalaryAdvancesPage() {
             {processing ? 'Rechazando...' : 'Rechazar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Confirmar pago de adelanto */}
-      <Dialog open={!!markPaidTarget} onClose={() => setMarkPaidTarget(null)} maxWidth="sm" fullWidth>
+      <AppDialog open={!!markPaidTarget} onClose={() => setMarkPaidTarget(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Confirmar Pago de Adelanto</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1.5 }}>
@@ -863,10 +864,10 @@ export default function SalaryAdvancesPage() {
             {processing ? 'Confirmando...' : 'Confirmar Pago'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Cargar comprobante de pago */}
-      <Dialog open={!!uploadProofTarget} onClose={() => setUploadProofTarget(null)} maxWidth="sm" fullWidth>
+      <AppDialog open={!!uploadProofTarget} onClose={() => setUploadProofTarget(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Cargar Comprobante de Pago</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1.5 }}>
@@ -888,10 +889,10 @@ export default function SalaryAdvancesPage() {
             {processing ? 'Guardando...' : 'Guardar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Anular adelanto */}
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+      <AppDialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
         <DialogTitle>{deleteTarget?.paid_at ? 'Anular Adelanto Pagado' : 'Confirmar Anulación'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: deleteTarget?.paid_at ? 1 : 0 }}>
@@ -927,10 +928,10 @@ export default function SalaryAdvancesPage() {
             {processing ? 'Anulando...' : 'Anular'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Adelanto duplicado en la misma quincena */}
-      <Dialog open={!!duplicateConflict} onClose={() => setDuplicateConflict(null)} maxWidth="xs" fullWidth>
+      <AppDialog open={!!duplicateConflict} onClose={() => setDuplicateConflict(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Adelanto duplicado</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ mt: 0.5 }}>
@@ -959,10 +960,10 @@ export default function SalaryAdvancesPage() {
             {duplicateConflict?.context === 'create' ? 'Registrar igual' : 'Aprobar igual'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Reasignar quincena */}
-      <Dialog open={!!reassignTarget} onClose={() => setReassignTarget(null)} maxWidth="sm" fullWidth>
+      <AppDialog open={!!reassignTarget} onClose={() => setReassignTarget(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Reasignar Quincena</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1.5 }}>
@@ -995,7 +996,7 @@ export default function SalaryAdvancesPage() {
             {processing ? 'Guardando...' : 'Reasignar'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {receiptAdvance && receiptAdvance.signature_url && (
         <PaymentReceiptDialog

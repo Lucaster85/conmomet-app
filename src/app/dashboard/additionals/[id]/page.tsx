@@ -2,9 +2,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  Alert, Box, Button, Card, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, IconButton,
+  Alert, Box, Button, Card, Chip, DialogActions, DialogContent, DialogTitle, Divider, Grid, IconButton,
   Link, Paper, Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   AddOutlined as AddIcon, ArrowBackOutlined as BackIcon, DeleteOutlined as DeleteIcon, SaveOutlined as SaveIcon,
   OpenInNewOutlined as OpenIcon, RequestQuoteOutlined as BudgetIcon, ScheduleOutlined as HoursIcon, InfoOutlined as InfoIcon,
@@ -597,7 +598,7 @@ export default function AdditionalDetailPage() {
       )}
 
       {/* Alta rápida de material */}
-      <Dialog open={quickAdd.open} onClose={() => setQuickAdd(closedQuickAdd())} maxWidth="xs" fullWidth>
+      <AppDialog open={quickAdd.open} onClose={() => setQuickAdd(closedQuickAdd())} maxWidth="xs" fullWidth>
         <DialogTitle>Nuevo material</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -633,9 +634,9 @@ export default function AdditionalDetailPage() {
           <Button onClick={() => setQuickAdd(closedQuickAdd())}>Cancelar</Button>
           <Button onClick={handleConfirmQuickAdd} variant="contained">Crear y usar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
-      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
+      <AppDialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
         <DialogTitle>Eliminar adicional</DialogTitle>
         <DialogContent>
           <Typography>
@@ -646,7 +647,7 @@ export default function AdditionalDetailPage() {
           <Button onClick={() => setDeleteOpen(false)}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

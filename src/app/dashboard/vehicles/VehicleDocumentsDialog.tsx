@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -27,6 +26,7 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   CloseOutlined as CloseIcon,
   CloudUploadOutlined as CloudUploadIcon,
@@ -281,7 +281,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
   const filteredDocuments = documents.filter(doc => showResolved ? true : doc.alert_status !== 'resolved');
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <AppDialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
           <Typography variant="h6" fontWeight="bold">
@@ -320,7 +320,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
         </Box>
 
         {/* Form Dialog for Upload / Edit */}
-        <Dialog open={uploadDialog} onClose={resetForm} maxWidth="sm" fullWidth>
+        <AppDialog open={uploadDialog} onClose={resetForm} maxWidth="sm" fullWidth>
           <DialogTitle>{editingDoc ? 'Editar Documento' : 'Subir Documento'}</DialogTitle>
           <form onSubmit={handleUploadSubmit}>
             <DialogContent dividers>
@@ -407,10 +407,10 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
               <Button type="submit" variant="contained">Guardar</Button>
             </DialogActions>
           </form>
-        </Dialog>
+        </AppDialog>
 
         {/* Form Dialog for Renewal */}
-        <Dialog open={renewDialog} onClose={resetForm} maxWidth="xs" fullWidth>
+        <AppDialog open={renewDialog} onClose={resetForm} maxWidth="xs" fullWidth>
           <DialogTitle>Renovar Legajo</DialogTitle>
           <form onSubmit={handleRenewSubmit}>
             <DialogContent dividers>
@@ -449,10 +449,10 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
               <Button type="submit" variant="contained" color="warning">Renovar</Button>
             </DialogActions>
           </form>
-        </Dialog>
+        </AppDialog>
 
         {/* Form Dialog for Resolving (Payment) */}
-        <Dialog open={resolveDialog} onClose={resetForm} maxWidth="xs" fullWidth>
+        <AppDialog open={resolveDialog} onClose={resetForm} maxWidth="xs" fullWidth>
           <DialogTitle>Resolver / Subir Comprobante</DialogTitle>
           <form onSubmit={handleResolveSubmit}>
             <DialogContent dividers>
@@ -473,10 +473,10 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
               <Button type="submit" variant="contained" color="success">Resolver</Button>
             </DialogActions>
           </form>
-        </Dialog>
+        </AppDialog>
 
         {/* History Dialog */}
-        <Dialog open={historyDialog} onClose={() => setHistoryDialog(false)} maxWidth="sm" fullWidth>
+        <AppDialog open={historyDialog} onClose={() => setHistoryDialog(false)} maxWidth="sm" fullWidth>
           <DialogTitle>Historial de Renovaciones</DialogTitle>
           <DialogContent dividers>
             {loadingHistory ? (
@@ -513,7 +513,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
           <DialogActions>
             <Button onClick={() => setHistoryDialog(false)}>Cerrar</Button>
           </DialogActions>
-        </Dialog>
+        </AppDialog>
 
         {/* Table legajo */}
         {loading && documents.length === 0 ? (
@@ -713,6 +713,6 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
           Cerrar
         </Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

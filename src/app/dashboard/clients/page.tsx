@@ -12,7 +12,6 @@ import {
   TableHead,
   TableRow,
   IconButton,
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -23,6 +22,7 @@ import {
   Stack,
   Chip,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   AddOutlined as AddIcon,
   EditOutlined as EditIcon,
@@ -365,7 +365,7 @@ export default function ClientsPage() {
       </Box>
 
       {/* Dialog para crear/editar cliente */}
-      <Dialog 
+      <AppDialog 
         open={openDialog} 
         onClose={() => setOpenDialog(false)}
         maxWidth="sm"
@@ -379,10 +379,10 @@ export default function ClientsPage() {
             onCancel={() => setOpenDialog(false)}
           />
         </DialogContent>
-      </Dialog>
+      </AppDialog>
 
       {/* Dialog de confirmación para desactivar */}
-      <Dialog
+      <AppDialog
         open={deactivateDialog.open}
         onClose={() => setDeactivateDialog({ open: false, client: null })}
       >
@@ -411,7 +411,7 @@ export default function ClientsPage() {
             Desactivar
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Dialog para gestionar supervisores de un cliente */}
       <ClientSupervisorsDialog

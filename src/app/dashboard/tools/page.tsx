@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack, Chip, Autocomplete,
   InputAdornment,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import {
@@ -313,7 +314,7 @@ export default function ToolsPage() {
       </Box>
 
       {/* ─── Create/Edit Dialog ─── */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingItem ? 'Editar Herramienta' : 'Nueva Herramienta'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -358,10 +359,10 @@ export default function ToolsPage() {
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingItem ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* ─── Delete Dialog ─── */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })}>
+      <AppDialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })}>
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>¿Eliminar la herramienta <strong>{deleteDialog.item?.name}</strong>?</Typography>
@@ -370,10 +371,10 @@ export default function ToolsPage() {
           <Button onClick={() => setDeleteDialog({ open: false, item: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* ─── Status Change Dialog ─── */}
-      <Dialog open={statusDialog.open} onClose={() => setStatusDialog({ open: false, item: null, status: 'available', notes: '' })} maxWidth="xs" fullWidth>
+      <AppDialog open={statusDialog.open} onClose={() => setStatusDialog({ open: false, item: null, status: 'available', notes: '' })} maxWidth="xs" fullWidth>
         <DialogTitle>Cambiar estado — {statusDialog.item?.name}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -390,10 +391,10 @@ export default function ToolsPage() {
           <Button onClick={() => setStatusDialog({ open: false, item: null, status: 'available', notes: '' })}>Cancelar</Button>
           <Button onClick={handleSubmitStatus} variant="contained">Guardar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* ─── Status History Dialog ─── */}
-      <Dialog open={historyDialog.open} onClose={() => setHistoryDialog({ open: false, item: null, entries: [], loading: false })} maxWidth="sm" fullWidth>
+      <AppDialog open={historyDialog.open} onClose={() => setHistoryDialog({ open: false, item: null, entries: [], loading: false })} maxWidth="sm" fullWidth>
         <DialogTitle>Historial de estados — {historyDialog.item?.name}</DialogTitle>
         <DialogContent>
           {historyDialog.loading ? (
@@ -426,7 +427,7 @@ export default function ToolsPage() {
         <DialogActions>
           <Button onClick={() => setHistoryDialog({ open: false, item: null, entries: [], loading: false })}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

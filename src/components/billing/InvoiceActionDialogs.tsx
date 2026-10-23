@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, DialogActions, DialogContent, DialogTitle, TextField, Typography } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import DateField from '../DateField';
 import { Invoice, InvoiceService } from '../../utils/api';
@@ -38,7 +39,7 @@ export function PayInvoiceDialog({ invoice, onClose, onDone }: ActionDialogProps
   };
 
   return (
-    <Dialog open={!!invoice} onClose={saving ? undefined : onClose} fullWidth maxWidth="xs">
+    <AppDialog open={!!invoice} onClose={saving ? undefined : onClose} fullWidth maxWidth="xs">
       <DialogTitle>Marcar como cobrada</DialogTitle>
       <DialogContent>
         {invoice && (
@@ -62,7 +63,7 @@ export function PayInvoiceDialog({ invoice, onClose, onDone }: ActionDialogProps
         <Button onClick={onClose} disabled={saving}>Cancelar</Button>
         <Button variant="contained" onClick={handleConfirm} disabled={saving}>{saving ? 'Guardando…' : 'Marcar cobrada'}</Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }
 
@@ -92,7 +93,7 @@ export function CancelInvoiceDialog({ invoice, onClose, onDone }: ActionDialogPr
   };
 
   return (
-    <Dialog open={!!invoice} onClose={saving ? undefined : onClose} fullWidth maxWidth="xs">
+    <AppDialog open={!!invoice} onClose={saving ? undefined : onClose} fullWidth maxWidth="xs">
       <DialogTitle>Anular factura</DialogTitle>
       <DialogContent>
         {invoice && (
@@ -115,6 +116,6 @@ export function CancelInvoiceDialog({ invoice, onClose, onDone }: ActionDialogPr
         <Button onClick={onClose} disabled={saving}>Volver</Button>
         <Button variant="contained" color="error" onClick={handleConfirm} disabled={saving}>{saving ? 'Anulando…' : 'Anular factura'}</Button>
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

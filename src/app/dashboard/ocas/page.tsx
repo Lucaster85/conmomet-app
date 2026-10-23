@@ -25,7 +25,6 @@ import {
   TableHead,
   TableRow,
   IconButton,
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -42,6 +41,7 @@ import {
   FormControlLabel,
   Autocomplete,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   ExpandMoreOutlined as ExpandMoreIcon,
   AddOutlined as AddIcon,
@@ -1276,7 +1276,7 @@ export default function OcasPage() {
     <Box sx={{ p: { xs: 2, md: 4 } }}>
       {/* Printable Area overlay */}
       {/* Dialog de Vista Previa e Impresión de Remito */}
-      <Dialog open={!!printOca} onClose={() => setPrintOca(null)} maxWidth="md" fullWidth>
+      <AppDialog open={!!printOca} onClose={() => setPrintOca(null)} maxWidth="md" fullWidth>
         {printOca && (
           <>
             <DialogTitle className="no-print" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1549,10 +1549,10 @@ export default function OcasPage() {
             </DialogActions>
           </>
         )}
-      </Dialog>
+      </AppDialog>
 
       {/* Dialog de Vista Previa e Impresión de Presupuesto (agrupado por día) */}
-      <Dialog open={!!printBudgetOca} onClose={() => setPrintBudgetOca(null)} maxWidth="md" fullWidth>
+      <AppDialog open={!!printBudgetOca} onClose={() => setPrintBudgetOca(null)} maxWidth="md" fullWidth>
         {printBudgetOca && (() => {
           const rate = Number(printBudgetOca.hourly_rate || 0);
           const isManHours = printBudgetOca.type === 'man_hours';
@@ -1694,7 +1694,7 @@ export default function OcasPage() {
             </>
           );
         })()}
-      </Dialog>
+      </AppDialog>
 
       {/* Main Screen Layout (hides when printing) */}
       <Box sx={{ '@media print': { display: 'none' } }}>
@@ -2514,7 +2514,7 @@ export default function OcasPage() {
         )}
 
         {/* Generate OCA Dialog */}
-        <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} maxWidth="md" fullWidth>
+        <AppDialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} maxWidth="md" fullWidth>
           <form onSubmit={handleCreateOca}>
             <DialogTitle>Generar Nuevo Remito / OCA</DialogTitle>
             <DialogContent dividers>
@@ -2828,10 +2828,10 @@ export default function OcasPage() {
               </Button>
             </DialogActions>
           </form>
-        </Dialog>
+        </AppDialog>
 
         {/* Add Entries to existing Dialog */}
-        <Dialog open={openAddEntriesDialog} onClose={() => setOpenAddEntriesDialog(false)} maxWidth="sm" fullWidth>
+        <AppDialog open={openAddEntriesDialog} onClose={() => setOpenAddEntriesDialog(false)} maxWidth="sm" fullWidth>
           <DialogTitle>Agregar Horas al Remito {addEntriesOca?.number}</DialogTitle>
           <DialogContent dividers>
             {loadingPending ? (
@@ -3039,10 +3039,10 @@ export default function OcasPage() {
               Agregar Seleccionados
             </Button>
           </DialogActions>
-        </Dialog>
+        </AppDialog>
 
         {/* Reject Dialog */}
-        <Dialog open={rejectDialog.open} onClose={() => setRejectDialog({ open: false, ocaId: null, kind: 'remito' })} maxWidth="xs" fullWidth>
+        <AppDialog open={rejectDialog.open} onClose={() => setRejectDialog({ open: false, ocaId: null, kind: 'remito' })} maxWidth="xs" fullWidth>
           <DialogTitle>{rejectDialog.kind === 'presupuesto' ? 'Rechazar Presupuesto' : 'Rechazar Remito / OCA'}</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2}>
@@ -3066,10 +3066,10 @@ export default function OcasPage() {
             <Button onClick={() => setRejectDialog({ open: false, ocaId: null, kind: 'remito' })}>Cancelar</Button>
             <Button onClick={handleReject} variant="contained" color="error">Rechazar</Button>
           </DialogActions>
-        </Dialog>
+        </AppDialog>
 
         {/* Approve Dialog */}
-        <Dialog open={approveDialog.open} onClose={() => setApproveDialog({ open: false, ocaId: null, ocaType: null })} maxWidth="xs" fullWidth>
+        <AppDialog open={approveDialog.open} onClose={() => setApproveDialog({ open: false, ocaId: null, ocaType: null })} maxWidth="xs" fullWidth>
           <DialogTitle>Aprobar y Registrar Remito Firmado</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2}>
@@ -3097,10 +3097,10 @@ export default function OcasPage() {
             <Button onClick={() => setApproveDialog({ open: false, ocaId: null, ocaType: null })}>Cancelar</Button>
             <Button onClick={handleApprove} variant="contained" color="success">Aprobar Remito</Button>
           </DialogActions>
-        </Dialog>
+        </AppDialog>
 
         {/* Annul Dialog */}
-        <Dialog open={annulDialog.open} onClose={() => setAnnulDialog({ open: false, ocaId: null })} maxWidth="xs" fullWidth>
+        <AppDialog open={annulDialog.open} onClose={() => setAnnulDialog({ open: false, ocaId: null })} maxWidth="xs" fullWidth>
           <DialogTitle>Anular Remito / OCA</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2}>
@@ -3122,10 +3122,10 @@ export default function OcasPage() {
             <Button onClick={() => setAnnulDialog({ open: false, ocaId: null })}>Cancelar</Button>
             <Button onClick={handleAnnul} variant="contained" color="error">Anular Remito</Button>
           </DialogActions>
-        </Dialog>
+        </AppDialog>
 
         {/* Cargar Precio (valor de referencia OCA) Dialog */}
-        <Dialog open={rateDialog.open} onClose={() => setRateDialog({ open: false, oca: null, hourly_rate: '', vehicleRates: [] })} maxWidth="xs" fullWidth>
+        <AppDialog open={rateDialog.open} onClose={() => setRateDialog({ open: false, oca: null, hourly_rate: '', vehicleRates: [] })} maxWidth="xs" fullWidth>
           <DialogTitle>Valor de referencia de la hora</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -3181,10 +3181,10 @@ export default function OcasPage() {
             <Button onClick={() => setRateDialog({ open: false, oca: null, hourly_rate: '', vehicleRates: [] })}>Cancelar</Button>
             <Button onClick={handleSubmitRate} variant="contained">Guardar</Button>
           </DialogActions>
-        </Dialog>
+        </AppDialog>
 
         {/* Historial del valor de referencia por cliente */}
-        <Dialog open={rateHistoryDialog.open} onClose={() => setRateHistoryDialog({ open: false, entries: [] })} maxWidth="xs" fullWidth>
+        <AppDialog open={rateHistoryDialog.open} onClose={() => setRateHistoryDialog({ open: false, entries: [] })} maxWidth="xs" fullWidth>
           <DialogTitle>Historial de valor de referencia</DialogTitle>
           <DialogContent dividers>
             {rateHistoryDialog.entries.length === 0 ? (
@@ -3206,10 +3206,10 @@ export default function OcasPage() {
           <DialogActions>
             <Button onClick={() => setRateHistoryDialog({ open: false, entries: [] })}>Cerrar</Button>
           </DialogActions>
-        </Dialog>
+        </AppDialog>
 
         {/* Aprobar Presupuesto (administración del cliente) Dialog */}
-        <Dialog open={approveBudgetDialog.open} onClose={() => setApproveBudgetDialog({ open: false, oca: null, supervisors: [], approvedBySupervisorId: '' })} maxWidth="xs" fullWidth>
+        <AppDialog open={approveBudgetDialog.open} onClose={() => setApproveBudgetDialog({ open: false, oca: null, supervisors: [], approvedBySupervisorId: '' })} maxWidth="xs" fullWidth>
           <DialogTitle>Aprobar Presupuesto</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -3231,10 +3231,10 @@ export default function OcasPage() {
             <Button onClick={() => setApproveBudgetDialog({ open: false, oca: null, supervisors: [], approvedBySupervisorId: '' })}>Cancelar</Button>
             <Button onClick={handleApproveBudget} variant="contained" color="success">Aprobar Presupuesto</Button>
           </DialogActions>
-        </Dialog>
+        </AppDialog>
 
         {/* Alta rápida de contacto de administración — abierta desde el selector de arriba */}
-        <Dialog open={adminContactQuickAdd.open} onClose={() => setAdminContactQuickAdd({ ...adminContactQuickAdd, open: false })} maxWidth="xs" fullWidth>
+        <AppDialog open={adminContactQuickAdd.open} onClose={() => setAdminContactQuickAdd({ ...adminContactQuickAdd, open: false })} maxWidth="xs" fullWidth>
           <DialogTitle>Nuevo Contacto de Administración</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -3252,10 +3252,10 @@ export default function OcasPage() {
             <Button onClick={() => setAdminContactQuickAdd({ ...adminContactQuickAdd, open: false })}>Cancelar</Button>
             <Button onClick={handleConfirmAdminContactQuickAdd} variant="contained">Crear y usar</Button>
           </DialogActions>
-        </Dialog>
+        </AppDialog>
 
         {/* Add Manual Line Dialog */}
-        <Dialog open={openManualLineDialog} onClose={() => setOpenManualLineDialog(false)} maxWidth="sm" fullWidth>
+        <AppDialog open={openManualLineDialog} onClose={() => setOpenManualLineDialog(false)} maxWidth="sm" fullWidth>
           <form onSubmit={handleManualLineSubmit}>
             <DialogTitle>
               {editingLineId ? `Editar Línea del Remito ${manualLineOca?.number}` : `Agregar Línea Manual al Remito ${manualLineOca?.number}`}
@@ -3400,10 +3400,10 @@ export default function OcasPage() {
               <Button type="submit" variant="contained">{editingLineId ? 'Guardar Cambios' : 'Agregar Línea'}</Button>
             </DialogActions>
           </form>
-        </Dialog>
+        </AppDialog>
 
         {/* Agregar Material al Remito (solo horas hombre, sin precio) */}
-        <Dialog open={materialDialog.open} onClose={handleCloseMaterialDialog} maxWidth="sm" fullWidth>
+        <AppDialog open={materialDialog.open} onClose={handleCloseMaterialDialog} maxWidth="sm" fullWidth>
           <form onSubmit={handleSubmitMaterial}>
             <DialogTitle>Agregar Material al Remito {materialDialog.oca?.number}</DialogTitle>
             <DialogContent dividers>
@@ -3467,7 +3467,7 @@ export default function OcasPage() {
               <Button type="submit" variant="contained">Agregar Material</Button>
             </DialogActions>
           </form>
-        </Dialog>
+        </AppDialog>
 
         {/* Feedback Alerts */}
         <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />

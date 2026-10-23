@@ -1,8 +1,9 @@
 'use client';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Box, Button, Card, Dialog, DialogActions, DialogContent, IconButton, Link, Paper, Stack, TextField, Typography,
+  Alert, Box, Button, Card, DialogActions, DialogContent, IconButton, Link, Paper, Stack, TextField, Typography,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   AddPhotoAlternateOutlined as PhotoIcon, CloseOutlined as CloseIcon, SendOutlined as SendIcon,
 } from '@mui/icons-material';
@@ -225,7 +226,7 @@ export default function ProjectLogPanel({ projectId }: Props) {
         </Stack>
       )}
 
-      <Dialog open={!!lightbox} onClose={() => setLightbox(null)} maxWidth="md" fullWidth>
+      <AppDialog open={!!lightbox} onClose={() => setLightbox(null)} maxWidth="md" fullWidth>
         <DialogContent sx={{ p: 1, textAlign: 'center' }}>
           {lightbox && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -236,7 +237,7 @@ export default function ProjectLogPanel({ projectId }: Props) {
           {lightbox && <Link href={lightbox.file_url} target="_blank" rel="noopener noreferrer" underline="hover" sx={{ mr: 'auto', ml: 1 }}>Abrir original</Link>}
           <Button onClick={() => setLightbox(null)}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

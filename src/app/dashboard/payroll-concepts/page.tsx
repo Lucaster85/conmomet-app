@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Card, TextField, Stack,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  IconButton, Tooltip, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
+  IconButton, Tooltip, Chip, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import {
@@ -197,7 +198,7 @@ export default function PayrollConceptsPage() {
         </TableContainer>
       </Box>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editing ? 'Editar Concepto' : 'Nuevo Concepto'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -231,7 +232,7 @@ export default function PayrollConceptsPage() {
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button onClick={handleSave} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editing ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

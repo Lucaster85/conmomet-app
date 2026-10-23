@@ -1,9 +1,10 @@
 'use client';
 import React, { useState } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Stack, Alert,
+  DialogTitle, DialogContent, DialogActions, TextField, Button, Stack, Alert,
   IconButton, InputAdornment,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import { VisibilityOutlined as Visibility, VisibilityOffOutlined as VisibilityOff } from '@mui/icons-material';
 import { UserService } from '@/utils/api';
 import { TokenManager } from '@/utils/auth';
@@ -64,7 +65,7 @@ export default function ChangePasswordDialog({ open, onClose, forced = false }: 
   };
 
   return (
-    <Dialog
+    <AppDialog
       open={open}
       onClose={forced ? undefined : handleClose}
       disableEscapeKeyDown={forced}
@@ -122,6 +123,6 @@ export default function ChangePasswordDialog({ open, onClose, forced = false }: 
           </Button>
         )}
       </DialogActions>
-    </Dialog>
+    </AppDialog>
   );
 }

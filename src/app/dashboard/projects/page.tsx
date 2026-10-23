@@ -3,10 +3,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack, LinearProgress,
   Grid, Divider, Chip,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import ListFilters, { FilterSelect } from '../../../components/common/ListFilters';
@@ -509,7 +510,7 @@ export default function ProjectsPage() {
       </Box>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingProject ? 'Editar Proyecto' : 'Nuevo Proyecto'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -609,10 +610,10 @@ export default function ProjectsPage() {
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingProject ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Delete Dialog */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, project: null })}>
+      <AppDialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, project: null })}>
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>¿Eliminar el proyecto <strong>{deleteDialog.project?.name}</strong>?</Typography>
@@ -622,10 +623,10 @@ export default function ProjectsPage() {
           <Button onClick={() => setDeleteDialog({ open: false, project: null })}>Cancelar</Button>
           <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Confirm Complete Dialog */}
-      <Dialog open={completeDialog.open} onClose={() => setCompleteDialog({ open: false, project: null })}>
+      <AppDialog open={completeDialog.open} onClose={() => setCompleteDialog({ open: false, project: null })}>
         <DialogTitle>Confirmar Finalización</DialogTitle>
         <DialogContent>
           <Typography>¿Está seguro de que desea finalizar el proyecto <strong>{completeDialog.project?.name}</strong>?</Typography>
@@ -635,10 +636,10 @@ export default function ProjectsPage() {
           <Button onClick={() => setCompleteDialog({ open: false, project: null })}>Cancelar</Button>
           <Button onClick={handleComplete} color="success" variant="contained">Finalizar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Team Dialog */}
-      <Dialog open={teamDialog.open} onClose={() => setTeamDialog({ open: false, project: null })} maxWidth="md" fullWidth>
+      <AppDialog open={teamDialog.open} onClose={() => setTeamDialog({ open: false, project: null })} maxWidth="md" fullWidth>
         <DialogTitle>Equipo — {teamDialog.project?.name}</DialogTitle>
         <DialogContent>
           {loadingTeam ? (
@@ -776,7 +777,7 @@ export default function ProjectsPage() {
         <DialogActions>
           <Button onClick={() => setTeamDialog({ open: false, project: null })}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

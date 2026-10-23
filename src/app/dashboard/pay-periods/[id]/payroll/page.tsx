@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent,
+  TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Stack, Chip, Tooltip, Badge,
   Card, CardContent, Grid, useTheme, useMediaQuery,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../../../components/FeedbackModal';
 import GearSpinner from '../../../../../components/GearSpinner';
 import { RefreshOutlined as RefreshIcon, EditOutlined as EditIcon, CheckCircleOutlined as ConfirmIcon, CalculateOutlined as CalcIcon, ArrowBackOutlined as BackIcon, PaymentOutlined as PaymentIcon, VisibilityOutlined as ViewIcon, PrintOutlined as PrintIcon, DrawOutlined as SignatureIcon } from '@mui/icons-material';
@@ -768,7 +769,7 @@ export default function PayrollPage() {
       </Box>
 
       {/* Detail Dialog */}
-      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
+      <AppDialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         {detailEntry && (
           <>
             <DialogTitle className="no-print" sx={{ pb: 0 }}>
@@ -1177,10 +1178,10 @@ export default function PayrollPage() {
             </DialogActions>
           </>
         )}
-      </Dialog>
+      </AppDialog>
 
       {/* Sign Dialog */}
-      <Dialog open={!!signEntry} onClose={() => { setSignEntry(null); setSignatureFile(null); }} maxWidth="xs" fullWidth>
+      <AppDialog open={!!signEntry} onClose={() => { setSignEntry(null); setSignatureFile(null); }} maxWidth="xs" fullWidth>
         <DialogTitle>Firmar recibo</DialogTitle>
         <DialogContent>
           {signEntry && (
@@ -1196,7 +1197,7 @@ export default function PayrollPage() {
             Guardar firma
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Edit Adjustments Dialog */}
       <PayrollAdjustmentsModal

@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, TextField, Stack,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions,
+  IconButton, Tooltip, DialogTitle, DialogContent, DialogActions,
   Chip,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import {
   AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, EditOutlined as EditIcon,
@@ -164,7 +165,7 @@ export default function HolidaysPage() {
         </TableContainer>
       </Paper>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>{editing ? 'Editar Feriado' : 'Agregar Feriado'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -180,7 +181,7 @@ export default function HolidaysPage() {
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button onClick={handleSave} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editing ? 'Guardar' : 'Crear')}</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

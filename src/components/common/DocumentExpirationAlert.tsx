@@ -3,8 +3,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box, Typography, Chip, Button, IconButton, Tooltip, Stack,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  DialogTitle, DialogContent, DialogActions, TextField,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   WarningOutlined as WarningIcon,
   ErrorOutlined as ErrorIcon,
@@ -334,7 +335,7 @@ export default function DocumentExpirationAlert({ onError, onSuccess }: Document
       />
 
       {/* Renovar */}
-      <Dialog open={renewDialog} onClose={() => setRenewDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={renewDialog} onClose={() => setRenewDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Renovar Documento</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -368,10 +369,10 @@ export default function DocumentExpirationAlert({ onError, onSuccess }: Document
           <Button onClick={() => setRenewDialog(false)}>Cancelar</Button>
           <Button onClick={handleRenewSubmit} variant="contained" disabled={!form.expiration_date || !file}>Renovar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Pagar / Resolver */}
-      <Dialog open={resolveDialog} onClose={() => setResolveDialog(false)} maxWidth="sm" fullWidth>
+      <AppDialog open={resolveDialog} onClose={() => setResolveDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Pagar / Resolver Documento</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -389,7 +390,7 @@ export default function DocumentExpirationAlert({ onError, onSuccess }: Document
           <Button onClick={() => setResolveDialog(false)}>Cancelar</Button>
           <Button onClick={handleResolveSubmit} variant="contained" color="success" disabled={!file}>Marcar Resuelto</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </>
   );
 }

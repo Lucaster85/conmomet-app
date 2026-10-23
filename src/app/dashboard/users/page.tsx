@@ -13,7 +13,6 @@ import {
   TableRow,
   IconButton,
   Chip,
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -22,6 +21,7 @@ import {
   InputAdornment,
   Stack,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import {
   AddOutlined as AddIcon,
   EditOutlined as EditIcon,
@@ -334,7 +334,7 @@ export default function UsersPage() {
       </Box>
 
       {/* Dialog para crear/editar usuario */}
-      <Dialog 
+      <AppDialog 
         open={openDialog} 
         onClose={() => setOpenDialog(false)}
         maxWidth="md"
@@ -348,10 +348,10 @@ export default function UsersPage() {
             onCancel={() => setOpenDialog(false)}
           />
         </DialogContent>
-      </Dialog>
+      </AppDialog>
 
       {/* Dialog de confirmación para eliminar */}
-      <Dialog 
+      <AppDialog 
         open={deleteDialog.open} 
         onClose={() => setDeleteDialog({ open: false, user: null })}
       >
@@ -379,7 +379,7 @@ export default function UsersPage() {
             Eliminar
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

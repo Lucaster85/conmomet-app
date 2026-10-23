@@ -13,7 +13,6 @@ import {
   TableHead,
   TableRow,
   IconButton,
-  Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -33,6 +32,7 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
+import AppDialog from '@/components/common/AppDialog';
 import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon,
@@ -638,7 +638,7 @@ function VehiclesPageContent() {
       )}
 
       {/* Create / Edit Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
+      <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
         <form onSubmit={handleSubmit}>
           <DialogTitle>
             {editingVehicle ? 'Editar Vehículo' : 'Registrar Nuevo Vehículo'}
@@ -697,10 +697,10 @@ function VehiclesPageContent() {
             <Button type="submit" variant="contained">Guardar</Button>
           </DialogActions>
         </form>
-      </Dialog>
+      </AppDialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
+      <AppDialog
         open={deleteDialog.open}
         onClose={() => setDeleteDialog({ open: false, vehicle: null })}
       >
@@ -718,7 +718,7 @@ function VehiclesPageContent() {
             Eliminar
           </Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Vehicle Documents Dialog / Legajo */}
       <VehicleDocumentsDialog
@@ -729,7 +729,7 @@ function VehiclesPageContent() {
       />
 
       {/* Status Change Dialog */}
-      <Dialog open={statusDialog.open} onClose={() => setStatusDialog({ open: false, vehicle: null, status: 'available', notes: '' })} maxWidth="xs" fullWidth>
+      <AppDialog open={statusDialog.open} onClose={() => setStatusDialog({ open: false, vehicle: null, status: 'available', notes: '' })} maxWidth="xs" fullWidth>
         <DialogTitle>Cambiar estado — {statusDialog.vehicle?.brand} {statusDialog.vehicle?.model} ({statusDialog.vehicle?.plate})</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -746,10 +746,10 @@ function VehiclesPageContent() {
           <Button onClick={() => setStatusDialog({ open: false, vehicle: null, status: 'available', notes: '' })}>Cancelar</Button>
           <Button onClick={handleSubmitStatus} variant="contained">Guardar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Status History Dialog */}
-      <Dialog open={historyDialog.open} onClose={() => setHistoryDialog({ open: false, vehicle: null, entries: [], loading: false })} maxWidth="sm" fullWidth>
+      <AppDialog open={historyDialog.open} onClose={() => setHistoryDialog({ open: false, vehicle: null, entries: [], loading: false })} maxWidth="sm" fullWidth>
         <DialogTitle>Historial de estados — {historyDialog.vehicle?.brand} {historyDialog.vehicle?.model} ({historyDialog.vehicle?.plate})</DialogTitle>
         <DialogContent>
           {historyDialog.loading ? (
@@ -782,7 +782,7 @@ function VehiclesPageContent() {
         <DialogActions>
           <Button onClick={() => setHistoryDialog({ open: false, vehicle: null, entries: [], loading: false })}>Cerrar</Button>
         </DialogActions>
-      </Dialog>
+      </AppDialog>
 
       {/* Feedback Alerts */}
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
