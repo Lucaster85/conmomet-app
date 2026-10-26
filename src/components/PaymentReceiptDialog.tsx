@@ -24,11 +24,12 @@ interface PaymentReceiptDialogProps {
   signatureUrl: string;
   numInstallments?: number | null;
   monthlyInterestPercent?: number | null;
+  installmentFrequency?: 'monthly' | 'biweekly' | null;
 }
 
 export default function PaymentReceiptDialog({
   open, onClose, concept, employeeName, amount, paidAt, paymentMethod, signatureUrl,
-  numInstallments, monthlyInterestPercent,
+  numInstallments, monthlyInterestPercent, installmentFrequency,
 }: PaymentReceiptDialogProps) {
   return (
     <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -75,7 +76,9 @@ export default function PaymentReceiptDialog({
             {numInstallments != null && (
               <Box display="flex" justifyContent="space-between">
                 <Typography variant="body2" color="text.secondary">Cantidad de cuotas</Typography>
-                <Typography variant="body2" fontWeight={700}>{numInstallments}</Typography>
+                <Typography variant="body2" fontWeight={700}>
+                  {numInstallments}{installmentFrequency ? (installmentFrequency === 'biweekly' ? ' (quincenales)' : ' (mensuales)') : ''}
+                </Typography>
               </Box>
             )}
             {monthlyInterestPercent != null && (

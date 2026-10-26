@@ -81,7 +81,10 @@ Al neto de la liquidación se le restan automáticamente:
 - **Adelantos**: solo los que ya fueron **efectivamente pagados** (no alcanza con que estén
   aprobados, tienen que estar marcados como pagados). Un adelanto pendiente de pago no se
   descuenta todavía.
-- **Cuotas de préstamo** que vencen en ese período.
+- **Cuotas de préstamo**, quincenales o mensuales, que vencen en ese período. Si una cuota
+  quedó atrasada (su quincena pasó sin descontarse), se suma a la próxima liquidación que se
+  genere. Las cuotas de un préstamo aprobado que todavía no se entregó no se descuentan. Ver el
+  tema **Préstamos y cuotas**.
 
 ## Firma y comprobante al marcar un adelanto/préstamo como pagado
 
