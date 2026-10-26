@@ -4139,6 +4139,8 @@ export interface Loan {
   monthly_interest_percent?: number | null;
   installment_amount?: number | null;
   due_period_type?: 'first_half' | 'second_half' | null;
+  // null en préstamos `discretionary`. En quincenal cada cuota cobra la mitad del interés mensual.
+  installment_frequency?: 'monthly' | 'biweekly' | null;
   requested_by?: number;
   approved_by?: number;
   approved_at?: string | null;
@@ -4215,6 +4217,7 @@ export interface CreateLoanData {
   amount: number;
   num_installments: number;
   monthly_interest_percent?: number;
+  installment_frequency?: 'monthly' | 'biweekly';
   payment_method?: 'efectivo' | 'transferencia';
   notes?: string;
   mark_as_paid?: boolean;
@@ -4257,6 +4260,7 @@ export class LoanService {
     formData.append('amount', data.amount.toString());
     formData.append('num_installments', data.num_installments.toString());
     if (data.monthly_interest_percent !== undefined) formData.append('monthly_interest_percent', data.monthly_interest_percent.toString());
+    if (data.installment_frequency) formData.append('installment_frequency', data.installment_frequency);
     if (data.payment_method) formData.append('payment_method', data.payment_method);
     if (data.notes) formData.append('notes', data.notes);
     if (data.mark_as_paid !== undefined) formData.append('mark_as_paid', data.mark_as_paid.toString());
@@ -4294,6 +4298,7 @@ export class LoanService {
     amount?: number;
     num_installments?: number;
     monthly_interest_percent?: number;
+    installment_frequency?: 'monthly' | 'biweekly';
     payment_method?: 'efectivo' | 'transferencia';
     notes?: string;
     start_date?: string;
@@ -4303,6 +4308,7 @@ export class LoanService {
     if (data?.amount !== undefined) formData.append('amount', data.amount.toString());
     if (data?.num_installments !== undefined) formData.append('num_installments', data.num_installments.toString());
     if (data?.monthly_interest_percent !== undefined) formData.append('monthly_interest_percent', data.monthly_interest_percent.toString());
+    if (data?.installment_frequency) formData.append('installment_frequency', data.installment_frequency);
     if (data?.payment_method) formData.append('payment_method', data.payment_method);
     if (data?.notes !== undefined) formData.append('notes', data.notes);
     if (data?.start_date) formData.append('start_date', data.start_date);

@@ -28,7 +28,7 @@ import GearSpinner from '@/components/GearSpinner';
 import PaymentReceiptDialog from '@/components/PaymentReceiptDialog';
 import { Loan, Employee, LoanPayment, LoanInterestApplication, LoanInstallment, PayPeriod, LoanService, EmployeeService } from '@/utils/api';
 import { buildWhatsAppLink } from '@/utils/whatsapp';
-import { computeFrenchSchedule } from '@/utils/loanAmortization';
+import { computeFrenchSchedule, periodicInterestPercent } from '@/utils/loanAmortization';
 
 const LOAN_STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success' | 'error' | 'default' | 'primary' | 'info' }> = {
   pending: { label: 'Pendiente de aprobación', color: 'warning' },
@@ -48,6 +48,8 @@ const emptyForm = {
   amount: 0,
   num_installments: 0,
   monthly_interest_percent: 0,
+  // Quincenal por defecto; un mensualizado queda siempre mensual (lo fuerza el servidor).
+  installment_frequency: 'biweekly' as 'monthly' | 'biweekly',
   notes: '',
   payment_method: 'transferencia' as 'efectivo' | 'transferencia',
   mark_as_paid: true,
@@ -133,10 +135,16 @@ export default function LoansPage() {
 
   const showPaymentFields = form.mark_as_paid;
 
+  // Los mensualizados se liquidan una sola vez al mes (2ª quincena): su cuota es siempre mensual.
+  const formEmployee = employees.find(e => e.id === form.employee_id);
+  const isMonthlyEmployee = formEmployee?.pay_type === 'monthly';
+  const effectiveFrequency: 'monthly' | 'biweekly' = isMonthlyEmployee ? 'monthly' : form.installment_frequency;
+
   const notifyLoanApprovedByWhatsApp = (employee: Employee | undefined, loan: Loan) => {
     if (!employee?.phone) return;
     const installmentAmount = loan.installment_amount ? formatCurrency(Number(loan.installment_amount)) : '';
-    const message = `Hola ${employee.name}, tu préstamo de ${formatCurrency(Number(loan.amount))} fue aprobado. Se va a descontar en ${loan.num_installments} cuota(s) fija(s)${installmentAmount ? ` de ${installmentAmount} por mes` : ''}.`;
+    const period = loan.installment_frequency === 'biweekly' ? 'por quincena' : 'por mes';
+    const message = `Hola ${employee.name}, tu préstamo de ${formatCurrency(Number(loan.amount))} fue aprobado. Se va a descontar en ${loan.num_installments} cuota(s) fija(s)${installmentAmount ? ` de ${installmentAmount} ${period}` : ''}.`;
     window.open(buildWhatsAppLink(employee.phone, message), '_blank');
   };
 
@@ -157,6 +165,7 @@ export default function LoansPage() {
           amount: form.amount,
           num_installments: form.num_installments,
           monthly_interest_percent: form.monthly_interest_percent,
+          installment_frequency: effectiveFrequency,
           payment_method: form.payment_method,
           notes: form.notes || undefined,
           start_date: form.start_date,
@@ -174,6 +183,7 @@ export default function LoansPage() {
           amount: form.amount,
           num_installments: form.num_installments,
           monthly_interest_percent: form.monthly_interest_percent,
+          installment_frequency: effectiveFrequency,
           payment_method: form.payment_method,
           notes: form.notes || undefined,
           mark_as_paid: form.mark_as_paid,
@@ -226,6 +236,7 @@ export default function LoansPage() {
       amount: Number(loan.requested_amount ?? loan.amount),
       num_installments: Number(loan.requested_num_installments || 0),
       monthly_interest_percent: 0,
+      installment_frequency: 'biweekly',
       notes: loan.notes || '',
       payment_method: 'transferencia',
       mark_as_paid: true,
@@ -706,17 +717,44 @@ export default function LoansPage() {
               />
             </Box>
 
+            <TextField
+              label="Frecuencia de cuotas *"
+              select
+              fullWidth
+              size="small"
+              value={effectiveFrequency}
+              disabled={isMonthlyEmployee}
+              onChange={(e) => setForm({ ...form, installment_frequency: e.target.value as 'monthly' | 'biweekly' })}
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+              helperText={isMonthlyEmployee
+                ? 'Mensualizado: cuota mensual, se descuenta en la 2ª quincena.'
+                : 'El interés se carga mensual; en cuotas quincenales cada cuota cobra la mitad.'}
+            >
+              <option value="biweekly">Quincenal</option>
+              <option value="monthly">Mensual</option>
+            </TextField>
+
             {(() => {
+              const perInstallmentPercent = periodicInterestPercent(form.monthly_interest_percent, effectiveFrequency);
               const preview = form.amount > 0 && form.num_installments > 0
-                ? computeFrenchSchedule(form.amount, form.monthly_interest_percent, form.num_installments)
+                ? computeFrenchSchedule(form.amount, perInstallmentPercent, form.num_installments)
                 : null;
               if (!preview) return null;
+              const unit = effectiveFrequency === 'biweekly' ? 'quincena' : 'mes';
               return (
                 <Box p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
-                  <Typography variant="caption" color="text.secondary">Cuota mensual estimada (amortización francesa)</Typography>
-                  <Typography variant="body2" fontWeight={700} color="primary.main">
-                    {formatCurrency(preview.installmentAmount)} / mes × {form.num_installments} cuotas
+                  <Typography variant="caption" color="text.secondary">
+                    Cuota {effectiveFrequency === 'biweekly' ? 'quincenal' : 'mensual'} estimada (amortización francesa)
                   </Typography>
+                  <Typography variant="body2" fontWeight={700} color="primary.main">
+                    {formatCurrency(preview.installmentAmount)} / {unit} × {form.num_installments} cuotas
+                  </Typography>
+                  {form.monthly_interest_percent > 0 && (
+                    <Typography variant="caption" color="text.secondary">
+                      Interés por cuota: {perInstallmentPercent}% sobre el saldo
+                    </Typography>
+                  )}
                 </Box>
               );
             })()}
@@ -840,7 +878,14 @@ export default function LoansPage() {
             <Stack spacing={3}>
               {detailLoan?.plan_type === 'fixed_installments' && (
                 <Box>
-                  <Typography variant="subtitle2" fontWeight={700} mb={1}>Plan de Cuotas</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} mb={1}>
+                    Plan de Cuotas
+                    {detailLoan.installment_frequency && (
+                      <Typography component="span" variant="caption" color="text.secondary">
+                        {' '}· cuotas {detailLoan.installment_frequency === 'biweekly' ? 'quincenales' : 'mensuales'}
+                      </Typography>
+                    )}
+                  </Typography>
                   {!detailLoan.installments || detailLoan.installments.length === 0 ? (
                     <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
                       Todavía no se generó el plan de cuotas.
@@ -1011,6 +1056,11 @@ export default function LoansPage() {
             <Typography variant="body2" color="text.secondary">
               Vas a marcar como pagado el préstamo de <strong>{markPaidTarget?.employee?.lastname}, {markPaidTarget?.employee?.name}</strong> por <strong>{markPaidTarget ? formatLoanAmount(markPaidTarget) : ''}</strong>.
             </Typography>
+            {markPaidTarget?.plan_type === 'fixed_installments' && (
+              <Alert severity="info">
+                El plan de cuotas se arma con la fecha de hoy como fecha de entrega. Hasta ahora no se descontó nada.
+              </Alert>
+            )}
             <TextField
               label="Método de Pago *"
               select
@@ -1136,6 +1186,7 @@ export default function LoansPage() {
           signatureUrl={receiptLoan.signature_url}
           numInstallments={receiptLoan.num_installments}
           monthlyInterestPercent={receiptLoan.monthly_interest_percent}
+          installmentFrequency={receiptLoan.installment_frequency}
         />
       )}
     </Box>

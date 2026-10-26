@@ -341,7 +341,8 @@ export default function PortalRequestsPage() {
                 <>
                   <Typography variant="body2" color="text.secondary" mb={2}>
                     Tu pedido queda sujeto a revisión y aprobación. La cantidad de cuotas final y
-                    el interés (si aplica) los define administración al aprobarlo.
+                    el interés (si aplica) los define administración al aprobarlo. Las cuotas son quincenales:
+                    se descuentan de cada liquidación.
                   </Typography>
                   <Stack spacing={2}>
                     <CurrencyInput
