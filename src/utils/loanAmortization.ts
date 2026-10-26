@@ -18,6 +18,18 @@ export interface FrenchSchedulePreview {
   rows: InstallmentPreviewRow[];
 }
 
+export type InstallmentFrequency = 'monthly' | 'biweekly';
+
+/** Tasa que se cobra en CADA cuota: el interés se carga mensual y en quincenal es la mitad. */
+export function periodicInterestPercent(monthlyPercent: number, frequency: InstallmentFrequency): number {
+  const monthly = Number(monthlyPercent || 0);
+  return frequency === 'biweekly' ? monthly / 2 : monthly;
+}
+
+/**
+ * `monthlyInterestPercent` es la tasa POR CUOTA (ya convertida con `periodicInterestPercent`
+ * si la frecuencia es quincenal), igual que `computeFrenchSchedule` del backend.
+ */
 export function computeFrenchSchedule(amount: number, monthlyInterestPercent: number, numInstallments: number): FrenchSchedulePreview | null {
   const P = Number(amount);
   const n = Number(numInstallments);

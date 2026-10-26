@@ -71,6 +71,18 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'liquidaciones.md',
   },
   {
+    id: 'prestamos',
+    category: 'Contabilidad',
+    title: 'Préstamos y cuotas',
+    keywords: [
+      'prestamo', 'préstamo', 'prestamos', 'préstamos', 'cuota', 'cuotas', 'quincenal',
+      'quincenales', 'mensual', 'mensuales', 'interes', 'interés', 'frecuencia', 'aprobar',
+      'marcar como pagado', 'entrega', 'liquidar', 'baja', 'renuncia', 'despido', 'atrasada',
+      'atrasadas', 'mensualizado', 'amortizacion', 'amortización', 'a discrecion', 'a discreción',
+    ],
+    file: 'prestamos.md',
+  },
+  {
     id: 'herramientas-reparacion',
     category: 'Pañol',
     title: 'Reparación de Herramientas',
