@@ -7,7 +7,8 @@ export type AlertType =
   | 'oca_budget'
   | 'safety_equipment'
   | 'tool_in_repair'
-  | 'salary_advance_deletion';
+  | 'salary_advance_deletion'
+  | 'loan_change';
 
 // Orden fijo de la barra de resumen, para que los chips no bailen de lugar según cuál termine de
 // cargar primero. De más accionable a más informativo.
@@ -18,6 +19,7 @@ export const ALERT_ORDER: AlertType[] = [
   'safety_equipment',
   'tool_in_repair',
   'salary_advance_deletion',
+  'loan_change',
 ];
 
 // Etiqueta corta para el chip de la barra (la tarjeta usa su propio título largo).
@@ -28,6 +30,7 @@ export const ALERT_SHORT_LABEL: Record<AlertType, string> = {
   safety_equipment: 'EPP',
   tool_in_repair: 'Herramientas',
   salary_advance_deletion: 'Adelantos anulados',
+  loan_change: 'Préstamos modificados',
 };
 
 // Cuántos items no vistos se muestran en una tarjeta antes de resumir el resto en "y N más".

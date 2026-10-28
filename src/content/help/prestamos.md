@@ -39,6 +39,20 @@ Al generar la liquidación de una quincena se descuentan solas las cuotas que ve
 
 Si el empleado renuncia o lo despiden, el botón **Liquidar** cancela lo que queda del préstamo: la cuota que está corriendo en la quincena actual (o vencida) se cobra **completa**, y todas las siguientes se cobran **solo el capital**, sin interés. En cuotas mensuales la cuota del mes en curso cuenta como corriendo.
 
+## Reprogramar un préstamo
+
+Si un préstamo activo (o aprobado y todavía sin entregar) necesita otros términos — por ejemplo, pasar las cuotas de mensuales a quincenales, o corregir el monto — se puede **reprogramar** desde el botón con el ícono de calendario, en la tabla o en las cards de **Contabilidad → Préstamos**. Solo está disponible mientras **ninguna cuota se haya descontado todavía**, ni siquiera en una liquidación que está en borrador sin confirmar.
+
+Al reprogramar se pueden cambiar el monto (respetando el tope configurado), la cantidad de cuotas, el interés, la frecuencia y la fecha de inicio del plan. El comprobante de pago y la firma **no se tocan** — siguen siendo los de la entrega original. Si la fecha de inicio queda en el pasado, un aviso recuerda que las cuotas atrasadas se van a descontar todas juntas en la próxima liquidación. Hay que indicar un **motivo** obligatorio.
+
+## Cancelar un préstamo
+
+Si un préstamo se cargó por error, se puede **cancelar** (mismo botón de arriba, con el ícono de bloqueado), con la misma condición: ninguna cuota descontada todavía. El préstamo no se elimina — queda con estado **Cancelado**, y en su detalle se puede ver quién lo canceló, cuándo y por qué motivo. Después de cancelarlo, el empleado puede pedir otro préstamo normalmente.
+
+### Aviso a Socios Gerentes
+
+Cada vez que se reprograma o cancela un préstamo, queda un aviso en el tablero de inicio para los Socios Gerentes (igual que con la anulación de un adelanto pagado), con los términos antes/después (o el monto, si fue una cancelación) y el motivo.
+
 ## Préstamos viejos "a discreción"
 
 Los préstamos anteriores a este formato (marcados "a discreción", en pesos o dólares) no tienen cuotas: se cobran con pagos manuales y el interés se suma con el botón **Aplicar interés**. Siguen funcionando igual. Ese botón no está disponible para préstamos de cuota fija, porque su interés ya está dentro de cada cuota.
@@ -47,4 +61,4 @@ Los préstamos anteriores a este formato (marcados "a discreción", en pesos o d
 
 En el detalle de un préstamo de cuota fija se ve la frecuencia y la tabla con cada cuota: cuándo vence, capital, interés, total y estado (programada, descontada o liquidada por baja).
 
-<!-- ref: conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/utils/loanAmortization.ts, conmomet-app/src/components/PaymentReceiptDialog.tsx, conmomet-app/src/app/portal/requests/page.tsx, api_conmomet/controllers/loanController.js, api_conmomet/services/loanAmortizationService.js, api_conmomet/services/loanInstallmentDue.js, api_conmomet/controllers/payrollController.js -->
+<!-- ref: conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/utils/loanAmortization.ts, conmomet-app/src/components/PaymentReceiptDialog.tsx, conmomet-app/src/components/common/LoanChangeAlert.tsx, conmomet-app/src/app/portal/requests/page.tsx, api_conmomet/controllers/loanController.js, api_conmomet/controllers/loanChangeAlertController.js, api_conmomet/helpers/loanValidations.js, api_conmomet/services/loanAmortizationService.js, api_conmomet/services/loanInstallmentDue.js, api_conmomet/controllers/payrollController.js -->

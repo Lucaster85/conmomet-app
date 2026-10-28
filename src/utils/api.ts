@@ -4161,6 +4161,13 @@ export interface Loan {
   payments?: LoanPayment[];
   interestApplications?: LoanInterestApplication[];
   installments?: LoanInstallment[];
+  // true si se puede reprogramar/cancelar: cuota fija, active/approved, sin ninguna cuota
+  // descontada ni vinculada, sin pagos registrados. Solo viene en getAll (api_conmomet#getAll).
+  can_change?: boolean;
+  cancelled_at?: string | null;
+  cancelled_by?: number | null;
+  cancellation_reason?: string | null;
+  cancelledBy?: { id: number; name: string; lastname: string };
 }
 
 export interface LoanInstallment {
@@ -4372,6 +4379,72 @@ export class LoanService {
     });
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Error al liquidar el préstamo');
     return response.json();
+  }
+
+  // Editar los términos y rearmar el plan de un préstamo sin ninguna cuota descontada — conserva
+  // comprobante, firma y paid_at (no es una nueva entrega, es el mismo préstamo reprogramado).
+  static async reschedule(id: number, data: {
+    amount: number;
+    num_installments: number;
+    monthly_interest_percent?: number;
+    installment_frequency: 'monthly' | 'biweekly';
+    start_date: string;
+    notes?: string;
+    justification: string;
+  }): Promise<Loan> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${id}/reschedule`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Error al reprogramar el préstamo');
+    return response.json();
+  }
+
+  // Préstamo cargado por error, sin ninguna cuota descontada — no se destruye, queda `cancelled`.
+  static async cancel(id: number, justification: string): Promise<Loan> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loans/${id}/cancel`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ justification }),
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Error al cancelar el préstamo');
+    return response.json();
+  }
+}
+
+// Términos de cuota fija de un préstamo, usados como snapshot "antes"/"después" en LoanChangeAlert.
+export interface LoanTermsSnapshot {
+  amount: number;
+  num_installments: number;
+  monthly_interest_percent: number | null;
+  installment_frequency: 'monthly' | 'biweekly' | null;
+  start_date: string;
+}
+
+// Aviso a Socios Gerentes de una reprogramación o cancelación de préstamo (ver FLOWS.md §43).
+// Mismo patrón que SalaryAdvanceDeletionAlert: registro inmutable, revision fija '1'.
+export interface LoanChangeAlert {
+  id: number;
+  loan_id: number;
+  employee_id: number;
+  action: 'rescheduled' | 'cancelled';
+  justification: string;
+  previous_terms: LoanTermsSnapshot;
+  // null en una cancelación — no hay términos nuevos.
+  new_terms: LoanTermsSnapshot | null;
+  created_by: number | null;
+  created_at: string;
+  employee?: Pick<Employee, 'id' | 'name' | 'lastname'>;
+  loan?: { id: number; status: string };
+  createdBy?: { id: number; name: string; lastname: string };
+}
+
+export class LoanChangeAlertService {
+  static async getAll(): Promise<LoanChangeAlert[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/loan-change-alerts`);
+    if (!response.ok) throw new Error('Error al obtener avisos');
+    return (await response.json()).data || [];
   }
 }
 

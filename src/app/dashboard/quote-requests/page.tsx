@@ -200,23 +200,32 @@ function QuoteRequestsPageContent() {
     }
   };
 
-  // Deep link simétrico al de Presupuestos: un chip "PC-..." en budgets/page.tsx (y el deep
-  // link del push, ver FLOWS.md flujo 28) abren acá el detalle directo, sin tener que buscarlo
-  // en el listado. Quien no puede editar (responsable) lo abre en modo lectura — antes caía
-  // siempre en modo edición, que el backend le rechazaba al guardar (ver FLOWS.md flujo 27g,
-  // §2.3: el responsable no tenía ninguna vía para leer su propio PC).
+  // Deep link simétrico al de Presupuestos: un chip "PC-..." en budgets/page.tsx, el push (ver
+  // FLOWS.md flujo 28) y el click en un item del aviso del tablero (QuoteRequestAlert.tsx) abren
+  // acá el detalle directo, sin tener que buscarlo en el listado. Abre SIEMPRE en modo lectura
+  // (ver FLOWS.md flujo 27g) — "view" pasa a significar lo que dice, sin importar el permiso;
+  // quien puede editar tiene el botón "Editar" en el pie del diálogo de Ver.
   const deepLinkHandled = useRef(false);
   useEffect(() => {
-    if (deepLinkHandled.current) return;
+    if (deepLinkHandled.current || loading) return;
     const viewId = searchParams.get('view');
-    if (viewId && quoteRequests.length > 0) {
-      deepLinkHandled.current = true;
-      const qr = quoteRequests.find((q) => q.id === Number(viewId));
-      if (qr) handleOpenEdit(qr, !hasAssignPermission);
-      router.replace('/dashboard/quote-requests');
+    if (!viewId) return;
+    deepLinkHandled.current = true;
+
+    const qr = quoteRequests.find((q) => q.id === Number(viewId));
+    if (qr) {
+      handleOpenView(qr);
+    } else {
+      // No está en el listado cargado (filtros activos, o recién llegó de un push/chip sin
+      // haber abierto el módulo todavía): se busca directo. Si tampoco existe, se avisa en vez
+      // de no hacer nada.
+      QuoteRequestService.getById(Number(viewId))
+        .then((found) => handleOpenView(found))
+        .catch(() => setError('No se encontró el pedido de cotización.'));
     }
+    router.replace('/dashboard/quote-requests');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quoteRequests]);
+  }, [loading]);
 
   const handleOpenCreate = () => {
     setEditing(null);
@@ -360,17 +369,24 @@ function QuoteRequestsPageContent() {
 
   const availablePlants = plants.filter((p) => p.client_id === Number(form.client_id));
 
+  // Acceso directo al presupuesto desde el pie del diálogo de Ver/Editar — mismo criterio que
+  // los botones equivalentes de renderActions, para no tener que cerrar el PC y buscarlo en la
+  // tabla. Un presupuesto rechazado no cuenta como "vivo" (ver hasLiveBudget).
+  const editingLiveBudget = editing ? (editing.budgets || []).find((b) => b.status !== 'rejected') : undefined;
+  const canCreateBudgetForEditing = !!editing && !editingLiveBudget
+    && (editing.status === 'pending' || editing.status === 'in_progress' || editing.status === 'pending_review');
+
   const renderActions = (qr: QuoteRequest) => (
     <Box display="flex" gap={0.5} flexWrap="wrap">
-      {hasAssignPermission ? (
+      {/* Ver es para todos — línea de tiempo incluida (ver FLOWS.md flujo 27g, §2.3). Editar se
+          suma además para quien tiene permiso de gerencia; también está disponible desde el
+          pie del propio diálogo de Ver. */}
+      <Tooltip title="Ver">
+        <IconButton size="small" onClick={() => handleOpenView(qr)}><ViewIcon fontSize="small" /></IconButton>
+      </Tooltip>
+      {hasAssignPermission && (
         <Tooltip title="Editar">
           <IconButton size="small" onClick={() => handleOpenEdit(qr)}><EditIcon fontSize="small" /></IconButton>
-        </Tooltip>
-      ) : (
-        // Responsable: no puede editar, pero sí tiene que poder leer su propio PC — línea de
-        // tiempo incluida (ver FLOWS.md flujo 27g, §2.3).
-        <Tooltip title="Ver">
-          <IconButton size="small" onClick={() => handleOpenView(qr)}><ViewIcon fontSize="small" /></IconButton>
         </Tooltip>
       )}
       {(qr.status === 'pending' || qr.status === 'in_progress' || qr.status === 'pending_review') && !hasLiveBudget(qr) && (
@@ -721,6 +737,28 @@ function QuoteRequestsPageContent() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>{viewOnly ? 'Cerrar' : 'Cancelar'}</Button>
+          {editingLiveBudget && (
+            <Button
+              variant="outlined"
+              startIcon={<BudgetIcon />}
+              onClick={() => router.push(`/dashboard/budgets?view=${editingLiveBudget.id}`)}
+            >
+              Ver Presupuesto
+            </Button>
+          )}
+          {canCreateBudgetForEditing && (
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<BudgetIcon />}
+              onClick={() => router.push(`/dashboard/budgets?quote_request_id=${editing!.id}`)}
+            >
+              Crear Presupuesto
+            </Button>
+          )}
+          {viewOnly && hasAssignPermission && (
+            <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setViewOnly(false)}>Editar</Button>
+          )}
           {!viewOnly && (
             <Button variant="contained" onClick={handleSubmit} disabled={processing}>Guardar</Button>
           )}

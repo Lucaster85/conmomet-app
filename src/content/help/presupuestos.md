@@ -212,9 +212,14 @@ guardar el presupuesto. Sin permiso de costos, las columnas de costo y moneda sa
 ## Ver, editar e imprimir
 
 El ícono del ojo abre la **vista** del presupuesto, con los botones **Editar** (solo si está en
-**Borrador**), **Cerrar** e **Imprimir** (este último, solo con permiso de precios). **Editar** abre
-directo el formulario de ese presupuesto, sin volver al listado: es útil cuando se llega por un
-acceso directo y lo que se quiere es modificarlo.
+**Borrador**), **Enviar** (también solo en Borrador, y solo con permiso de enviar), **Cerrar** e
+**Imprimir** (este último, solo con permiso de precios). **Editar** abre directo el formulario de
+ese presupuesto, sin volver al listado: es útil cuando se llega por un acceso directo y lo que se
+quiere es modificarlo. **Enviar** hace lo mismo que el ícono del listado: abre la confirmación de
+envío al cliente, sin tener que cerrar la vista y buscarlo en la tabla.
+
+El mismo botón **Enviar** está también en el propio formulario de edición del presupuesto (junto
+a Cancelar y Guardar), con la misma condición: Borrador y permiso de enviar.
 
 ## Edición simultánea
 
