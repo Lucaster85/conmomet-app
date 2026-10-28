@@ -1918,6 +1918,14 @@ function BudgetsPageContent() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
+          {editingBudget?.status === 'draft' && hasSendPermission && !lockedBy && (
+            <Button
+              variant="outlined" color="info" startIcon={<SendIcon />}
+              onClick={() => { const budget = editingBudget; setOpenDialog(false); handleOpenStatusDialog(budget, 'sent'); }}
+            >
+              Enviar
+            </Button>
+          )}
           {!(editingBudget && lockedBy) && (
             <Button onClick={handleSubmit} variant="contained" disabled={processing}>
               {processing ? <GearSpinner size={20} /> : (editingBudget ? 'Guardar' : 'Crear')}
@@ -2298,6 +2306,14 @@ function BudgetsPageContent() {
               onClick={() => { const budget = printBudget; setPrintBudget(null); handleOpenEdit(budget); }}
             >
               Editar
+            </Button>
+          )}
+          {printBudget?.status === 'draft' && hasSendPermission && (
+            <Button
+              variant="outlined" color="info" startIcon={<SendIcon />}
+              onClick={() => { const budget = printBudget; setPrintBudget(null); handleOpenStatusDialog(budget, 'sent'); }}
+            >
+              Enviar
             </Button>
           )}
           <Button onClick={() => setPrintBudget(null)}>Cerrar</Button>
