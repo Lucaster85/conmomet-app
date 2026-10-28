@@ -136,6 +136,10 @@ cotizar — lo más práctico suele ser **Duplicar** el rechazado, ver el tema *
 se **elimina** mientras todavía estaba en Borrador. El presupuesto rechazado se sigue viendo en
 la fila del pedido, marcado en rojo, para no perder el historial.
 
+El mismo acceso directo (**"Ver Presupuesto"** o **"Crear Presupuesto"**, según corresponda)
+está también como botón al pie del detalle del pedido (modo Ver o Editar), junto a Cerrar/Editar
+o Guardar — no hace falta cerrarlo y buscarlo en el listado.
+
 ## Comentarios y línea de tiempo
 
 Cada entrega, devolución o reasignación puede llevar un **comentario** — el mensaje a la
@@ -146,13 +150,17 @@ que devolver un pedido dos veces por motivos distintos deja las dos aclaraciones
 
 Todo eso se lee en la **línea de tiempo**, dentro del detalle del pedido — mezclada con los
 eventos del presupuesto (enviado, aprobado o rechazado con su motivo), para tener el ida y
-vuelta completo en un solo lugar. El responsable que no puede editar el pedido (no tiene permiso
-de gerencia) lo abre con el botón **Ver** en vez de Editar: puede leer todo, incluida la línea
-de tiempo, pero no modificar nada.
+vuelta completo en un solo lugar. **Todos** pueden abrir un pedido con el botón **Ver**: solo
+lectura, incluida la línea de tiempo. Gerencia además tiene **Editar**, también disponible como
+botón dentro del propio diálogo de Ver, para no tener que volver al listado.
 
 El **último comentario dirigido a vos** también aparece directo en el aviso del tablero de
-Inicio, para no tener que entrar al detalle solo para leerlo. Distinto del campo **Notas**, que
-es información general del pedido (no tiene autor ni fecha, y se puede editar).
+Inicio, para no tener que entrar al detalle solo para leerlo — y clickeando el pedido ahí mismo
+se abre directo en modo lectura, sin tener que buscarlo en el listado. Distinto del campo
+**Notas**, que es información general del pedido (no tiene autor ni fecha, y se puede editar).
+
+Un presupuesto enviado al cliente con el chip "PC-..." en su detalle, o un push de pedido de
+cotización, también abren el pedido directo en modo lectura.
 
 ## Después de cotizar: aprobación y Proyecto
 

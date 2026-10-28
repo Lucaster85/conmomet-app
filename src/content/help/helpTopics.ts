@@ -79,6 +79,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'quincenales', 'mensual', 'mensuales', 'interes', 'interés', 'frecuencia', 'aprobar',
       'marcar como pagado', 'entrega', 'liquidar', 'baja', 'renuncia', 'despido', 'atrasada',
       'atrasadas', 'mensualizado', 'amortizacion', 'amortización', 'a discrecion', 'a discreción',
+      'reprogramar', 'reprogramacion', 'reprogramación', 'cancelar', 'cancelacion', 'cancelación',
     ],
     file: 'prestamos.md',
   },
