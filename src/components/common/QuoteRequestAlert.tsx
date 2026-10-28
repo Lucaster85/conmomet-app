@@ -65,7 +65,16 @@ export default function QuoteRequestAlert() {
         entity_id: qr.id,
         revision: revisionOf(qr),
         content: (
-          <Box>
+          // Clickeable: cae directo en el detalle, en modo lectura (ver FLOWS.md flujo 27g). El
+          // ojo de "Marcar como visto" vive afuera de este `content`, en el shell de
+          // DashboardAlertCard, así que no hay conflicto de clicks.
+          <Box
+            role="button"
+            tabIndex={0}
+            onClick={() => router.push(`/dashboard/quote-requests?view=${qr.id}`)}
+            onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/dashboard/quote-requests?view=${qr.id}`); }}
+            sx={{ cursor: 'pointer', borderRadius: 1, p: 0.5, '&:hover': { bgcolor: 'action.hover' } }}
+          >
             <Box display="flex" alignItems="center" flexWrap="wrap" gap={1}>
               <Typography variant="body2">{qr.number} — {qr.title}</Typography>
               <Chip
@@ -90,7 +99,7 @@ export default function QuoteRequestAlert() {
         ),
       };
     });
-  }, [quoteRequests]);
+  }, [quoteRequests, router]);
 
   const ready = !!userId && hasAccess && !loading;
   useRegisterAlertSummary(
