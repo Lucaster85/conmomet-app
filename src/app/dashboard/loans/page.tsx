@@ -15,7 +15,8 @@ import {
   LocalAtmOutlined as CashIcon, AccountBalanceOutlined as BankIcon,
   PaymentsOutlined as PaidIcon, AttachFileOutlined as ProofIcon,
   DrawOutlined as SignatureIcon,
-  WhatsApp as WhatsAppIcon, AssignmentReturnOutlined as SettleIcon
+  WhatsApp as WhatsAppIcon, AssignmentReturnOutlined as SettleIcon,
+  EventRepeatOutlined as RescheduleIcon, BlockOutlined as CancelLoanIcon
 } from '@mui/icons-material';
 import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
@@ -78,7 +79,6 @@ export default function LoansPage() {
   const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
-  const [editing, setEditing] = useState<Loan | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Loan | null }>({ open: false, item: null });
   const [form, setForm] = useState(emptyForm);
   const [detailLoan, setDetailLoan] = useState<Loan | null>(null);
@@ -100,6 +100,10 @@ export default function LoansPage() {
   const [settleTarget, setSettleTarget] = useState<Loan | null>(null);
   const [settleReason, setSettleReason] = useState<'resignation' | 'dismissal' | 'other'>('resignation');
   const [settleNotes, setSettleNotes] = useState('');
+  const [reschedulingLoan, setReschedulingLoan] = useState<Loan | null>(null);
+  const [rescheduleJustification, setRescheduleJustification] = useState('');
+  const [cancelTarget, setCancelTarget] = useState<Loan | null>(null);
+  const [cancelJustification, setCancelJustification] = useState('');
 
   const loadData = async () => {
     try {
@@ -120,8 +124,8 @@ export default function LoansPage() {
   useEffect(() => { loadData(); }, []);
 
   const handleOpenCreate = () => {
-    setEditing(null);
     setApprovingLoan(null);
+    setReschedulingLoan(null);
     setForm({ ...emptyForm, start_date: new Date().toISOString().slice(0, 10) });
     setProofFile(null);
     setSignatureFile(null);
@@ -131,6 +135,7 @@ export default function LoansPage() {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setApprovingLoan(null);
+    setReschedulingLoan(null);
   };
 
   const showPaymentFields = form.mark_as_paid;
@@ -149,6 +154,35 @@ export default function LoansPage() {
   };
 
   const handleSubmit = async () => {
+    if (reschedulingLoan) {
+      if (!form.start_date) return setError('La fecha de inicio del plan es obligatoria');
+      if (!form.amount || form.amount <= 0) return setError('El monto debe ser mayor a 0');
+      if (!form.num_installments || form.num_installments <= 0) return setError('La cantidad de cuotas debe ser mayor a 0');
+      if (!rescheduleJustification.trim()) return setError('El motivo es obligatorio');
+
+      if (processing) return;
+      setProcessing(true);
+      try {
+        await LoanService.reschedule(reschedulingLoan.id, {
+          amount: form.amount,
+          num_installments: form.num_installments,
+          monthly_interest_percent: form.monthly_interest_percent,
+          installment_frequency: effectiveFrequency,
+          start_date: form.start_date,
+          notes: form.notes || undefined,
+          justification: rescheduleJustification,
+        });
+        setSuccess('Préstamo reprogramado');
+        handleCloseDialog();
+        loadData();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al reprogramar el préstamo');
+      } finally {
+        setProcessing(false);
+      }
+      return;
+    }
+
     if (!form.employee_id) return setError('El empleado es obligatorio');
     if (!form.start_date) return setError('La fecha es obligatoria');
     if (!form.amount || form.amount <= 0) return setError('El monto debe ser mayor a 0');
@@ -173,9 +207,6 @@ export default function LoansPage() {
         }, proofFile, signatureFile);
         setSuccess(form.mark_as_paid ? 'Préstamo aprobado y marcado como pagado' : 'Préstamo aprobado — queda pendiente de pago');
         if (form.mark_as_paid) notifyLoanApprovedByWhatsApp(approvingLoan.employee || employee, updatedLoan);
-      } else if (editing) {
-        setError('No se pueden editar préstamos. Elimine y vuelva a crear si hay un error.');
-        return;
       } else {
         const createData: Parameters<typeof LoanService.create>[0] = {
           employee_id: form.employee_id,
@@ -228,7 +259,7 @@ export default function LoansPage() {
   };
 
   const handleOpenApprove = (loan: Loan) => {
-    setEditing(null);
+    setReschedulingLoan(null);
     setApprovingLoan(loan);
     setForm({
       employee_id: loan.employee_id,
@@ -320,6 +351,43 @@ export default function LoansPage() {
     }
   };
 
+  const handleOpenReschedule = (loan: Loan) => {
+    setApprovingLoan(null);
+    setReschedulingLoan(loan);
+    setForm({
+      employee_id: loan.employee_id,
+      start_date: new Date().toISOString().slice(0, 10),
+      amount: Number(loan.amount),
+      num_installments: Number(loan.num_installments || 0),
+      monthly_interest_percent: Number(loan.monthly_interest_percent || 0),
+      installment_frequency: (loan.installment_frequency || 'biweekly') as 'monthly' | 'biweekly',
+      notes: loan.notes || '',
+      payment_method: 'transferencia',
+      mark_as_paid: true,
+    });
+    setRescheduleJustification('');
+    setProofFile(null);
+    setSignatureFile(null);
+    setOpenDialog(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget) return;
+    if (!cancelJustification.trim()) return setError('El motivo es obligatorio');
+    setProcessing(true);
+    try {
+      await LoanService.cancel(cancelTarget.id, cancelJustification);
+      setSuccess('Préstamo cancelado');
+      setCancelTarget(null);
+      setCancelJustification('');
+      loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cancelar el préstamo');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const formatCurrency = (val: number) =>
     `$${Number(val).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
@@ -332,6 +400,11 @@ export default function LoansPage() {
     loan.currency === 'USD'
       ? `USD ${Number(loan.remaining_balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
       : formatCurrency(loan.remaining_balance);
+
+  // Reprogramar/cancelar: solo cuota fija, active/approved, y sin ninguna cuota descontada ni
+  // vinculada (can_change lo calcula el backend — ver loanController.js#getAll).
+  const canChangeLoan = (loan: Loan) =>
+    (loan.status === 'active' || loan.status === 'approved') && loan.plan_type === 'fixed_installments' && !!loan.can_change;
 
   const renderPaymentMethodChip = (method?: 'efectivo' | 'transferencia' | null) => {
     if (!method) return <Typography variant="body2" color="text.secondary">—</Typography>;
@@ -501,6 +574,12 @@ export default function LoansPage() {
                   {loan.status === 'active' && loan.plan_type === 'fixed_installments' && (
                     <Button size="small" variant="outlined" color="warning" startIcon={<SettleIcon />} onClick={() => setSettleTarget(loan)}>Liquidar por baja</Button>
                   )}
+                  {canChangeLoan(loan) && (
+                    <>
+                      <Button size="small" variant="outlined" startIcon={<RescheduleIcon />} onClick={() => handleOpenReschedule(loan)}>Reprogramar</Button>
+                      <Button size="small" variant="outlined" color="error" startIcon={<CancelLoanIcon />} onClick={() => setCancelTarget(loan)}>Cancelar</Button>
+                    </>
+                  )}
                   <Button size="small" variant="outlined" startIcon={<VisibilityIcon />} onClick={() => handleOpenDetail(loan)}>Ver Detalle</Button>
                   {loan.status === 'pending' && (
                     <Button size="small" variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteDialog({ open: true, item: loan })}>Eliminar</Button>
@@ -631,6 +710,20 @@ export default function LoansPage() {
                           </IconButton>
                         </Tooltip>
                       )}
+                      {canChangeLoan(loan) && (
+                        <>
+                          <Tooltip title="Reprogramar">
+                            <IconButton size="small" color="primary" onClick={() => handleOpenReschedule(loan)}>
+                              <RescheduleIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Cancelar (cargado por error)">
+                            <IconButton size="small" color="error" onClick={() => setCancelTarget(loan)}>
+                              <CancelLoanIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
                       <Tooltip title="Ver Detalle de Movimientos">
                         <IconButton size="small" color="primary" onClick={() => handleOpenDetail(loan)}>
                           <VisibilityIcon fontSize="small" />
@@ -654,7 +747,7 @@ export default function LoansPage() {
 
       {/* Create / Approve Dialog */}
       <AppDialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{approvingLoan ? 'Aprobar Préstamo Solicitado' : 'Otorgar Préstamo a Empleado'}</DialogTitle>
+        <DialogTitle>{reschedulingLoan ? 'Reprogramar Préstamo' : approvingLoan ? 'Aprobar Préstamo Solicitado' : 'Otorgar Préstamo a Empleado'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {approvingLoan && (
@@ -667,7 +760,7 @@ export default function LoansPage() {
               <Alert severity="warning">{approvingLoan.conflict_warning}</Alert>
             )}
 
-            <FormControl fullWidth size="small" disabled={!!approvingLoan}>
+            <FormControl fullWidth size="small" disabled={!!approvingLoan || !!reschedulingLoan}>
               <InputLabel>Empleado *</InputLabel>
               <Select
                 value={form.employee_id || ''}
@@ -679,7 +772,7 @@ export default function LoansPage() {
             </FormControl>
 
             <TextField
-              label="Fecha de Entrega *"
+              label={reschedulingLoan ? 'Fecha de Inicio del Plan *' : 'Fecha de Entrega *'}
               type="date"
               size="small"
               fullWidth
@@ -687,6 +780,11 @@ export default function LoansPage() {
               value={form.start_date.slice(0, 10)}
               onChange={(e) => setForm({ ...form, start_date: e.target.value })}
             />
+            {reschedulingLoan && form.start_date < new Date().toISOString().slice(0, 10) && (
+              <Alert severity="warning">
+                Esta fecha quedó en el pasado: las cuotas atrasadas se descuentan todas juntas en la próxima liquidación.
+              </Alert>
+            )}
 
             <CurrencyInput
               label="Monto del Préstamo ($) *"
@@ -696,6 +794,11 @@ export default function LoansPage() {
               size="small"
               InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
             />
+            {reschedulingLoan && Number(form.amount) !== Number(reschedulingLoan.amount) && (
+              <Alert severity="info">
+                El comprobante y la firma de este préstamo corresponden al monto de la entrega original.
+              </Alert>
+            )}
 
             <Box display="flex" gap={2}>
               <TextField
@@ -759,19 +862,21 @@ export default function LoansPage() {
               );
             })()}
 
-            <TextField
-              label="Método de Pago *"
-              select
-              fullWidth
-              size="small"
-              value={form.payment_method}
-              onChange={(e) => setForm({ ...form, payment_method: e.target.value as 'efectivo' | 'transferencia' })}
-              SelectProps={{ native: true }}
-              InputLabelProps={{ shrink: true }}
-            >
-              <option value="transferencia">Transferencia bancaria</option>
-              <option value="efectivo">Efectivo</option>
-            </TextField>
+            {!reschedulingLoan && (
+              <TextField
+                label="Método de Pago *"
+                select
+                fullWidth
+                size="small"
+                value={form.payment_method}
+                onChange={(e) => setForm({ ...form, payment_method: e.target.value as 'efectivo' | 'transferencia' })}
+                SelectProps={{ native: true }}
+                InputLabelProps={{ shrink: true }}
+              >
+                <option value="transferencia">Transferencia bancaria</option>
+                <option value="efectivo">Efectivo</option>
+              </TextField>
+            )}
 
             <TextField
               label="Notas o Referencia"
@@ -783,34 +888,50 @@ export default function LoansPage() {
               placeholder="Ej: Para reparación de vehículo..."
             />
 
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={form.mark_as_paid}
-                  onChange={(e) => setForm({ ...form, mark_as_paid: e.target.checked })}
-                />
-              }
-              label="Ya se le entregó el préstamo al empleado"
-            />
-            {!form.mark_as_paid && (
-              <Alert severity="info">
-                El préstamo quedará como &quot;Aprobado — pend. de pago&quot;. Cuando se le entregue el dinero, marcalo como pagado desde la tabla.
-              </Alert>
-            )}
-            {showPaymentFields && (
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>Comprobante de Pago (opcional)</Typography>
-                <Button variant="outlined" component="label" fullWidth color={proofFile ? 'success' : 'primary'}>
-                  {proofFile ? proofFile.name : 'Seleccionar Archivo'}
-                  <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setProofFile(e.target.files?.[0] || null)} />
-                </Button>
-              </Box>
-            )}
-            {showPaymentFields && (
-              <SignaturePad
-                label="Firma del empleado (opcional)"
-                onChange={setSignatureFile}
+            {reschedulingLoan && (
+              <TextField
+                label="Motivo *"
+                fullWidth
+                multiline
+                rows={2}
+                value={rescheduleJustification}
+                onChange={(e) => setRescheduleJustification(e.target.value)}
+                placeholder="Por qué se reprograma este préstamo"
               />
+            )}
+
+            {!reschedulingLoan && (
+              <>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={form.mark_as_paid}
+                      onChange={(e) => setForm({ ...form, mark_as_paid: e.target.checked })}
+                    />
+                  }
+                  label="Ya se le entregó el préstamo al empleado"
+                />
+                {!form.mark_as_paid && (
+                  <Alert severity="info">
+                    El préstamo quedará como &quot;Aprobado — pend. de pago&quot;. Cuando se le entregue el dinero, marcalo como pagado desde la tabla.
+                  </Alert>
+                )}
+                {showPaymentFields && (
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>Comprobante de Pago (opcional)</Typography>
+                    <Button variant="outlined" component="label" fullWidth color={proofFile ? 'success' : 'primary'}>
+                      {proofFile ? proofFile.name : 'Seleccionar Archivo'}
+                      <input type="file" hidden accept="image/*,.pdf" onChange={(e) => setProofFile(e.target.files?.[0] || null)} />
+                    </Button>
+                  </Box>
+                )}
+                {showPaymentFields && (
+                  <SignaturePad
+                    label="Firma del empleado (opcional)"
+                    onChange={setSignatureFile}
+                  />
+                )}
+              </>
             )}
 
           </Stack>
@@ -823,7 +944,7 @@ export default function LoansPage() {
             color={approvingLoan ? 'success' : 'primary'}
             disabled={processing}
           >
-            {processing ? <GearSpinner size={20} /> : (approvingLoan ? 'Aprobar Préstamo' : 'Registrar Préstamo')}
+            {processing ? <GearSpinner size={20} /> : (reschedulingLoan ? 'Reprogramar' : approvingLoan ? 'Aprobar Préstamo' : 'Registrar Préstamo')}
           </Button>
         </DialogActions>
       </AppDialog>
@@ -876,6 +997,13 @@ export default function LoansPage() {
             </Box>
           ) : (
             <Stack spacing={3}>
+              {detailLoan?.status === 'cancelled' && (
+                <Alert severity="error">
+                  Cancelado por {detailLoan.cancelledBy ? `${detailLoan.cancelledBy.name} ${detailLoan.cancelledBy.lastname}` : 'usuario desconocido'}
+                  {detailLoan.cancelled_at ? ` el ${new Date(detailLoan.cancelled_at).toLocaleDateString('es-AR')}` : ''}.
+                  {detailLoan.cancellation_reason && <> Motivo: &quot;{detailLoan.cancellation_reason}&quot;</>}
+                </Alert>
+              )}
               {detailLoan?.plan_type === 'fixed_installments' && (
                 <Box>
                   <Typography variant="subtitle2" fontWeight={700} mb={1}>
@@ -1170,6 +1298,35 @@ export default function LoansPage() {
           <Button onClick={() => setSettleTarget(null)}>Cancelar</Button>
           <Button onClick={handleConfirmSettle} variant="contained" color="warning" disabled={processing}>
             {processing ? 'Liquidando...' : 'Liquidar Préstamo'}
+          </Button>
+        </DialogActions>
+      </AppDialog>
+
+      {/* Cancelar préstamo cargado por error */}
+      <AppDialog open={!!cancelTarget} onClose={() => setCancelTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Cancelar Préstamo</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {cancelTarget?.employee?.lastname}, {cancelTarget?.employee?.name} — {cancelTarget ? formatCurrency(Number(cancelTarget.amount)) : ''}
+            </Typography>
+            <Alert severity="warning">
+              El préstamo queda marcado como cancelado — no se destruye y no se puede volver atrás. Usalo solo si se cargó por error.
+            </Alert>
+            <TextField
+              label="Motivo *"
+              fullWidth
+              multiline
+              rows={2}
+              value={cancelJustification}
+              onChange={(e) => setCancelJustification(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmCancel} variant="contained" color="error" disabled={processing}>
+            {processing ? 'Cancelando...' : 'Cancelar Préstamo'}
           </Button>
         </DialogActions>
       </AppDialog>
