@@ -86,6 +86,28 @@ Al neto de la liquidación se le restan automáticamente:
   genere. Las cuotas de un préstamo aprobado que todavía no se entregó no se descuentan. Ver el
   tema **Préstamos y cuotas**.
 
+## Cerrar la quincena y la cotización del dólar
+
+Si en la quincena se descontó alguna cuota de préstamo en **dólares**, al tocar **"Cerrar"**
+aparece un diálogo con la cotización que se va a congelar:
+
+- Es la del **día siguiente al cierre de la quincena** (ejemplo: la 1ª quincena de octubre, del 1
+  al 15, usa la cotización del **16/10**) — siempre la misma fecha, no depende de cuándo se toca
+  el botón.
+- Se trae sola de la fuente configurada en **Configuración General** (oficial, blue, mayorista o
+  bolsa; compra o venta), **precargada y editable**. Si esa fecha todavía no se publicó o la API
+  no responde, el campo queda vacío con un aviso — hay que cargarla a mano para poder cerrar.
+- El diálogo muestra a cuántos empleados afecta y, si la liquidación se generó con una cotización
+  provisoria (porque se armó antes de que saliera la definitiva), el delta estimado respecto de
+  esa provisoria.
+- Al confirmar, la cotización queda **congelada**: se guarda en la quincena junto con su fecha y
+  si vino de la API o se cargó a mano, y se **recalcula el neto** de los empleados con cuota en
+  dólares si el valor final difiere del provisorio usado al generar. Desde ese momento el recibo
+  no vuelve a cambiar.
+- Una quincena sin préstamos en dólares se cierra exactamente igual que siempre, sin este paso.
+
+Ver el tema **Préstamos y cuotas** para la regla completa de cómo se arma cada cuota en dólares.
+
 ## Firma y comprobante al marcar un adelanto/préstamo como pagado
 
 Al aprobar, crear con pago inmediato o marcar como pagado un adelanto o un préstamo, además del
@@ -147,4 +169,4 @@ Si se aplica un aumento de Convenio Colectivo con fecha retroactiva, el sistema 
 automáticamente líneas de **"Retroactivo"** en la liquidación del período correspondiente, con
 la diferencia calculada sobre lo ya liquidado en los períodos anteriores afectados.
 
-<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#delete, api_conmomet/controllers/salaryAdvanceController.js#findDuplicateAdvance, api_conmomet/controllers/salaryAdvanceDeletionAlertController.js, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/components/common/SalaryAdvanceDeletionAlert.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx -->
+<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#delete, api_conmomet/controllers/salaryAdvanceController.js#findDuplicateAdvance, api_conmomet/controllers/salaryAdvanceDeletionAlertController.js, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/components/common/SalaryAdvanceDeletionAlert.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx, api_conmomet/controllers/payPeriodController.js#close, api_conmomet/services/exchangeRateService.js, conmomet-app/src/app/dashboard/pay-periods/page.tsx -->

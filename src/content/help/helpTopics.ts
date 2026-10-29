@@ -67,6 +67,8 @@ export const HELP_TOPICS: HelpTopic[] = [
     keywords: [
       'liquidacion', 'liquidación', 'quincena', 'sueldo', 'jornalizado', 'mensualizado',
       'confirmar', 'pagar', 'adelanto', 'prestamo', 'préstamo', 'retroactivo', 'pep',
+      'cerrar', 'cerrar quincena', 'dolares', 'dólares', 'dolar', 'dólar', 'usd',
+      'cotizacion', 'cotización', 'tipo de cambio', 'bna',
     ],
     file: 'liquidaciones.md',
   },
@@ -80,6 +82,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'marcar como pagado', 'entrega', 'liquidar', 'baja', 'renuncia', 'despido', 'atrasada',
       'atrasadas', 'mensualizado', 'amortizacion', 'amortización', 'a discrecion', 'a discreción',
       'reprogramar', 'reprogramacion', 'reprogramación', 'cancelar', 'cancelacion', 'cancelación',
+      'dolares', 'dólares', 'dolar', 'dólar', 'usd', 'cotizacion', 'cotización',
+      'tipo de cambio', 'bna', 'cotizacion de entrega', 'cotización de entrega',
     ],
     file: 'prestamos.md',
   },

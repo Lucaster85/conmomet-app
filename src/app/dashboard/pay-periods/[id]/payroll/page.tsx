@@ -12,7 +12,7 @@ import GearSpinner from '../../../../../components/GearSpinner';
 import { RefreshOutlined as RefreshIcon, EditOutlined as EditIcon, CheckCircleOutlined as ConfirmIcon, CalculateOutlined as CalcIcon, ArrowBackOutlined as BackIcon, PaymentOutlined as PaymentIcon, VisibilityOutlined as ViewIcon, PrintOutlined as PrintIcon, DrawOutlined as SignatureIcon } from '@mui/icons-material';
 import Divider from '@mui/material/Divider';
 import { TableChartOutlined as ExcelIcon } from '@mui/icons-material';
-import { PayrollEntry, PayrollService, PayPeriod, PayrollLine, PayrollAdjustment } from '../../../../../utils/api';
+import { PayrollEntry, PayrollService, PayPeriod, PayrollLine, PayrollAdjustment, LoanInstallment } from '../../../../../utils/api';
 import SignaturePad from '../../../../../components/SignaturePad';
 import { TokenManager } from '../../../../../utils/auth';
 import { isFixedSalaryPayType, payTypeLabel } from '../../../../../utils/payType';
@@ -1212,15 +1212,29 @@ export default function PayrollPage() {
                   )}
                   {Number(detailEntry.loan_installments_deducted) > 0 && (
                     detailEntry.loanInstallments && detailEntry.loanInstallments.length > 0 ? (
-                      detailEntry.loanInstallments.map((inst: { id: number; installment_number: number; total_amount: number }) => (
-                        <Box display="flex" justifyContent="space-between" key={inst.id}>
-                          <Typography variant="body2" color="error.main">
-                            Cuota de Préstamo
-                            <Typography component="span" variant="caption" color="text.secondary"> (Cuota {inst.installment_number})</Typography>
-                          </Typography>
-                          <Typography variant="body2" color="error.main">-{formatCurrency(inst.total_amount)}</Typography>
-                        </Box>
-                      ))
+                      detailEntry.loanInstallments.map((inst: Pick<LoanInstallment, 'id' | 'loan_id' | 'installment_number' | 'principal_amount' | 'interest_amount' | 'total_amount' | 'loan' | 'payment'>) => {
+                        // Una cuota en USD guarda total_amount en dólares — lo que se descontó
+                        // realmente en pesos es payment.amount_ars, a la cotización de ESTA
+                        // quincena (ver payrollController#generate).
+                        const isUsd = inst.loan?.currency === 'USD';
+                        const pesoAmount = isUsd ? Number(inst.payment?.amount_ars ?? 0) : Number(inst.total_amount);
+                        return (
+                          <Box key={inst.id}>
+                            <Box display="flex" justifyContent="space-between">
+                              <Typography variant="body2" color="error.main">
+                                Cuota de Préstamo
+                                <Typography component="span" variant="caption" color="text.secondary"> (Cuota {inst.installment_number})</Typography>
+                              </Typography>
+                              <Typography variant="body2" color="error.main">-{formatCurrency(pesoAmount)}</Typography>
+                            </Box>
+                            {isUsd && inst.payment?.exchange_rate != null && (
+                              <Typography variant="caption" color="text.secondary" display="block" textAlign="right">
+                                USD {Number(inst.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} · cotización {formatCurrency(inst.payment.exchange_rate)} del {new Date(inst.payment.date + 'T12:00:00').toLocaleDateString('es-AR')}
+                              </Typography>
+                            )}
+                          </Box>
+                        );
+                      })
                     ) : (
                       <Box display="flex" justifyContent="space-between">
                         <Typography variant="body2" color="error.main">Cuota de Préstamo</Typography>

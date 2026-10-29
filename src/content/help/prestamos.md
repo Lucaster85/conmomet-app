@@ -25,6 +25,17 @@ El interés siempre se carga como **"Interés mensual %"**. En cuotas **mensuale
 
 Los empleados **mensualizados** se liquidan una sola vez al mes, en la 2ª quincena. Para ellos la frecuencia queda **fija en Mensual** (el selector aparece deshabilitado) y la cuota vence siempre en la **2ª quincena**, sin importar el día de entrega. Los jornalizados y los quincenales fijos usan quincenal por defecto.
 
+## Préstamos en dólares
+
+Además de pesos, un préstamo se puede otorgar en **dólares**. El capital, el interés y todas las cuotas quedan en USD — lo único que se convierte a pesos es el descuento de cada quincena.
+
+- Al otorgar o aprobar un préstamo, el selector **Pesos / Dólares** define la moneda. En dólares hay que cargar la **cotización de entrega** (precargada con la cotización del día, editable) — se usa para calcular el equivalente en pesos de origen, un dato informativo, y para comparar contra el tope máximo.
+- El empleado siempre pide el préstamo **en pesos** desde el portal; la moneda la define administración al aprobar. Si se cambia a dólares un pedido hecho en pesos, el monto se reingresa (el que puso el empleado estaba en pesos y no tiene sentido precargarlo).
+- **Cada cuota se descuenta a la cotización de SU quincena**, no a la de entrega: es la cotización del día siguiente al cierre de esa quincena (ejemplo: la 1ª quincena de octubre, del 1 al 15, se descuenta con la cotización del **16/10**). Si una cuota quedó atrasada, usa la cotización de la quincena donde efectivamente se descuenta, no la de su vencimiento original.
+- El valor se **congela al cerrar la quincena** y queda visible en el recibo, junto a la fecha a la que corresponde, para que el empleado pueda verificarlo.
+- La fuente de la cotización (oficial, blue, mayorista o bolsa; compra o venta) se configura en **Configuración General**, con la cotización del día como default.
+- Una vez entregado el préstamo, **la moneda no se puede cambiar** al reprogramarlo — el selector queda deshabilitado.
+
 ## Descuento automático en la liquidación
 
 Al generar la liquidación de una quincena se descuentan solas las cuotas que vencen en ella. Algunas cosas a tener en cuenta:
@@ -61,4 +72,4 @@ Los préstamos anteriores a este formato (marcados "a discreción", en pesos o d
 
 En el detalle de un préstamo de cuota fija se ve la frecuencia y la tabla con cada cuota: cuándo vence, capital, interés, total y estado (programada, descontada o liquidada por baja).
 
-<!-- ref: conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/utils/loanAmortization.ts, conmomet-app/src/components/PaymentReceiptDialog.tsx, conmomet-app/src/components/common/LoanChangeAlert.tsx, conmomet-app/src/app/portal/requests/page.tsx, api_conmomet/controllers/loanController.js, api_conmomet/controllers/loanChangeAlertController.js, api_conmomet/helpers/loanValidations.js, api_conmomet/services/loanAmortizationService.js, api_conmomet/services/loanInstallmentDue.js, api_conmomet/controllers/payrollController.js -->
+<!-- ref: conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/utils/loanAmortization.ts, conmomet-app/src/components/PaymentReceiptDialog.tsx, conmomet-app/src/components/common/LoanChangeAlert.tsx, conmomet-app/src/app/portal/requests/page.tsx, api_conmomet/controllers/loanController.js, api_conmomet/controllers/loanChangeAlertController.js, api_conmomet/helpers/loanValidations.js, api_conmomet/services/loanAmortizationService.js, api_conmomet/services/loanInstallmentDue.js, api_conmomet/controllers/payrollController.js, api_conmomet/services/exchangeRateService.js, api_conmomet/helpers/systemSettings.js, api_conmomet/controllers/exchangeRateController.js, api_conmomet/controllers/payPeriodController.js, conmomet-app/src/app/dashboard/system-settings/page.tsx -->

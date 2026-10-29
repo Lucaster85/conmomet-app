@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Card, CardContent, Stack, Button, InputAdornment, Autocomplete, TextField, Chip } from '@mui/material';
+import { Box, Typography, Card, CardContent, Stack, Button, InputAdornment, Autocomplete, TextField, Chip, MenuItem } from '@mui/material';
 import GearSpinner from '@/components/GearSpinner';
 import { SettingsOutlined as TitleIcon } from '@mui/icons-material';
 import CurrencyInput from '@/components/CurrencyInput';
@@ -23,12 +23,19 @@ export default function SystemSettingsPage() {
   const [newIvaRate, setNewIvaRate] = useState('');
   const [savingIva, setSavingIva] = useState(false);
 
+  // Fuente de la cotización del dólar para descontar cuotas de préstamos en USD en la liquidación.
+  const [usdRateCasa, setUsdRateCasa] = useState<'oficial' | 'blue' | 'mayorista' | 'bolsa'>('oficial');
+  const [usdRateSide, setUsdRateSide] = useState<'venta' | 'compra'>('venta');
+  const [savingUsdRate, setSavingUsdRate] = useState(false);
+
   useEffect(() => {
     SystemSettingService.get()
       .then((settings) => {
         setMaxLoanAmount(Number(settings.max_loan_amount_ars));
         setOcaBudgetUserId(settings.oca_budget_notification_user_id ?? null);
         setIvaRates(settings.invoice_iva_rates && settings.invoice_iva_rates.length > 0 ? settings.invoice_iva_rates : [21]);
+        setUsdRateCasa(settings.usd_rate_casa || 'oficial');
+        setUsdRateSide(settings.usd_rate_side || 'venta');
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar la configuración'))
       .finally(() => setLoading(false));
@@ -91,6 +98,31 @@ export default function SystemSettingsPage() {
     }
   };
 
+  const handleSaveUsdRate = async () => {
+    setSavingUsdRate(true);
+    try {
+      const updated = await SystemSettingService.update({ usd_rate_casa: usdRateCasa, usd_rate_side: usdRateSide });
+      setUsdRateCasa(updated.usd_rate_casa);
+      setUsdRateSide(updated.usd_rate_side);
+      setSuccess('Configuración actualizada correctamente.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar la configuración');
+    } finally {
+      setSavingUsdRate(false);
+    }
+  };
+
+  const USD_RATE_OPTIONS: Array<{ casa: 'oficial' | 'blue' | 'mayorista' | 'bolsa'; side: 'venta' | 'compra'; label: string }> = [
+    { casa: 'oficial', side: 'venta', label: 'Oficial — venta' },
+    { casa: 'oficial', side: 'compra', label: 'Oficial — compra' },
+    { casa: 'blue', side: 'venta', label: 'Blue — venta' },
+    { casa: 'blue', side: 'compra', label: 'Blue — compra' },
+    { casa: 'mayorista', side: 'venta', label: 'Mayorista — venta' },
+    { casa: 'mayorista', side: 'compra', label: 'Mayorista — compra' },
+    { casa: 'bolsa', side: 'venta', label: 'Bolsa (MEP) — venta' },
+    { casa: 'bolsa', side: 'compra', label: 'Bolsa (MEP) — compra' },
+  ];
+
   if (loading) {
     return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
   }
@@ -122,6 +154,37 @@ export default function SystemSettingsPage() {
             />
             <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ alignSelf: 'flex-start' }}>
               {saving ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Card sx={{ maxWidth: 480, borderRadius: 3, mt: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="h6" fontWeight={600} mb={0.5}>Préstamos — Cotización del dólar</Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Fuente que se usa para descontar en pesos las cuotas de préstamos en dólares. Cada
+            quincena usa la cotización del día siguiente a su cierre; el valor se congela al
+            cerrarla y queda trazable en el recibo.
+          </Typography>
+          <Stack spacing={2}>
+            <TextField
+              select
+              label="Cotización del dólar para préstamos"
+              fullWidth
+              value={`${usdRateCasa}|${usdRateSide}`}
+              onChange={(e) => {
+                const [casa, side] = e.target.value.split('|') as ['oficial' | 'blue' | 'mayorista' | 'bolsa', 'venta' | 'compra'];
+                setUsdRateCasa(casa);
+                setUsdRateSide(side);
+              }}
+            >
+              {USD_RATE_OPTIONS.map((opt) => (
+                <MenuItem key={`${opt.casa}|${opt.side}`} value={`${opt.casa}|${opt.side}`}>{opt.label}</MenuItem>
+              ))}
+            </TextField>
+            <Button variant="contained" onClick={handleSaveUsdRate} disabled={savingUsdRate} sx={{ alignSelf: 'flex-start' }}>
+              {savingUsdRate ? 'Guardando…' : 'Guardar'}
             </Button>
           </Stack>
         </CardContent>
