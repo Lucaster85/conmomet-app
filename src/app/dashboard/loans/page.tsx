@@ -4,7 +4,7 @@ import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, Stack, TextField, InputAdornment,
-  MenuItem, FormControl, InputLabel, Select
+  MenuItem, FormControl, InputLabel, Select, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
 import {
@@ -27,7 +27,7 @@ import CurrencyInput from '@/components/CurrencyInput';
 import SignaturePad from '@/components/SignaturePad';
 import GearSpinner from '@/components/GearSpinner';
 import PaymentReceiptDialog from '@/components/PaymentReceiptDialog';
-import { Loan, Employee, LoanPayment, LoanInterestApplication, LoanInstallment, PayPeriod, LoanService, EmployeeService } from '@/utils/api';
+import { Loan, Employee, LoanPayment, LoanInterestApplication, LoanInstallment, PayPeriod, LoanService, EmployeeService, ExchangeRateService } from '@/utils/api';
 import { buildWhatsAppLink } from '@/utils/whatsapp';
 import { computeFrenchSchedule, periodicInterestPercent } from '@/utils/loanAmortization';
 
@@ -40,13 +40,16 @@ const LOAN_STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'suc
   cancelled: { label: 'Cancelado', color: 'default' },
 };
 
-// Todo préstamo nuevo se otorga siempre en ARS con cuota fija (amortización francesa) — el
-// formato "a discreción" (currency/exchange_rate_at_origin, interés manual) queda congelado
-// solo para los préstamos que ya existían antes de este rediseño.
+// Todo préstamo nuevo se otorga siempre con cuota fija (amortización francesa) — el formato "a
+// discreción" (interés manual) queda congelado solo para los préstamos que ya existían antes de
+// este rediseño. Moneda ARS por defecto; en USD el capital, el interés y las cuotas quedan en
+// dólares y la cotización de entrega es obligatoria (ver ToggleButtonGroup en el diálogo).
 const emptyForm = {
   employee_id: 0,
   start_date: '',
   amount: 0,
+  currency: 'ARS' as 'ARS' | 'USD',
+  exchange_rate_at_origin: 0,
   num_installments: 0,
   monthly_interest_percent: 0,
   // Quincenal por defecto; un mensualizado queda siempre mensual (lo fuerza el servidor).
@@ -104,6 +107,7 @@ export default function LoansPage() {
   const [rescheduleJustification, setRescheduleJustification] = useState('');
   const [cancelTarget, setCancelTarget] = useState<Loan | null>(null);
   const [cancelJustification, setCancelJustification] = useState('');
+  const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
 
   const loadData = async () => {
     try {
@@ -144,6 +148,26 @@ export default function LoansPage() {
   const formEmployee = employees.find(e => e.id === form.employee_id);
   const isMonthlyEmployee = formEmployee?.pay_type === 'monthly';
   const effectiveFrequency: 'monthly' | 'biweekly' = isMonthlyEmployee ? 'monthly' : form.installment_frequency;
+
+  const handleCurrencyChange = async (newCurrency: 'ARS' | 'USD' | null) => {
+    if (!newCurrency || newCurrency === form.currency) return;
+    if (newCurrency === 'ARS') {
+      setForm((prev) => ({ ...prev, currency: 'ARS', exchange_rate_at_origin: 0 }));
+      return;
+    }
+    // El pedido se hizo en pesos (requested_amount): al pasar a USD el monto hay que
+    // reingresarlo, no tiene sentido precargarlo.
+    setForm((prev) => ({ ...prev, currency: 'USD', amount: approvingLoan ? 0 : prev.amount }));
+    setLoadingExchangeRate(true);
+    try {
+      const current = await ExchangeRateService.getCurrent();
+      if (current) setForm((prev) => ({ ...prev, exchange_rate_at_origin: current.rate }));
+    } catch {
+      // Silencioso: el campo queda editable igual, la cotización de entrega no es obligatoria precargada.
+    } finally {
+      setLoadingExchangeRate(false);
+    }
+  };
 
   const notifyLoanApprovedByWhatsApp = (employee: Employee | undefined, loan: Loan) => {
     if (!employee?.phone) return;
@@ -188,6 +212,9 @@ export default function LoansPage() {
     if (!form.amount || form.amount <= 0) return setError('El monto debe ser mayor a 0');
     if (!form.num_installments || form.num_installments <= 0) return setError('La cantidad de cuotas debe ser mayor a 0');
     if (!form.payment_method) return setError('El método de pago es obligatorio');
+    if (form.currency === 'USD' && (!form.exchange_rate_at_origin || form.exchange_rate_at_origin <= 0)) {
+      return setError('La cotización de entrega es obligatoria para préstamos en dólares');
+    }
 
     const employee = employees.find(e => e.id === form.employee_id);
 
@@ -197,6 +224,8 @@ export default function LoansPage() {
       if (approvingLoan) {
         const updatedLoan = await LoanService.approve(approvingLoan.id, {
           amount: form.amount,
+          currency: form.currency,
+          exchange_rate_at_origin: form.currency === 'USD' ? form.exchange_rate_at_origin : undefined,
           num_installments: form.num_installments,
           monthly_interest_percent: form.monthly_interest_percent,
           installment_frequency: effectiveFrequency,
@@ -212,6 +241,8 @@ export default function LoansPage() {
           employee_id: form.employee_id,
           start_date: form.start_date,
           amount: form.amount,
+          currency: form.currency,
+          exchange_rate_at_origin: form.currency === 'USD' ? form.exchange_rate_at_origin : undefined,
           num_installments: form.num_installments,
           monthly_interest_percent: form.monthly_interest_percent,
           installment_frequency: effectiveFrequency,
@@ -265,6 +296,8 @@ export default function LoansPage() {
       employee_id: loan.employee_id,
       start_date: new Date().toISOString().slice(0, 10),
       amount: Number(loan.requested_amount ?? loan.amount),
+      currency: 'ARS',
+      exchange_rate_at_origin: 0,
       num_installments: Number(loan.requested_num_installments || 0),
       monthly_interest_percent: 0,
       installment_frequency: 'biweekly',
@@ -358,6 +391,8 @@ export default function LoansPage() {
       employee_id: loan.employee_id,
       start_date: new Date().toISOString().slice(0, 10),
       amount: Number(loan.amount),
+      currency: loan.currency,
+      exchange_rate_at_origin: Number(loan.exchange_rate_at_origin || 0),
       num_installments: Number(loan.num_installments || 0),
       monthly_interest_percent: Number(loan.monthly_interest_percent || 0),
       installment_frequency: (loan.installment_frequency || 'biweekly') as 'monthly' | 'biweekly',
@@ -400,6 +435,14 @@ export default function LoansPage() {
     loan.currency === 'USD'
       ? `USD ${Number(loan.remaining_balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
       : formatCurrency(loan.remaining_balance);
+
+  // Cuotas del plan de un préstamo USD quedan en dólares (capital, interés y total) — el
+  // equivalente en pesos de cada una depende de la cotización de SU quincena, recién se conoce
+  // cuando se descuenta (ver "Cuotas Descontadas" más abajo, que sí la muestra).
+  const formatInstallmentAmount = (loan: Loan | null, v: number) =>
+    loan?.currency === 'USD'
+      ? `USD ${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+      : formatCurrency(v);
 
   // Reprogramar/cancelar: solo cuota fija, active/approved, y sin ninguna cuota descontada ni
   // vinculada (can_change lo calcula el backend — ver loanController.js#getAll).
@@ -786,18 +829,60 @@ export default function LoansPage() {
               </Alert>
             )}
 
+            <ToggleButtonGroup
+              exclusive
+              fullWidth
+              size="small"
+              value={form.currency}
+              disabled={!!reschedulingLoan}
+              onChange={(_, val) => handleCurrencyChange(val)}
+            >
+              <ToggleButton value="ARS">Pesos</ToggleButton>
+              <ToggleButton value="USD">Dólares</ToggleButton>
+            </ToggleButtonGroup>
+
             <CurrencyInput
-              label="Monto del Préstamo ($) *"
+              label={form.currency === 'USD' ? 'Monto del Préstamo (USD) *' : 'Monto del Préstamo ($) *'}
               value={form.amount}
               onChange={(val) => setForm({ ...form, amount: val ?? 0 })}
               fullWidth
               size="small"
-              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+              currency={form.currency}
             />
+            {approvingLoan && form.currency === 'USD' && (
+              <Alert severity="info">
+                El pedido se hizo en pesos — reingresá el monto en dólares que se le va a entregar.
+              </Alert>
+            )}
             {reschedulingLoan && Number(form.amount) !== Number(reschedulingLoan.amount) && (
               <Alert severity="info">
                 El comprobante y la firma de este préstamo corresponden al monto de la entrega original.
               </Alert>
+            )}
+
+            {form.currency === 'USD' && (
+              <>
+                <CurrencyInput
+                  label="Cotización de Entrega ($) *"
+                  value={form.exchange_rate_at_origin}
+                  onChange={(val) => setForm({ ...form, exchange_rate_at_origin: val ?? 0 })}
+                  fullWidth
+                  size="small"
+                  disabled={!!reschedulingLoan}
+                  helperText={reschedulingLoan
+                    ? 'La cotización de entrega no cambia al reprogramar.'
+                    : 'Precargada con la cotización del día — editable si compraron los dólares a otro valor.'}
+                  InputProps={loadingExchangeRate ? { endAdornment: <InputAdornment position="end"><GearSpinner size={16} /></InputAdornment> } : undefined}
+                />
+                {form.amount > 0 && form.exchange_rate_at_origin > 0 && (
+                  <Box p={1.5} sx={{ bgcolor: 'info.50', borderRadius: 1, border: '1px solid', borderColor: 'info.200' }}>
+                    <Typography variant="caption" color="text.secondary">Total entregado al empleado en pesos</Typography>
+                    <Typography variant="body2" fontWeight={700} color="info.main">
+                      {formatCurrency(form.amount * form.exchange_rate_at_origin)}
+                    </Typography>
+                  </Box>
+                )}
+              </>
             )}
 
             <Box display="flex" gap={2}>
@@ -845,14 +930,23 @@ export default function LoansPage() {
                 : null;
               if (!preview) return null;
               const unit = effectiveFrequency === 'biweekly' ? 'quincena' : 'mes';
+              const isUsd = form.currency === 'USD';
+              const formatInstallment = (v: number) => isUsd
+                ? `USD ${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                : formatCurrency(v);
               return (
                 <Box p={1.5} sx={{ bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
                   <Typography variant="caption" color="text.secondary">
                     Cuota {effectiveFrequency === 'biweekly' ? 'quincenal' : 'mensual'} estimada (amortización francesa)
                   </Typography>
                   <Typography variant="body2" fontWeight={700} color="primary.main">
-                    {formatCurrency(preview.installmentAmount)} / {unit} × {form.num_installments} cuotas
+                    {formatInstallment(preview.installmentAmount)} / {unit} × {form.num_installments} cuotas
                   </Typography>
+                  {isUsd && form.exchange_rate_at_origin > 0 && (
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      ≈ {formatCurrency(preview.installmentAmount * form.exchange_rate_at_origin)} a la cotización de entrega — cada cuota se descuenta a la cotización de SU quincena, puede variar.
+                    </Typography>
+                  )}
                   {form.monthly_interest_percent > 0 && (
                     <Typography variant="caption" color="text.secondary">
                       Interés por cuota: {perInstallmentPercent}% sobre el saldo
@@ -1039,9 +1133,9 @@ export default function LoansPage() {
                                 {(inst.due_period_type === 'first_half' ? '1ª Q. ' : '2ª Q. ')}
                                 {MONTHS[inst.due_month - 1]} {inst.due_year}
                               </TableCell>
-                              <TableCell align="right">{formatCurrency(inst.principal_amount)}</TableCell>
-                              <TableCell align="right" sx={{ color: 'text.secondary' }}>{formatCurrency(inst.interest_amount)}</TableCell>
-                              <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatCurrency(inst.total_amount)}</TableCell>
+                              <TableCell align="right">{formatInstallmentAmount(detailLoan, inst.principal_amount)}</TableCell>
+                              <TableCell align="right" sx={{ color: 'text.secondary' }}>{formatInstallmentAmount(detailLoan, inst.interest_amount)}</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatInstallmentAmount(detailLoan, inst.total_amount)}</TableCell>
                               <TableCell align="center">
                                 <Chip
                                   size="small"
