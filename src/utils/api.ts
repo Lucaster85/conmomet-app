@@ -2861,6 +2861,27 @@ export interface PayPeriod {
   month: number;
   year: number;
   status: 'open' | 'closed' | 'paid';
+  // Cotización del dólar para las cuotas de préstamo en USD descontadas en esta quincena.
+  // `usd_exchange_rate_locked_at` null = provisoria (quincena abierta); se setea al cerrar.
+  usd_exchange_rate?: number | null;
+  usd_exchange_rate_date?: string | null;
+  usd_exchange_rate_source?: 'api' | 'manual' | null;
+  usd_exchange_rate_locked_at?: string | null;
+}
+
+// Preview de la cotización que se va a congelar al cerrar la quincena — lo consume el diálogo de
+// cierre antes de confirmar.
+export interface UsdRatePreview {
+  rate_date: string;
+  suggested_rate: number | null;
+  source: 'api' | 'manual' | null;
+  rate_date_published: boolean;
+  provisional_rate: number | null;
+  casa: string;
+  side: string;
+  affected_entries: number;
+  affected_total_usd: number;
+  estimated_delta_ars: number;
 }
 
 export class PayPeriodService {
@@ -2881,15 +2902,54 @@ export class PayPeriodService {
     return data.data;
   }
 
-  static async close(id: number): Promise<PayPeriod> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/pay-periods/${id}/close`, { method: 'PUT' });
-    if (!response.ok) throw new Error('Error al cerrar quincena');
+  static async close(id: number, data?: { usd_exchange_rate?: number }): Promise<PayPeriod> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/pay-periods/${id}/close`, {
+      method: 'PUT',
+      body: JSON.stringify(data || {}),
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al cerrar quincena');
     return (await response.json()).data;
   }
 
   static async pay(id: number): Promise<PayPeriod> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/pay-periods/${id}/pay`, { method: 'PUT' });
     if (!response.ok) throw new Error('Error al marcar quincena como pagada');
+    return (await response.json()).data;
+  }
+
+  // Cotización sugerida para congelar al cerrar — la consume el diálogo de cierre antes de
+  // confirmar, para mostrar el valor y a cuántos empleados afecta.
+  static async getUsdRatePreview(id: number): Promise<UsdRatePreview> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/pay-periods/${id}/usd-rate-preview`);
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al obtener la cotización del dólar');
+    return (await response.json()).data;
+  }
+
+  // Carga manual de la cotización en una quincena abierta — el escape cuando la API falla al
+  // generar o la fecha de la regla todavía no se publicó.
+  static async setUsdRate(id: number, usd_exchange_rate: number): Promise<PayPeriod> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/pay-periods/${id}/usd-rate`, {
+      method: 'PUT',
+      body: JSON.stringify({ usd_exchange_rate }),
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al cargar la cotización');
+    return (await response.json()).data;
+  }
+}
+
+export interface CurrentUsdRate {
+  rate: number;
+  fetched_at: string;
+  casa: string;
+  side: string;
+}
+
+export class ExchangeRateService {
+  // Precarga la cotización de entrega al otorgar/aprobar un préstamo en USD. Devuelve null sin
+  // romper si la API externa no responde — el campo queda editable igual.
+  static async getCurrent(): Promise<CurrentUsdRate | null> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/exchange-rates/current`);
+    if (!response.ok) throw new Error('Error al obtener la cotización del dólar');
     return (await response.json()).data;
   }
 }
@@ -2923,7 +2983,7 @@ export interface PayrollEntry {
   advances_deducted: number;
   advances?: Pick<SalaryAdvance, 'id' | 'employee_id' | 'amount' | 'payment_method' | 'date'>[];
   loan_installments_deducted: number;
-  loanInstallments?: Pick<LoanInstallment, 'id' | 'loan_id' | 'installment_number' | 'principal_amount' | 'interest_amount' | 'total_amount'>[];
+  loanInstallments?: Pick<LoanInstallment, 'id' | 'loan_id' | 'installment_number' | 'principal_amount' | 'interest_amount' | 'total_amount' | 'loan' | 'payment'>[];
   deductions?: number;
   extra_payments_notes?: string;
   deductions_notes?: string;
@@ -4185,6 +4245,10 @@ export interface LoanInstallment {
   payroll_entry_id?: number | null;
   loan_payment_id?: number | null;
   deducted_at?: string | null;
+  // Solo vienen en el detalle de liquidación (PayrollEntry.loanInstallments) — moneda del
+  // préstamo y, si es USD, la cotización/fecha con la que se convirtió esta cuota a pesos.
+  loan?: { id: number; currency: 'ARS' | 'USD' };
+  payment?: { id: number; exchange_rate: number | null; amount_ars: number | null; date: string };
 }
 
 export interface LoanInterestApplication {
@@ -4216,12 +4280,14 @@ export interface LoanPayment {
   updatedAt: string;
 }
 
-// Todo préstamo nuevo es siempre en ARS con cuota fija — sin moneda/cotización, forzado también
-// del lado del servidor (ver api_conmomet/controllers/loanController.js).
+// Todo préstamo nuevo es siempre de cuota fija. Moneda ARS por defecto; en USD, `currency` y
+// `exchange_rate_at_origin` son obligatorios (ver api_conmomet/controllers/loanController.js).
 export interface CreateLoanData {
   employee_id: number;
   start_date: string;
   amount: number;
+  currency?: 'ARS' | 'USD';
+  exchange_rate_at_origin?: number;
   num_installments: number;
   monthly_interest_percent?: number;
   installment_frequency?: 'monthly' | 'biweekly';
@@ -4265,6 +4331,8 @@ export class LoanService {
     formData.append('employee_id', data.employee_id.toString());
     formData.append('start_date', data.start_date);
     formData.append('amount', data.amount.toString());
+    if (data.currency) formData.append('currency', data.currency);
+    if (data.exchange_rate_at_origin !== undefined) formData.append('exchange_rate_at_origin', data.exchange_rate_at_origin.toString());
     formData.append('num_installments', data.num_installments.toString());
     if (data.monthly_interest_percent !== undefined) formData.append('monthly_interest_percent', data.monthly_interest_percent.toString());
     if (data.installment_frequency) formData.append('installment_frequency', data.installment_frequency);
@@ -4303,6 +4371,8 @@ export class LoanService {
 
   static async approve(id: number, data?: {
     amount?: number;
+    currency?: 'ARS' | 'USD';
+    exchange_rate_at_origin?: number;
     num_installments?: number;
     monthly_interest_percent?: number;
     installment_frequency?: 'monthly' | 'biweekly';
@@ -4313,6 +4383,8 @@ export class LoanService {
   }, file?: File | null, signature?: File | null): Promise<Loan> {
     const formData = new FormData();
     if (data?.amount !== undefined) formData.append('amount', data.amount.toString());
+    if (data?.currency) formData.append('currency', data.currency);
+    if (data?.exchange_rate_at_origin !== undefined) formData.append('exchange_rate_at_origin', data.exchange_rate_at_origin.toString());
     if (data?.num_installments !== undefined) formData.append('num_installments', data.num_installments.toString());
     if (data?.monthly_interest_percent !== undefined) formData.append('monthly_interest_percent', data.monthly_interest_percent.toString());
     if (data?.installment_frequency) formData.append('installment_frequency', data.installment_frequency);
