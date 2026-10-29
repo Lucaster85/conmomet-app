@@ -4456,6 +4456,9 @@ export interface SystemSetting {
   ocaBudgetNotificationUser?: { id: number; name: string; lastname: string };
   // Alícuotas de IVA disponibles al cargar una factura. Arranca solo con 21%.
   invoice_iva_rates?: number[] | null;
+  // Fuente de la cotización del dólar usada para descontar cuotas de préstamos en USD.
+  usd_rate_casa: 'oficial' | 'blue' | 'mayorista' | 'bolsa';
+  usd_rate_side: 'venta' | 'compra';
 }
 
 export class SystemSettingService {
@@ -4466,7 +4469,13 @@ export class SystemSettingService {
     return data.data;
   }
 
-  static async update(data: { max_loan_amount_ars?: number; oca_budget_notification_user_id?: number | null; invoice_iva_rates?: number[] }): Promise<SystemSetting> {
+  static async update(data: {
+    max_loan_amount_ars?: number;
+    oca_budget_notification_user_id?: number | null;
+    invoice_iva_rates?: number[];
+    usd_rate_casa?: 'oficial' | 'blue' | 'mayorista' | 'bolsa';
+    usd_rate_side?: 'venta' | 'compra';
+  }): Promise<SystemSetting> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
