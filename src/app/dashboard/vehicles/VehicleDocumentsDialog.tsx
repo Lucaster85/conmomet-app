@@ -22,7 +22,6 @@ import {
   Divider,
   Stack,
   Chip,
-  MenuItem,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -48,6 +47,7 @@ import {
   DocumentCategoryService,
 } from '../../../utils/api';
 import GearSpinner from '../../../components/GearSpinner';
+import DocumentCategorySelect from '../../../components/documents/DocumentCategorySelect';
 
 interface VehicleDocumentsDialogProps {
   open: boolean;
@@ -86,7 +86,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
   const [editingDoc, setEditingDoc] = useState<EntityDocument | null>(null);
   const [form, setForm] = useState({ title: '', notes: '', expiration_date: '', notify_days_before: 15 });
   const [file, setFile] = useState<File | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [docCategories, setDocCategories] = useState<DocumentCategory[]>([]);
   const [docCategoriesLoaded, setDocCategoriesLoaded] = useState(false);
 
@@ -116,8 +116,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
     }
   }, [open, vehicle, loadDocuments]);
 
-  const loadDocCategoriesIfNeeded = async () => {
-    if (docCategoriesLoaded) return;
+  const reloadDocCategories = async () => {
     try {
       const cats = await DocumentCategoryService.getAll('vehicle');
       setDocCategories(Array.isArray(cats) ? cats : []);
@@ -127,12 +126,17 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
     }
   };
 
+  const loadDocCategoriesIfNeeded = async () => {
+    if (docCategoriesLoaded) return;
+    await reloadDocCategories();
+  };
+
   const resetForm = () => {
     setForm({ title: '', notes: '', expiration_date: '', notify_days_before: 15 });
     setFile(null);
     setHasExpiration(false);
     setIsRenewable(true);
-    setSelectedCategoryId('');
+    setSelectedCategoryId(null);
     setEditingDoc(null);
     setError('');
   };
@@ -161,7 +165,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
     });
     setHasExpiration(!!doc.expiration_date);
     setIsRenewable(doc.is_renewable !== undefined ? doc.is_renewable : true);
-    setSelectedCategoryId(doc.document_category_id ? doc.document_category_id.toString() : '');
+    setSelectedCategoryId(doc.document_category_id ?? null);
     setFile(null);
     loadDocCategoriesIfNeeded();
     setUploadDialog(true);
@@ -195,7 +199,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
           expiration_date: hasExpiration && form.expiration_date ? form.expiration_date : undefined,
           notify_days_before: hasExpiration ? form.notify_days_before : undefined,
           is_renewable: isRenewable,
-          document_category_id: selectedCategoryId ? Number(selectedCategoryId) : undefined,
+          document_category_id: selectedCategoryId ?? undefined,
         }, file || undefined);
         setSuccess('Documento guardado correctamente.');
       }
@@ -344,18 +348,13 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
                 />
                 
                 {!editingDoc && (
-                  <TextField
-                    label="Categoría"
-                    select
-                    fullWidth
+                  <DocumentCategorySelect
+                    appliesTo="vehicle"
+                    categories={docCategories}
                     value={selectedCategoryId}
-                    onChange={(e) => setSelectedCategoryId(e.target.value)}
-                  >
-                    <MenuItem value="">— Ninguna —</MenuItem>
-                    {docCategories.map((cat) => (
-                      <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
-                    ))}
-                  </TextField>
+                    onChange={(cat) => setSelectedCategoryId(cat?.id ?? null)}
+                    onCategoriesChanged={reloadDocCategories}
+                  />
                 )}
 
                 <TextField
