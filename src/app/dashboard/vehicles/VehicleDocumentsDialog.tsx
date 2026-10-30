@@ -137,6 +137,13 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
     setError('');
   };
 
+  const closeSubDialogs = () => {
+    setUploadDialog(false);
+    setRenewDialog(false);
+    setResolveDialog(false);
+    resetForm();
+  };
+
   const handleOpenCreate = () => {
     resetForm();
     loadDocCategoriesIfNeeded();
@@ -278,6 +285,8 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
     }
   };
 
+  const subDialogOpen = uploadDialog || renewDialog || resolveDialog;
+
   const filteredDocuments = documents.filter(doc => showResolved ? true : doc.alert_status !== 'resolved');
 
   return (
@@ -300,8 +309,8 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
 
       <DialogContent sx={{ p: 3, minHeight: '350px' }}>
         {/* Alerts */}
-        {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+        {error && !subDialogOpen && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+        {success &&<Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
         {/* Action Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -320,11 +329,12 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
         </Box>
 
         {/* Form Dialog for Upload / Edit */}
-        <AppDialog open={uploadDialog} onClose={resetForm} maxWidth="sm" fullWidth>
+        <AppDialog open={uploadDialog} onClose={closeSubDialogs} maxWidth="sm" fullWidth>
           <DialogTitle>{editingDoc ? 'Editar Documento' : 'Subir Documento'}</DialogTitle>
           <form onSubmit={handleUploadSubmit}>
             <DialogContent dividers>
               <Stack spacing={2}>
+                {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
                 <TextField
                   label="Título del Documento"
                   required
@@ -403,18 +413,19 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
               </Stack>
             </DialogContent>
             <DialogActions>
-              <Button onClick={resetForm}>Cancelar</Button>
+              <Button onClick={closeSubDialogs}>Cancelar</Button>
               <Button type="submit" variant="contained">Guardar</Button>
             </DialogActions>
           </form>
         </AppDialog>
 
         {/* Form Dialog for Renewal */}
-        <AppDialog open={renewDialog} onClose={resetForm} maxWidth="xs" fullWidth>
+        <AppDialog open={renewDialog} onClose={closeSubDialogs} maxWidth="xs" fullWidth>
           <DialogTitle>Renovar Legajo</DialogTitle>
           <form onSubmit={handleRenewSubmit}>
             <DialogContent dividers>
               <Stack spacing={2}>
+                {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
                 <Typography variant="body2" color="text.secondary">
                   Suba la nueva versión firmada o comprobante vigente para <strong>{editingDoc?.title}</strong>.
                 </Typography>
@@ -445,18 +456,19 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
               </Stack>
             </DialogContent>
             <DialogActions>
-              <Button onClick={resetForm}>Cancelar</Button>
+              <Button onClick={closeSubDialogs}>Cancelar</Button>
               <Button type="submit" variant="contained" color="warning">Renovar</Button>
             </DialogActions>
           </form>
         </AppDialog>
 
         {/* Form Dialog for Resolving (Payment) */}
-        <AppDialog open={resolveDialog} onClose={resetForm} maxWidth="xs" fullWidth>
+        <AppDialog open={resolveDialog} onClose={closeSubDialogs} maxWidth="xs" fullWidth>
           <DialogTitle>Resolver / Subir Comprobante</DialogTitle>
           <form onSubmit={handleResolveSubmit}>
             <DialogContent dividers>
               <Stack spacing={2}>
+                {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
                 <Typography variant="body2" color="text.secondary">
                   Suba el comprobante de pago o constancia física de resolución para <strong>{editingDoc?.title}</strong>.
                 </Typography>
@@ -469,7 +481,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
               </Stack>
             </DialogContent>
             <DialogActions>
-              <Button onClick={resetForm}>Cancelar</Button>
+              <Button onClick={closeSubDialogs}>Cancelar</Button>
               <Button type="submit" variant="contained" color="success">Resolver</Button>
             </DialogActions>
           </form>
@@ -575,9 +587,9 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
                               {isCritical && doc.is_renewable && (
                                 <Tooltip title="Renovar">
                                   <IconButton size="small" color="warning" onClick={() => {
+                                    resetForm();
                                     setEditingDoc(doc);
-                                    setForm({ ...form, title: doc.title, notify_days_before: doc.notify_days_before || 15 });
-                                    setFile(null);
+                                    setForm({ title: doc.title, notes: '', expiration_date: '', notify_days_before: doc.notify_days_before || 15 });
                                     setRenewDialog(true);
                                   }}>
                                     <RefreshIcon fontSize="inherit" />
@@ -587,8 +599,8 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
                               {isCritical && !doc.is_renewable && (
                                 <Tooltip title="Resolver Comprobante">
                                   <IconButton size="small" color="success" onClick={() => {
+                                    resetForm();
                                     setEditingDoc(doc);
-                                    setFile(null);
                                     setResolveDialog(true);
                                   }}>
                                     <PaymentIcon fontSize="inherit" />
@@ -669,9 +681,9 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
                           )}
                           {isCritical && doc.is_renewable && (
                             <IconButton size="small" color="warning" onClick={() => {
+                              resetForm();
                               setEditingDoc(doc);
-                              setForm({ ...form, title: doc.title, notify_days_before: doc.notify_days_before || 15 });
-                              setFile(null);
+                              setForm({ title: doc.title, notes: '', expiration_date: '', notify_days_before: doc.notify_days_before || 15 });
                               setRenewDialog(true);
                             }}>
                               <RefreshIcon fontSize="small" />
@@ -679,8 +691,8 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
                           )}
                           {isCritical && !doc.is_renewable && (
                             <IconButton size="small" color="success" onClick={() => {
+                              resetForm();
                               setEditingDoc(doc);
-                              setFile(null);
                               setResolveDialog(true);
                             }}>
                               <PaymentIcon fontSize="small" />
