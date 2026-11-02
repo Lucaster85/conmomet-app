@@ -6,6 +6,7 @@ import AppDialog from '@/components/common/AppDialog';
 import { DeleteOutlined as DeleteIcon, AddOutlined as AddIcon } from '@mui/icons-material';
 import { RateChange, RateChangeService, CreateRateChangeData, Guild, GuildService, PayPeriod, PayPeriodService, PayrollConcept, PayrollConceptService } from '../../../../../utils/api';
 import GearSpinner from '../../../../../components/GearSpinner';
+import { isSacPeriod } from '../../../../../utils/payPeriods';
 
 interface Props {
   open: boolean;
@@ -35,7 +36,8 @@ export default function RateChangesModal({ open, onClose, payPeriodId }: Props) 
       ]);
       setRateChanges(rcData);
       setGuilds(gData.filter(g => g.is_active));
-      setPeriods(pData);
+      // El aguinaldo no lleva retroactivo: no se ofrece como período de origen ni de aplicación.
+      setPeriods(pData.filter(p => !isSacPeriod(p)));
       setConcepts(cData.filter(c => c.is_active));
     } catch {
       setError('Error al cargar datos');

@@ -2857,7 +2857,8 @@ export interface PayPeriod {
   id: number;
   start_date: string;
   end_date: string;
-  type: 'first_half' | 'second_half';
+  // 'sac' = aguinaldo: un período por semestre (month = 6 | 12), ver utils/payPeriods.ts.
+  type: 'first_half' | 'second_half' | 'sac';
   month: number;
   year: number;
   status: 'open' | 'closed' | 'paid';
@@ -2900,6 +2901,17 @@ export class PayPeriodService {
     if (!response.ok) throw new Error('Error al crear quincena');
     const data = await response.json();
     return data.data;
+  }
+
+  // Fallback: crea el aguinaldo de un semestre cuya 2Q de junio/diciembre ya existía (los nuevos se
+  // crean solos junto con esa 2Q).
+  static async createSac(year: number, semester: 1 | 2): Promise<PayPeriod> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/pay-periods/sac`, {
+      method: 'POST',
+      body: JSON.stringify({ year, semester }),
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al crear el aguinaldo');
+    return (await response.json()).data;
   }
 
   static async close(id: number, data?: { usd_exchange_rate?: number }): Promise<PayPeriod> {
@@ -2999,7 +3011,10 @@ export interface PayrollEntry {
   signed_at?: string | null;
   payPeriod?: {
     id: number;
-    name: string;
+    name?: string;
+    type?: PayPeriod['type'];
+    month?: number;
+    year?: number;
     start_date: string;
     end_date: string;
     status: string;
@@ -3837,7 +3852,7 @@ export interface PayrollLine {
   quantity: number;
   rate: number;
   subtotal: number;
-  line_type: 'regular' | 'extras_50' | 'extras_100' | 'holiday' | 'fixed' | 'retroactive' | 'vacation' | 'medical_leave' | 'justified' | 'medical_leave_deduction' | 'vacation_deduction' | 'absence_deduction';
+  line_type: 'regular' | 'extras_50' | 'extras_100' | 'holiday' | 'fixed' | 'retroactive' | 'vacation' | 'medical_leave' | 'justified' | 'medical_leave_deduction' | 'vacation_deduction' | 'absence_deduction' | 'sac' | 'sac_adjustment';
   source_period_id: number | null;
   concept?: PayrollConcept;
 }
@@ -4950,6 +4965,7 @@ export interface ExpenseSummaryMonthly {
       detail: {
         first_half: number;
         second_half: number;
+        sac: number;
         entry_count: number;
       };
     };

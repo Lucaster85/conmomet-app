@@ -4,6 +4,9 @@ Es el período de liquidación: **1º quincena** (día 1 al 15) y **2º quincena
 mes). Cada quincena pasa por tres estados: **Abierta** (se puede generar/regenerar la
 liquidación), **Cerrada** y **Pagada**. Se ubica en **Contabilidad → Quincenas y Pagos**.
 
+Además de las quincenas, en junio y diciembre aparece una liquidación aparte: el **Aguinaldo
+(SAC)** del semestre (ver "Aguinaldo (SAC)" más abajo).
+
 ## Jornalizados, Mensualizados y Quincenales
 
 Las tres figuras de empleado se liquidan distinto:
@@ -85,11 +88,50 @@ neto de la quincena, pero **no cuenta para el aguinaldo (SAC)**. El caso típico
 - **Licencia médica**: igual criterio que vacaciones — se descuenta y se paga aparte.
 - **Faltas injustificadas**: se descuentan. Las faltas **justificadas** solo aplican a
   jornalizados (un mensualizado o quincenal ya está cubierto por su sueldo fijo).
+- **Aguinaldo (SAC)**: no es parte de ninguna quincena, se liquida aparte (ver abajo).
 
 Cada uno de estos ítems se calcula distinto según el empleado sea jornalizado, mensualizado o
 quincenal, pero conceptualmente es lo mismo: horas/días trabajados o no trabajados que impactan
 el monto final. Mensualizados y quincenales comparten la misma lógica de sueldo fijo — la
 diferencia es solo la frecuencia (una vez al mes vs. cada quincena).
+
+## Aguinaldo (SAC)
+
+El **Sueldo Anual Complementario** se paga dos veces por año, por semestre (enero–junio y
+julio–diciembre). Se liquida como una card más en **Quincenas y Pagos**, llamada **"Aguinaldo
+(SAC) 1er/2do semestre"**, al lado de las quincenas.
+
+**Cuándo aparece:** sola, en el momento en que se abre la **2ª quincena de junio o de diciembre**.
+Si esa 2ª quincena ya estaba abierta de antes, la card de la quincena muestra un botón **Crear
+aguinaldo**. El botón **Generar Aguinaldo** se habilita recién desde el **día 16** (cuando empieza
+esa 2ª quincena). Se genera, se regenera mientras esté en borrador, se confirma y se paga igual
+que una quincena. La card avisa el vencimiento legal (30/06 y 18/12, más 4 días hábiles), solo
+como recordatorio: no bloquea nada.
+
+**Cómo se calcula:**
+
+- Es la **mitad de la mejor remuneración mensual del semestre**: de los seis meses se toma el de
+  mayor total (las dos quincenas sumadas en jornalizados y quincenales; la liquidación del mes en
+  mensualizados) y se divide por 2.
+- Si el empleado **ingresó durante el semestre**, es proporcional a los días desde su ingreso
+  sobre los días del semestre.
+- Solo cuentan las liquidaciones **confirmadas o pagadas**. Las faltas, licencias y vacaciones no
+  se tratan aparte: ya están reflejadas en lo que cobró cada mes.
+- Los premios **no remunerativos** (ver "Premios no remunerativos") **no suman**, y tampoco
+  cuenta lo que se le cargue al propio aguinaldo.
+- Un **retroactivo** cuenta en el mes al que corresponde, no en el que se cobró.
+- Todo es **bruto**: no se calculan cargas sociales.
+
+**Control antes de pagar:** el ícono de calculadora de cada empleado muestra el desglose — el mes
+elegido, los días computables y los premios del semestre que cuentan y los excluidos por ser no
+remunerativos. Es solo para el personal administrativo: el recibo y el portal del empleado
+muestran la línea "SAC 1er semestre 2026", los premios, descuentos, depósito y el neto, sin el
+desglose. Si un premio quedó mal marcado, corregilo en la quincena en borrador y volvé a
+generar. Una etiqueta **Desactualizado** indica que el cálculo cambió desde que se generó.
+
+**Premios, descuentos y depósito** se cargan con **Ajustes**, igual que en una quincena. Los
+**adelantos y los préstamos nunca se descuentan del aguinaldo**. En el **Resumen de costos**, el
+aguinaldo cuenta en junio o diciembre, en su propio renglón.
 
 ## Descuentos automáticos
 
@@ -186,4 +228,4 @@ Si se aplica un aumento de Convenio Colectivo con fecha retroactiva, el sistema 
 automáticamente líneas de **"Retroactivo"** en la liquidación del período correspondiente, con
 la diferencia calculada sobre lo ya liquidado en los períodos anteriores afectados.
 
-<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#delete, api_conmomet/controllers/salaryAdvanceController.js#findDuplicateAdvance, api_conmomet/controllers/salaryAdvanceDeletionAlertController.js, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, api_conmomet/controllers/categoryController.js#applyBonus, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/PayrollAdjustmentsModal.tsx, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/components/common/SalaryAdvanceDeletionAlert.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx, api_conmomet/controllers/payPeriodController.js#close, api_conmomet/services/exchangeRateService.js, conmomet-app/src/app/dashboard/pay-periods/page.tsx -->
+<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#delete, api_conmomet/controllers/salaryAdvanceController.js#findDuplicateAdvance, api_conmomet/controllers/salaryAdvanceDeletionAlertController.js, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, api_conmomet/controllers/payrollController.js#generateSac, api_conmomet/services/sacService.js, api_conmomet/helpers/sacCalculations.js, api_conmomet/controllers/categoryController.js#applyBonus, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/SacEntries.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/PayrollAdjustmentsModal.tsx, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/components/common/SalaryAdvanceDeletionAlert.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx, api_conmomet/controllers/payPeriodController.js#close, api_conmomet/services/exchangeRateService.js, conmomet-app/src/app/dashboard/pay-periods/page.tsx -->

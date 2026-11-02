@@ -14,6 +14,20 @@ import { PaymentsOutlined as TitleIcon } from '@mui/icons-material';
 import { SelfService, PayrollEntry, PayrollAdjustment } from '@/utils/api';
 import GearSpinner from '@/components/GearSpinner';
 import dayjs from 'dayjs';
+import { isSacPeriod, sacPeriodLabel } from '@/utils/payPeriods';
+
+const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+// El período que devuelve /me/payroll no trae `name`: se arma desde tipo, mes y año. El aguinaldo
+// se nombra aparte (utils/payPeriods.ts).
+const periodTitle = (p: PayrollEntry['payPeriod']) => {
+  if (!p) return 'Período Desconocido';
+  if (p.type && p.month && p.year) {
+    if (isSacPeriod(p)) return sacPeriodLabel({ type: p.type, month: p.month, year: p.year });
+    return `${p.type === 'first_half' ? '1ª' : '2ª'} Quincena de ${MONTHS[p.month - 1]} ${p.year}`;
+  }
+  return p.name || 'Período Desconocido';
+};
 
 export default function PortalPayroll() {
   const [payrolls, setPayrolls] = useState<PayrollEntry[]>([]);
@@ -63,7 +77,7 @@ export default function PortalPayroll() {
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                     <Box>
                       <Typography variant="h6" fontWeight={600}>
-                        {payroll.payPeriod?.name || 'Período Desconocido'}
+                        {periodTitle(payroll.payPeriod)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {dayjs(payroll.payPeriod?.start_date).format('DD/MM/YYYY')} - {dayjs(payroll.payPeriod?.end_date).format('DD/MM/YYYY')}
@@ -79,21 +93,30 @@ export default function PortalPayroll() {
                   <Divider sx={{ my: 2 }} />
 
                   <Grid container spacing={2}>
-                    <Grid size={{ xs: 6 }}>
-                      <Typography variant="caption" color="text.secondary">Horas Normales</Typography>
-                      <Typography variant="body2" fontWeight={500}>{payroll.total_regular_hours}</Typography>
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Typography variant="caption" color="text.secondary">Horas Extras</Typography>
-                      <Typography variant="body2" fontWeight={500}>{Number(payroll.total_overtime_50_hours || 0) + Number(payroll.total_overtime_100_hours || 0)}</Typography>
-                    </Grid>
+                    {isSacPeriod(payroll.payPeriod) ? (
+                      <Grid size={{ xs: 12 }}>
+                        <Typography variant="caption" color="text.secondary">Aguinaldo (SAC)</Typography>
+                        <Typography variant="body2" fontWeight={500}>$ {Number(payroll.gross_amount || 0).toLocaleString()}</Typography>
+                      </Grid>
+                    ) : (
+                      <>
+                        <Grid size={{ xs: 6 }}>
+                          <Typography variant="caption" color="text.secondary">Horas Normales</Typography>
+                          <Typography variant="body2" fontWeight={500}>{payroll.total_regular_hours}</Typography>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                          <Typography variant="caption" color="text.secondary">Horas Extras</Typography>
+                          <Typography variant="body2" fontWeight={500}>{Number(payroll.total_overtime_50_hours || 0) + Number(payroll.total_overtime_100_hours || 0)}</Typography>
+                        </Grid>
 
-                    <Grid size={{ xs: 6 }}>
-                      <Typography variant="caption" color="text.secondary">Adelantos Descontados</Typography>
-                      <Typography variant="body2" color="error.main" fontWeight={500}>
-                        $ {Number(payroll.advances_deducted || 0).toLocaleString()}
-                      </Typography>
-                    </Grid>
+                        <Grid size={{ xs: 6 }}>
+                          <Typography variant="caption" color="text.secondary">Adelantos Descontados</Typography>
+                          <Typography variant="body2" color="error.main" fontWeight={500}>
+                            $ {Number(payroll.advances_deducted || 0).toLocaleString()}
+                          </Typography>
+                        </Grid>
+                      </>
+                    )}
                     <Grid size={{ xs: 6 }}>
                       <Typography variant="caption" color="text.secondary">Otras Deducciones</Typography>
                       <Typography variant="body2" color="error.main" fontWeight={500}>
