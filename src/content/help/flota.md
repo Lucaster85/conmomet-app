@@ -33,7 +33,8 @@ ningún aviso** — es así a propósito, todavía no está contemplado para veh
 
 Desde la ficha del vehículo, el botón **"Legajo Digital"** abre la gestión de su documentación:
 seguros y habilitación VTV. Para el detalle de cómo cargar, renovar o resolver esos documentos,
-ver el tema **Documentación y Vencimientos**.
+ver el tema **Documentación y Vencimientos**. Ahí también se explica cómo crear una categoría de
+documento nueva desde el propio formulario de carga.
 
 ## Ficha del vehículo y código QR
 
