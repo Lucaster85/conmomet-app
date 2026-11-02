@@ -133,6 +133,33 @@ generar. Una etiqueta **Desactualizado** indica que el cálculo cambió desde qu
 **adelantos y los préstamos nunca se descuentan del aguinaldo**. En el **Resumen de costos**, el
 aguinaldo cuenta en junio o diciembre, en su propio renglón.
 
+### Diferencias de aguinaldo
+
+El aguinaldo ya liquidado no se vuelve a calcular solo. Si después resulta que correspondía más,
+el sistema suma la **diferencia** en una línea **"Diferencia SAC 1er/2do sem. AAAA"** dentro de
+una quincena posterior, en esa misma liquidación (se ve en el detalle y entra en el bruto y en el
+Resumen de costos del mes en que se paga). **Solo se paga la diferencia a favor del empleado**: si
+el aguinaldo estaba bien o se había pagado de más, no se hace nada. Pasa por dos motivos:
+
+- **Se liquidó el aguinaldo antes de que cerrara la 2ª quincena de junio/diciembre.** Si ese mes
+  terminó siendo el mejor, el aguinaldo quedó corto. La diferencia sale en la **siguiente
+  liquidación** de cada empleado: la **1ª quincena de julio/enero** para jornalizados y
+  quincenales fijos, y la **2ª quincena de julio/enero** para mensualizados. *Ejemplo:* se pagaron
+  $400.000 de aguinaldo; al confirmarse junio, el mejor mes quedó en $900.000. Corresponden
+  $450.000, así que en la 1ª quincena de julio aparece "Diferencia SAC 1er sem. 2026" por $50.000.
+- **Se aplica un retroactivo a un mes de un semestre cuyo aguinaldo ya se liquidó.** El retroactivo
+  cuenta en el mes al que corresponde, así que puede cambiar el mejor mes. *Ejemplo:* una paritaria
+  retroactiva a abril se aplica en la 1ª quincena de agosto; abril pasa de $1.000.000 a
+  $1.100.000 y pasa a ser el mejor mes. Se habían pagado $500.000 de aguinaldo y ahora
+  corresponden $550.000: en esa quincena de agosto aparece "Diferencia SAC 1er sem. 2026" por
+  $50.000.
+
+Detalles: lo que ya se pagó como diferencia de ese aguinaldo se descuenta, así nunca se paga dos
+veces. Si la liquidación está en borrador y se vuelve a generar, la diferencia se recalcula (no se
+duplica). Mientras el aguinaldo siga en borrador no hay diferencia: se regenera el propio
+aguinaldo. En la pantalla del aguinaldo, la columna **Diferencias** muestra en qué quincena se
+pagó cada una, o **Pendiente** cuando todavía no se cargó en ninguna liquidación.
+
 ## Descuentos automáticos
 
 Al neto de la liquidación se le restan automáticamente:

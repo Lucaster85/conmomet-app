@@ -30,8 +30,16 @@ export interface SacBreakdown {
   bonuses: { month: number; label: string; amount: number; is_remunerative: boolean }[];
 }
 
+// Diferencias de este SAC ya cargadas en liquidaciones posteriores, y la que todavía está pendiente
+// (el SAC ya liquidado no se regenera: la diferencia sale en la próxima liquidación del empleado).
+export interface SacDifference {
+  adjustments: { amount: number; status: 'draft' | 'confirmed' | 'paid'; period: { id: number; type: 'first_half' | 'second_half'; month: number; year: number } }[];
+  adjustments_total: number;
+  pending: number;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SacEntry = PayrollEntry & { sac_breakdown?: SacBreakdown; [key: string]: any };
+type SacEntry = PayrollEntry & { sac_breakdown?: SacBreakdown; sac_difference?: SacDifference; [key: string]: any };
 
 interface Props {
   entries: SacEntry[];
@@ -62,6 +70,31 @@ export default function SacEntries({ entries, formatCurrency, onView, onEdit, on
   // Si el cálculo vivo difiere de la línea ya generada, hay algo para regenerar (borrador) o revisar.
   const isOutdated = (e: SacEntry) =>
     e.status === 'draft' && e.sac_breakdown != null && Math.abs(e.sac_breakdown.calculated_amount - sacLineAmount(e)) > 0.009;
+
+  const quincenaTag = (p: SacDifference['adjustments'][number]['period']) => `${p.type === 'first_half' ? '1Q' : '2Q'} ${String(p.month).padStart(2, '0')}/${p.year}`;
+
+  // "Diferencias": en qué quincena se pagó cada una, o "sin diferencia"; si hay una pendiente (el
+  // cálculo vivo da más que lo liquidado), se avisa que sale en la próxima liquidación.
+  const differences = (e: SacEntry) => {
+    const d = e.sac_difference;
+    if (!d || (d.adjustments.length === 0 && d.pending <= 0)) {
+      return <Typography variant="body2" color="text.secondary">Sin diferencia</Typography>;
+    }
+    return (
+      <Box display="flex" flexDirection="column" gap={0.5} alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
+        {d.adjustments.map((a, i) => (
+          <Tooltip key={i} title={`Liquidación ${a.status === 'draft' ? 'en borrador' : a.status === 'confirmed' ? 'confirmada' : 'pagada'}`}>
+            <Chip label={`${formatCurrency(a.amount)} · ${quincenaTag(a.period)}`} size="small" color={a.status === 'paid' ? 'info' : 'default'} variant="outlined" sx={{ height: 22, fontSize: '0.7rem' }} />
+          </Tooltip>
+        ))}
+        {d.pending > 0 && (
+          <Tooltip title="Se paga en la próxima liquidación del empleado (1ª quincena de julio/enero; 2ª para mensualizados).">
+            <Chip label={`Pendiente ${formatCurrency(d.pending)}`} size="small" color="warning" sx={{ height: 22, fontSize: '0.7rem' }} />
+          </Tooltip>
+        )}
+      </Box>
+    );
+  };
 
   const actions = (e: SacEntry) => (
     <Box display="flex" gap={0.5} justifyContent="flex-end">
@@ -246,6 +279,10 @@ export default function SacEntries({ entries, formatCurrency, onView, onEdit, on
                     <Typography variant="caption" color="text.secondary" display="block">Sueldo Neto</Typography>
                     <Typography variant="body2" fontWeight="bold" color="success.dark">{formatCurrency(e.net_amount)}</Typography>
                   </Box>
+                  <Box gridColumn="1 / -1">
+                    <Typography variant="caption" color="text.secondary" display="block">Diferencias</Typography>
+                    {differences(e)}
+                  </Box>
                 </Box>
                 <Divider sx={{ my: 1.5 }} />
                 {actions(e)}
@@ -272,6 +309,7 @@ export default function SacEntries({ entries, formatCurrency, onView, onEdit, on
               <TableCell align="right"><strong>Retenciones</strong></TableCell>
               <TableCell align="right"><strong>Depósito</strong></TableCell>
               <TableCell align="right"><strong>Sueldo Neto</strong></TableCell>
+              <TableCell align="right"><strong>Diferencias</strong></TableCell>
               <TableCell align="center"><strong>Estado</strong></TableCell>
               <TableCell align="center" className="no-print"><strong>Acciones</strong></TableCell>
             </TableRow>
@@ -291,6 +329,7 @@ export default function SacEntries({ entries, formatCurrency, onView, onEdit, on
                 <TableCell align="right">{sumByType(e.adjustments, 'deduction') > 0 ? `-${formatCurrency(sumByType(e.adjustments, 'deduction'))}` : '—'}</TableCell>
                 <TableCell align="right">{sumByType(e.adjustments, 'deposit') > 0 ? `-${formatCurrency(sumByType(e.adjustments, 'deposit'))}` : '—'}</TableCell>
                 <TableCell align="right"><strong>{formatCurrency(e.net_amount)}</strong></TableCell>
+                <TableCell align="right">{differences(e)}</TableCell>
                 <TableCell align="center">
                   <Chip label={STATUS_LABEL[e.status]} size="small" color={STATUS_COLOR[e.status]} />
                 </TableCell>
