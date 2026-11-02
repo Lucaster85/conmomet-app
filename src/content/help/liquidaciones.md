@@ -58,6 +58,23 @@ columnas:
 
 Al final hay una fila de totales con la suma de cada columna.
 
+## Premios no remunerativos
+
+Un **Premio / Extra** puede marcarse como **No remunerativo**: se paga igual y suma al bruto y al
+neto de la quincena, pero **no cuenta para el aguinaldo (SAC)**. El caso típico son los viáticos.
+
+- **Al cargarlo:** en **Gestión de ajustes**, al elegir **Premio / Extra** aparece el casillero
+  **"No remunerativo (no suma para el aguinaldo)"**.
+- **Ya cargado:** en la tabla de ajustes registrados, cada premio tiene un interruptor para
+  marcarlo o desmarcarlo, y los no remunerativos muestran la etiqueta **No remunerativo**.
+- **La suma no remunerativa por categoría** (el botón de aplicar a toda una categoría de
+  gremio) ya se carga marcada como no remunerativa.
+- **Solo se puede cambiar con la liquidación en borrador**, igual que el resto de los ajustes. Si
+  hace falta corregir un premio de una quincena ya confirmada o pagada, pedíselo al
+  administrador del sistema.
+- Los premios que ya estaban cargados antes de esta función **quedan como remunerativos**: si
+  alguno no lo es, hay que marcarlo a mano.
+
 ## Qué entra en el cálculo
 
 - **Horas trabajadas** y sus **extras** (50% y 100%).
@@ -169,4 +186,4 @@ Si se aplica un aumento de Convenio Colectivo con fecha retroactiva, el sistema 
 automáticamente líneas de **"Retroactivo"** en la liquidación del período correspondiente, con
 la diferencia calculada sobre lo ya liquidado en los períodos anteriores afectados.
 
-<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#delete, api_conmomet/controllers/salaryAdvanceController.js#findDuplicateAdvance, api_conmomet/controllers/salaryAdvanceDeletionAlertController.js, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/components/common/SalaryAdvanceDeletionAlert.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx, api_conmomet/controllers/payPeriodController.js#close, api_conmomet/services/exchangeRateService.js, conmomet-app/src/app/dashboard/pay-periods/page.tsx -->
+<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#delete, api_conmomet/controllers/salaryAdvanceController.js#findDuplicateAdvance, api_conmomet/controllers/salaryAdvanceDeletionAlertController.js, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, api_conmomet/controllers/categoryController.js#applyBonus, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/PayrollAdjustmentsModal.tsx, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/components/common/SalaryAdvanceDeletionAlert.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx, api_conmomet/controllers/payPeriodController.js#close, api_conmomet/services/exchangeRateService.js, conmomet-app/src/app/dashboard/pay-periods/page.tsx -->

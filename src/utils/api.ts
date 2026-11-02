@@ -4836,6 +4836,8 @@ export interface PayrollAdjustment {
   label: string;
   amount: number;
   is_auto: boolean;
+  /** Solo para type = 'bonus': false = no integra la base del aguinaldo. */
+  is_remunerative: boolean;
   created_by?: number;
   updated_by?: number;
   createdAt: string;
@@ -4847,6 +4849,7 @@ export interface CreatePayrollAdjustmentData {
   type: 'bonus' | 'deduction' | 'deposit';
   label: string;
   amount: number;
+  is_remunerative?: boolean;
 }
 
 export class PayrollAdjustmentService {

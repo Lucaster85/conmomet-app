@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, Select, InputLabel, FormControl, FormControlLabel, Checkbox, Divider, useTheme, useMediaQuery, Stack
+  DialogTitle, DialogContent, DialogActions, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Typography, Box, Paper, TextField, MenuItem, Select, InputLabel, FormControl, FormControlLabel, Checkbox, Divider, useTheme, useMediaQuery, Stack, Chip, Switch, Tooltip
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
 import { DeleteOutlined as DeleteIcon, AddOutlined as AddIcon } from '@mui/icons-material';
@@ -69,7 +69,9 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
         payroll_entry_id: payrollEntryId,
         type: form.type as 'bonus' | 'deduction' | 'deposit',
         label: form.label,
-        amount: form.amount
+        amount: form.amount,
+        // Solo los premios pueden ser no remunerativos (no suman para el aguinaldo).
+        ...(form.type === 'bonus' ? { is_remunerative: form.is_remunerative !== false } : {})
       });
       setForm({ type: 'bonus', amount: 0, label: '' });
       await loadData();
@@ -131,6 +133,17 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
     }
   };
 
+  const handleToggleRemunerative = async (a: PayrollAdjustment) => {
+    try {
+      setLoading(true);
+      await PayrollAdjustmentService.update(a.id, { is_remunerative: !a.is_remunerative });
+      await loadData();
+    } catch {
+      setError('Error al actualizar el premio');
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     try {
       setLoading(true);
@@ -164,7 +177,7 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
             <Select
               value={form.type || 'bonus'}
               label="Tipo"
-              onChange={(e) => setForm({ ...form, type: e.target.value as 'bonus' | 'deduction' | 'deposit' })}
+              onChange={(e) => setForm({ ...form, type: e.target.value as 'bonus' | 'deduction' | 'deposit', is_remunerative: true })}
             >
               <MenuItem value="bonus">Premio / Extra</MenuItem>
               <MenuItem value="deduction">Descuento</MenuItem>
@@ -199,6 +212,20 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
           >
             Agregar
           </Button>
+
+          {(form.type || 'bonus') === 'bonus' && (
+            <FormControlLabel
+              sx={{ width: '100%', m: 0 }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={form.is_remunerative === false}
+                  onChange={(e) => setForm({ ...form, is_remunerative: !e.target.checked })}
+                />
+              }
+              label={<Typography variant="body2">No remunerativo (no suma para el aguinaldo)</Typography>}
+            />
+          )}
         </Box>
 
         {fixedInstallmentLoans.length > 0 && (
@@ -326,12 +353,28 @@ export default function PayrollAdjustmentsModal({ open, onClose, payrollEntryId,
                     <TableRow key={a.id}>
                       <TableCell>
                         {a.type === 'bonus' ? 'Premio/Extra' : a.type === 'deposit' ? 'Recibo/Depósito' : 'Descuento'}
+                        {a.type === 'bonus' && a.is_remunerative === false && (
+                          <Chip label="No remunerativo" size="small" color="warning" variant="outlined" sx={{ ml: 1 }} />
+                        )}
                       </TableCell>
                       <TableCell>{a.label}</TableCell>
                       <TableCell align="right" sx={{ color: a.type === 'bonus' ? 'success.main' : a.type === 'deposit' ? 'info.main' : 'error.main' }}>
                         {a.type === 'bonus' ? '+' : '-'}${Number(a.amount).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell align="center">
+                        {a.type === 'bonus' && (
+                          <Tooltip title="No remunerativo (no suma para el aguinaldo)">
+                            <span>
+                              <Switch
+                                size="small"
+                                checked={a.is_remunerative === false}
+                                onChange={() => handleToggleRemunerative(a)}
+                                disabled={loading || a.is_auto}
+                                inputProps={{ 'aria-label': 'No remunerativo' }}
+                              />
+                            </span>
+                          </Tooltip>
+                        )}
                         <IconButton size="small" color="error" onClick={() => handleDelete(a.id)} disabled={a.is_auto}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
