@@ -23,6 +23,23 @@ Es el catálogo de "tipos" de documento (ej. "ART", "Curso de Altura", "VTV"), s
 configura aparte, por planta, en **Requisitos** (ver el tema **Plantas**) — la categoría es
 solo el catálogo de tipos, la obligatoriedad es una regla de cada planta.
 
+### Crear y gestionar categorías sin salir del legajo
+
+Al cargar un documento desde la ficha de un Empleado o de un Vehículo no hace falta ir a
+Configuración si la categoría no existe:
+
+- **Crear sobre la marcha**: en el selector de categoría escribí el nombre; si no existe aparece
+  **"Agregar «nombre»"** al final de la lista. Al tocarlo se crea y queda elegida. La categoría
+  se crea para el tipo de legajo en el que estás (Empleados o Vehículos).
+- **Gestionar categorías**: el botón de ajustes al lado del selector abre una lista donde se
+  puede agregar, renombrar y eliminar categorías. En Empleados también se puede marcar cada una
+  como **"Específica de planta"**. La descripción y el resto de los datos se siguen editando en
+  **Configuración → Categorías de Documentos**.
+- **Permisos**: "Agregar" y el botón de gestionar solo aparecen si tu rol tiene permisos sobre
+  Categorías de Documentos (crear, editar o eliminar); cada acción exige el suyo.
+- **No se puede eliminar una categoría en uso**: si tiene documentos cargados o está como
+  requisito de una planta, el sistema avisa y la categoría se mantiene.
+
 ## Cargar un documento
 
 Desde la ficha de un Empleado o de un Vehículo, con el botón **"Nuevo Documento"** /
@@ -30,6 +47,8 @@ Desde la ficha de un Empleado o de un Vehículo, con el botón **"Nuevo Document
 
 - **Título*** — ej. "Licencia de Conducir", "Examen Médico".
 - **Categoría de Documento** (opcional, solo se elige al crear — no se puede cambiar después).
+  Si la categoría no existe, se puede crear desde el mismo selector (ver "Crear y gestionar
+  categorías sin salir del legajo").
 - **Planta Destino** — solo aparece si la categoría elegida es "Específica de Planta".
 - Switch **"Este documento tiene fecha de vencimiento"** — si se activa:
   - Switch **"Este documento se renueva"** (define si más adelante se puede **Renovar** o solo
@@ -106,4 +125,4 @@ Cada empleado puede ver sus propios documentos desde su Portal, en modo **solo l
 puede cargar, renovar ni resolver nada desde ahí; eso lo hace siempre alguien de administración
 desde el Dashboard.
 
-<!-- ref: api_conmomet/controllers/documentController.js, api_conmomet/controllers/documentCategoryController.js, api_conmomet/controllers/cronController.js, api_conmomet/models/entityDocument.js, api_conmomet/models/documentCategory.js, conmomet-app/src/app/dashboard/employees/[id]/page.tsx, conmomet-app/src/app/dashboard/vehicles/VehicleDocumentsDialog.tsx, conmomet-app/src/app/dashboard/page.tsx, conmomet-app/src/app/dashboard/document-categories/page.tsx, conmomet-app/src/app/portal/documents/page.tsx -->
+<!-- ref: api_conmomet/controllers/documentController.js, api_conmomet/controllers/documentCategoryController.js, api_conmomet/controllers/cronController.js, api_conmomet/models/entityDocument.js, api_conmomet/models/documentCategory.js, conmomet-app/src/app/dashboard/employees/[id]/page.tsx, conmomet-app/src/app/dashboard/vehicles/VehicleDocumentsDialog.tsx, conmomet-app/src/components/documents/*, conmomet-app/src/app/dashboard/page.tsx, conmomet-app/src/app/dashboard/document-categories/page.tsx, conmomet-app/src/app/portal/documents/page.tsx -->

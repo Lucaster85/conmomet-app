@@ -53,6 +53,7 @@ import {
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
 import InviteEmployeeDialog, { buildInviteMessage } from '@/components/InviteEmployeeDialog';
+import DocumentCategorySelect from '@/components/documents/DocumentCategorySelect';
 import EppDeliveriesList from '@/components/safety-equipment/EppDeliveriesList';
 import EmployeeSizesPanel from '@/components/safety-equipment/EmployeeSizesPanel';
 import { buildWhatsAppLink } from '@/utils/whatsapp';
@@ -366,6 +367,15 @@ function EmployeeDetailPageContent() {
     setFile(null);
     loadDocCategoriesIfNeeded();
     setUploadDialog(true);
+  };
+
+  const reloadDocCategories = async () => {
+    try {
+      const cats = await DocumentCategoryService.getAll('employee');
+      setDocCategories(Array.isArray(cats) ? cats : []);
+    } catch {
+      // Non-critical failure — selector just stays as is
+    }
   };
 
   const loadDocCategoriesIfNeeded = async () => {
@@ -1385,22 +1395,19 @@ function EmployeeDetailPageContent() {
             <TextField label="Título *" fullWidth value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej: Licencia de Conducir, Examen Médico..." />
             
             {!editingDoc && (
-              <TextField label="Categoría de Documento" select fullWidth value={selectedCategoryId}
-                onChange={(e) => {
-                  setSelectedCategoryId(e.target.value);
+              <DocumentCategorySelect
+                appliesTo="employee"
+                label="Categoría de Documento"
+                categories={docCategories}
+                value={selectedCategoryId ? Number(selectedCategoryId) : null}
+                onChange={(cat) => {
+                  setSelectedCategoryId(cat ? String(cat.id) : '');
                   // Reset plant if the new category is not plant-specific
-                  const cat = docCategories.find(c => c.id === Number(e.target.value));
                   if (!cat?.is_plant_specific) setSelectedPlantId('');
                 }}
-                SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
+                onCategoriesChanged={reloadDocCategories}
                 helperText="Opcional. Clasificar para el sistema de habilitaciones."
-                size="small"
-              >
-                <option value="">— Sin categoría —</option>
-                {docCategories.filter(c => c.applies_to === 'employee').map(c => (
-                  <option key={c.id} value={c.id}>{c.name}{c.is_plant_specific ? ' ⚙' : ''}</option>
-                ))}
-              </TextField>
+              />
             )}
 
             {!editingDoc && selectedCategoryId && docCategories.find(c => c.id === Number(selectedCategoryId))?.is_plant_specific && (
