@@ -323,6 +323,10 @@ export interface LookupPayPeriod {
   end_date: string;
   status: string;
 }
+export interface LookupDocumentCategory {
+  id: number;
+  name: string;
+}
 
 export class LookupService {
   static async getRoles(): Promise<Pick<Role, 'id' | 'name' | 'level' | 'has_dashboard_access'>[]> {
@@ -394,6 +398,13 @@ export class LookupService {
   static async getPayPeriods(): Promise<LookupPayPeriod[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/pay-periods`);
     if (!response.ok) throw new Error('Error al obtener quincenas');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getEmployeeDocumentCategories(): Promise<LookupDocumentCategory[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/employee-document-categories`);
+    if (!response.ok) throw new Error('Error al obtener categorías de documento');
     const data = await response.json();
     return data.data || [];
   }
@@ -3703,6 +3714,158 @@ export class EntityDocumentService {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/documents/${id}/history`);
     if (!response.ok) throw new Error('Error al obtener historial del documento');
     return (await response.json()).data || [];
+  }
+}
+
+// --- EGRESOS DE EMPLEADOS (ver PLAN_EGRESOS.md) ---
+export type TerminationType = 'resignation' | 'dismissal_with_cause' | 'dismissal_without_cause' | 'mutual_agreement';
+export type TerminationStatus = 'draft' | 'confirmed' | 'settled' | 'cancelled';
+export type TerminationNoticeGiven = 'none' | 'full' | 'partial';
+
+export interface TerminationWarning {
+  code: string;
+  message: string;
+}
+
+export interface TerminationDocument {
+  id: number;
+  title: string;
+  notes?: string | null;
+  file_url?: string | null;
+  file_name?: string | null;
+  document_category_id?: number | null;
+  category_name?: string | null;
+  uploader?: { id: number; name: string; lastname: string };
+  created_at: string;
+}
+
+export interface EmployeeTermination {
+  id: number;
+  employee_id: number;
+  type: TerminationType;
+  status: TerminationStatus;
+  notice_date?: string | null;
+  termination_date: string;
+  notice_given: TerminationNoticeGiven;
+  notice_start_date?: string | null;
+  notice_end_date?: string | null;
+  cause_description?: string | null;
+  employee_notice_omitted: boolean;
+  // Ausente sin employee_salaries_read (el backend lo borra antes de serializar).
+  cct_cap_amount?: number | string | null;
+  art80_delivered_at?: string | null;
+  notes?: string | null;
+  confirmed_at?: string | null;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  createdAt: string;
+  employee?: Pick<Employee, 'id' | 'name' | 'lastname' | 'dni' | 'hire_date' | 'status' | 'termination_date' | 'pay_type'>;
+  createdBy?: { id: number; name: string; lastname: string } | null;
+  confirmedBy?: { id: number; name: string; lastname: string } | null;
+  cancelledBy?: { id: number; name: string; lastname: string } | null;
+  // Solo en el detalle (GET /employee-terminations/:id y las acciones):
+  documents?: TerminationDocument[];
+  payment_deadline?: string;
+  art80_deadline?: string;
+  warnings?: TerminationWarning[];
+  confirm_blockers?: string[];
+}
+
+export interface TerminationFormData {
+  employee_id?: number;
+  type: TerminationType;
+  termination_date: string;
+  notice_date?: string | null;
+  notice_given?: TerminationNoticeGiven;
+  notice_start_date?: string | null;
+  notice_end_date?: string | null;
+  cause_description?: string | null;
+  employee_notice_omitted?: boolean;
+  cct_cap_amount?: number | null;
+  notes?: string | null;
+  art80_delivered_at?: string | null;
+}
+
+export const TERMINATION_TYPE_LABELS: Record<TerminationType, string> = {
+  resignation: 'Renuncia',
+  dismissal_with_cause: 'Despido con causa',
+  dismissal_without_cause: 'Despido sin causa',
+  mutual_agreement: 'Mutuo acuerdo',
+};
+
+export const TERMINATION_STATUS_LABELS: Record<TerminationStatus, string> = {
+  draft: 'Borrador',
+  confirmed: 'Confirmado',
+  settled: 'Liquidado',
+  cancelled: 'Anulado',
+};
+
+async function terminationRequest(url: string, options: RequestInit, fallbackError: string): Promise<EmployeeTermination> {
+  const response = await TokenManager.authenticatedFetch(url, options);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || fallbackError);
+  }
+  return (await response.json()).data;
+}
+
+export class EmployeeTerminationService {
+  static async getAll(filters: { employee_id?: number; status?: TerminationStatus } = {}): Promise<EmployeeTermination[]> {
+    const params = new URLSearchParams();
+    if (filters.employee_id) params.append('employee_id', String(filters.employee_id));
+    if (filters.status) params.append('status', filters.status);
+    const url = params.toString() ? `${API_BASE_URL}/employee-terminations?${params}` : `${API_BASE_URL}/employee-terminations`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener egresos');
+    return (await response.json()).data || [];
+  }
+
+  static getById(id: number): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}`, {}, 'Error al obtener el egreso');
+  }
+
+  static create(data: TerminationFormData): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations`, { method: 'POST', body: JSON.stringify(data) }, 'Error al cargar el egreso');
+  }
+
+  static update(id: number, data: Partial<TerminationFormData>): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}`, { method: 'PUT', body: JSON.stringify(data) }, 'Error al actualizar el egreso');
+  }
+
+  static confirm(id: number): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/confirm`, { method: 'PUT' }, 'Error al confirmar el egreso');
+  }
+
+  static cancel(id: number, reason: string): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/cancel`, { method: 'PUT', body: JSON.stringify({ reason }) }, 'Error al anular el egreso');
+  }
+
+  static async uploadDocument(
+    id: number,
+    data: { title: string; notes?: string; document_category_id?: number | null },
+    file: File
+  ): Promise<void> {
+    const formData = new FormData();
+    formData.append('title', data.title);
+    if (data.notes) formData.append('notes', data.notes);
+    if (data.document_category_id) formData.append('document_category_id', String(data.document_category_id));
+    formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/employee-terminations/${id}/documents`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al cargar el documento');
+    }
+  }
+
+  static async deleteDocument(id: number, docId: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-terminations/${id}/documents/${docId}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Error al eliminar el documento');
   }
 }
 

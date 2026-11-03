@@ -88,6 +88,18 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'prestamos.md',
   },
   {
+    id: 'egresos',
+    category: 'Personal',
+    title: 'Egresos de empleados (renuncia, despido, mutuo acuerdo)',
+    keywords: [
+      'baja', 'dar de baja', 'egreso', 'egresos', 'renuncia', 'despido', 'despedir', 'telegrama',
+      'carta documento', 'indemnizacion', 'indemnización', 'preaviso', 'liquidacion final',
+      'liquidación final', 'acuerdo', 'cuotas', 'seclo', 'art 80', 'art. 80', 'certificado de trabajo',
+      'mutuo acuerdo', 'retiro voluntario', 'inactivo', 'legajo', 'anular',
+    ],
+    file: 'egresos.md',
+  },
+  {
     id: 'herramientas-reparacion',
     category: 'Pañol',
     title: 'Reparación de Herramientas',

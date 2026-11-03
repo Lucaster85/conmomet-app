@@ -25,7 +25,7 @@ import {
 } from '@mui/icons-material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { useRouter } from 'next/navigation';
-import { Employee, EmployeeService, CreateEmployeeData, User, UserService, CategoryService, Category, EppItem, EppItemService, EmployeeSizeService } from '../../../utils/api';
+import { Employee, EmployeeService, EmployeeTerminationService, TerminationStatus, CreateEmployeeData, User, UserService, CategoryService, Category, EppItem, EppItemService, EmployeeSizeService } from '../../../utils/api';
 import { isFixedSalaryPayType } from '../../../utils/payType';
 import { TokenManager, userHasPermission } from '../../../utils/auth';
 import { validateDni, validateCuit, validatePhone, validateEmail } from '../../../utils/validators';
@@ -36,6 +36,13 @@ const STATUS_LABELS: Record<string, { label: string; color: 'success' | 'error' 
   vacation: { label: 'Vacaciones', color: 'warning' },
   medical_leave: { label: 'Licencia', color: 'info' },
 };
+
+// Egreso vigente del empleado (ver PLAN_EGRESOS.md): borrador → "Egreso en curso"; confirmado o liquidado → "Dado de baja".
+function TerminationChip({ status, sx }: { status?: TerminationStatus; sx?: object }) {
+  if (status === 'draft') return <Chip label="Egreso en curso" color="warning" variant="outlined" size="small" sx={sx} />;
+  if (status === 'confirmed' || status === 'settled') return <Chip label="Dado de baja" variant="outlined" size="small" sx={sx} />;
+  return null;
+}
 
 export default function EmployeesPage() {
   const router = useRouter();
@@ -48,8 +55,11 @@ export default function EmployeesPage() {
   const canUpdate = userHasPermission(currentUser, 'employees_update');
   const canDeleteEmployees = userHasPermission(currentUser, 'employees_delete');
   const canSeeSalaries = userHasPermission(currentUser, 'employee_salaries_read');
+  const canReadTerminations = userHasPermission(currentUser, 'employee_terminations_read');
 
   const [employees, setEmployees] = useState<Employee[]>([]);
+  // Estado del egreso vigente (no anulado) por empleado: alimenta los chips "Egreso en curso" / "Dado de baja".
+  const [terminationByEmployee, setTerminationByEmployee] = useState<Record<number, TerminationStatus>>({});
   const [users, setUsers] = useState<User[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +98,14 @@ export default function EmployeesPage() {
       setError('');
       const data = await EmployeeService.getAll(undefined, showInactive);
       setEmployees(Array.isArray(data) ? data : []);
+      if (canReadTerminations) {
+        const terminations = await EmployeeTerminationService.getAll();
+        const byEmployee: Record<number, TerminationStatus> = {};
+        for (const t of terminations) {
+          if (t.status !== 'cancelled') byEmployee[t.employee_id] = t.status;
+        }
+        setTerminationByEmployee(byEmployee);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar empleados');
     } finally {
@@ -353,6 +371,7 @@ export default function EmployeesPage() {
                       </Typography>
                     )}
                     <Chip label={STATUS_LABELS[emp.status]?.label || emp.status} color={STATUS_LABELS[emp.status]?.color || 'default'} size="small" sx={{ mt: 0.5 }} />
+                    <TerminationChip status={terminationByEmployee[emp.id]} sx={{ mt: 0.5, ml: 0.5 }} />
                     {!emp.user_id && emp.invitation_status && (
                       <Chip
                         label={emp.invitation_status === 'pending' ? 'Invitación pendiente' : 'Invitación expirada'}
@@ -429,6 +448,7 @@ export default function EmployeesPage() {
                     )}
                     <TableCell>
                       <Chip label={STATUS_LABELS[emp.status]?.label || emp.status} color={STATUS_LABELS[emp.status]?.color || 'default'} size="small" />
+                      <TerminationChip status={terminationByEmployee[emp.id]} sx={{ ml: 0.5 }} />
                     </TableCell>
                     <TableCell align="center">
                       <Tooltip title="Ver Legajo"><IconButton size="small" color="info" onClick={() => router.push(`/dashboard/employees/${emp.id}`)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
@@ -624,6 +644,8 @@ export default function EmployeesPage() {
             <Divider sx={{ my: 1 }} />
             {editingEmployee && (
               <TextField label="Estado" select fullWidth value={form.status || 'active'} onChange={(e) => setForm({ ...form, status: e.target.value })}
+                disabled={!!terminationByEmployee[editingEmployee.id]}
+                helperText={terminationByEmployee[editingEmployee.id] ? 'Tiene un egreso en curso: el estado se modifica desde la pestaña Egreso del legajo.' : undefined}
                 SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
                 <option value="active">Activo</option>
                 <option value="inactive">Inactivo</option>
