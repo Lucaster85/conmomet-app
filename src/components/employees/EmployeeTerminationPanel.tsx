@@ -16,6 +16,8 @@ import DateField from '@/components/DateField';
 import GearSpinner from '@/components/GearSpinner';
 import TerminationFormDialog from '@/components/employees/TerminationFormDialog';
 import TerminationCalculationCard from '@/components/employees/TerminationCalculationCard';
+import TerminationFinalPayrollCard from '@/components/employees/TerminationFinalPayrollCard';
+import TerminationDebtCard from '@/components/employees/TerminationDebtCard';
 import {
   Employee, EmployeeTermination, EmployeeTerminationService, LookupDocumentCategory, LookupService,
   TerminationDocument, TerminationStatus, TERMINATION_STATUS_LABELS, TERMINATION_TYPE_LABELS,
@@ -177,13 +179,20 @@ export default function EmployeeTerminationPanel({
       {warnings.map((w) => <Alert key={w.code} severity="warning">{w.message}</Alert>)}
       {t.status === 'confirmed' && (
         <Alert severity="info">
-          El empleado quedó inactivo y ya no entra en las quincenas. El cálculo de arriba es una propuesta de solo
-          lectura: la liquidación final todavía no se genera ni se paga desde el sistema (llega en la próxima etapa), así
-          que hasta entonces los haberes del período en curso, el aguinaldo, las vacaciones y la indemnización se pagan por fuera.
+          El empleado quedó inactivo y ya no entra en las quincenas. Sus haberes del período en curso, el aguinaldo, las
+          vacaciones y la indemnización se pagan con la <strong>liquidación final</strong> (más abajo), que se genera desde acá,
+          se confirma y se paga: al pagarla se corta su acceso al portal.
         </Alert>
       )}
 
       {canSeeAmounts && t.status !== 'cancelled' && <TerminationCalculationCard terminationId={t.id} />}
+
+      {canSeeAmounts && detail && (t.status === 'confirmed' || t.status === 'settled') && (
+        <TerminationFinalPayrollCard termination={detail} onChanged={() => { onChanged(); load(); }} onError={onError} onSuccess={onSuccess} />
+      )}
+      {canSeeAmounts && detail && (t.status === 'confirmed' || t.status === 'settled') && (
+        <TerminationDebtCard termination={detail} canConfirm={canConfirm} onChanged={() => { onChanged(); load(); }} onError={onError} onSuccess={onSuccess} />
+      )}
 
       {t.status !== 'draft' && t.status !== 'cancelled' && (
         <Card sx={{ borderRadius: 3 }}>

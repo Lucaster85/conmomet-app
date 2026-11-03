@@ -2869,7 +2869,7 @@ export interface PayPeriod {
   start_date: string;
   end_date: string;
   // 'sac' = aguinaldo: un período por semestre (month = 6 | 12), ver utils/payPeriods.ts.
-  type: 'first_half' | 'second_half' | 'sac';
+  type: 'first_half' | 'second_half' | 'sac' | 'final';
   month: number;
   year: number;
   status: 'open' | 'closed' | 'paid';
@@ -3077,7 +3077,11 @@ export class PayrollService {
 
   static async confirm(id: number): Promise<PayrollEntry> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${id}/confirm`, { method: 'PUT' });
-    if (!response.ok) throw new Error('Error al confirmar liquidación');
+    if (!response.ok) {
+      // La liquidación final bloquea con un motivo concreto (pedidos sin resolver, cotización del dólar).
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al confirmar liquidación');
+    }
     return (await response.json()).data;
   }
 
@@ -3085,7 +3089,10 @@ export class PayrollService {
 
   static async pay(id: number): Promise<PayrollEntry> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${id}/pay`, { method: 'PUT' });
-    if (!response.ok) throw new Error('Error al marcar liquidación como pagada');
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al marcar liquidación como pagada');
+    }
     return (await response.json()).data;
   }
 
@@ -3769,6 +3776,9 @@ export interface EmployeeTermination {
   art80_deadline?: string;
   warnings?: TerminationWarning[];
   confirm_blockers?: string[];
+  final_payroll?: TerminationFinalPayroll | null;
+  pending_debt?: TerminationPendingDebt | null;
+  debt_resolution?: TerminationDebtResolution | null;
 }
 
 export interface TerminationFormData {
@@ -3829,6 +3839,51 @@ export interface TerminationCalculation {
   warnings: string[];
 }
 
+export interface TerminationFinalLine {
+  id: number;
+  item_key: string | null;
+  label: string;
+  line_type: string;
+  group: 'remunerative' | 'indemnity';
+  amount: number;
+  suggested_amount: number | null;
+  edit_reason: string | null;
+}
+
+// Liquidación final del egreso. Sin employee_salaries_read solo llegan id y estado.
+export interface TerminationFinalPayroll {
+  id: number;
+  status: 'draft' | 'confirmed' | 'paid';
+  pay_period_id: number;
+  paid_at?: string | null;
+  signed_at?: string | null;
+  gross_amount?: number;
+  advances_deducted?: number;
+  loan_installments_deducted?: number;
+  net_amount?: number;
+  remunerative_total?: number;
+  indemnity_total?: number;
+  lines?: TerminationFinalLine[];
+}
+
+export interface TerminationPendingDebt {
+  total_ars: number;
+  resolved: boolean;
+  advances: { items: Array<{ id: number; date: string; amount: number }>; total: number };
+  loans: {
+    items: Array<{ loan_id: number; kind: string; currency: string; amount: number }>;
+    total_ars: number; has_usd: boolean; total_usd: number;
+  };
+}
+
+export interface TerminationDebtResolution {
+  resolution: 'paid' | 'condoned';
+  amount: number | null;
+  resolved_at: string;
+  payment_method?: 'efectivo' | 'transferencia' | null;
+  notes?: string | null;
+}
+
 export const TERMINATION_TYPE_LABELS: Record<TerminationType, string> = {
   resignation: 'Renuncia',
   dismissal_with_cause: 'Despido con causa',
@@ -3875,6 +3930,21 @@ export class EmployeeTerminationService {
       throw new Error(error.error || 'Error al calcular la liquidación');
     }
     return (await response.json()).data;
+  }
+
+  // Genera o regenera (en borrador) la liquidación final. Requiere payroll_write y employee_salaries_read.
+  static generateFinalPayroll(id: number): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/final-payroll`, { method: 'POST' }, 'Error al generar la liquidación final');
+  }
+
+  // Corrige el monto de una línea de la liquidación final (en borrador), con motivo obligatorio.
+  static editFinalLine(id: number, lineId: number, data: { amount: number; reason: string }): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/final-payroll/lines/${lineId}`, { method: 'PUT', body: JSON.stringify(data) }, 'Error al corregir el monto');
+  }
+
+  // Resuelve la deuda pendiente de una sola vez: "paid" (devolvió la plata) o "condoned" (se perdona).
+  static resolveDebt(id: number, data: { resolution: 'paid' | 'condoned'; payment_method?: 'efectivo' | 'transferencia'; notes?: string }): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/debt`, { method: 'POST', body: JSON.stringify(data) }, 'Error al resolver la deuda');
   }
 
   static create(data: TerminationFormData): Promise<EmployeeTermination> {
@@ -4068,8 +4138,13 @@ export interface PayrollLine {
   quantity: number;
   rate: number;
   subtotal: number;
-  line_type: 'regular' | 'extras_50' | 'extras_100' | 'holiday' | 'fixed' | 'retroactive' | 'vacation' | 'medical_leave' | 'justified' | 'medical_leave_deduction' | 'vacation_deduction' | 'absence_deduction' | 'sac' | 'sac_adjustment';
+  line_type: 'regular' | 'extras_50' | 'extras_100' | 'holiday' | 'fixed' | 'retroactive' | 'vacation' | 'medical_leave' | 'justified' | 'medical_leave_deduction' | 'vacation_deduction' | 'absence_deduction' | 'sac' | 'sac_adjustment'
+    | 'final_days' | 'sac_proportional' | 'vacation_unused' | 'vacation_unused_sac' | 'notice_pay' | 'notice_pay_sac' | 'month_integration' | 'month_integration_sac' | 'severance' | 'severance_agreed' | 'overpaid_deduction' | 'employee_notice_deduction';
   source_period_id: number | null;
+  // Solo liquidación final: lo que propuso el cálculo y el motivo con el que se corrigió el monto.
+  suggested_amount?: number | null;
+  edit_reason?: string | null;
+  item_key?: string | null;
   concept?: PayrollConcept;
 }
 
@@ -5182,6 +5257,7 @@ export interface ExpenseSummaryMonthly {
         first_half: number;
         second_half: number;
         sac: number;
+        final: number;
         entry_count: number;
       };
     };

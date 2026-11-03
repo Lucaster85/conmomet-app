@@ -16,7 +16,7 @@ import {
   PaymentsOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { PayPeriod, PayPeriodService, UsdRatePreview } from '../../../utils/api';
-import { isSacPeriod, sacPeriodLabel, sacDueNotice, sacSemester } from '../../../utils/payPeriods';
+import { isSacPeriod, sacPeriodLabel, sacDueNotice, sacSemester, isFinalPeriod, finalPeriodLabel } from '../../../utils/payPeriods';
 import { useRouter } from 'next/navigation';
 
 const STATUS_CONFIG: Record<string, { label: string; color: 'success' | 'warning' | 'info' }> = {
@@ -145,6 +145,7 @@ export default function PayPeriodsPage() {
 
   const formatPeriod = (p: PayPeriod) => {
     if (isSacPeriod(p)) return sacPeriodLabel(p);
+    if (isFinalPeriod(p)) return finalPeriodLabel(p);
     const typeLabel = p.type === 'first_half' ? '1ra Q.' : '2da Q.';
     const monthLabel = MONTHS[(p.month ?? 1) - 1] || 'Enero';
     return `${typeLabel} - ${monthLabel} ${p.year}`;
@@ -207,7 +208,7 @@ export default function PayPeriodsPage() {
               
               <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                 <Typography variant="h6" fontWeight="bold">{formatPeriod(p)}</Typography>
-                <Chip label={STATUS_CONFIG[p.status].label} color={STATUS_CONFIG[p.status].color} size="small" />
+                {!isFinalPeriod(p) && <Chip label={STATUS_CONFIG[p.status].label} color={STATUS_CONFIG[p.status].color} size="small" />}
               </Box>
 
               <Typography variant="body2" color="text.secondary" mb={2}>
@@ -220,6 +221,12 @@ export default function PayPeriodsPage() {
                 </Alert>
               )}
 
+              {isFinalPeriod(p) && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Egresos del mes. Cada liquidación final se genera desde el egreso del empleado y se confirma y paga por separado.
+                </Alert>
+              )}
+
               <Stack direction="row" spacing={1} mt={2}>
                 <Button 
                   variant="outlined" 
@@ -228,7 +235,7 @@ export default function PayPeriodsPage() {
                   onClick={() => router.push(`/dashboard/pay-periods/${p.id}/payroll`)}
                   startIcon={<MoneyIcon />}
                 >
-                  Liquidación
+                  {isFinalPeriod(p) ? 'Ver liquidaciones' : 'Liquidación'}
                 </Button>
                 
                 {missingSac(p) && (
@@ -237,13 +244,13 @@ export default function PayPeriodsPage() {
                   </Button>
                 )}
 
-                {p.status === 'open' && (
+                {p.status === 'open' && !isFinalPeriod(p) && (
                   <Button variant="contained" color="warning" size="small" fullWidth onClick={() => handleOpenClose(p)} startIcon={<ConfirmIcon />}>
                     Cerrar
                   </Button>
                 )}
                 
-                {p.status === 'closed' && (
+                {p.status === 'closed' && !isFinalPeriod(p) && (
                   <Button variant="contained" color="info" size="small" fullWidth onClick={() => handlePay(p.id)} startIcon={<PaymentIcon />}>
                     Marcar Pagada
                   </Button>

@@ -48,7 +48,7 @@ export default function ApplyCategoryBonusModal({ open, category, onClose, onSuc
         EmployeeService.getAll(),
       ]);
       // La suma no remunerativa por categoría va a una quincena abierta, nunca al aguinaldo.
-      setPeriods(periodsData.filter(p => p.status === 'open' && p.type !== 'sac'));
+      setPeriods(periodsData.filter(p => p.status === 'open' && p.type !== 'sac' && p.type !== 'final'));
       setEmployees(allEmps.filter(e => e.category_id === category.id && e.status === 'active' && e.pay_type === 'hourly'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar los datos');

@@ -2,7 +2,7 @@
 
 Un **egreso** es el trámite de dar de baja a un empleado: renuncia, despido o retiro de común acuerdo. Reemplaza el viejo "ponerlo inactivo a mano": el egreso guarda **por qué** se fue, **cuándo**, y los **papeles** que lo respaldan (telegramas, actas, etc.), todo en el legajo del empleado.
 
-> Hoy el egreso cubre el trámite, la documentación y **una propuesta de cálculo de la liquidación** (solo lectura). **Generar y pagar la liquidación final desde el sistema todavía no está**: hasta la próxima etapa, lo que corresponda pagar se paga por fuera.
+> El egreso cubre el trámite, la documentación, **una propuesta de cálculo** y la **liquidación final** (generarla, corregirla, confirmarla y pagarla). Lo único que todavía no está es el **acuerdo de pago en cuotas** de la indemnización: por ahora la indemnización se paga contado, dentro de la liquidación final.
 
 ## Los cuatro tipos
 
@@ -22,7 +22,7 @@ Un **egreso** es el trámite de dar de baja a un empleado: renuncia, despido o r
 
 - **Borrador:** el egreso está cargado pero **el empleado sigue activo** y se liquida con normalidad. Sirve, por ejemplo, para cargar el telegrama de una renuncia mientras el empleado trabaja el preaviso. Se puede editar.
 - **Confirmado:** el empleado pasa a **inactivo** con su fecha de egreso. A partir de ahí el sistema no deja cargarle **horas posteriores** a esa fecha, **adelantos** ni **préstamos** (tampoco pedirlos desde su portal), y deja de entrar en las quincenas.
-- **Liquidado:** la liquidación final ya se pagó. *(Etapa siguiente.)*
+- **Liquidado:** la liquidación final ya se pagó y no queda deuda pendiente del empleado.
 - **Anulado:** se canceló el egreso.
 
 ### Confirmar
@@ -102,6 +102,66 @@ Se listan los **adelantos pagados que todavía no se descontaron** en una liquid
 
 También avisa si hay **pedidos de adelanto sin resolver** o **préstamos pedidos o aprobados sin entregar**, que conviene cerrar antes de liquidar.
 
+## Liquidación final
+
+Con el egreso **confirmado**, la pestaña **Egreso** tiene la tarjeta **Liquidación final**. Es la liquidación que se le paga al empleado al irse: junta **todo lo del cálculo** en un solo recibo, que se confirma y se paga como cualquier otra liquidación.
+
+### Dónde aparece
+
+Las liquidaciones finales de un mes se agrupan en **Contabilidad → Quincenas y Pagos**, en una tarjeta aparte: **Liquidaciones finales — noviembre 2026**. No es una quincena: no se genera, no se cierra ni se paga "en bloque". Cada empleado que egresó ese mes tiene su propia liquidación, que se confirma y se paga por separado.
+
+### Generar, corregir y regenerar
+
+1. Con el egreso confirmado, tocá **Generar liquidación final** (hace falta permiso de liquidaciones). Queda en **Borrador**, con una línea por concepto: haberes del período, SAC proporcional, vacaciones no gozadas y, según el tipo, preaviso, integración e indemnización — con sus SAC.
+2. Cada monto se puede **corregir** con el lápiz. **El motivo es obligatorio** y queda en la auditoría; la línea muestra lo que había propuesto el cálculo y por qué se cambió.
+3. **Regenerar** vuelve a calcular todo con los datos de hoy (por ejemplo, si se cargaron horas) **respetando las correcciones** que ya hiciste.
+4. Dos líneas existen aunque valgan cero porque son las que se editan: la **gratificación por cese pactada** (mutuo acuerdo: cargá el monto acordado) y el **preaviso omitido por el trabajador** (renuncia sin los 15 días: viene sugerido con 15 días de sueldo en negativo y **apagado**; para ejercer el derecho de la empresa, corregilo con ese monto).
+5. En el **mutuo acuerdo**, el preaviso, la integración y el art. 245 **no se liquidan**: solo se ven en el cálculo como referencia.
+
+Mientras la liquidación esté en borrador, los **Ajustes** de la pantalla de Liquidaciones (premios, descuentos) también funcionan. Al terminar, **Confirmar**.
+
+### Qué se descuenta, y qué pasa si no alcanza
+
+- Los **adelantos pagados** que todavía no se descontaron.
+- Los **préstamos de cuota fija**: la cuota que corre se cobra completa y de las siguientes **solo el capital**. Los préstamos **en dólares** se convierten a pesos con la cotización del día de la confirmación.
+
+**El neto nunca baja de cero.** Primero se imputan los adelantos (es sueldo ya cobrado), la más vieja primero, y después los préstamos, cuota por cuota. Lo que no entra queda como **deuda pendiente del empleado**:
+
+- un adelanto que no entra queda sin descontar;
+- de un préstamo se cobran solo las cuotas que entran: el préstamo sigue **activo** con su saldo y esas cuotas siguen programadas.
+
+> Los préstamos **solo se tocan al confirmar** la liquidación final. Regenerar un borrador no los modifica.
+
+Para confirmar tiene que estar todo resuelto: **no puede haber pedidos de adelanto pendientes de aprobar ni préstamos pedidos o aprobados sin entregar**. Aprobalos, rechazalos o cancelalos antes.
+
+### Deuda pendiente: registrar el pago o condonar
+
+Con la liquidación final confirmada, si el empleado debe plata, aparece la tarjeta **Deuda pendiente del empleado** con el total. Se resuelve **de una sola vez**:
+
+- **Registrar pago:** el empleado devolvió la plata. Elegís cómo (efectivo o transferencia) y subís el comprobante como documento del egreso. Los **adelantos se anulan** y los **préstamos se liquidan** con ese pago.
+- **Condonar:** la empresa lo perdona. **El motivo es obligatorio.** Las cuotas del préstamo pasan a **canceladas** y el préstamo a completado; los adelantos quedan como costo.
+
+El egreso **no pasa a "Liquidado"** hasta que la liquidación final está pagada **y** la deuda resuelta (pagada o condonada).
+
+### Pagar: qué pasa al marcarla como pagada
+
+- El **usuario del portal** del empleado se **desactiva** en ese momento — no antes. Mientras la liquidación esté solo confirmada, el empleado la ve en su portal como cualquier otra. Después de pagada, el recibo se le entrega en papel o por WhatsApp.
+- El egreso pasa a **Liquidado** (si no hay deuda pendiente).
+- La **firma del recibo** funciona igual que en cualquier liquidación pagada.
+
+### Anular el egreso con liquidación final
+
+- Con la liquidación final **en borrador**, anular el egreso la **borra** y libera los adelantos que tenía asignados.
+- Con la liquidación **confirmada o pagada** ya no se puede anular el egreso.
+
+### El recibo
+
+El recibo de la liquidación final separa **Remunerativo** (haberes, SAC, vacaciones) de **Indemnizatorio / no remunerativo** (preaviso, integración, art. 245 y sus SAC). No muestra el desglose de cálculo: ese solo lo ve administración en el egreso.
+
+### Resumen de costos
+
+La liquidación final confirmada o pagada cae en el **Resumen de costos** del mes del egreso, en una línea propia: **Liquidaciones finales (egresos)**.
+
 ## Plazos y avisos
 
 El sistema muestra avisos en la pestaña **Egreso**. **Ninguno bloquea nada**, son recordatorios:
@@ -120,4 +180,4 @@ El sistema muestra avisos en la pestaña **Egreso**. **Ninguno bloquea nada**, s
 
 El tope del convenio es un monto: solo lo ve quien tiene el permiso de **ver sueldos**.
 
-<!-- ref: api_conmomet/controllers/employeeTerminationController.js, api_conmomet/helpers/terminationRules.js, api_conmomet/services/terminationGuards.js, api_conmomet/helpers/terminationCalculations.js, api_conmomet/services/terminationCalculationService.js, api_conmomet/services/loanSettlement.js, conmomet-app/src/components/employees/TerminationCalculationCard.tsx, api_conmomet/models/employeeTermination.js, conmomet-app/src/components/employees/EmployeeTerminationPanel.tsx, conmomet-app/src/components/employees/TerminationFormDialog.tsx, conmomet-app/src/app/dashboard/employees/[id]/page.tsx, conmomet-app/src/app/dashboard/employees/page.tsx -->
+<!-- ref: api_conmomet/controllers/employeeTerminationController.js, api_conmomet/helpers/terminationRules.js, api_conmomet/services/terminationGuards.js, api_conmomet/helpers/terminationCalculations.js, api_conmomet/services/terminationCalculationService.js, api_conmomet/services/loanSettlement.js, conmomet-app/src/components/employees/TerminationCalculationCard.tsx, api_conmomet/services/finalPayrollService.js, conmomet-app/src/components/employees/TerminationFinalPayrollCard.tsx, conmomet-app/src/components/employees/TerminationDebtCard.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/FinalEntries.tsx, api_conmomet/models/employeeTermination.js, conmomet-app/src/components/employees/EmployeeTerminationPanel.tsx, conmomet-app/src/components/employees/TerminationFormDialog.tsx, conmomet-app/src/app/dashboard/employees/[id]/page.tsx, conmomet-app/src/app/dashboard/employees/page.tsx -->

@@ -48,7 +48,7 @@ Al generar la liquidación de una quincena se descuentan solas las cuotas que ve
 
 ## Liquidación por baja
 
-Si el empleado renuncia o lo despiden, el botón **Liquidar** cancela lo que queda del préstamo: la cuota que está corriendo en la quincena actual (o vencida) se cobra **completa**, y todas las siguientes se cobran **solo el capital**, sin interés. En cuotas mensuales la cuota del mes en curso cuenta como corriendo. El cálculo del **egreso** del empleado (tema **Egresos de empleados**) muestra de antemano cuánto se cobraría por cada préstamo activo con esta misma regla. Un empleado con egreso confirmado no puede recibir préstamos nuevos ni se pueden aprobar los pendientes.
+Si el empleado renuncia o lo despiden, el botón **Liquidar** cancela lo que queda del préstamo: la cuota que está corriendo en la quincena actual (o vencida) se cobra **completa**, y todas las siguientes se cobran **solo el capital**, sin interés. En cuotas mensuales la cuota del mes en curso cuenta como corriendo. El cálculo del **egreso** del empleado (tema **Egresos de empleados**) muestra de antemano cuánto se cobraría por cada préstamo activo con esta misma regla. Un empleado con egreso confirmado no puede recibir préstamos nuevos ni se pueden aprobar los pendientes. Con la **liquidación final**, los préstamos se cobran al **confirmarla**: si el neto no alcanza para todo, se cobran solo las cuotas que entran, el préstamo sigue activo con el resto y esa diferencia queda como **deuda pendiente** del empleado, que se resuelve registrando el pago o condonándola (tema **Egresos de empleados**). Si se condona, las cuotas que quedaban pasan a canceladas y el préstamo a completado.
 
 ## Reprogramar un préstamo
 

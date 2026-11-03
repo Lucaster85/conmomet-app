@@ -95,6 +95,7 @@ async function exportMonthlyExcel(data: ExpenseSummaryMonthly) {
     ['  - 1ra Quincena', data.expenses.payroll_gross.detail.first_half],
     ['  - 2da Quincena', data.expenses.payroll_gross.detail.second_half],
     ['  - Aguinaldo (SAC)', data.expenses.payroll_gross.detail.sac],
+    ['  - Liquidaciones finales (egresos)', data.expenses.payroll_gross.detail.final],
     ['Cargas Patronales', data.expenses.employer_costs.total],
     ...data.expenses.employer_costs.breakdown.map((b) => [`  - ${b.category}`, b.amount]),
     [''],
@@ -162,6 +163,7 @@ async function exportMonthlyPdf(data: ExpenseSummaryMonthly) {
     ['  1ra Quincena', formatNumber(data.expenses.payroll_gross.detail.first_half)],
     ['  2da Quincena', formatNumber(data.expenses.payroll_gross.detail.second_half)],
     ['  Aguinaldo (SAC)', formatNumber(data.expenses.payroll_gross.detail.sac)],
+    ['  Liquidaciones finales', formatNumber(data.expenses.payroll_gross.detail.final)],
     ['Cargas Patronales', formatNumber(data.expenses.employer_costs.total)],
     ...data.expenses.employer_costs.breakdown.map((b) => [`  ${b.category}`, formatNumber(b.amount)]),
   ];
@@ -486,6 +488,12 @@ export default function ExpenseSummaryPage() {
                       <Box display="flex" justifyContent="space-between" mb={1}>
                         <Typography variant="body2" color="textSecondary">Aguinaldo (SAC):</Typography>
                         <Typography variant="body2">{formatCurrency(monthlyData.expenses.payroll_gross.detail.sac)}</Typography>
+                      </Box>
+                    )}
+                    {monthlyData.expenses.payroll_gross.detail.final > 0 && (
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="body2" color="textSecondary">Liquidaciones finales (egresos):</Typography>
+                        <Typography variant="body2">{formatCurrency(monthlyData.expenses.payroll_gross.detail.final)}</Typography>
                       </Box>
                     )}
                     <Typography variant="caption" color="textSecondary" display="block" textAlign="right">
