@@ -29,6 +29,7 @@ import {
 import { SalaryAdvance, SalaryAdvanceService, DuplicateAdvanceError, DuplicateAdvanceConflict, Employee, EmployeeService, PayPeriod, PayPeriodService, PayrollService } from '../../../utils/api';
 import { buildWhatsAppLink } from '../../../utils/whatsapp';
 import Switch from '@mui/material/Switch';
+import { isSacPeriod, sacShortLabel } from '../../../utils/payPeriods';
 
 const STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success' | 'error' | 'default' }> = {
   pending: { label: 'Pendiente', color: 'warning' },
@@ -115,8 +116,9 @@ export default function SalaryAdvancesPage() {
     }
   };
 
-  const openPeriods = payPeriods.filter(p => p.status === 'open');
-  const formatPeriodLabel = (p: PayPeriod) => `${p.type === 'first_half' ? '1ra' : '2da'} quincena ${p.month}/${p.year}`;
+  // Los adelantos se descuentan de las quincenas: el aguinaldo (SAC) nunca se ofrece como destino.
+  const openPeriods = payPeriods.filter(p => p.status === 'open' && !isSacPeriod(p));
+  const formatPeriodLabel = (p: PayPeriod) => isSacPeriod(p) ? sacShortLabel(p) : `${p.type === 'first_half' ? '1ra' : '2da'} quincena ${p.month}/${p.year}`;
 
   useEffect(() => { loadData(); }, []);
 

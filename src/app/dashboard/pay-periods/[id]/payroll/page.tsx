@@ -4,7 +4,7 @@ import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Stack, Chip, Tooltip, Badge,
-  Card, CardContent, Grid, useTheme, useMediaQuery,
+  Card, CardContent, Grid, useTheme, useMediaQuery, Alert,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../../../components/FeedbackModal';
@@ -20,10 +20,13 @@ import { useParams, useRouter } from 'next/navigation';
 import PayrollAdjustmentsModal from './PayrollAdjustmentsModal';
 import RateChangesModal from './RateChangesModal';
 import ListFilters from '@/components/common/ListFilters';
+import SacEntries from './SacEntries';
+import { isSacPeriod, sacPeriodLabel, sacSemester, sacDueNotice, sacGenerateFrom } from '../../../../../utils/payPeriods';
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 const formatPeriodLabel = (p: PayPeriod) => {
+  if (isSacPeriod(p)) return sacPeriodLabel(p);
   const half = p.type === 'first_half' ? '1ª Quincena' : '2ª Quincena';
   const month = MONTHS[(p.month ?? 1) - 1];
   return `${half} de ${month} ${p.year}`;
@@ -35,6 +38,14 @@ const normalizeSearch = (v: string) => v.toLowerCase().normalize('NFD').replace(
 // Suma los ajustes de un tipo ('bonus' | 'deduction' | 'deposit') — evita repetir filter().reduce().
 const sumByType = (adjustments: PayrollAdjustment[] | undefined, type: PayrollAdjustment['type']) =>
   (adjustments || []).filter((a) => a.type === type).reduce((sum, a) => sum + Number(a.amount), 0);
+
+// Fragmento del nombre de archivo / título de impresión: "2Quincena" / "Q2" para las quincenas y
+// "SAC1sem" / "SAC1" para el aguinaldo.
+const fileTag = (p: PayPeriod, long = false) => {
+  if (isSacPeriod(p)) return long ? `SAC${sacSemester(p.month)}sem` : `SAC${sacSemester(p.month)}`;
+  const n = p.type === 'first_half' ? '1' : '2';
+  return long ? `${n}Quincena` : `Q${n}`;
+};
 
 const formatAdvanceLabel = (adv: { payment_method?: string; date: string }) => {
   const method = adv.payment_method === 'efectivo' ? 'Efvo' : adv.payment_method === 'transferencia' ? 'Transf' : '';
@@ -97,7 +108,7 @@ export default function PayrollPage() {
   const handlePrintAll = () => {
     const originalTitle = document.title;
     if (period) {
-      const qNum = period.type === 'first_half' ? '1Quincena' : '2Quincena';
+      const qNum = fileTag(period, true);
       const monthName = MONTHS[(period.month ?? 1) - 1];
       document.title = `jornales_${qNum}_${monthName}_${period.year}`;
     }
@@ -140,6 +151,13 @@ export default function PayrollPage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadData(); }, [payPeriodId]);
+
+  const isSac = isSacPeriod(period);
+  // El aguinaldo se puede generar desde el día 16 (inicio de la 2Q de junio/diciembre); el backend
+  // lo valida también, acá solo se deshabilita el botón con su explicación.
+  const todayIso = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const sacNotYet = !!period && isSac && todayIso < sacGenerateFrom(period);
+  const sacNotYetHint = period ? `Se puede generar desde el ${sacGenerateFrom(period).split('-').reverse().join('/')}, cuando empieza la 2Q.` : '';
 
   const handleGenerate = async () => {
     try {
@@ -196,7 +214,7 @@ export default function PayrollPage() {
   const handlePrint = () => {
     const originalTitle = document.title;
     if (period) {
-      const qNum = period.type === 'first_half' ? '1Quincena' : '2Quincena';
+      const qNum = fileTag(period, true);
       const monthName = MONTHS[(period.month ?? 1) - 1];
       document.title = `listado_jornales_${qNum}_${monthName}_${period.year}`;
     }
@@ -314,8 +332,7 @@ export default function PayrollPage() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Horas');
       
-      const qNum = period.type === 'first_half' ? '1' : '2';
-      XLSX.writeFile(wb, `Horas_Q${qNum}_${monthName}_${period.year}.xlsx`);
+      XLSX.writeFile(wb, `Horas_${fileTag(period)}_${monthName}_${period.year}.xlsx`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al exportar a Excel');
     }
@@ -331,7 +348,7 @@ export default function PayrollPage() {
       const XLSX = await import('xlsx');
       const monthName = MONTHS[(period.month ?? 1) - 1];
 
-      const header = ['EMPLEADO', 'QUINCENA', 'DESCUENTOS', 'DEPOSITO', 'EFECTIVO'];
+      const header = ['EMPLEADO', isSacPeriod(period) ? 'AGUINALDO' : 'QUINCENA', 'DESCUENTOS', 'DEPOSITO', 'EFECTIVO'];
       const rows: (string | number)[][] = [
         header,
         ...filteredEntries.map((e) => [
@@ -364,8 +381,7 @@ export default function PayrollPage() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Planilla');
 
-      const qNum = period.type === 'first_half' ? '1' : '2';
-      XLSX.writeFile(wb, `Planilla_Q${qNum}_${monthName}_${period.year}.xlsx`);
+      XLSX.writeFile(wb, `Planilla_${fileTag(period)}_${monthName}_${period.year}.xlsx`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al exportar a Excel');
     }
@@ -378,14 +394,20 @@ export default function PayrollPage() {
       <Box className="no-print" display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box display="flex" alignItems="center" gap={1}>
           <IconButton onClick={() => router.push('/dashboard/pay-periods')}><BackIcon /></IconButton>
-          <Typography variant="h4" fontWeight="bold">Liquidación</Typography>
+          <Typography variant="h4" fontWeight="bold">{isSac ? 'Aguinaldo (SAC)' : 'Liquidación'}</Typography>
         </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>
           {period?.status === 'open' && (
             <>
-              <Button variant="outlined" color="primary" onClick={() => setOpenRateChanges(true)} size="small">Gestión de Aumentos</Button>
-              <Button variant="contained" color="secondary" startIcon={<CalcIcon />} onClick={handleGenerate} size="small">Generar Liquidación</Button>
+              {!isSac && <Button variant="outlined" color="primary" onClick={() => setOpenRateChanges(true)} size="small">Gestión de Aumentos</Button>}
+              <Tooltip title={sacNotYet ? sacNotYetHint : ''}>
+                <span>
+                  <Button variant="contained" color="secondary" startIcon={<CalcIcon />} onClick={handleGenerate} size="small" disabled={sacNotYet}>
+                    {isSac ? 'Generar Aguinaldo' : 'Generar Liquidación'}
+                  </Button>
+                </span>
+              </Tooltip>
             </>
           )}
         </Box>
@@ -418,7 +440,7 @@ export default function PayrollPage() {
                   size="small"
                   startIcon={<ExcelIcon sx={{ color: '#217346' }} />}
                   onClick={handleExportHours}
-                  sx={{ display: filteredEntries.length > 0 ? 'inline-flex' : 'none' }}
+                  sx={{ display: filteredEntries.length > 0 && !isSac ? 'inline-flex' : 'none' }}
                 >
                   Exportar Horas
                 </Button>
@@ -435,6 +457,12 @@ export default function PayrollPage() {
             </Box>
           </Box>
         </Paper>
+      )}
+
+      {isSac && period && (
+        <Alert severity="info" className="no-print" sx={{ mb: 2 }}>
+          {sacDueNotice(period.month)} Adelantos y préstamos no se descuentan del aguinaldo.
+        </Alert>
       )}
 
       {entries.length > 0 && (
@@ -454,17 +482,32 @@ export default function PayrollPage() {
           <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary" mb={2}>
             {period?.status === 'open'
-              ? 'No se ha generado la liquidación para esta quincena aún.'
-              : 'Esta quincena no tiene liquidaciones generadas.'}
+              ? (isSac ? 'No se ha generado el aguinaldo para este semestre aún.' : 'No se ha generado la liquidación para esta quincena aún.')
+              : (isSac ? 'Este aguinaldo no tiene liquidaciones generadas.' : 'Esta quincena no tiene liquidaciones generadas.')}
           </Typography>
           {period?.status === 'open' && (
-            <Button variant="contained" color="secondary" startIcon={<CalcIcon />} onClick={handleGenerate}>Generar Ahora</Button>
+            <Tooltip title={sacNotYet ? sacNotYetHint : ''}>
+              <span>
+                <Button variant="contained" color="secondary" startIcon={<CalcIcon />} onClick={handleGenerate} disabled={sacNotYet}>Generar Ahora</Button>
+              </span>
+            </Tooltip>
           )}
         </Paper>
       ) : filteredEntries.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">No hay empleados que coincidan con la búsqueda.</Typography>
         </Paper>
+      ) : isSac ? (
+        <SacEntries
+          entries={filteredEntries}
+          formatCurrency={formatCurrency}
+          isMobile={isMobile}
+          onView={(e) => { setDetailEntry(e); setOpenDetail(true); }}
+          onEdit={(e) => { setEditingEntry(e as unknown as PayrollEntry); setOpenEdit(true); }}
+          onConfirm={handleConfirm}
+          onPay={handlePayItem}
+          onSign={(e) => setSignEntry(e)}
+        />
       ) : isMobile ? (
         /* Mobile View (Cards) */
         <Stack spacing={2} className="no-print">
@@ -924,7 +967,8 @@ export default function PayrollPage() {
 
                 <Divider sx={{ my: 1.5 }} />
 
-                {/* Asistencia y Horas */}
+                {/* Asistencia y Horas — no aplica al aguinaldo */}
+                {!isSac && (<>
                 <Box display="flex" gap={3} mb={2} flexWrap="wrap">
                   <Box flex={1} minWidth={140}>
                     <Typography variant="overline" color="text.secondary" fontWeight={600}>Asistencia</Typography>
@@ -1006,6 +1050,7 @@ export default function PayrollPage() {
                 </Box>
 
                 <Divider sx={{ my: 1.5 }} />
+                </>)}
 
                 {/* Desglose de haberes */}
                 <Typography variant="overline" color="text.secondary" fontWeight={600}>Desglose de haberes</Typography>

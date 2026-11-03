@@ -16,6 +16,7 @@ import {
   PaymentsOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { PayPeriod, PayPeriodService, UsdRatePreview } from '../../../utils/api';
+import { isSacPeriod, sacPeriodLabel, sacDueNotice, sacSemester } from '../../../utils/payPeriods';
 import { useRouter } from 'next/navigation';
 
 const STATUS_CONFIG: Record<string, { label: string; color: 'success' | 'warning' | 'info' }> = {
@@ -143,9 +144,29 @@ export default function PayPeriodsPage() {
   const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
   const formatPeriod = (p: PayPeriod) => {
+    if (isSacPeriod(p)) return sacPeriodLabel(p);
     const typeLabel = p.type === 'first_half' ? '1ra Q.' : '2da Q.';
     const monthLabel = MONTHS[(p.month ?? 1) - 1] || 'Enero';
     return `${typeLabel} - ${monthLabel} ${p.year}`;
+  };
+
+  // 2Q de junio/diciembre creada antes de que el aguinaldo se generara solo: ofrece crearlo.
+  const missingSac = (p: PayPeriod) =>
+    p.type === 'second_half' && (p.month === 6 || p.month === 12)
+    && !periods.some((o) => isSacPeriod(o) && o.year === p.year && o.month === p.month);
+
+  const handleCreateSac = async (p: PayPeriod) => {
+    if (processing) return;
+    setProcessing(true);
+    try {
+      await PayPeriodService.createSac(p.year, sacSemester(p.month));
+      setSuccess('Aguinaldo creado');
+      loadPeriods();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear el aguinaldo');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const formatDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-AR');
@@ -193,6 +214,12 @@ export default function PayPeriodsPage() {
                 Período: {formatDate(p.start_date)} al {formatDate(p.end_date)}
               </Typography>
 
+              {isSacPeriod(p) && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  {sacDueNotice(p.month)} Se liquida aparte de las quincenas.
+                </Alert>
+              )}
+
               <Stack direction="row" spacing={1} mt={2}>
                 <Button 
                   variant="outlined" 
@@ -204,6 +231,12 @@ export default function PayPeriodsPage() {
                   Liquidación
                 </Button>
                 
+                {missingSac(p) && (
+                  <Button variant="outlined" size="small" fullWidth onClick={() => handleCreateSac(p)} disabled={processing}>
+                    Crear aguinaldo
+                  </Button>
+                )}
+
                 {p.status === 'open' && (
                   <Button variant="contained" color="warning" size="small" fullWidth onClick={() => handleOpenClose(p)} startIcon={<ConfirmIcon />}>
                     Cerrar
@@ -252,11 +285,13 @@ export default function PayPeriodsPage() {
       </AppDialog>
 
       <AppDialog open={!!closingPeriod} onClose={() => setClosingPeriod(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>Cerrar Quincena</DialogTitle>
+        <DialogTitle>{isSacPeriod(closingPeriod) ? 'Cerrar Aguinaldo' : 'Cerrar Quincena'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              Al cerrar, ya no se podrán cargar más horas ni regenerar la liquidación de esta quincena.
+              {isSacPeriod(closingPeriod)
+                ? 'Al cerrar, ya no se podrá regenerar la liquidación del aguinaldo.'
+                : 'Al cerrar, ya no se podrán cargar más horas ni regenerar la liquidación de esta quincena.'}
             </Typography>
 
             {usdPreviewLoading && (
@@ -297,7 +332,7 @@ export default function PayPeriodsPage() {
         <DialogActions>
           <Button onClick={() => setClosingPeriod(null)}>Cancelar</Button>
           <Button onClick={handleConfirmClose} variant="contained" color="warning" disabled={processing || usdPreviewLoading}>
-            {processing ? <GearSpinner size={20} /> : 'Cerrar Quincena'}
+            {processing ? <GearSpinner size={20} /> : (isSacPeriod(closingPeriod) ? 'Cerrar Aguinaldo' : 'Cerrar Quincena')}
           </Button>
         </DialogActions>
       </AppDialog>
