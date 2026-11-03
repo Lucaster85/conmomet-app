@@ -323,6 +323,10 @@ export interface LookupPayPeriod {
   end_date: string;
   status: string;
 }
+export interface LookupDocumentCategory {
+  id: number;
+  name: string;
+}
 
 export class LookupService {
   static async getRoles(): Promise<Pick<Role, 'id' | 'name' | 'level' | 'has_dashboard_access'>[]> {
@@ -394,6 +398,13 @@ export class LookupService {
   static async getPayPeriods(): Promise<LookupPayPeriod[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/pay-periods`);
     if (!response.ok) throw new Error('Error al obtener quincenas');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getEmployeeDocumentCategories(): Promise<LookupDocumentCategory[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/employee-document-categories`);
+    if (!response.ok) throw new Error('Error al obtener categorías de documento');
     const data = await response.json();
     return data.data || [];
   }
@@ -2858,7 +2869,7 @@ export interface PayPeriod {
   start_date: string;
   end_date: string;
   // 'sac' = aguinaldo: un período por semestre (month = 6 | 12), ver utils/payPeriods.ts.
-  type: 'first_half' | 'second_half' | 'sac';
+  type: 'first_half' | 'second_half' | 'sac' | 'final';
   month: number;
   year: number;
   status: 'open' | 'closed' | 'paid';
@@ -3066,7 +3077,11 @@ export class PayrollService {
 
   static async confirm(id: number): Promise<PayrollEntry> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${id}/confirm`, { method: 'PUT' });
-    if (!response.ok) throw new Error('Error al confirmar liquidación');
+    if (!response.ok) {
+      // La liquidación final bloquea con un motivo concreto (pedidos sin resolver, cotización del dólar).
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al confirmar liquidación');
+    }
     return (await response.json()).data;
   }
 
@@ -3074,7 +3089,10 @@ export class PayrollService {
 
   static async pay(id: number): Promise<PayrollEntry> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/payroll/${id}/pay`, { method: 'PUT' });
-    if (!response.ok) throw new Error('Error al marcar liquidación como pagada');
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al marcar liquidación como pagada');
+    }
     return (await response.json()).data;
   }
 
@@ -3706,6 +3724,368 @@ export class EntityDocumentService {
   }
 }
 
+// --- EGRESOS DE EMPLEADOS (ver PLAN_EGRESOS.md) ---
+export type TerminationType = 'resignation' | 'dismissal_with_cause' | 'dismissal_without_cause' | 'mutual_agreement';
+export type TerminationStatus = 'draft' | 'confirmed' | 'settled' | 'cancelled';
+export type TerminationNoticeGiven = 'none' | 'full' | 'partial';
+
+export interface TerminationWarning {
+  code: string;
+  message: string;
+}
+
+export interface TerminationDocument {
+  id: number;
+  title: string;
+  notes?: string | null;
+  file_url?: string | null;
+  file_name?: string | null;
+  document_category_id?: number | null;
+  category_name?: string | null;
+  uploader?: { id: number; name: string; lastname: string };
+  created_at: string;
+}
+
+export interface EmployeeTermination {
+  id: number;
+  employee_id: number;
+  type: TerminationType;
+  status: TerminationStatus;
+  notice_date?: string | null;
+  termination_date: string;
+  notice_given: TerminationNoticeGiven;
+  notice_start_date?: string | null;
+  notice_end_date?: string | null;
+  cause_description?: string | null;
+  employee_notice_omitted: boolean;
+  // Ausente sin employee_salaries_read (el backend lo borra antes de serializar).
+  cct_cap_amount?: number | string | null;
+  art80_delivered_at?: string | null;
+  notes?: string | null;
+  confirmed_at?: string | null;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  createdAt: string;
+  employee?: Pick<Employee, 'id' | 'name' | 'lastname' | 'dni' | 'hire_date' | 'status' | 'termination_date' | 'pay_type'>;
+  createdBy?: { id: number; name: string; lastname: string } | null;
+  confirmedBy?: { id: number; name: string; lastname: string } | null;
+  cancelledBy?: { id: number; name: string; lastname: string } | null;
+  // Solo en el detalle (GET /employee-terminations/:id y las acciones):
+  documents?: TerminationDocument[];
+  payment_deadline?: string;
+  art80_deadline?: string;
+  warnings?: TerminationWarning[];
+  confirm_blockers?: string[];
+  final_payroll?: TerminationFinalPayroll | null;
+  agreement?: TerminationAgreement | null;
+  pending_debt?: TerminationPendingDebt | null;
+  debt_resolution?: TerminationDebtResolution | null;
+}
+
+export interface TerminationFormData {
+  employee_id?: number;
+  type: TerminationType;
+  termination_date: string;
+  notice_date?: string | null;
+  notice_given?: TerminationNoticeGiven;
+  notice_start_date?: string | null;
+  notice_end_date?: string | null;
+  cause_description?: string | null;
+  employee_notice_omitted?: boolean;
+  cct_cap_amount?: number | null;
+  notes?: string | null;
+  art80_delivered_at?: string | null;
+}
+
+export interface TerminationCalculationItem {
+  key: string;
+  label: string;
+  group: 'remunerative' | 'indemnity';
+  amount: number;
+  // false: el concepto existe para este egreso pero no corresponde (con el motivo en `breakdown.reason`).
+  applies: boolean;
+  // true: se calcula solo para negociar el monto (mutuo acuerdo), no suma al total.
+  reference_only: boolean;
+  breakdown: Record<string, unknown>;
+}
+
+export interface TerminationCalculation {
+  termination_id: number;
+  type: TerminationType;
+  termination_date: string;
+  employee: { id: number; name: string; lastname: string; pay_type: Employee['pay_type']; hire_date: string };
+  seniority: {
+    years: number; months: number; days: number; total_months: number;
+    fraction_over_three_months: boolean; years_for_severance: number; in_probation: boolean;
+  };
+  severance_base: {
+    base: number; year: number | null; month: number | null;
+    series: Array<{ year: number; month: number; amount: number; gross: number; non_remunerative: number; sac_adjustments: number; vacation: number }>;
+  };
+  cct_cap_amount: number | null;
+  // Acuerdo de pago activo: la indemnización queda como referencia (se paga en cuotas).
+  agreement?: { id: number; total_amount: number; agreement_date: string } | null;
+  items: TerminationCalculationItem[];
+  remunerative_total: number;
+  indemnity_total: number;
+  gross_total: number;
+  deductions: {
+    advances: { items: Array<{ id: number; date: string; amount: number }>; total: number };
+    loans: {
+      items: Array<{ loan_id: number; kind: 'fixed_installments' | 'discretionary'; currency: string; amount: number; installments: number; interest_waived: number }>;
+      total_ars: number; has_usd: boolean; total_usd: number;
+    };
+    total: number;
+  };
+  net_estimate: number;
+  uncovered_debt: number;
+  warnings: string[];
+}
+
+export interface TerminationFinalLine {
+  id: number;
+  item_key: string | null;
+  label: string;
+  line_type: string;
+  group: 'remunerative' | 'indemnity';
+  amount: number;
+  suggested_amount: number | null;
+  edit_reason: string | null;
+}
+
+// Liquidación final del egreso. Sin employee_salaries_read solo llegan id y estado.
+export interface TerminationFinalPayroll {
+  id: number;
+  status: 'draft' | 'confirmed' | 'paid';
+  pay_period_id: number;
+  paid_at?: string | null;
+  signed_at?: string | null;
+  gross_amount?: number;
+  advances_deducted?: number;
+  loan_installments_deducted?: number;
+  net_amount?: number;
+  remunerative_total?: number;
+  indemnity_total?: number;
+  lines?: TerminationFinalLine[];
+}
+
+export interface TerminationPendingDebt {
+  total_ars: number;
+  resolved: boolean;
+  advances: { items: Array<{ id: number; date: string; amount: number }>; total: number };
+  loans: {
+    items: Array<{ loan_id: number; kind: string; currency: string; amount: number }>;
+    total_ars: number; has_usd: boolean; total_usd: number;
+  };
+}
+
+export interface TerminationDebtResolution {
+  resolution: 'paid' | 'condoned';
+  amount: number | null;
+  resolved_at: string;
+  payment_method?: 'efectivo' | 'transferencia' | null;
+  notes?: string | null;
+}
+
+export interface TerminationAgreementInstallment {
+  id: number;
+  installment_number: number;
+  due_date: string;
+  amount: number;
+  paid_at: string | null;
+  payment_method: 'efectivo' | 'transferencia' | null;
+  payment_proof_url?: string | null;
+  payment_proof_name?: string | null;
+  signature_url?: string | null;
+  overdue: boolean;
+}
+
+// Acuerdo de pago de la indemnización en cuotas fijas. Sin employee_salaries_read solo llegan los datos básicos.
+export interface TerminationAgreement {
+  id: number;
+  status: 'active' | 'cancelled';
+  agreement_date: string;
+  homologated: boolean;
+  total_amount?: number;
+  notes?: string | null;
+  paid_total?: number;
+  pending_total?: number;
+  overdue_count?: number;
+  installments?: TerminationAgreementInstallment[];
+}
+
+export interface TerminationAgreementFormData {
+  total_amount: number;
+  agreement_date: string;
+  homologated: boolean;
+  notes?: string;
+  installments: Array<{ due_date: string; amount: number }>;
+}
+
+// Cuota vencida sin pagar (aviso del tablero).
+export interface TerminationAgreementAlertItem {
+  id: number;
+  agreement_id: number;
+  termination_id: number;
+  employee: { id: number; name: string; lastname: string };
+  installment_number: number;
+  installments_total: number;
+  due_date: string;
+  amount: number;
+  days_overdue: number;
+}
+
+export const TERMINATION_TYPE_LABELS: Record<TerminationType, string> = {
+  resignation: 'Renuncia',
+  dismissal_with_cause: 'Despido con causa',
+  dismissal_without_cause: 'Despido sin causa',
+  mutual_agreement: 'Mutuo acuerdo',
+};
+
+export const TERMINATION_STATUS_LABELS: Record<TerminationStatus, string> = {
+  draft: 'Borrador',
+  confirmed: 'Confirmado',
+  settled: 'Liquidado',
+  cancelled: 'Anulado',
+};
+
+async function terminationRequest(url: string, options: RequestInit, fallbackError: string): Promise<EmployeeTermination> {
+  const response = await TokenManager.authenticatedFetch(url, options);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || fallbackError);
+  }
+  return (await response.json()).data;
+}
+
+export class EmployeeTerminationService {
+  static async getAll(filters: { employee_id?: number; status?: TerminationStatus } = {}): Promise<EmployeeTermination[]> {
+    const params = new URLSearchParams();
+    if (filters.employee_id) params.append('employee_id', String(filters.employee_id));
+    if (filters.status) params.append('status', filters.status);
+    const url = params.toString() ? `${API_BASE_URL}/employee-terminations?${params}` : `${API_BASE_URL}/employee-terminations`;
+    const response = await TokenManager.authenticatedFetch(url);
+    if (!response.ok) throw new Error('Error al obtener egresos');
+    return (await response.json()).data || [];
+  }
+
+  static getById(id: number): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}`, {}, 'Error al obtener el egreso');
+  }
+
+  // Desglose de la liquidación del egreso (solo lectura). Requiere employee_salaries_read.
+  static async getCalculation(id: number): Promise<TerminationCalculation> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-terminations/${id}/calculation`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al calcular la liquidación');
+    }
+    return (await response.json()).data;
+  }
+
+  // Genera o regenera (en borrador) la liquidación final. Requiere payroll_write y employee_salaries_read.
+  static generateFinalPayroll(id: number): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/final-payroll`, { method: 'POST' }, 'Error al generar la liquidación final');
+  }
+
+  // Corrige el monto de una línea de la liquidación final (en borrador), con motivo obligatorio.
+  static editFinalLine(id: number, lineId: number, data: { amount: number; reason: string }): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/final-payroll/lines/${lineId}`, { method: 'PUT', body: JSON.stringify(data) }, 'Error al corregir el monto');
+  }
+
+  // Resuelve la deuda pendiente de una sola vez: "paid" (devolvió la plata) o "condoned" (se perdona).
+  static resolveDebt(id: number, data: { resolution: 'paid' | 'condoned'; payment_method?: 'efectivo' | 'transferencia'; notes?: string }): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/debt`, { method: 'POST', body: JSON.stringify(data) }, 'Error al resolver la deuda');
+  }
+
+  // Acuerdo de pago de la indemnización. Requiere termination_agreements_write y employee_salaries_read.
+  static createAgreement(id: number, data: TerminationAgreementFormData): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/agreement`, { method: 'POST', body: JSON.stringify(data) }, 'Error al crear el acuerdo');
+  }
+
+  static updateAgreement(id: number, data: TerminationAgreementFormData): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/agreement`, { method: 'PUT', body: JSON.stringify(data) }, 'Error al actualizar el acuerdo');
+  }
+
+  static cancelAgreement(id: number, reason: string): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/agreement/cancel`, { method: 'PUT', body: JSON.stringify({ reason }) }, 'Error al anular el acuerdo');
+  }
+
+  static async payInstallment(
+    id: number,
+    installmentNumber: number,
+    data: { payment_method: 'efectivo' | 'transferencia'; paid_at?: string },
+    files: { proof?: File | null; signature?: File | null } = {}
+  ): Promise<void> {
+    const formData = new FormData();
+    formData.append('payment_method', data.payment_method);
+    if (data.paid_at) formData.append('paid_at', data.paid_at);
+    if (files.proof) formData.append('file', files.proof);
+    if (files.signature) formData.append('signature', files.signature);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/employee-terminations/${id}/agreement/installments/${installmentNumber}/pay`, {
+      method: 'PUT',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al registrar el pago de la cuota');
+    }
+  }
+
+  static async getAgreementAlerts(): Promise<TerminationAgreementAlertItem[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-terminations/agreement-alerts`);
+    if (!response.ok) throw new Error('Error al obtener avisos de cuotas');
+    return (await response.json()).data || [];
+  }
+
+  static create(data: TerminationFormData): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations`, { method: 'POST', body: JSON.stringify(data) }, 'Error al cargar el egreso');
+  }
+
+  static update(id: number, data: Partial<TerminationFormData>): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}`, { method: 'PUT', body: JSON.stringify(data) }, 'Error al actualizar el egreso');
+  }
+
+  static confirm(id: number): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/confirm`, { method: 'PUT' }, 'Error al confirmar el egreso');
+  }
+
+  static cancel(id: number, reason: string): Promise<EmployeeTermination> {
+    return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}/cancel`, { method: 'PUT', body: JSON.stringify({ reason }) }, 'Error al anular el egreso');
+  }
+
+  static async uploadDocument(
+    id: number,
+    data: { title: string; notes?: string; document_category_id?: number | null },
+    file: File
+  ): Promise<void> {
+    const formData = new FormData();
+    formData.append('title', data.title);
+    if (data.notes) formData.append('notes', data.notes);
+    if (data.document_category_id) formData.append('document_category_id', String(data.document_category_id));
+    formData.append('file', file);
+
+    const token = TokenManager.getToken();
+    const response = await fetch(`${API_BASE_URL}/employee-terminations/${id}/documents`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al cargar el documento');
+    }
+  }
+
+  static async deleteDocument(id: number, docId: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-terminations/${id}/documents/${docId}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Error al eliminar el documento');
+  }
+}
+
 // --- SELF-SERVICE (Portal del Empleado) ---
 export class SelfService {
   static async getMyProfile(): Promise<Employee> {
@@ -3852,8 +4232,13 @@ export interface PayrollLine {
   quantity: number;
   rate: number;
   subtotal: number;
-  line_type: 'regular' | 'extras_50' | 'extras_100' | 'holiday' | 'fixed' | 'retroactive' | 'vacation' | 'medical_leave' | 'justified' | 'medical_leave_deduction' | 'vacation_deduction' | 'absence_deduction' | 'sac' | 'sac_adjustment';
+  line_type: 'regular' | 'extras_50' | 'extras_100' | 'holiday' | 'fixed' | 'retroactive' | 'vacation' | 'medical_leave' | 'justified' | 'medical_leave_deduction' | 'vacation_deduction' | 'absence_deduction' | 'sac' | 'sac_adjustment'
+    | 'final_days' | 'sac_proportional' | 'vacation_unused' | 'vacation_unused_sac' | 'notice_pay' | 'notice_pay_sac' | 'month_integration' | 'month_integration_sac' | 'severance' | 'severance_agreed' | 'overpaid_deduction' | 'employee_notice_deduction';
   source_period_id: number | null;
+  // Solo liquidación final: lo que propuso el cálculo y el motivo con el que se corrigió el monto.
+  suggested_amount?: number | null;
+  edit_reason?: string | null;
+  item_key?: string | null;
   concept?: PayrollConcept;
 }
 
@@ -4966,6 +5351,7 @@ export interface ExpenseSummaryMonthly {
         first_half: number;
         second_half: number;
         sac: number;
+        final: number;
         entry_count: number;
       };
     };
@@ -4973,6 +5359,12 @@ export interface ExpenseSummaryMonthly {
       label: string;
       total: number;
       breakdown: { category: string; amount: number }[];
+    };
+    // Cuotas de acuerdos de egreso, en el mes en que se pagan (ver PLAN_EGRESOS.md §7).
+    termination_agreements: {
+      label: string;
+      total: number;
+      count: number;
     };
   };
   grand_total: number;
@@ -4992,11 +5384,13 @@ export interface ExpenseSummaryAnnual {
     month: number;
     payroll_gross: number;
     employer_costs: number;
+    termination_agreements: number;
     total: number;
   }[];
   annual_totals: {
     payroll_gross: number;
     employer_costs: number;
+    termination_agreements: number;
     total: number;
   };
 }

@@ -119,10 +119,14 @@ ojito, para que la lista no tape el resto de la pantalla. El contador de arriba 
 cuántos hay en total, y un documento que pasa de "por vencer" a "vencido" (o que se renueva con
 otra fecha) vuelve a aparecer solo. Ver el tema **Avisos del inicio y campanita de notificaciones**.
 
+## Documentos del egreso de un empleado
+
+Cuando se da de baja a un empleado, los papeles del trámite (telegrama de renuncia, carta documento, acta de mutuo acuerdo, etc.) se cargan desde la pestaña **Egreso** de su ficha, con categorías propias ya cargadas. Esos documentos **también aparecen en "Documentos y Vencimientos"** del empleado, como cualquier otro, pero sin fecha de vencimiento ni renovación. Ver el tema **Egresos de empleados**.
+
 ## Mis Documentos (Portal del Empleado)
 
 Cada empleado puede ver sus propios documentos desde su Portal, en modo **solo lectura** — no
 puede cargar, renovar ni resolver nada desde ahí; eso lo hace siempre alguien de administración
 desde el Dashboard.
 
-<!-- ref: api_conmomet/controllers/documentController.js, api_conmomet/controllers/documentCategoryController.js, api_conmomet/controllers/cronController.js, api_conmomet/models/entityDocument.js, api_conmomet/models/documentCategory.js, conmomet-app/src/app/dashboard/employees/[id]/page.tsx, conmomet-app/src/app/dashboard/vehicles/VehicleDocumentsDialog.tsx, conmomet-app/src/components/documents/*, conmomet-app/src/app/dashboard/page.tsx, conmomet-app/src/app/dashboard/document-categories/page.tsx, conmomet-app/src/app/portal/documents/page.tsx -->
+<!-- ref: api_conmomet/controllers/documentController.js, api_conmomet/controllers/documentCategoryController.js, api_conmomet/controllers/cronController.js, api_conmomet/models/entityDocument.js, api_conmomet/models/documentCategory.js, api_conmomet/controllers/employeeTerminationController.js, conmomet-app/src/app/dashboard/employees/[id]/page.tsx, conmomet-app/src/app/dashboard/vehicles/VehicleDocumentsDialog.tsx, conmomet-app/src/components/documents/*, conmomet-app/src/app/dashboard/page.tsx, conmomet-app/src/app/dashboard/document-categories/page.tsx, conmomet-app/src/app/portal/documents/page.tsx -->

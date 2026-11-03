@@ -7,7 +7,7 @@ import { useAuth, userHasPermission } from '../../utils/auth';
 import DashboardAlertCard, { DashboardAlertItem } from './DashboardAlertCard';
 import { useRegisterAlertSummary } from './AlertViewsProvider';
 import { ALERT_SHORT_LABEL } from '../../utils/alerts';
-import { isSacPeriod, sacShortLabel } from '../../utils/payPeriods';
+import { isSacPeriod, sacShortLabel, isFinalPeriod, finalPeriodShortLabel } from '../../utils/payPeriods';
 
 const formatCurrency = (v: number) => `$${Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 const PAYMENT_METHOD_LABEL: Record<string, string> = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
@@ -37,7 +37,7 @@ export default function SalaryAdvanceDeletionAlertWidget() {
   }, [hasAccess]);
 
   const formatPeriod = (p?: SalaryAdvanceDeletionAlert['payPeriod']) =>
-    p ? (isSacPeriod(p) ? sacShortLabel(p) : `${p.type === 'first_half' ? '1ra' : '2da'} quincena ${p.month}/${p.year}`) : 'sin quincena asignada';
+    p ? (isSacPeriod(p) ? sacShortLabel(p) : isFinalPeriod(p) ? finalPeriodShortLabel(p) : `${p.type === 'first_half' ? '1ra' : '2da'} quincena ${p.month}/${p.year}`) : 'sin quincena asignada';
 
   const items: DashboardAlertItem[] = useMemo(
     () =>
