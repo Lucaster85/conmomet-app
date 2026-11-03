@@ -3786,6 +3786,49 @@ export interface TerminationFormData {
   art80_delivered_at?: string | null;
 }
 
+export interface TerminationCalculationItem {
+  key: string;
+  label: string;
+  group: 'remunerative' | 'indemnity';
+  amount: number;
+  // false: el concepto existe para este egreso pero no corresponde (con el motivo en `breakdown.reason`).
+  applies: boolean;
+  // true: se calcula solo para negociar el monto (mutuo acuerdo), no suma al total.
+  reference_only: boolean;
+  breakdown: Record<string, unknown>;
+}
+
+export interface TerminationCalculation {
+  termination_id: number;
+  type: TerminationType;
+  termination_date: string;
+  employee: { id: number; name: string; lastname: string; pay_type: Employee['pay_type']; hire_date: string };
+  seniority: {
+    years: number; months: number; days: number; total_months: number;
+    fraction_over_three_months: boolean; years_for_severance: number; in_probation: boolean;
+  };
+  severance_base: {
+    base: number; year: number | null; month: number | null;
+    series: Array<{ year: number; month: number; amount: number; gross: number; non_remunerative: number; sac_adjustments: number; vacation: number }>;
+  };
+  cct_cap_amount: number | null;
+  items: TerminationCalculationItem[];
+  remunerative_total: number;
+  indemnity_total: number;
+  gross_total: number;
+  deductions: {
+    advances: { items: Array<{ id: number; date: string; amount: number }>; total: number };
+    loans: {
+      items: Array<{ loan_id: number; kind: 'fixed_installments' | 'discretionary'; currency: string; amount: number; installments: number; interest_waived: number }>;
+      total_ars: number; has_usd: boolean; total_usd: number;
+    };
+    total: number;
+  };
+  net_estimate: number;
+  uncovered_debt: number;
+  warnings: string[];
+}
+
 export const TERMINATION_TYPE_LABELS: Record<TerminationType, string> = {
   resignation: 'Renuncia',
   dismissal_with_cause: 'Despido con causa',
@@ -3822,6 +3865,16 @@ export class EmployeeTerminationService {
 
   static getById(id: number): Promise<EmployeeTermination> {
     return terminationRequest(`${API_BASE_URL}/employee-terminations/${id}`, {}, 'Error al obtener el egreso');
+  }
+
+  // Desglose de la liquidación del egreso (solo lectura). Requiere employee_salaries_read.
+  static async getCalculation(id: number): Promise<TerminationCalculation> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employee-terminations/${id}/calculation`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al calcular la liquidación');
+    }
+    return (await response.json()).data;
   }
 
   static create(data: TerminationFormData): Promise<EmployeeTermination> {

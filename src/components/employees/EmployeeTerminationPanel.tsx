@@ -15,6 +15,7 @@ import AppDialog from '@/components/common/AppDialog';
 import DateField from '@/components/DateField';
 import GearSpinner from '@/components/GearSpinner';
 import TerminationFormDialog from '@/components/employees/TerminationFormDialog';
+import TerminationCalculationCard from '@/components/employees/TerminationCalculationCard';
 import {
   Employee, EmployeeTermination, EmployeeTerminationService, LookupDocumentCategory, LookupService,
   TerminationDocument, TerminationStatus, TERMINATION_STATUS_LABELS, TERMINATION_TYPE_LABELS,
@@ -176,11 +177,13 @@ export default function EmployeeTerminationPanel({
       {warnings.map((w) => <Alert key={w.code} severity="warning">{w.message}</Alert>)}
       {t.status === 'confirmed' && (
         <Alert severity="info">
-          El empleado quedó inactivo y ya no entra en las quincenas. Los haberes del período en curso, el SAC y las
-          vacaciones proporcionales y la indemnización todavía se calculan por fuera del sistema (la liquidación final
-          llega en las próximas etapas).
+          El empleado quedó inactivo y ya no entra en las quincenas. El cálculo de arriba es una propuesta de solo
+          lectura: la liquidación final todavía no se genera ni se paga desde el sistema (llega en la próxima etapa), así
+          que hasta entonces los haberes del período en curso, el aguinaldo, las vacaciones y la indemnización se pagan por fuera.
         </Alert>
       )}
+
+      {canSeeAmounts && t.status !== 'cancelled' && <TerminationCalculationCard terminationId={t.id} />}
 
       {t.status !== 'draft' && t.status !== 'cancelled' && (
         <Card sx={{ borderRadius: 3 }}>

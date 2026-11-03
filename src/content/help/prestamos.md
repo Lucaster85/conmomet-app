@@ -48,7 +48,7 @@ Al generar la liquidación de una quincena se descuentan solas las cuotas que ve
 
 ## Liquidación por baja
 
-Si el empleado renuncia o lo despiden, el botón **Liquidar** cancela lo que queda del préstamo: la cuota que está corriendo en la quincena actual (o vencida) se cobra **completa**, y todas las siguientes se cobran **solo el capital**, sin interés. En cuotas mensuales la cuota del mes en curso cuenta como corriendo.
+Si el empleado renuncia o lo despiden, el botón **Liquidar** cancela lo que queda del préstamo: la cuota que está corriendo en la quincena actual (o vencida) se cobra **completa**, y todas las siguientes se cobran **solo el capital**, sin interés. En cuotas mensuales la cuota del mes en curso cuenta como corriendo. El cálculo del **egreso** del empleado (tema **Egresos de empleados**) muestra de antemano cuánto se cobraría por cada préstamo activo con esta misma regla. Un empleado con egreso confirmado no puede recibir préstamos nuevos ni se pueden aprobar los pendientes.
 
 ## Reprogramar un préstamo
 
@@ -72,4 +72,4 @@ Los préstamos anteriores a este formato (marcados "a discreción", en pesos o d
 
 En el detalle de un préstamo de cuota fija se ve la frecuencia y la tabla con cada cuota: cuándo vence, capital, interés, total y estado (programada, descontada o liquidada por baja).
 
-<!-- ref: conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/utils/loanAmortization.ts, conmomet-app/src/components/PaymentReceiptDialog.tsx, conmomet-app/src/components/common/LoanChangeAlert.tsx, conmomet-app/src/app/portal/requests/page.tsx, api_conmomet/controllers/loanController.js, api_conmomet/controllers/loanChangeAlertController.js, api_conmomet/helpers/loanValidations.js, api_conmomet/services/loanAmortizationService.js, api_conmomet/services/loanInstallmentDue.js, api_conmomet/controllers/payrollController.js, api_conmomet/services/exchangeRateService.js, api_conmomet/helpers/systemSettings.js, api_conmomet/controllers/exchangeRateController.js, api_conmomet/controllers/payPeriodController.js, conmomet-app/src/app/dashboard/system-settings/page.tsx -->
+<!-- ref: api_conmomet/services/loanSettlement.js, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/utils/loanAmortization.ts, conmomet-app/src/components/PaymentReceiptDialog.tsx, conmomet-app/src/components/common/LoanChangeAlert.tsx, conmomet-app/src/app/portal/requests/page.tsx, api_conmomet/controllers/loanController.js, api_conmomet/controllers/loanChangeAlertController.js, api_conmomet/helpers/loanValidations.js, api_conmomet/services/loanAmortizationService.js, api_conmomet/services/loanInstallmentDue.js, api_conmomet/controllers/payrollController.js, api_conmomet/services/exchangeRateService.js, api_conmomet/helpers/systemSettings.js, api_conmomet/controllers/exchangeRateController.js, api_conmomet/controllers/payPeriodController.js, conmomet-app/src/app/dashboard/system-settings/page.tsx -->
