@@ -94,6 +94,7 @@ async function exportMonthlyExcel(data: ExpenseSummaryMonthly) {
     ['Sueldos Brutos', data.expenses.payroll_gross.total],
     ['  - 1ra Quincena', data.expenses.payroll_gross.detail.first_half],
     ['  - 2da Quincena', data.expenses.payroll_gross.detail.second_half],
+    ['  - Aguinaldo (SAC)', data.expenses.payroll_gross.detail.sac],
     ['Cargas Patronales', data.expenses.employer_costs.total],
     ...data.expenses.employer_costs.breakdown.map((b) => [`  - ${b.category}`, b.amount]),
     [''],
@@ -160,6 +161,7 @@ async function exportMonthlyPdf(data: ExpenseSummaryMonthly) {
     ['Sueldos Brutos', formatNumber(data.expenses.payroll_gross.total)],
     ['  1ra Quincena', formatNumber(data.expenses.payroll_gross.detail.first_half)],
     ['  2da Quincena', formatNumber(data.expenses.payroll_gross.detail.second_half)],
+    ['  Aguinaldo (SAC)', formatNumber(data.expenses.payroll_gross.detail.sac)],
     ['Cargas Patronales', formatNumber(data.expenses.employer_costs.total)],
     ...data.expenses.employer_costs.breakdown.map((b) => [`  ${b.category}`, formatNumber(b.amount)]),
   ];
@@ -480,6 +482,12 @@ export default function ExpenseSummaryPage() {
                       <Typography variant="body2" color="textSecondary">2da Quincena:</Typography>
                       <Typography variant="body2">{formatCurrency(monthlyData.expenses.payroll_gross.detail.second_half)}</Typography>
                     </Box>
+                    {monthlyData.expenses.payroll_gross.detail.sac > 0 && (
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="body2" color="textSecondary">Aguinaldo (SAC):</Typography>
+                        <Typography variant="body2">{formatCurrency(monthlyData.expenses.payroll_gross.detail.sac)}</Typography>
+                      </Box>
+                    )}
                     <Typography variant="caption" color="textSecondary" display="block" textAlign="right">
                       {monthlyData.expenses.payroll_gross.detail.entry_count} recibos procesados
                     </Typography>

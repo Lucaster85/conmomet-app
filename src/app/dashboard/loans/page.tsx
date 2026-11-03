@@ -29,6 +29,7 @@ import GearSpinner from '@/components/GearSpinner';
 import PaymentReceiptDialog from '@/components/PaymentReceiptDialog';
 import { Loan, Employee, LoanPayment, LoanInterestApplication, LoanInstallment, PayPeriod, LoanService, EmployeeService, ExchangeRateService } from '@/utils/api';
 import { buildWhatsAppLink } from '@/utils/whatsapp';
+import { isSacPeriod, sacPeriodLabel } from '@/utils/payPeriods';
 import { computeFrenchSchedule, periodicInterestPercent } from '@/utils/loanAmortization';
 
 const LOAN_STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success' | 'error' | 'default' | 'primary' | 'info' }> = {
@@ -69,6 +70,7 @@ const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 
 
 const formatPeriodLabel = (p?: PayPeriod) => {
   if (!p) return 'Sin liquidación asociada';
+  if (isSacPeriod(p)) return sacPeriodLabel(p);
   const half = p.type === 'first_half' ? '1ª Quincena' : '2ª Quincena';
   const month = MONTHS[(p.month ?? 1) - 1];
   return `${half} de ${month} ${p.year}`;
