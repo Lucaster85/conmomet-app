@@ -4,6 +4,8 @@ Un **egreso** es el trámite de dar de baja a un empleado: renuncia, despido o r
 
 > El egreso cubre el trámite, la documentación, **una propuesta de cálculo**, la **liquidación final** (generarla, corregirla, confirmarla y pagarla) y, si se pacta, el **acuerdo de pago en cuotas** de la indemnización.
 
+> **Un empleado nunca se elimina.** No hay botón ni acción para borrarlo: cuando alguien se va se lo da de baja con un egreso, y su legajo, sus liquidaciones y sus documentos quedan guardados.
+
 ## Los cuatro tipos
 
 - **Renuncia** (art. 240): el empleado renuncia. Solo es válida por **telegrama** o ante autoridad, así que conviene cargar el telegrama. Si el empleado no dio los 15 días de preaviso, se puede dejar marcado.
@@ -13,8 +15,8 @@ Un **egreso** es el trámite de dar de baja a un empleado: renuncia, despido o r
 
 ## Cómo dar de baja a un empleado
 
-1. Entrá a **Personal → Empleados** y abrí la ficha del empleado.
-2. Tocá **Dar de baja** (arriba a la derecha). Solo aparece si tenés permiso y el empleado no tiene ya un egreso en curso.
+1. Entrá a **Personal → Empleados**.
+2. Tocá el ícono rojo **Dar de baja** de la fila del empleado (en el celular, de su tarjeta). También podés abrir su ficha y tocar **Dar de baja** arriba a la derecha. Solo aparece si tenés permiso y el empleado está activo y sin un egreso en curso.
 3. Seguí los pasos: **tipo** → **fechas y preaviso** → **causa y notas** → **documentos** (opcional, se pueden cargar después) → **resumen**.
 4. El egreso queda como **Borrador**. Aparece la pestaña **Egreso** en la ficha, y un chip "Egreso en curso" en el listado.
 

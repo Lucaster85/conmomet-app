@@ -243,6 +243,17 @@ function EmployeeDetailPageContent() {
     }
   }, [employeeId, canReadTerminations]);
 
+  // Desde la grilla de empleados, "Dar de baja" llega con ?action=terminate: abre el diálogo una sola vez.
+  const [terminateHandled, setTerminateHandled] = useState(false);
+  useEffect(() => {
+    if (terminateHandled || loading || !employee) return;
+    if (searchParams.get('action') !== 'terminate') return;
+    setTerminateHandled(true);
+    if (canWriteTerminations && employee.status !== 'inactive' && !terminations.some((t) => t.status !== 'cancelled')) {
+      setTerminationDialogOpen(true);
+    }
+  }, [terminateHandled, loading, employee, terminations, searchParams, canWriteTerminations]);
+
   // Portal invitation: solo consulta si el empleado no tiene ya un usuario vinculado.
   useEffect(() => {
     if (employee && !employee.user) {

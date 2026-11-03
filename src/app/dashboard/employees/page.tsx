@@ -19,7 +19,7 @@ import CuitField from '../../../components/CuitField';
 import PhoneField from '../../../components/PhoneField';
 import EmailField from '../../../components/EmailField';
 import {
-  AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
+  AddOutlined as AddIcon, EditOutlined as EditIcon, PersonOffOutlined as TerminateIcon,
   RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, VisibilityOutlined as VisibilityIcon,
   LinkOutlined as LinkIcon, LinkOffOutlined as LinkOffIcon, BadgeOutlined as TitleIcon,
 } from '@mui/icons-material';
@@ -53,7 +53,8 @@ export default function EmployeesPage() {
   const currentUser = TokenManager.getUser();
   const canCreate = userHasPermission(currentUser, 'employees_write');
   const canUpdate = userHasPermission(currentUser, 'employees_update');
-  const canDeleteEmployees = userHasPermission(currentUser, 'employees_delete');
+  // Un empleado nunca se elimina: se da de baja con un egreso (PLAN_EGRESOS.md), que conserva todo su historial.
+  const canTerminate = userHasPermission(currentUser, 'employee_terminations_write');
   const canSeeSalaries = userHasPermission(currentUser, 'employee_salaries_read');
   const canReadTerminations = userHasPermission(currentUser, 'employee_terminations_read');
 
@@ -73,7 +74,6 @@ export default function EmployeesPage() {
   // inline de una — hasta entonces, cada campo solo muestra su error al perder el foco.
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; employee: Employee | null }>({ open: false, employee: null });
   const [inviteTarget, setInviteTarget] = useState<Employee | null>(null);
 
   const emptyForm: CreateEmployeeData & { status?: string; pay_type?: string; monthly_salary?: number; vacation_days_override?: number | null } = {
@@ -285,23 +285,14 @@ export default function EmployeesPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteDialog.employee) return;
-    try {
-      await EmployeeService.delete(deleteDialog.employee.id);
-      setDeleteDialog({ open: false, employee: null });
-      setSuccess('Empleado eliminado');
-      loadEmployees();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar');
-    }
-  };
-
   const handleInviteSent = () => {
     setInviteTarget(null);
     setSuccess('Invitación generada. Se abrió WhatsApp para enviarla.');
     loadEmployees();
   };
+
+  // "Dar de baja" solo para quien está activo y todavía no tiene un egreso en curso; con egreso se ve en el legajo.
+  const canStartTermination = (emp: Employee) => emp.status !== 'inactive' && !terminationByEmployee[emp.id];
 
   const formatCurrency = (val: number) => `$${Number(val).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
@@ -389,8 +380,8 @@ export default function EmployeesPage() {
                     {!emp.user_id && (
                       <IconButton size="small" sx={{ color: '#25D366' }} onClick={() => setInviteTarget(emp)}><WhatsAppIcon fontSize="small" /></IconButton>
                     )}
-                    {canDeleteEmployees && (
-                      <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, employee: emp })}><DeleteIcon fontSize="small" /></IconButton>
+                    {canTerminate && canStartTermination(emp) && (
+                      <IconButton size="small" color="error" onClick={() => router.push(`/dashboard/employees/${emp.id}?action=terminate`)}><TerminateIcon fontSize="small" /></IconButton>
                     )}
                   </Box>
                 </Box>
@@ -460,8 +451,8 @@ export default function EmployeesPage() {
                           <IconButton size="small" sx={{ color: '#25D366' }} onClick={() => setInviteTarget(emp)}><WhatsAppIcon fontSize="small" /></IconButton>
                         </Tooltip>
                       )}
-                      {canDeleteEmployees && (
-                        <Tooltip title="Eliminar"><IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, employee: emp })}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                      {canTerminate && canStartTermination(emp) && (
+                        <Tooltip title="Dar de baja"><IconButton size="small" color="error" onClick={() => router.push(`/dashboard/employees/${emp.id}?action=terminate`)}><TerminateIcon fontSize="small" /></IconButton></Tooltip>
                       )}
                     </TableCell>
                   </TableRow>
@@ -659,18 +650,6 @@ export default function EmployeesPage() {
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} variant="contained" disabled={processing}>{processing ? <GearSpinner size={20} /> : (editingEmployee ? 'Guardar' : 'Crear')}</Button>
-        </DialogActions>
-      </AppDialog>
-
-      {/* Delete Dialog */}
-      <AppDialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, employee: null })}>
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
-        <DialogContent>
-          <Typography>¿Eliminar a <strong>{deleteDialog.employee?.name} {deleteDialog.employee?.lastname}</strong>?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, employee: null })}>Cancelar</Button>
-          <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
       </AppDialog>
 

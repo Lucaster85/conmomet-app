@@ -1054,16 +1054,6 @@ export class EmployeeService {
     const data = await response.json();
     return data.data || data;
   }
-
-  static async delete(id: number): Promise<void> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/employees/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al eliminar empleado');
-    }
-  }
 }
 
 // Employee Invitation Service (admin, autenticado)
