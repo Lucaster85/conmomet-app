@@ -11,6 +11,8 @@ Vencimientos", y desde ahí se llega a la ficha de cada documento con "Ver detal
 Debajo aparecen los **avisos con detalle**: una tarjeta por tema, con la lista de los items
 concretos y los botones para actuar sobre ellos.
 
+Entre esos avisos está **Cuotas de indemnización vencidas**: lista las cuotas de un acuerdo de pago de un egreso que ya pasaron su fecha de vencimiento sin pagarse, con el empleado, el monto y los días de atraso, y un botón **Ver egreso**. Solo lo ven quienes pueden ver egresos y sueldos. Desaparece solo cuando se paga la cuota.
+
 Solo ves los contadores y los avisos de los temas a los que tenés acceso. Si tu rol no maneja
 documentación, por ejemplo, ese aviso no existe para vos.
 
@@ -120,4 +122,4 @@ Marcar un aviso del inicio como visto **no** marca leída ninguna notificación 
 revés. Son dos preguntas distintas, y está bien que una misma novedad aparezca en los dos lugares:
 en la campanita como "esto pasó el martes", en el inicio como "esto todavía te falta hacer".
 
-<!-- ref: conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->
+<!-- ref: conmomet-app/src/components/common/TerminationAgreementAlert.tsx, conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->

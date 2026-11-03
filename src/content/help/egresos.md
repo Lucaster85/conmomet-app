@@ -2,7 +2,7 @@
 
 Un **egreso** es el trámite de dar de baja a un empleado: renuncia, despido o retiro de común acuerdo. Reemplaza el viejo "ponerlo inactivo a mano": el egreso guarda **por qué** se fue, **cuándo**, y los **papeles** que lo respaldan (telegramas, actas, etc.), todo en el legajo del empleado.
 
-> El egreso cubre el trámite, la documentación, **una propuesta de cálculo** y la **liquidación final** (generarla, corregirla, confirmarla y pagarla). Lo único que todavía no está es el **acuerdo de pago en cuotas** de la indemnización: por ahora la indemnización se paga contado, dentro de la liquidación final.
+> El egreso cubre el trámite, la documentación, **una propuesta de cálculo**, la **liquidación final** (generarla, corregirla, confirmarla y pagarla) y, si se pacta, el **acuerdo de pago en cuotas** de la indemnización.
 
 ## Los cuatro tipos
 
@@ -162,6 +162,37 @@ El recibo de la liquidación final separa **Remunerativo** (haberes, SAC, vacaci
 
 La liquidación final confirmada o pagada cae en el **Resumen de costos** del mes del egreso, en una línea propia: **Liquidaciones finales (egresos)**.
 
+## Acuerdo de pago en cuotas
+
+Por defecto la indemnización (preaviso, integración, art. 245 y, en el mutuo acuerdo, la gratificación) se paga **contado**, dentro de la liquidación final. Si con el empleado se pacta pagarla **en cuotas**, o si un **despido con causa termina en un reclamo**, se carga un **acuerdo de pago** desde la tarjeta **Acuerdo de pago de la indemnización** de la pestaña Egreso (hace falta un permiso propio).
+
+### Cargar el acuerdo
+
+1. Tocá **Pactar acuerdo de pago**. El **total pactado** viene precargado con el monto legal calculado (preaviso + integración + art. 245 y sus SAC): editalo si se acordó otro monto. En un reclamo posterior a un despido con causa no hay monto legal, así que lo cargás vos.
+2. Indicá la **fecha del acuerdo** y si está **homologado** (SECLO o ministerio).
+3. Elegí la **cantidad de cuotas** y el **primer vencimiento** y tocá **Repartir en cuotas iguales** (mensuales, la última absorbe el redondeo). Después podés cambiar la fecha y el monto de cada cuota, o quitar alguna.
+4. Las cuotas tienen que **sumar exactamente el total pactado**: la pantalla te avisa si no coinciden. Son de **monto fijo, sin actualización por inflación ni intereses**: si se pactó un ajuste, cargalo ya incluido en el monto de cada cuota.
+5. Subí el documento del acuerdo como documento del egreso (categoría **Acuerdo / convenio de pago**).
+
+### Qué cambia en la liquidación final
+
+Con un acuerdo activo, **preaviso, integración, art. 245 y la gratificación salen de la liquidación final**: siguen apareciendo en el cálculo como **referencia**, pero no suman al bruto ni al recibo. La liquidación final queda con los haberes, el SAC y las vacaciones. Si la liquidación final todavía está en **borrador**, se regenera sola al crear, editar o anular el acuerdo (respetando las correcciones que ya hayas hecho). Los descuentos de adelantos y préstamos se imputan **solo contra la liquidación final**, nunca contra las cuotas.
+
+> Si la liquidación final ya está **confirmada** y llevó la indemnización contado, no se puede pactar después en cuotas. En un despido con causa (que no lleva indemnización) sí se puede cargar un acuerdo en cualquier momento.
+
+### Pagar las cuotas
+
+Cada cuota tiene su estado: **Pendiente**, **Vencida** (pasó su fecha sin pagarse) o **Pagada**. Con **Marcar pagada** elegís el **medio de pago** (efectivo o transferencia) y la **fecha de pago**, y podés adjuntar el **comprobante** y la **firma del empleado**, igual que al pagar un adelanto. No hace falta pagarlas en orden.
+
+- Cada cuota pagada entra en el **Resumen de costos** del mes **en que se paga** (no en el del egreso), en una línea propia: **Indemnizaciones / acuerdos**.
+- Mientras haya una cuota vencida sin pagar, aparece un aviso en el **Inicio**: **Cuotas de indemnización vencidas**, con un acceso directo al egreso. Desaparece cuando se paga la cuota.
+- El egreso pasa a **Liquidado** cuando la liquidación final está **pagada** y **todas las cuotas** también (y no queda deuda pendiente). Si el egreso ya estaba liquidado y se carga un acuerdo por un reclamo posterior, **vuelve a "Confirmado"** hasta que se paguen las cuotas.
+
+### Editar y anular
+
+- **Editar** el acuerdo (total, fechas, cuotas) y **anularlo** (con motivo) solo se puede **mientras no haya ninguna cuota pagada**.
+- Al anular, si la liquidación final sigue en borrador, la indemnización **vuelve a ella** (contado). Si la final ya estaba confirmada, la indemnización queda sin liquidar y hay que pactar un acuerdo nuevo.
+
 ## Plazos y avisos
 
 El sistema muestra avisos en la pestaña **Egreso**. **Ninguno bloquea nada**, son recordatorios:
@@ -180,4 +211,4 @@ El sistema muestra avisos en la pestaña **Egreso**. **Ninguno bloquea nada**, s
 
 El tope del convenio es un monto: solo lo ve quien tiene el permiso de **ver sueldos**.
 
-<!-- ref: api_conmomet/controllers/employeeTerminationController.js, api_conmomet/helpers/terminationRules.js, api_conmomet/services/terminationGuards.js, api_conmomet/helpers/terminationCalculations.js, api_conmomet/services/terminationCalculationService.js, api_conmomet/services/loanSettlement.js, conmomet-app/src/components/employees/TerminationCalculationCard.tsx, api_conmomet/services/finalPayrollService.js, conmomet-app/src/components/employees/TerminationFinalPayrollCard.tsx, conmomet-app/src/components/employees/TerminationDebtCard.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/FinalEntries.tsx, api_conmomet/models/employeeTermination.js, conmomet-app/src/components/employees/EmployeeTerminationPanel.tsx, conmomet-app/src/components/employees/TerminationFormDialog.tsx, conmomet-app/src/app/dashboard/employees/[id]/page.tsx, conmomet-app/src/app/dashboard/employees/page.tsx -->
+<!-- ref: api_conmomet/controllers/employeeTerminationController.js, api_conmomet/helpers/terminationRules.js, api_conmomet/services/terminationGuards.js, api_conmomet/helpers/terminationCalculations.js, api_conmomet/services/terminationCalculationService.js, api_conmomet/services/loanSettlement.js, conmomet-app/src/components/employees/TerminationCalculationCard.tsx, api_conmomet/services/finalPayrollService.js, conmomet-app/src/components/employees/TerminationFinalPayrollCard.tsx, conmomet-app/src/components/employees/TerminationDebtCard.tsx, api_conmomet/services/terminationAgreementService.js, conmomet-app/src/components/employees/TerminationAgreementCard.tsx, conmomet-app/src/components/common/TerminationAgreementAlert.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/FinalEntries.tsx, api_conmomet/models/employeeTermination.js, conmomet-app/src/components/employees/EmployeeTerminationPanel.tsx, conmomet-app/src/components/employees/TerminationFormDialog.tsx, conmomet-app/src/app/dashboard/employees/[id]/page.tsx, conmomet-app/src/app/dashboard/employees/page.tsx -->

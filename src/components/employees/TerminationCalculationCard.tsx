@@ -158,7 +158,7 @@ export default function TerminationCalculationCard({ terminationId }: Props) {
                 title="Indemnizatorio / no remunerativo"
                 items={visibleItems('indemnity')}
                 subtotal={data.indemnity_total}
-                note={data.type === 'mutual_agreement' ? 'En el mutuo acuerdo estos conceptos son solo una referencia para negociar el monto: no se liquidan.' : undefined}
+                note={data.agreement ? `La indemnización se paga con el acuerdo de pago en cuotas (${money(data.agreement.total_amount)}): estos conceptos quedan como referencia y no entran en la liquidación final.` : data.type === 'mutual_agreement' ? 'En el mutuo acuerdo estos conceptos son solo una referencia para negociar el monto: no se liquidan.' : undefined}
               />
             )}
 

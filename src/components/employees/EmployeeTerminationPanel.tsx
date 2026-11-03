@@ -18,6 +18,7 @@ import TerminationFormDialog from '@/components/employees/TerminationFormDialog'
 import TerminationCalculationCard from '@/components/employees/TerminationCalculationCard';
 import TerminationFinalPayrollCard from '@/components/employees/TerminationFinalPayrollCard';
 import TerminationDebtCard from '@/components/employees/TerminationDebtCard';
+import TerminationAgreementCard from '@/components/employees/TerminationAgreementCard';
 import {
   Employee, EmployeeTermination, EmployeeTerminationService, LookupDocumentCategory, LookupService,
   TerminationDocument, TerminationStatus, TERMINATION_STATUS_LABELS, TERMINATION_TYPE_LABELS,
@@ -189,6 +190,9 @@ export default function EmployeeTerminationPanel({
 
       {canSeeAmounts && detail && (t.status === 'confirmed' || t.status === 'settled') && (
         <TerminationFinalPayrollCard termination={detail} onChanged={() => { onChanged(); load(); }} onError={onError} onSuccess={onSuccess} />
+      )}
+      {canSeeAmounts && detail && (t.status === 'confirmed' || t.status === 'settled') && (
+        <TerminationAgreementCard termination={detail} onChanged={() => { onChanged(); load(); }} onError={onError} onSuccess={onSuccess} />
       )}
       {canSeeAmounts && detail && (t.status === 'confirmed' || t.status === 'settled') && (
         <TerminationDebtCard termination={detail} canConfirm={canConfirm} onChanged={() => { onChanged(); load(); }} onError={onError} onSuccess={onSuccess} />

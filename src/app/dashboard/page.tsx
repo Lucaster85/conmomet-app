@@ -20,6 +20,7 @@ import RepairToolsAlert from '../../components/common/RepairToolsAlert';
 import OcaBudgetAlert from '../../components/common/OcaBudgetAlert';
 import SalaryAdvanceDeletionAlert from '../../components/common/SalaryAdvanceDeletionAlert';
 import LoanChangeAlert from '../../components/common/LoanChangeAlert';
+import TerminationAgreementAlert from '../../components/common/TerminationAgreementAlert';
 import QuoteRequestAlert from '../../components/common/QuoteRequestAlert';
 import EppExpiringAlert from '../../components/common/EppExpiringAlert';
 import DocumentExpirationAlert from '../../components/common/DocumentExpirationAlert';
@@ -95,6 +96,7 @@ export default function DashboardPage() {
       <RepairToolsAlert />
       <SalaryAdvanceDeletionAlert />
       <LoanChangeAlert />
+      <TerminationAgreementAlert />
 
       {/* Accesos rápidos — prueba: solo mobile, en desktop ya está el menú del drawer siempre visible */}
       {quickAccessItems.length > 0 && (

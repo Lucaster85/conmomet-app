@@ -98,6 +98,7 @@ async function exportMonthlyExcel(data: ExpenseSummaryMonthly) {
     ['  - Liquidaciones finales (egresos)', data.expenses.payroll_gross.detail.final],
     ['Cargas Patronales', data.expenses.employer_costs.total],
     ...data.expenses.employer_costs.breakdown.map((b) => [`  - ${b.category}`, b.amount]),
+    [data.expenses.termination_agreements.label, data.expenses.termination_agreements.total],
     [''],
     ['GASTO TOTAL', data.grand_total],
     [''],
@@ -124,14 +125,14 @@ async function exportAnnualExcel(data: ExpenseSummaryAnnual) {
     ['RESUMEN ANUAL DE COSTOS LABORALES'],
     [`Año: ${data.year}`],
     [''],
-    ['Mes', 'Sueldos Brutos', 'Cargas Patronales', 'Gasto Total'],
-    ...data.months.map((m) => [getMonthLabel(m.month), m.payroll_gross, m.employer_costs, m.total]),
+    ['Mes', 'Sueldos Brutos', 'Cargas Patronales', 'Indemnizaciones / acuerdos', 'Gasto Total'],
+    ...data.months.map((m) => [getMonthLabel(m.month), m.payroll_gross, m.employer_costs, m.termination_agreements, m.total]),
     [''],
-    ['TOTALES', data.annual_totals.payroll_gross, data.annual_totals.employer_costs, data.annual_totals.total],
+    ['TOTALES', data.annual_totals.payroll_gross, data.annual_totals.employer_costs, data.annual_totals.termination_agreements, data.annual_totals.total],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
+  ws['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 26 }, { wch: 20 }];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Resumen Anual');
@@ -166,6 +167,7 @@ async function exportMonthlyPdf(data: ExpenseSummaryMonthly) {
     ['  Liquidaciones finales', formatNumber(data.expenses.payroll_gross.detail.final)],
     ['Cargas Patronales', formatNumber(data.expenses.employer_costs.total)],
     ...data.expenses.employer_costs.breakdown.map((b) => [`  ${b.category}`, formatNumber(b.amount)]),
+    [data.expenses.termination_agreements.label, formatNumber(data.expenses.termination_agreements.total)],
   ];
 
   autoTable(doc, {
@@ -231,17 +233,19 @@ async function exportAnnualPdf(data: ExpenseSummaryAnnual) {
     getMonthLabel(m.month),
     formatNumber(m.payroll_gross),
     formatNumber(m.employer_costs),
+    formatNumber(m.termination_agreements),
     formatNumber(m.total),
   ]);
 
   autoTable(doc, {
     startY: 36,
-    head: [['Mes', 'Sueldos Brutos ($)', 'Cargas Patronales ($)', 'Gasto Total ($)']],
+    head: [['Mes', 'Sueldos Brutos ($)', 'Cargas Patronales ($)', 'Indemnizaciones ($)', 'Gasto Total ($)']],
     body,
     foot: [[
       'TOTALES',
       formatNumber(data.annual_totals.payroll_gross),
       formatNumber(data.annual_totals.employer_costs),
+      formatNumber(data.annual_totals.termination_agreements),
       formatNumber(data.annual_totals.total),
     ]],
     theme: 'striped',
@@ -252,6 +256,7 @@ async function exportAnnualPdf(data: ExpenseSummaryAnnual) {
       1: { halign: 'right' },
       2: { halign: 'right' },
       3: { halign: 'right' },
+      4: { halign: 'right' },
     },
   });
 
@@ -458,7 +463,7 @@ export default function ExpenseSummaryPage() {
                       {formatCurrency(monthlyData.grand_total)}
                     </Typography>
                     <Typography variant="body2" sx={{ mt: 2, opacity: 0.8 }}>
-                      Sueldos brutos + Cargas patronales
+                      Sueldos brutos + Cargas patronales + Indemnizaciones en cuotas
                     </Typography>
                   </CardContent>
                 </Card>
@@ -531,6 +536,25 @@ export default function ExpenseSummaryPage() {
                 </Card>
               </Grid>
 
+              {/* INDEMNIZACIONES EN CUOTAS (acuerdos de egreso) */}
+              {monthlyData.expenses.termination_agreements.total > 0 && (
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <Card sx={{ height: '100%', borderRadius: 2, borderLeft: '6px solid #d32f2f' }}>
+                    <CardContent>
+                      <Typography color="textSecondary" gutterBottom>
+                        {monthlyData.expenses.termination_agreements.label}
+                      </Typography>
+                      <Typography variant="h4">
+                        {formatCurrency(monthlyData.expenses.termination_agreements.total)}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary" display="block" mt={1}>
+                        {monthlyData.expenses.termination_agreements.count} cuota(s) de acuerdos de egreso pagadas este mes
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )}
+
               {/* INFORMATIVO: ADELANTOS */}
               <Grid size={{ xs: 12 }}>
                 <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
@@ -595,9 +619,13 @@ export default function ExpenseSummaryPage() {
                           <Typography variant="body2" color="textSecondary">Sueldos Brutos:</Typography>
                           <Typography variant="body2" fontWeight="medium">{formatCurrency(row.payroll_gross)}</Typography>
                         </Box>
-                        <Box display="flex" justifyContent="space-between" mb={1.5}>
+                        <Box display="flex" justifyContent="space-between" mb={1}>
                           <Typography variant="body2" color="textSecondary">Cargas Patronales:</Typography>
                           <Typography variant="body2" fontWeight="medium">{formatCurrency(row.employer_costs)}</Typography>
+                        </Box>
+                        <Box display="flex" justifyContent="space-between" mb={1.5}>
+                          <Typography variant="body2" color="textSecondary">Indemnizaciones / acuerdos:</Typography>
+                          <Typography variant="body2" fontWeight="medium">{formatCurrency(row.termination_agreements)}</Typography>
                         </Box>
                         <Box display="flex" justifyContent="space-between" alignItems="center" bgcolor="grey.50" p={1} borderRadius={1}>
                           <Typography variant="subtitle2">Gasto Total:</Typography>
@@ -617,6 +645,7 @@ export default function ExpenseSummaryPage() {
                         <TableCell sx={{ fontWeight: 'bold' }}>Mes</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 'bold' }}>Sueldos Brutos</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 'bold' }}>Cargas Patronales</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>Indemnizaciones / acuerdos</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 'bold' }}>Gasto Total</TableCell>
                       </TableRow>
                     </TableHead>
@@ -628,6 +657,7 @@ export default function ExpenseSummaryPage() {
                           </TableCell>
                           <TableCell align="right">{formatCurrency(row.payroll_gross)}</TableCell>
                           <TableCell align="right">{formatCurrency(row.employer_costs)}</TableCell>
+                          <TableCell align="right">{formatCurrency(row.termination_agreements)}</TableCell>
                           <TableCell align="right" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
                             {formatCurrency(row.total)}
                           </TableCell>
