@@ -69,6 +69,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { AlertViewsProvider } from '../../components/common/AlertViewsProvider';
+import { QuickNotesProvider } from '../../components/notes/QuickNotesProvider';
+import QuickNotesFab from '../../components/notes/QuickNotesFab';
+import QuickNotesDrawer from '../../components/notes/QuickNotesDrawer';
 import NotificationBell from '../../components/common/NotificationBell';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
 import PushNotificationsDialog from '../../components/common/PushNotificationsDialog';
@@ -420,6 +423,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     {/* Acuse de vista de los avisos del tablero (FLOWS.md §36). Va en el layout, no en la page:
         una sola carga de GET /me/alert-views para toda la banda de avisos. */}
     <AlertViewsProvider>
+    {/* Notas rápidas personales (FLOWS.md §48): el provider vive acá para que el botón flotante, el
+        panel y el widget de Inicio compartan una sola carga y el borrador sobreviva al cerrar el
+        panel. Solo dashboard — el Portal no las tiene. */}
+    <QuickNotesProvider>
       <Box sx={{ display: 'flex' }}>
         {/* App Bar */}
         <AppBar
@@ -605,7 +612,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </Box>
           {children}
         </Box>
+
+        <QuickNotesFab />
+        <QuickNotesDrawer />
       </Box>
+    </QuickNotesProvider>
     </AlertViewsProvider>
     </ProtectedRoute>
     </ThemeProvider>

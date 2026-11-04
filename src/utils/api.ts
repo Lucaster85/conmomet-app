@@ -3312,7 +3312,9 @@ export type NotificationType =
   | 'document_expiring'
   | 'document_expired'
   | 'epp_expiring'
-  | 'epp_expired';
+  | 'epp_expired'
+  // Una nota rápida propia que venció o vence hoy (FLOWS.md §48, etapa 3).
+  | 'quick_note_due';
 
 export interface AppNotification {
   id: number;
@@ -3403,6 +3405,104 @@ export class AlertViewService {
       body: JSON.stringify({ alert_type: alertType }),
     });
     if (!response.ok) throw new Error('Error al volver a mostrar los avisos');
+  }
+}
+
+// Notas rápidas personales (ver FLOWS.md, flujo de Notas rápidas). Vive en /me/*, así que no
+// requiere ningún permiso: cada usuario solo ve y toca sus propias notas.
+//
+// `entity` es el vínculo a futuro con un registro del sistema (presupuesto, OCA, empleado...). Hoy
+// la API siempre lo devuelve en null y rechaza cualquier intento de setearlo; el tipo ya está
+// declarado para que ningún componente cambie de forma el día que se habilite.
+export interface QuickNoteEntity {
+  type: string;
+  id: number;
+  label: string;
+  url: string | null;
+}
+
+export interface QuickNote {
+  id: number;
+  content: string;
+  due_date: string | null; // YYYY-MM-DD
+  completed_at: string | null;
+  entity: QuickNoteEntity | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuickNotesList {
+  pending: QuickNote[];
+  completed: QuickNote[];
+}
+
+export interface QuickNoteInput {
+  content: string;
+  due_date?: string | null;
+  // Vínculo a futuro: hoy la API lo rechaza con 400 (lista blanca vacía), así que ninguna pantalla
+  // lo manda todavía. Está acá para que habilitarlo no requiera tocar la firma del servicio.
+  entity?: Pick<QuickNoteEntity, 'type' | 'id'> | null;
+}
+
+export interface QuickNoteChanges {
+  content?: string;
+  due_date?: string | null;
+  completed?: boolean;
+}
+
+async function quickNoteError(response: Response, fallback: string): Promise<Error> {
+  try {
+    const body = await response.json();
+    if (typeof body?.error === 'string' && body.error) return new Error(body.error);
+  } catch {
+    // Sin JSON en la respuesta: se usa el mensaje genérico.
+  }
+  return new Error(fallback);
+}
+
+export class QuickNoteService {
+  static async getAll(): Promise<QuickNotesList> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/quick-notes`);
+    if (!response.ok) throw await quickNoteError(response, 'Error al obtener las notas');
+    const body = await response.json();
+    return { pending: body.pending || [], completed: body.completed || [] };
+  }
+
+  static async create({ entity, ...input }: QuickNoteInput): Promise<QuickNote> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/quick-notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entity ? { ...input, entity_type: entity.type, entity_id: entity.id } : input),
+    });
+    if (!response.ok) throw await quickNoteError(response, 'Error al guardar la nota');
+    return (await response.json()).data;
+  }
+
+  // Un solo endpoint para editar el texto, cambiar el vencimiento, completar y reabrir.
+  static async update(id: number, changes: QuickNoteChanges): Promise<QuickNote> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/quick-notes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes),
+    });
+    if (!response.ok) throw await quickNoteError(response, 'Error al actualizar la nota');
+    return (await response.json()).data;
+  }
+
+  static async remove(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/quick-notes/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw await quickNoteError(response, 'Error al eliminar la nota');
+  }
+
+  // El "Deshacer" de eliminar.
+  static async restore(id: number): Promise<QuickNote> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/me/quick-notes/${id}/restore`, {
+      method: 'POST',
+    });
+    if (!response.ok) throw await quickNoteError(response, 'Error al restaurar la nota');
+    return (await response.json()).data;
   }
 }
 
