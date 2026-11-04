@@ -1,0 +1,82 @@
+## Para qué sirven
+
+Las **notas rápidas** son tu bloc de notas dentro de la app: un lugar para anotar una idea o un
+pendiente en el momento, sin tener que salir de la pantalla en la que estás trabajando.
+
+Son **solo tuyas**: nadie más las ve, ni siquiera un administrador, y no dependen de ningún permiso
+de tu rol. Todos los que entran al sistema pueden usarlas.
+
+## Cómo abrirlas
+
+Hay un **botón redondo con un lápiz** abajo a la derecha, en todas las pantallas del sistema. Tocalo
+y se abre el panel de notas desde el costado (en el celular ocupa toda la pantalla). Para cerrarlo,
+tocá la **X** o cualquier lugar fuera del panel; vas a seguir exactamente donde estabas.
+
+- Si tenés notas **vencidas o para hoy**, el botón muestra un numerito rojo con cuántas son. Solo
+  cuenta esas, no todas las pendientes.
+- En el celular el botón se **esconde al bajar** por una pantalla y vuelve al subir, para no taparte
+  los botones de lo que estás mirando.
+- En la computadora también podés abrirlas con el teclado: **Alt + N**. Te deja el cursor listo para
+  escribir. No funciona si justo estás escribiendo en otro campo.
+
+## Cargar una nota
+
+Escribí en el campo de arriba y apretá **Enter**. Si necesitás un salto de línea, usá **Shift + Enter**.
+En el celular podés tocar el botón del **avioncito** al lado del campo.
+
+Si cerrás el panel antes de guardar, lo que escribiste **no se pierde**: queda esperando cuando lo
+vuelvas a abrir.
+
+### Ponerle un vencimiento (opcional)
+
+Debajo del campo hay tres opciones, antes de guardar:
+
+- **Hoy** o **Mañana**.
+- **Elegir fecha**, para cualquier otro día.
+
+Volvé a tocar la opción elegida para sacarla. El vencimiento es **solo una fecha**, sin hora. Las notas
+que no tienen vencimiento quedan debajo de las que sí, ordenadas de la más nueva a la más vieja.
+
+## Cómo se ve cada nota
+
+Las pendientes se ordenan así: **primero las que tienen vencimiento**, la más próxima arriba, y después
+las que no.
+
+| Etiqueta | Qué significa |
+|---|---|
+| **Vencida el 03/11/2026** (en rojo) | Ya pasó la fecha y la nota sigue pendiente |
+| **Hoy** (en amarillo) | Vence hoy |
+| **Mañana** o **Vence el 24/12/2026** (en gris) | Todavía tenés tiempo |
+
+## Qué podés hacer con una nota
+
+- **Completarla:** tocá el casillero de la izquierda. La nota se tacha y pasa a **Completadas**.
+  Aparece un aviso abajo con **Deshacer**, por si fue sin querer.
+- **Editar el texto:** tocá el texto de la nota, cambialo y apretá Enter (o tocá afuera). Con **Esc**
+  cancelás el cambio. Si borrás todo el texto, la nota **no se elimina**: se descarta el cambio.
+- **Cambiar o quitar el vencimiento:** tocá la etiqueta de fecha, o el menú de los tres puntitos →
+  **Cambiar vencimiento** / **Quitar vencimiento**.
+- **Eliminarla:** menú de los tres puntitos → **Eliminar**. No te pide confirmación: aparece el aviso
+  **Deshacer** unos segundos y la nota vuelve tal cual estaba.
+
+## Notas completadas
+
+Debajo de las pendientes hay una sección plegada, **Completadas (N)**. Tocala para verla. Ahí podés:
+
+- **Reabrir** una nota destildando el casillero: vuelve a las pendientes.
+- **Eliminarla** definitivamente de tu lista con el tachito.
+
+Se muestran las **últimas 50** completadas.
+
+## Preguntas frecuentes
+
+**¿Otra persona puede ver mis notas?** No. Cada usuario ve únicamente las suyas.
+
+**¿Las veo desde el celular y desde la computadora?** Sí, son las mismas: están asociadas a tu usuario,
+no al dispositivo. Si cambiás algo en un lado, en el otro aparece al volver a entrar a la pestaña o al
+abrir el panel.
+
+**¿Puedo vincular una nota a un presupuesto, una OCA o un empleado?** Todavía no. Por ahora son notas
+sueltas.
+
+<!-- ref: conmomet-app/src/components/notes/QuickNotesProvider.tsx, conmomet-app/src/components/notes/QuickNotesFab.tsx, conmomet-app/src/components/notes/QuickNotesDrawer.tsx, conmomet-app/src/utils/quickNotes.ts, conmomet-app/src/app/dashboard/layout.tsx, api_conmomet/controllers/quickNoteController.js, api_conmomet/models/quickNote.js, api_conmomet/helpers/quickNoteEntityTypes.js -->

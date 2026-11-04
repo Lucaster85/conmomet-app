@@ -29,6 +29,20 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'tablero-avisos.md',
   },
   {
+    // Misma categoría que los avisos del inicio: las notas son personales y transversales, no
+    // cuelgan de ningún grupo del menú.
+    id: 'notas-rapidas',
+    category: 'Inicio',
+    title: 'Notas rápidas',
+    keywords: [
+      'nota', 'notas', 'nota rapida', 'nota rápida', 'notas rapidas', 'notas rápidas', 'pendiente',
+      'pendientes', 'recordatorio', 'recordatorios', 'idea', 'ideas', 'anotar', 'apuntar',
+      'vencimiento', 'tachar', 'completar', 'completada', 'completadas', 'deshacer', 'eliminar',
+      'boton flotante', 'botón flotante', 'lapiz', 'lápiz', 'alt n', 'bloc de notas', 'to do',
+    ],
+    file: 'notas-rapidas.md',
+  },
+  {
     id: 'crear-oca',
     category: 'Gestión de Clientes',
     title: 'Creación de OCAs (Remitos)',
