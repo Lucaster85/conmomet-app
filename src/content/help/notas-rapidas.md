@@ -37,6 +37,20 @@ Debajo del campo hay tres opciones, antes de guardar:
 Volvé a tocar la opción elegida para sacarla. El vencimiento es **solo una fecha**, sin hora. Las notas
 que no tienen vencimiento quedan debajo de las que sí, ordenadas de la más nueva a la más vieja.
 
+## En la pantalla de inicio
+
+En **Inicio** hay una tarjeta **Mis notas**, la primera de la fila, con tus notas pendientes a la vista
+sin tener que abrir el panel. Arriba a la derecha muestra cuántas pendientes tenés en total.
+
+- Muestra hasta **5**, con las **vencidas y las de hoy primero**, cada una con su etiqueta de fecha.
+- Tildá el casillero de una nota para **completarla** ahí mismo. Aparece el aviso **Deshacer** abajo.
+- Tocá el texto de una nota para abrir el panel y editarla.
+- **Nueva nota** abre el panel listo para escribir, y **Ver todas** lo abre con la lista completa (las
+  completadas están ahí, plegadas).
+
+Si no tenés ninguna pendiente, la tarjeta lo dice y te deja el botón **Nueva nota**. La tarjeta
+aparece siempre, también en el celular, y no depende de ningún permiso.
+
 ## Cómo se ve cada nota
 
 Las pendientes se ordenan así: **primero las que tienen vencimiento**, la más próxima arriba, y después
@@ -79,4 +93,4 @@ abrir el panel.
 **¿Puedo vincular una nota a un presupuesto, una OCA o un empleado?** Todavía no. Por ahora son notas
 sueltas.
 
-<!-- ref: conmomet-app/src/components/notes/QuickNotesProvider.tsx, conmomet-app/src/components/notes/QuickNotesFab.tsx, conmomet-app/src/components/notes/QuickNotesDrawer.tsx, conmomet-app/src/utils/quickNotes.ts, conmomet-app/src/app/dashboard/layout.tsx, api_conmomet/controllers/quickNoteController.js, api_conmomet/models/quickNote.js, api_conmomet/helpers/quickNoteEntityTypes.js -->
+<!-- ref: conmomet-app/src/components/notes/QuickNotesProvider.tsx, conmomet-app/src/components/notes/QuickNotesFab.tsx, conmomet-app/src/components/notes/QuickNotesDrawer.tsx, conmomet-app/src/components/notes/QuickNotesWidget.tsx, conmomet-app/src/utils/quickNotes.ts, conmomet-app/src/app/dashboard/layout.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/quickNoteController.js, api_conmomet/models/quickNote.js, api_conmomet/helpers/quickNoteEntityTypes.js -->

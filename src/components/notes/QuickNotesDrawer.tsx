@@ -20,7 +20,7 @@ import AppDialog from '../common/AppDialog';
 import DateField from '../DateField';
 import GearSpinner from '../GearSpinner';
 import { QuickNote } from '../../utils/api';
-import { dueLabel, dueState, formatDueDate, todayKey, tomorrowKey } from '../../utils/quickNotes';
+import { dueChipColor, dueLabel, dueState, formatDueDate, todayKey, tomorrowKey } from '../../utils/quickNotes';
 import { useQuickNotes } from './QuickNotesProvider';
 
 // Panel lateral de las notas rápidas (ver FLOWS.md, flujo de Notas rápidas). Se abre desde el
@@ -33,12 +33,6 @@ import { useQuickNotes } from './QuickNotesProvider';
 const MAX_LENGTH = 2000;
 // Desde cuántos caracteres se muestra el contador: antes de eso es ruido.
 const COUNTER_FROM = 1800;
-
-function dueChipColor(state: ReturnType<typeof dueState>): 'error' | 'warning' | 'default' {
-  if (state === 'overdue') return 'error';
-  if (state === 'today') return 'warning';
-  return 'default';
-}
 
 // ───────────────────────────── Vencimiento: diálogo ─────────────────────────────
 

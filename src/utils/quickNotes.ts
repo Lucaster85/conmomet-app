@@ -36,6 +36,14 @@ export function dueState(dueDate: string | null, now: Date = new Date()): QuickN
   return 'upcoming';
 }
 
+// Color del chip de vencimiento, compartido por el panel y el widget de Inicio: rojo si ya pasó,
+// amarillo si es hoy, neutro si todavía hay tiempo.
+export function dueChipColor(state: QuickNoteDueState | null): 'error' | 'warning' | 'default' {
+  if (state === 'overdue') return 'error';
+  if (state === 'today') return 'warning';
+  return 'default';
+}
+
 export function formatDueDate(dueDate: string): string {
   const [y, m, d] = dueDate.split('-');
   return `${d}/${m}/${y}`;
