@@ -20,9 +20,11 @@ import RepairToolsAlert from '../../components/common/RepairToolsAlert';
 import OcaBudgetAlert from '../../components/common/OcaBudgetAlert';
 import SalaryAdvanceDeletionAlert from '../../components/common/SalaryAdvanceDeletionAlert';
 import LoanChangeAlert from '../../components/common/LoanChangeAlert';
+import TerminationAgreementAlert from '../../components/common/TerminationAgreementAlert';
 import QuoteRequestAlert from '../../components/common/QuoteRequestAlert';
 import EppExpiringAlert from '../../components/common/EppExpiringAlert';
 import DocumentExpirationAlert from '../../components/common/DocumentExpirationAlert';
+import QuickNotesWidget from '../../components/notes/QuickNotesWidget';
 
 // Accesos rápidos del home mobile: solo las 3 secciones de uso más frecuente, cada una
 // condicionada al permiso de lectura correspondiente (mismo criterio que el menú del drawer).
@@ -95,6 +97,7 @@ export default function DashboardPage() {
       <RepairToolsAlert />
       <SalaryAdvanceDeletionAlert />
       <LoanChangeAlert />
+      <TerminationAgreementAlert />
 
       {/* Accesos rápidos — prueba: solo mobile, en desktop ya está el menú del drawer siempre visible */}
       {quickAccessItems.length > 0 && (
@@ -104,6 +107,10 @@ export default function DashboardPage() {
       )}
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+
+        {/* Notas rápidas personales (FLOWS.md §48). Sin permiso que la gatee: son del usuario. Primero
+            porque es lo único de esta fila que es suyo y no del negocio. */}
+        <QuickNotesWidget />
 
         {/* Widget: Adelantos y Préstamos pendientes. Es puro contador, sin detalle por item, así
             que no entra en el mecanismo de acuse de vista: no hay nada que ocupe pantalla de más. */}

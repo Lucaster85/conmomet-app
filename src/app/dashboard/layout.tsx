@@ -23,8 +23,17 @@ import {
   useTheme,
   useMediaQuery,
   Collapse,
+  Tooltip,
 } from '@mui/material';
 import {
+  AccountBalanceWalletOutlined as AccountingGroupIcon,
+  BusinessCenterOutlined as ClientsGroupIcon,
+  GroupsOutlined as PersonnelGroupIcon,
+  LanguageOutlined as WebGroupIcon,
+  ManageAccountsOutlined as UsersGroupIcon,
+  WarehouseOutlined as StoreGroupIcon,
+  KeyboardDoubleArrowLeftOutlined as CollapseMenuIcon,
+  KeyboardDoubleArrowRightOutlined as ExpandMenuIcon,
   MenuOutlined as MenuIcon,
   DashboardOutlined as DashboardIcon,
   PeopleOutlined as PeopleIcon,
@@ -69,6 +78,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { AlertViewsProvider } from '../../components/common/AlertViewsProvider';
+import { QuickNotesProvider } from '../../components/notes/QuickNotesProvider';
+import QuickNotesFab from '../../components/notes/QuickNotesFab';
+import QuickNotesDrawer from '../../components/notes/QuickNotesDrawer';
 import NotificationBell from '../../components/common/NotificationBell';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
 import PushNotificationsDialog from '../../components/common/PushNotificationsDialog';
@@ -77,6 +89,12 @@ import { onSessionExpired } from '../../utils/sessionExpiry';
 import SessionExpiredDialog from '../../components/SessionExpiredDialog';
 
 const drawerWidth = 280;
+// Menú lateral colapsado (solo desktop): deja solo la columna de íconos para darle más ancho al
+// contenido — hay listados tan anchos que no entran en el viewport con el menú desplegado.
+const collapsedDrawerWidth = 72;
+// Preferencia del usuario, por navegador. Solo es una comodidad: si el storage no está disponible
+// (modo privado, bloqueado) el menú simplemente arranca desplegado.
+const SIDEBAR_COLLAPSED_KEY = 'conmomet_sidebar_collapsed';
 
 interface MenuItemDef {
   text: string;
@@ -87,6 +105,9 @@ interface MenuItemDef {
 
 interface MenuGroupDef {
   title: string;
+  // Ícono del grupo para el menú colapsado (ver FLOWS.md §49). Los grupos sin título (Inicio y Centro de
+  // Ayuda) son links sueltos y no lo necesitan: se muestran con el ícono de su único ítem.
+  icon?: React.ReactNode;
   items: MenuItemDef[];
 }
 
@@ -99,6 +120,7 @@ const menuGroups: MenuGroupDef[] = [
   },
   {
     title: 'Personal',
+    icon: <PersonnelGroupIcon />,
     items: [
       { text: 'Empleados', icon: <BadgeIcon />, path: '/dashboard/employees', requiredPermission: 'employees_read' },
       { text: 'Licencias y Vacaciones', icon: <BeachAccessIcon />, path: '/dashboard/leave-requests', requiredPermission: 'leave_requests_read' },
@@ -109,6 +131,7 @@ const menuGroups: MenuGroupDef[] = [
   },
   {
     title: 'Contabilidad',
+    icon: <AccountingGroupIcon />,
     items: [
       { text: 'Quincenas y Pagos', icon: <PaymentsIcon />, path: '/dashboard/pay-periods', requiredPermission: 'pay_periods_read' },
       { text: 'Adelantos', icon: <MoneyIcon />, path: '/dashboard/salary-advances', requiredPermission: 'salary_advances_read' },
@@ -119,6 +142,7 @@ const menuGroups: MenuGroupDef[] = [
   },
   {
     title: 'Gestión de Clientes',
+    icon: <ClientsGroupIcon />,
     items: [
       { text: 'Clientes', icon: <Business />, path: '/dashboard/clients', requiredPermission: 'clients_read' },
       { text: 'Plantas', icon: <FactoryIcon />, path: '/dashboard/plants', requiredPermission: 'plants_read' },
@@ -133,12 +157,14 @@ const menuGroups: MenuGroupDef[] = [
   // comprobantes, cobranzas, cuenta corriente e integración con ARCA.
   {
     title: 'Facturación',
+    icon: <InvoiceIcon />,
     items: [
       { text: 'Facturación', icon: <InvoiceIcon />, path: '/dashboard/billing', requiredPermission: 'invoices_read' },
     ]
   },
   {
     title: 'Pañol',
+    icon: <StoreGroupIcon />,
     items: [
       { text: 'Materiales', icon: <InventoryIcon />, path: '/dashboard/materials', requiredPermission: 'materials_read' },
       { text: 'Unidades de Medida', icon: <CategoryIcon />, path: '/dashboard/material-units', requiredPermission: 'material_units_read' },
@@ -150,20 +176,23 @@ const menuGroups: MenuGroupDef[] = [
   },
   {
     title: 'Flota',
+    icon: <LocalShippingIcon />,
     items: [
       { text: 'Vehículos', icon: <LocalShippingIcon />, path: '/dashboard/vehicles', requiredPermission: 'vehicles_read' },
     ]
   },
   {
     title: 'Gestión de Usuarios',
+    icon: <UsersGroupIcon />,
     items: [
       { text: 'Usuarios', icon: <PeopleIcon />, path: '/dashboard/users', requiredPermission: 'users_read' },
       { text: 'Roles y Permisos', icon: <RolesIcon />, path: '/dashboard/roles', requiredPermission: 'roles_read' },
     ]
   },
-  { title: 'Web', items: [{ text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles', requiredPermission: 'media_read' }] },
+  { title: 'Web', icon: <WebGroupIcon />, items: [{ text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles', requiredPermission: 'media_read' }] },
   {
     title: 'Configuración',
+    icon: <SettingsIcon />,
     items: [
       { text: 'Gremios (Sindicatos)', icon: <DomainIcon />, path: '/dashboard/guilds', requiredPermission: 'guilds_read' },
       { text: 'Categorías Gastos', icon: <CategoryIcon />, path: '/dashboard/employer-cost-categories', requiredPermission: 'employer_cost_categories_read' },
@@ -206,6 +235,35 @@ const dashboardTheme = createTheme(baseTheme, {
   },
 });
 
+// Botón de solo ícono del menú colapsado: tooltip a la derecha con el nombre, y aria-label para
+// lectores de pantalla (sin texto visible, el ícono solo no dice qué es).
+function CollapsedMenuButton({ label, icon, onClick }: { label: string; icon: React.ReactNode; onClick: () => void }) {
+  return (
+    <ListItem disablePadding sx={{ px: 1, mb: 0.5 }}>
+      <Tooltip title={label} placement="right" arrow>
+        <ListItemButton
+          aria-label={label}
+          onClick={onClick}
+          sx={{
+            minHeight: 44,
+            borderRadius: 1,
+            justifyContent: 'center',
+            px: 0,
+            '&:hover': {
+              bgcolor: 'primary.light',
+              color: 'white',
+            },
+          }}
+        >
+          <ListItemIcon sx={{ color: 'inherit', minWidth: 0, justifyContent: 'center' }}>
+            {icon}
+          </ListItemIcon>
+        </ListItemButton>
+      </Tooltip>
+    </ListItem>
+  );
+}
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -216,6 +274,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  // Colapso del menú en desktop. Arranca en false (igual que el HTML del servidor, para no romper
+  // la hidratación) y se lee del storage recién después de montar.
+  const [collapsed, setCollapsed] = useState(false);
+  // Las transiciones de ancho se habilitan DESPUÉS de leer la preferencia: si no, quien dejó el menú
+  // colapsado vería cómo se cierra solo, con animación, en cada recarga completa.
+  const [sidebarAnimated, setSidebarAnimated] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
     menuGroups.forEach((g) => {
@@ -237,6 +301,53 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       return nextState;
     });
   };
+
+  // Tocar el ícono de un grupo en el menú colapsado: despliega el menú y deja abierto SOLO ese grupo
+  // (los grupos son acordeones). Cuenta como expandir a propósito, así que también se recuerda.
+  const handleGroupExpand = (title: string) => {
+    setOpenGroups(() => {
+      const nextState: Record<string, boolean> = {};
+      menuGroups.forEach((g) => {
+        if (g.title) nextState[g.title] = g.title === title;
+      });
+      return nextState;
+    });
+    setCollapsed(false);
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, '0');
+    } catch {
+      // Sin storage la preferencia no se recuerda, pero el cambio de esta sesión sí aplica.
+    }
+  };
+
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1') setCollapsed(true);
+    } catch {
+      // Storage no disponible: se queda desplegado.
+    }
+    const t = setTimeout(() => setSidebarAnimated(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleCollapseToggle = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0');
+    } catch {
+      // Sin storage la preferencia no se recuerda, pero el cambio de esta sesión sí aplica.
+    }
+  };
+
+  // Ancho real del menú en desktop. En mobile el drawer es temporal y siempre va desplegado.
+  const desktopDrawerWidth = collapsed ? collapsedDrawerWidth : drawerWidth;
+  const widthTransition = sidebarAnimated
+    ? theme.transitions.create(['width', 'margin-left'], {
+        easing: theme.transitions.easing.sharp,
+        duration: theme.transitions.duration.shorter,
+      })
+    : 'none';
 
   // Redirección si no tiene acceso al dashboard
   useEffect(() => {
@@ -333,22 +444,107 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }))
     .filter(group => group.items.length > 0);
 
-  const drawer = (
+  // `isCollapsed`: versión de solo íconos (únicamente el drawer de desktop). `canCollapse`: si se
+  // muestra el botón para colapsar — el drawer de mobile es temporal y no lo lleva.
+  const renderDrawer = (isCollapsed: boolean, canCollapse: boolean) => (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-        <Toolbar sx={{ background: 'linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%)', borderBottom: '1px solid', borderColor: 'divider', minHeight: { xs: 56, sm: 64 }, justifyContent: 'center' }}>
+        {/* disableGutters colapsado: el Toolbar trae 16–24 px de padding por lado, y en 72 px de menú
+            eso deja ~24 px de contenido — el engranaje se achicaba por flex y quedaba cortado. */}
+        <Toolbar disableGutters={isCollapsed} sx={{ background: 'linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%)', borderBottom: '1px solid', borderColor: 'divider', minHeight: { xs: 56, sm: 64 }, justifyContent: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', py: 1 }}>
-          <Image
-            src="/img/logos/logo-conmomet-ROJO.png"
-            alt="Conmomet S.A."
-            width={192}
-            height={58}
-            style={{ objectFit: 'contain', width: 'auto', maxHeight: 58 }}
-            priority
-          />
+          {isCollapsed ? (
+            // El logo completo no entra en 72px: se muestra solo el engranaje (la franja izquierda
+            // del mismo PNG, recortada por background-position como hace GearSpinner, sin girar).
+            // En el PNG (834×284) el engranaje ocupa x 10–263 e y 16–265: a 36 px de alto queda en
+            // ~1–33 px de ancho, o sea que entra entero en un cuadrado de 36. flexShrink 0 evita que
+            // el flex lo achique y lo corte.
+            <Box
+              component="span"
+              role="img"
+              aria-label="Conmomet S.A."
+              sx={{
+                display: 'inline-block',
+                flexShrink: 0,
+                width: 36,
+                height: 36,
+                backgroundImage: 'url(/img/logos/logo-conmomet-ROJO.png)',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'left center',
+                backgroundSize: 'auto 100%',
+              }}
+            />
+          ) : (
+            <Image
+              src="/img/logos/logo-conmomet-ROJO.png"
+              alt="Conmomet S.A."
+              width={192}
+              height={58}
+              style={{ objectFit: 'contain', width: 'auto', maxHeight: 58 }}
+              priority
+            />
+          )}
         </Box>
       </Toolbar>
       <Divider />
+      {/* Botón de colapsar ARRIBA, fijo: la lista de abajo es lo único que scrollea (el header y esta
+          fila quedan siempre a la vista, también con el menú desplegado y muchos grupos abiertos). */}
+      {canCollapse && (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: isCollapsed ? 'center' : 'flex-end',
+            px: isCollapsed ? 0 : 1,
+            py: 0.5,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Tooltip title={isCollapsed ? 'Expandir menú' : 'Contraer menú'} placement="right">
+            <IconButton
+              size="small"
+              onClick={handleCollapseToggle}
+              aria-label={isCollapsed ? 'Expandir el menú lateral' : 'Contraer el menú lateral'}
+              aria-expanded={!isCollapsed}
+            >
+              {isCollapsed ? <ExpandMenuIcon /> : <CollapseMenuIcon />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+      {isCollapsed ? (
+        // Un ícono por GRUPO del menú (no por ítem). Tocar el de un grupo despliega el menú y deja
+        // abierto ese grupo, que es donde están sus submenús (FLOWS.md §49). Los links sueltos
+        // (Inicio y Centro de Ayuda) no tienen submenú que mostrar, así que van directo a su página.
+        // Las etiquetas quedan en el tooltip y en aria-label.
+        <List sx={{ pt: 1 }}>
+          {filteredMenuGroups.map((group, groupIndex) => {
+            const standalone = !group.title;
+            return (
+              <React.Fragment key={groupIndex}>
+                {/* Los links sueltos del final (Centro de Ayuda) se separan de los grupos. */}
+                {standalone && groupIndex > 0 && <Divider sx={{ my: 1, mx: 1.5, opacity: 0.5 }} />}
+                {standalone ? (
+                  group.items.map((item) => (
+                    <CollapsedMenuButton
+                      key={item.text}
+                      label={item.text}
+                      icon={item.icon}
+                      onClick={() => handleNavigation(item.path)}
+                    />
+                  ))
+                ) : (
+                  <CollapsedMenuButton
+                    label={group.title}
+                    icon={group.icon ?? group.items[0].icon}
+                    onClick={() => handleGroupExpand(group.title)}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </List>
+      ) : (
       <List sx={{ pt: 2 }}>
         {filteredMenuGroups.map((group, groupIndex) => (
           <React.Fragment key={groupIndex}>
@@ -405,12 +601,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </React.Fragment>
         ))}
       </List>
+      )}
       </Box>
-      <Box sx={{ p: 2, textAlign: 'center', borderTop: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="caption" color="text.disabled">
-          v {process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}
-        </Typography>
-      </Box>
+      {/* Pie: solo la versión. Colapsado no entra en 72px, así que no se muestra. */}
+      {!isCollapsed && (
+        <Box sx={{ p: 2, textAlign: 'center', borderTop: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="caption" color="text.disabled">
+            v {process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 
@@ -420,14 +620,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     {/* Acuse de vista de los avisos del tablero (FLOWS.md §36). Va en el layout, no en la page:
         una sola carga de GET /me/alert-views para toda la banda de avisos. */}
     <AlertViewsProvider>
+    {/* Notas rápidas personales (FLOWS.md §48): el provider vive acá para que el botón flotante, el
+        panel y el widget de Inicio compartan una sola carga y el borrador sobreviva al cerrar el
+        panel. Solo dashboard — el Portal no las tiene. */}
+    <QuickNotesProvider>
       <Box sx={{ display: 'flex' }}>
         {/* App Bar */}
         <AppBar
           position="fixed"
           className="no-print"
           sx={{
-            width: { md: `calc(100% - ${drawerWidth}px)` },
-            ml: { md: `${drawerWidth}px` },
+            width: { md: `calc(100% - ${desktopDrawerWidth}px)` },
+            ml: { md: `${desktopDrawerWidth}px` },
+            transition: widthTransition,
             bgcolor: 'background.paper',
             color: 'text.primary',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
@@ -549,7 +754,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <Box
           component="nav"
           className="no-print"
-          sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
+          sx={{ width: { md: desktopDrawerWidth }, flexShrink: { md: 0 }, transition: widthTransition }}
         >
           {/* Mobile drawer */}
           <Drawer
@@ -564,19 +769,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
             }}
           >
-            {drawer}
+            {renderDrawer(false, false)}
           </Drawer>
-          
+
           {/* Desktop drawer */}
           <Drawer
             variant="permanent"
             sx={{
               display: { xs: 'none', md: 'block' },
-              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
+                width: desktopDrawerWidth,
+                overflowX: 'hidden',
+                transition: widthTransition,
+              },
             }}
             open
           >
-            {drawer}
+            {renderDrawer(collapsed, true)}
           </Drawer>
         </Box>
 
@@ -592,7 +802,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             px: 3,
             pt: { xs: 1, md: 3 },
             pb: 3,
-            width: { md: `calc(100% - ${drawerWidth}px)` },
+            width: { md: `calc(100% - ${desktopDrawerWidth}px)` },
+            transition: widthTransition,
             minHeight: '100vh',
             bgcolor: 'background.default',
           }}
@@ -605,7 +816,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </Box>
           {children}
         </Box>
+
+        <QuickNotesFab />
+        <QuickNotesDrawer />
       </Box>
+    </QuickNotesProvider>
     </AlertViewsProvider>
     </ProtectedRoute>
     </ThemeProvider>

@@ -21,12 +21,14 @@ import PayrollAdjustmentsModal from './PayrollAdjustmentsModal';
 import RateChangesModal from './RateChangesModal';
 import ListFilters from '@/components/common/ListFilters';
 import SacEntries from './SacEntries';
-import { isSacPeriod, sacPeriodLabel, sacSemester, sacDueNotice, sacGenerateFrom } from '../../../../../utils/payPeriods';
+import FinalEntries, { FinalLinesBlock, isFinalEntry } from './FinalEntries';
+import { isSacPeriod, sacPeriodLabel, sacSemester, sacDueNotice, sacGenerateFrom, isFinalPeriod, finalPeriodLabel } from '../../../../../utils/payPeriods';
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 const formatPeriodLabel = (p: PayPeriod) => {
   if (isSacPeriod(p)) return sacPeriodLabel(p);
+  if (isFinalPeriod(p)) return finalPeriodLabel(p);
   const half = p.type === 'first_half' ? '1ª Quincena' : '2ª Quincena';
   const month = MONTHS[(p.month ?? 1) - 1];
   return `${half} de ${month} ${p.year}`;
@@ -43,6 +45,7 @@ const sumByType = (adjustments: PayrollAdjustment[] | undefined, type: PayrollAd
 // "SAC1sem" / "SAC1" para el aguinaldo.
 const fileTag = (p: PayPeriod, long = false) => {
   if (isSacPeriod(p)) return long ? `SAC${sacSemester(p.month)}sem` : `SAC${sacSemester(p.month)}`;
+  if (isFinalPeriod(p)) return long ? 'LiquidacionFinal' : 'Final';
   const n = p.type === 'first_half' ? '1' : '2';
   return long ? `${n}Quincena` : `Q${n}`;
 };
@@ -153,6 +156,8 @@ export default function PayrollPage() {
   useEffect(() => { loadData(); }, [payPeriodId]);
 
   const isSac = isSacPeriod(period);
+  // La liquidación final se genera desde el egreso y se confirma/paga por empleado (PLAN_EGRESOS.md §6.1).
+  const isFinal = isFinalPeriod(period);
   // El aguinaldo se puede generar desde el día 16 (inicio de la 2Q de junio/diciembre); el backend
   // lo valida también, acá solo se deshabilita el botón con su explicación.
   const todayIso = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -394,11 +399,11 @@ export default function PayrollPage() {
       <Box className="no-print" display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box display="flex" alignItems="center" gap={1}>
           <IconButton onClick={() => router.push('/dashboard/pay-periods')}><BackIcon /></IconButton>
-          <Typography variant="h4" fontWeight="bold">{isSac ? 'Aguinaldo (SAC)' : 'Liquidación'}</Typography>
+          <Typography variant="h4" fontWeight="bold">{isSac ? 'Aguinaldo (SAC)' : isFinal ? 'Liquidaciones finales' : 'Liquidación'}</Typography>
         </Box>
         <Box display="flex" gap={1}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} size="small">Actualizar</Button>
-          {period?.status === 'open' && (
+          {period?.status === 'open' && !isFinal && (
             <>
               {!isSac && <Button variant="outlined" color="primary" onClick={() => setOpenRateChanges(true)} size="small">Gestión de Aumentos</Button>}
               <Tooltip title={sacNotYet ? sacNotYetHint : ''}>
@@ -427,11 +432,13 @@ export default function PayrollPage() {
               </Typography>
             </Box>
             <Box display="flex" alignItems="center" gap={1}>
-              <Chip
-                label={period.status === 'paid' ? 'Pagada' : period.status === 'closed' ? 'Cerrada' : 'Abierta'}
-                color={period.status === 'paid' ? 'success' : period.status === 'closed' ? 'warning' : 'info'}
-                size="small"
-              />
+              {!isFinal && (
+                <Chip
+                  label={period.status === 'paid' ? 'Pagada' : period.status === 'closed' ? 'Cerrada' : 'Abierta'}
+                  color={period.status === 'paid' ? 'success' : period.status === 'closed' ? 'warning' : 'info'}
+                  size="small"
+                />
+              )}
               <Box className="no-print" display="flex" gap={1}>
                 <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrint} sx={{ display: filteredEntries.length > 0 ? 'inline-flex' : 'none' }}>Imprimir</Button>
                 <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrintAll} sx={{ display: filteredEntries.length > 0 ? 'inline-flex' : 'none' }}>Imprimir Detalles</Button>
@@ -440,7 +447,7 @@ export default function PayrollPage() {
                   size="small"
                   startIcon={<ExcelIcon sx={{ color: '#217346' }} />}
                   onClick={handleExportHours}
-                  sx={{ display: filteredEntries.length > 0 && !isSac ? 'inline-flex' : 'none' }}
+                  sx={{ display: filteredEntries.length > 0 && !isSac && !isFinal ? 'inline-flex' : 'none' }}
                 >
                   Exportar Horas
                 </Button>
@@ -449,7 +456,7 @@ export default function PayrollPage() {
                   size="small"
                   startIcon={<ExcelIcon sx={{ color: '#217346' }} />}
                   onClick={handleExportPayrollSheet}
-                  sx={{ display: filteredEntries.length > 0 ? 'inline-flex' : 'none' }}
+                  sx={{ display: filteredEntries.length > 0 && !isFinal ? 'inline-flex' : 'none' }}
                 >
                   Exportar Planilla
                 </Button>
@@ -462,6 +469,14 @@ export default function PayrollPage() {
       {isSac && period && (
         <Alert severity="info" className="no-print" sx={{ mb: 2 }}>
           {sacDueNotice(period.month)} Adelantos y préstamos no se descuentan del aguinaldo.
+        </Alert>
+      )}
+
+      {isFinal && (
+        <Alert severity="info" className="no-print" sx={{ mb: 2 }}>
+          Egresos del mes. Cada liquidación final se genera desde la pestaña Egreso del empleado; acá se revisa, se confirma
+          (al confirmar se cobran los préstamos) y se paga (al pagar se corta el acceso al portal y se cierra el egreso).
+          Los descuentos nunca dejan el neto por debajo de cero: lo que no entra queda como deuda pendiente en el egreso.
         </Alert>
       )}
 
@@ -481,11 +496,13 @@ export default function PayrollPage() {
         {entries.length === 0 ? (
           <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary" mb={2}>
-            {period?.status === 'open'
+            {isFinal
+              ? 'Todavía no hay liquidaciones finales generadas este mes. Se generan desde el egreso del empleado.'
+              : period?.status === 'open'
               ? (isSac ? 'No se ha generado el aguinaldo para este semestre aún.' : 'No se ha generado la liquidación para esta quincena aún.')
               : (isSac ? 'Este aguinaldo no tiene liquidaciones generadas.' : 'Esta quincena no tiene liquidaciones generadas.')}
           </Typography>
-          {period?.status === 'open' && (
+          {period?.status === 'open' && !isFinal && (
             <Tooltip title={sacNotYet ? sacNotYetHint : ''}>
               <span>
                 <Button variant="contained" color="secondary" startIcon={<CalcIcon />} onClick={handleGenerate} disabled={sacNotYet}>Generar Ahora</Button>
@@ -497,6 +514,19 @@ export default function PayrollPage() {
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">No hay empleados que coincidan con la búsqueda.</Typography>
         </Paper>
+      ) : isFinal ? (
+        <FinalEntries
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          entries={filteredEntries as any}
+          formatCurrency={formatCurrency}
+          isMobile={isMobile}
+          onView={(e) => { setDetailEntry(e); setOpenDetail(true); }}
+          onEdit={(e) => { setEditingEntry(e as unknown as PayrollEntry); setOpenEdit(true); }}
+          onConfirm={handleConfirm}
+          onPay={handlePayItem}
+          onSign={(e) => setSignEntry(e)}
+          onOpenTermination={(employeeId) => router.push(`/dashboard/employees/${employeeId}?tab=termination`)}
+        />
       ) : isSac ? (
         <SacEntries
           entries={filteredEntries}
@@ -1056,6 +1086,9 @@ export default function PayrollPage() {
                 <Typography variant="overline" color="text.secondary" fontWeight={600}>Desglose de haberes</Typography>
                 <Stack spacing={0.5} mt={1} mb={1}>
                   {(() => {
+                    if (isFinalEntry(detailEntry.lines)) {
+                      return <FinalLinesBlock lines={detailEntry.lines || []} adjustments={detailEntry.adjustments as PayrollAdjustment[]} grossAmount={Number(detailEntry.gross_amount)} formatCurrency={formatCurrency} />;
+                    }
                     if (detailEntry.lines && detailEntry.lines.length > 0) {
                       const isFixedSalary = isFixedSalaryPayType(detailEntry.employee?.pay_type);
 
@@ -1508,6 +1541,9 @@ export default function PayrollPage() {
                   Desglose de Haberes
                 </Typography>
                 {(() => {
+                  if (isFinalEntry(entry.lines)) {
+                    return <FinalLinesBlock lines={entry.lines || []} adjustments={entry.adjustments as PayrollAdjustment[]} grossAmount={Number(entry.gross_amount)} formatCurrency={formatCurrency} />;
+                  }
                   if (entry.lines && entry.lines.length > 0) {
                     const isFixedSalary = isFixedSalaryPayType(entry.employee?.pay_type);
 

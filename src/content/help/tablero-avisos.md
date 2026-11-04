@@ -11,6 +11,8 @@ Vencimientos", y desde ahí se llega a la ficha de cada documento con "Ver detal
 Debajo aparecen los **avisos con detalle**: una tarjeta por tema, con la lista de los items
 concretos y los botones para actuar sobre ellos.
 
+Entre esos avisos está **Cuotas de indemnización vencidas**: lista las cuotas de un acuerdo de pago de un egreso que ya pasaron su fecha de vencimiento sin pagarse, con el empleado, el monto y los días de atraso, y un botón **Ver egreso**. Solo lo ven quienes pueden ver egresos y sueldos. Desaparece solo cuando se paga la cuota.
+
 Solo ves los contadores y los avisos de los temas a los que tenés acceso. Si tu rol no maneja
 documentación, por ejemplo, ese aviso no existe para vos.
 
@@ -83,7 +85,8 @@ La campanita registra:
   que te **devolvieron** uno para corregir, y que se **envió** un presupuesto al cliente;
 - que te quedó una **herramienta a cargo** para reparación;
 - que hay una **OCA aprobada esperando presupuesto** (solo al usuario configurado para eso);
-- que un **documento** o un **EPP** está por vencer o ya venció.
+- que un **documento** o un **EPP** está por vencer o ya venció;
+- que una **nota tuya** venció o es para hoy (ver el tema **Notas rápidas**).
 
 Las notificaciones se guardan por **90 días**; las más viejas se borran solas.
 
@@ -93,7 +96,7 @@ Hay una diferencia que conviene entender para no esperar algo que no va a pasar.
 pedidos, presupuestos, herramientas y OCAs se generan **en el momento exacto** en que alguien hace
 la acción, porque hay una persona del otro lado apretando un botón.
 
-Los de **vencimientos y EPP** son distintos: no los dispara nadie, los dispara el calendario. El
+Los de **vencimientos, EPP y notas con vencimiento** son distintos: no los dispara nadie, los dispara el calendario. El
 sistema los revisa **cuando alguien entra a la app** (como máximo una vez por hora), así que:
 
 - la notificación te va a estar esperando en la campanita la próxima vez que entres;
@@ -120,4 +123,4 @@ Marcar un aviso del inicio como visto **no** marca leída ninguna notificación 
 revés. Son dos preguntas distintas, y está bien que una misma novedad aparezca en los dos lugares:
 en la campanita como "esto pasó el martes", en el inicio como "esto todavía te falta hacer".
 
-<!-- ref: conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->
+<!-- ref: conmomet-app/src/components/common/TerminationAgreementAlert.tsx, conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->

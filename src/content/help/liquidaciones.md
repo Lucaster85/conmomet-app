@@ -7,6 +7,8 @@ liquidación), **Cerrada** y **Pagada**. Se ubica en **Contabilidad → Quincena
 Además de las quincenas, en junio y diciembre aparece una liquidación aparte: el **Aguinaldo
 (SAC)** del semestre (ver "Aguinaldo (SAC)" más abajo).
 
+Un empleado dado de baja **ya no entra en las quincenas**: desde que se confirma su egreso queda inactivo y todo lo que le corresponde (haberes hasta el último día, aguinaldo, vacaciones, indemnización) se paga en su **liquidación final**, que vive aparte (ver "Liquidación final" más abajo).
+
 ## Jornalizados, Mensualizados y Quincenales
 
 Las tres figuras de empleado se liquidan distinto:
@@ -160,6 +162,20 @@ duplica). Mientras el aguinaldo siga en borrador no hay diferencia: se regenera 
 aguinaldo. En la pantalla del aguinaldo, la columna **Diferencias** muestra en qué quincena se
 pagó cada una, o **Pendiente** cuando todavía no se cargó en ninguna liquidación.
 
+## Liquidación final
+
+Cuando un empleado se va, sus haberes, el aguinaldo y las vacaciones proporcionales — y la indemnización, si corresponde — se pagan en una **liquidación final**. Se genera desde la pestaña **Egreso** de su ficha (ver el tema **Egresos de empleados**), no desde acá.
+
+En **Quincenas y Pagos** las liquidaciones finales de un mes aparecen juntas en una tarjeta: **Liquidaciones finales — noviembre 2026**. Al abrirla ves una fila por empleado que egresó ese mes, con lo **remunerativo**, lo **indemnizatorio**, los descuentos, el neto, el estado y un chip **Deuda pendiente** si los descuentos superaron lo que se le debe. Desde ahí se puede ver el detalle, hacer **Ajustes**, **Confirmar**, **Pagar** y **firmar el recibo**, y volver al egreso con **Ver egreso**.
+
+Diferencias con una quincena:
+
+- **No se genera ni se cierra "en bloque".** No hay botón de generar ni de cerrar la tarjeta: cada liquidación se confirma y se paga por separado, dentro de los 4 días hábiles del egreso.
+- **Confirmar** cobra los préstamos del empleado. Si hay pedidos de adelanto o préstamos sin resolver, no deja confirmar.
+- **Pagar** corta el acceso del empleado al portal.
+- El neto **nunca queda por debajo de cero**: lo que no entra se anota como deuda pendiente en el egreso.
+- No se puede asignar un adelanto, un retroactivo ni un aumento a una liquidación final.
+
 ## Descuentos automáticos
 
 Al neto de la liquidación se le restan automáticamente:
@@ -255,4 +271,4 @@ Si se aplica un aumento de Convenio Colectivo con fecha retroactiva, el sistema 
 automáticamente líneas de **"Retroactivo"** en la liquidación del período correspondiente, con
 la diferencia calculada sobre lo ya liquidado en los períodos anteriores afectados.
 
-<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#delete, api_conmomet/controllers/salaryAdvanceController.js#findDuplicateAdvance, api_conmomet/controllers/salaryAdvanceDeletionAlertController.js, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, api_conmomet/controllers/payrollController.js#generateSac, api_conmomet/services/sacService.js, api_conmomet/helpers/sacCalculations.js, api_conmomet/controllers/categoryController.js#applyBonus, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/SacEntries.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/PayrollAdjustmentsModal.tsx, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/components/common/SalaryAdvanceDeletionAlert.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx, api_conmomet/controllers/payPeriodController.js#close, api_conmomet/services/exchangeRateService.js, conmomet-app/src/app/dashboard/pay-periods/page.tsx -->
+<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#delete, api_conmomet/controllers/salaryAdvanceController.js#findDuplicateAdvance, api_conmomet/controllers/salaryAdvanceDeletionAlertController.js, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, api_conmomet/controllers/payrollController.js#generateSac, api_conmomet/services/sacService.js, api_conmomet/helpers/sacCalculations.js, api_conmomet/services/finalPayrollService.js, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/FinalEntries.tsx, api_conmomet/controllers/categoryController.js#applyBonus, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/SacEntries.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/PayrollAdjustmentsModal.tsx, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/components/common/SalaryAdvanceDeletionAlert.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx, api_conmomet/controllers/payPeriodController.js#close, api_conmomet/services/exchangeRateService.js, conmomet-app/src/app/dashboard/pay-periods/page.tsx -->

@@ -16,6 +16,7 @@ import {
   DescriptionOutlined as DocumentIcon,
   SecurityOutlined as EppIcon,
   ErrorOutlineOutlined as ExpiredIcon,
+  EditNoteOutlined as NoteIcon,
 } from '@mui/icons-material';
 import { NotificationService, AppNotification, NotificationType } from '../../utils/api';
 import { useAuth } from '../../utils/auth';
@@ -44,6 +45,8 @@ const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
   document_expired: <ExpiredIcon fontSize="small" color="error" />,
   epp_expiring: <EppIcon fontSize="small" color="warning" />,
   epp_expired: <ExpiredIcon fontSize="small" color="error" />,
+  // Mismo ícono que el botón flotante de notas, así se reconoce de dónde viene.
+  quick_note_due: <NoteIcon fontSize="small" color="warning" />,
 };
 
 export default function NotificationBell() {

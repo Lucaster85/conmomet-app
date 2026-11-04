@@ -38,6 +38,7 @@ import ThumbUpIcon from '@mui/icons-material/ThumbUpOutlined';
 import ThumbDownIcon from '@mui/icons-material/ThumbDownOutlined';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import ContentCopyIcon from '@mui/icons-material/ContentCopyOutlined';
+import PersonOffIcon from '@mui/icons-material/PersonOffOutlined';
 import dayjs from 'dayjs';
 
 import {
@@ -49,6 +50,7 @@ import {
   EmployeeInvitationService, EmployeeInvitationStatus, InviteResult,
   SafetyEquipment, SafetyEquipmentService,
   EppItem, EppItemService,
+  EmployeeTermination, EmployeeTerminationService,
 } from '@/utils/api';
 import FeedbackModal from '@/components/FeedbackModal';
 import CurrencyInput from '@/components/CurrencyInput';
@@ -56,6 +58,8 @@ import InviteEmployeeDialog, { buildInviteMessage } from '@/components/InviteEmp
 import DocumentCategorySelect from '@/components/documents/DocumentCategorySelect';
 import EppDeliveriesList from '@/components/safety-equipment/EppDeliveriesList';
 import EmployeeSizesPanel from '@/components/safety-equipment/EmployeeSizesPanel';
+import EmployeeTerminationPanel from '@/components/employees/EmployeeTerminationPanel';
+import TerminationFormDialog from '@/components/employees/TerminationFormDialog';
 import { buildWhatsAppLink } from '@/utils/whatsapp';
 import { isFixedSalaryPayType, payTypeLabel } from '@/utils/payType';
 import { TokenManager, userHasPermission } from '@/utils/auth';
@@ -86,11 +90,15 @@ function EmployeeDetailPageContent() {
   // pestaña "Tarifas" (ver helpers/seed.js#employee_salaries_read en el backend).
   const currentUser = TokenManager.getUser();
   const canSeeSalaries = userHasPermission(currentUser, 'employee_salaries_read');
+  // Egresos (ver PLAN_EGRESOS.md): la pestaña "Egreso" y el botón "Dar de baja" salen de estos permisos.
+  const canReadTerminations = userHasPermission(currentUser, 'employee_terminations_read');
+  const canWriteTerminations = userHasPermission(currentUser, 'employee_terminations_write');
+  const canConfirmTerminations = userHasPermission(currentUser, 'employee_terminations_confirm');
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [documents, setDocuments] = useState<EntityDocument[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tabValue, setTabValue] = useState(searchParams.get('tab') === 'documents' ? 1 : 0);
+  const [tabValue, setTabValue] = useState(searchParams.get('tab') === 'documents' ? 1 : searchParams.get('tab') === 'termination' ? 6 : 0);
   const highlightDocId = Number(searchParams.get('doc')) || null;
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -171,6 +179,10 @@ function EmployeeDetailPageContent() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteResult, setInviteResult] = useState<InviteResult | null>(null);
 
+  // Egresos
+  const [terminations, setTerminations] = useState<EmployeeTermination[]>([]);
+  const [terminationDialogOpen, setTerminationDialogOpen] = useState(false);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -182,13 +194,17 @@ function EmployeeDetailPageContent() {
 
       const catalog = await EppItemService.getAll();
       setEppCatalog(catalog);
+
+      if (canReadTerminations) {
+        setTerminations(await EmployeeTerminationService.getAll({ employee_id: employeeId }));
+      }
     } catch (err: unknown) {
       const e = err as Error;
       setError(e.message || 'Error al cargar los datos del empleado');
     } finally {
       setLoading(false);
     }
-  }, [employeeId]);
+  }, [employeeId, canReadTerminations]);
 
   useEffect(() => {
     if (employeeId) {
@@ -212,6 +228,31 @@ function EmployeeDetailPageContent() {
       }).finally(() => setLoadingRates(false));
     }
   }, [tabValue, ratesLoaded, employeeId, canSeeSalaries]);
+
+  // Tras dar de baja / confirmar / anular un egreso cambian el estado del empleado y la lista de
+  // egresos. Se recargan sin el spinner de página completa de loadData, para no desmontar la pestaña.
+  const refreshAfterTermination = useCallback(async () => {
+    try {
+      setEmployee(await EmployeeService.getById(employeeId));
+      if (canReadTerminations) {
+        setTerminations(await EmployeeTerminationService.getAll({ employee_id: employeeId }));
+      }
+      setDocuments(await EntityDocumentService.getAll('employee', employeeId));
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Error al actualizar los datos del empleado');
+    }
+  }, [employeeId, canReadTerminations]);
+
+  // Desde la grilla de empleados, "Dar de baja" llega con ?action=terminate: abre el diálogo una sola vez.
+  const [terminateHandled, setTerminateHandled] = useState(false);
+  useEffect(() => {
+    if (terminateHandled || loading || !employee) return;
+    if (searchParams.get('action') !== 'terminate') return;
+    setTerminateHandled(true);
+    if (canWriteTerminations && employee.status !== 'inactive' && !terminations.some((t) => t.status !== 'cancelled')) {
+      setTerminationDialogOpen(true);
+    }
+  }, [terminateHandled, loading, employee, terminations, searchParams, canWriteTerminations]);
 
   // Portal invitation: solo consulta si el empleado no tiene ya un usuario vinculado.
   useEffect(() => {
@@ -467,6 +508,8 @@ function EmployeeDetailPageContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabValue]);
 
+  const currentTermination = terminations.find((t) => t.status !== 'cancelled') || null;
+
   if (loading) return <Box display="flex" justifyContent="center" py={4}><GearSpinner /></Box>;
   if (!employee) return <Typography color="error">Empleado no encontrado.</Typography>;
 
@@ -477,6 +520,18 @@ function EmployeeDetailPageContent() {
         <Typography variant="h4" fontWeight="bold">
           {employee.lastname}, {employee.name}
         </Typography>
+        {currentTermination?.status === 'draft' && (
+          <Chip label="Egreso en curso" color="warning" size="small" onClick={() => setTabValue(6)} />
+        )}
+        {(currentTermination?.status === 'confirmed' || currentTermination?.status === 'settled') && (
+          <Chip label="Dado de baja" color="default" size="small" onClick={() => setTabValue(6)} />
+        )}
+        <Box flex={1} />
+        {canWriteTerminations && employee.status !== 'inactive' && !currentTermination && (
+          <Button color="error" variant="outlined" startIcon={<PersonOffIcon />} onClick={() => setTerminationDialogOpen(true)}>
+            Dar de baja
+          </Button>
+        )}
       </Box>
 
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
@@ -490,6 +545,7 @@ function EmployeeDetailPageContent() {
           <Tab value={3} label="Vacaciones y Licencias" />
           {canSeeSalaries && <Tab value={4} label="Tarifas" />}
           <Tab value={5} label="EPP" />
+          {canReadTerminations && terminations.length > 0 && <Tab value={6} label="Egreso" />}
         </Tabs>
       </Paper>
 
@@ -1366,6 +1422,33 @@ function EmployeeDetailPageContent() {
       )}
 
       {/* Tab 5 — EPP */}
+      {tabValue === 6 && canReadTerminations && (
+        <EmployeeTerminationPanel
+          employee={employee}
+          terminations={terminations}
+          canWrite={canWriteTerminations}
+          canConfirm={canConfirmTerminations}
+          canSeeAmounts={canSeeSalaries}
+          onChanged={refreshAfterTermination}
+          onError={setError}
+          onSuccess={setSuccess}
+        />
+      )}
+
+      <TerminationFormDialog
+        open={terminationDialogOpen}
+        employee={employee}
+        canSeeAmounts={canSeeSalaries}
+        onClose={() => setTerminationDialogOpen(false)}
+        onSaved={async () => {
+          setTerminationDialogOpen(false);
+          setSuccess('Egreso cargado como borrador.');
+          await refreshAfterTermination();
+          setTabValue(6);
+        }}
+        onError={setError}
+      />
+
       {tabValue === 5 && (
         <Box>
           {loadingEpp ? (

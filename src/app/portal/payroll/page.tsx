@@ -14,7 +14,7 @@ import { PaymentsOutlined as TitleIcon } from '@mui/icons-material';
 import { SelfService, PayrollEntry, PayrollAdjustment } from '@/utils/api';
 import GearSpinner from '@/components/GearSpinner';
 import dayjs from 'dayjs';
-import { isSacPeriod, sacPeriodLabel } from '@/utils/payPeriods';
+import { isSacPeriod, sacPeriodLabel, isFinalPeriod } from '@/utils/payPeriods';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
@@ -24,6 +24,7 @@ const periodTitle = (p: PayrollEntry['payPeriod']) => {
   if (!p) return 'Período Desconocido';
   if (p.type && p.month && p.year) {
     if (isSacPeriod(p)) return sacPeriodLabel({ type: p.type, month: p.month, year: p.year });
+    if (isFinalPeriod(p)) return `Liquidación final de ${MONTHS[p.month - 1]} ${p.year}`;
     return `${p.type === 'first_half' ? '1ª' : '2ª'} Quincena de ${MONTHS[p.month - 1]} ${p.year}`;
   }
   return p.name || 'Período Desconocido';
@@ -93,9 +94,9 @@ export default function PortalPayroll() {
                   <Divider sx={{ my: 2 }} />
 
                   <Grid container spacing={2}>
-                    {isSacPeriod(payroll.payPeriod) ? (
+                    {isSacPeriod(payroll.payPeriod) || isFinalPeriod(payroll.payPeriod) ? (
                       <Grid size={{ xs: 12 }}>
-                        <Typography variant="caption" color="text.secondary">Aguinaldo (SAC)</Typography>
+                        <Typography variant="caption" color="text.secondary">{isFinalPeriod(payroll.payPeriod) ? 'Liquidación final' : 'Aguinaldo (SAC)'}</Typography>
                         <Typography variant="body2" fontWeight={500}>$ {Number(payroll.gross_amount || 0).toLocaleString()}</Typography>
                       </Grid>
                     ) : (
