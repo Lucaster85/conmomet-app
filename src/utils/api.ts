@@ -3312,7 +3312,9 @@ export type NotificationType =
   | 'document_expiring'
   | 'document_expired'
   | 'epp_expiring'
-  | 'epp_expired';
+  | 'epp_expired'
+  // Una nota rápida propia que venció o vence hoy (FLOWS.md §48, etapa 3).
+  | 'quick_note_due';
 
 export interface AppNotification {
   id: number;

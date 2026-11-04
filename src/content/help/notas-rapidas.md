@@ -73,6 +73,26 @@ las que no.
 - **Eliminarla:** menú de los tres puntitos → **Eliminar**. No te pide confirmación: aparece el aviso
   **Deshacer** unos segundos y la nota vuelve tal cual estaba.
 
+## Aviso cuando una nota vence
+
+Si una nota tiene vencimiento, el sistema te avisa **una vez**, en la **campanita** (con el ícono del
+lápiz), cuando llega el día: **"Nota para hoy"** el día del vencimiento, o **"Nota vencida"** si ya
+pasó y no la habías completado. Si tenés activadas las notificaciones en el celular, te llega también
+como notificación (menú de tu usuario → **Notificaciones en este dispositivo**). Al tocarla vas a
+Inicio, donde la tarjeta **Mis notas** muestra primero las vencidas y las de hoy.
+
+Algunas cosas para tener en cuenta:
+
+- **Llega cuando alguien entra a la app**, no a una hora fija: el sistema revisa los vencimientos al
+  entrar (como máximo una vez por hora). Si no abrís el sistema ese día, el aviso te espera en la
+  campanita para la próxima vez.
+- **Avisa una sola vez por nota.** Si la dejás pendiente, no te vuelve a notificar cada día.
+- Si **cambiás el vencimiento** de una nota a otro día, vuelve a avisarte cuando llegue la fecha nueva.
+- **No te avisa de lo que acabás de escribir.** Si cargás una nota con vencimiento de hoy (o de un día
+  que ya pasó), no te llega aviso: acabás de verla. Lo mismo si **reabrís** una nota vencida que habías
+  completado.
+- No avisa notas **completadas** ni **eliminadas**, ni las que no tienen vencimiento.
+
 ## Notas completadas
 
 Debajo de las pendientes hay una sección plegada, **Completadas (N)**. Tocala para verla. Ahí podés:
@@ -93,4 +113,4 @@ abrir el panel.
 **¿Puedo vincular una nota a un presupuesto, una OCA o un empleado?** Todavía no. Por ahora son notas
 sueltas.
 
-<!-- ref: conmomet-app/src/components/notes/QuickNotesProvider.tsx, conmomet-app/src/components/notes/QuickNotesFab.tsx, conmomet-app/src/components/notes/QuickNotesDrawer.tsx, conmomet-app/src/components/notes/QuickNotesWidget.tsx, conmomet-app/src/utils/quickNotes.ts, conmomet-app/src/app/dashboard/layout.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/quickNoteController.js, api_conmomet/models/quickNote.js, api_conmomet/helpers/quickNoteEntityTypes.js -->
+<!-- ref: conmomet-app/src/components/notes/QuickNotesProvider.tsx, conmomet-app/src/components/notes/QuickNotesFab.tsx, conmomet-app/src/components/notes/QuickNotesDrawer.tsx, conmomet-app/src/components/notes/QuickNotesWidget.tsx, conmomet-app/src/components/common/NotificationBell.tsx, conmomet-app/src/utils/quickNotes.ts, conmomet-app/src/app/dashboard/layout.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/quickNoteController.js, api_conmomet/models/quickNote.js, api_conmomet/helpers/quickNoteEntityTypes.js, api_conmomet/services/expirationNotifier.js, api_conmomet/helpers/argentinaDate.js -->

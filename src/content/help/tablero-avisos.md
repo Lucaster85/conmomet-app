@@ -85,7 +85,8 @@ La campanita registra:
   que te **devolvieron** uno para corregir, y que se **envió** un presupuesto al cliente;
 - que te quedó una **herramienta a cargo** para reparación;
 - que hay una **OCA aprobada esperando presupuesto** (solo al usuario configurado para eso);
-- que un **documento** o un **EPP** está por vencer o ya venció.
+- que un **documento** o un **EPP** está por vencer o ya venció;
+- que una **nota tuya** venció o es para hoy (ver el tema **Notas rápidas**).
 
 Las notificaciones se guardan por **90 días**; las más viejas se borran solas.
 
@@ -95,7 +96,7 @@ Hay una diferencia que conviene entender para no esperar algo que no va a pasar.
 pedidos, presupuestos, herramientas y OCAs se generan **en el momento exacto** en que alguien hace
 la acción, porque hay una persona del otro lado apretando un botón.
 
-Los de **vencimientos y EPP** son distintos: no los dispara nadie, los dispara el calendario. El
+Los de **vencimientos, EPP y notas con vencimiento** son distintos: no los dispara nadie, los dispara el calendario. El
 sistema los revisa **cuando alguien entra a la app** (como máximo una vez por hora), así que:
 
 - la notificación te va a estar esperando en la campanita la próxima vez que entres;
