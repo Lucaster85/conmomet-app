@@ -3,20 +3,23 @@ import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  DialogTitle, DialogContent, DialogActions, TextField, Stack, Chip, Grid, InputAdornment,
+  DialogTitle, DialogContent, DialogActions, TextField, Stack, Chip, Grid, InputAdornment, IconButton, Tooltip,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
 import {
   AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, PostAddOutlined as TitleIcon,
+  VisibilityOutlined as ViewIcon, OutlinedFlag as FinishIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import ProjectCodeLabel from '../../../components/projects/ProjectCodeLabel';
+import NotifyFinishDialog from '../../../components/additionals/NotifyFinishDialog';
 import {
   Additional, AdditionalService, AdditionalParentOption, AdditionalClientOption, AdditionalPlantOption, BudgetCurrency, ProjectService,
 } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
 import { BUDGET_STATUS_CHIP, PROJECT_STATUS_LABELS, todayLocal } from '../../../utils/additionalStatus';
+import { assigneesLabel, canNotifyFinish } from '../../../utils/additionalFinish';
 
 interface CreateForm {
   name: string;
@@ -38,6 +41,7 @@ function AdditionalsContent() {
     ? ((user as unknown as Record<string, unknown>).permissions as string[])
     : [];
   const hasWrite = permissions.includes('admin_granted') || permissions.includes('additionals_write');
+  const hasUpdate = permissions.includes('admin_granted') || permissions.includes('additionals_update');
 
   const [items, setItems] = useState<Additional[]>([]);
   const [clients, setClients] = useState<AdditionalClientOption[]>([]);
@@ -57,6 +61,10 @@ function AdditionalsContent() {
   const [parentOptions, setParentOptions] = useState<AdditionalParentOption[]>([]);
   const [processing, setProcessing] = useState(false);
   const autoOpened = useRef(false);
+
+  // Notificar finalización (FLOWS.md §50)
+  const [finishTarget, setFinishTarget] = useState<Additional | null>(null);
+  const [success, setSuccess] = useState('');
 
   const loadItems = useCallback(async () => {
     try {
@@ -167,6 +175,27 @@ function AdditionalsContent() {
     return <Chip size="small" label={`${budget.number} · ${cfg.label}`} color={cfg.color} variant={budget.status === 'draft' ? 'outlined' : 'filled'} />;
   };
 
+  // Acciones por fila. Los botones frenan el click para no disparar la navegación de la fila/card.
+  const rowActions = (item: Additional) => {
+    const assignees = assigneesLabel(item);
+    return (
+      <Box display="flex" gap={0.5} justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
+        <Tooltip title="Ver">
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/additionals/${item.id}`); }}>
+            <ViewIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        {hasUpdate && canNotifyFinish(item) && (
+          <Tooltip title={assignees ? `Finalización notificada a ${assignees} — cambiar responsables` : 'Notificar finalización'}>
+            <IconButton size="small" color={assignees ? 'success' : 'primary'} onClick={(e) => { e.stopPropagation(); setFinishTarget(item); }}>
+              <FinishIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
+    );
+  };
+
   const formatHours = (hours: number) => `${hours.toLocaleString('es-AR', { maximumFractionDigits: 1 })} hs`;
   const formatDate = (date?: string) => (date ? new Date(`${date}T00:00:00`).toLocaleDateString('es-AR') : '—');
 
@@ -184,6 +213,7 @@ function AdditionalsContent() {
       </Box>
 
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+      <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2} alignItems="center">
@@ -240,6 +270,7 @@ function AdditionalsContent() {
                     <Typography variant="body2" color="text.secondary" mt={1}>
                       {formatHours(item.consumed_hours_own)} consumidas · Inicio: {formatDate(item.start_date)}
                     </Typography>
+                    <Box mt={1}>{rowActions(item)}</Box>
                   </Card>
                 ))}
               </Stack>
@@ -259,12 +290,13 @@ function AdditionalsContent() {
                     <TableCell><strong>Presupuesto</strong></TableCell>
                     <TableCell align="right"><strong>Horas</strong></TableCell>
                     <TableCell><strong>Inicio</strong></TableCell>
+                    <TableCell align="right"><strong>Acciones</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {items.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                      <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                         <Typography variant="body2" color="text.secondary">No hay adicionales que coincidan</Typography>
                       </TableCell>
                     </TableRow>
@@ -280,6 +312,7 @@ function AdditionalsContent() {
                       <TableCell>{budgetChip(item)}</TableCell>
                       <TableCell align="right">{formatHours(item.consumed_hours_own)}</TableCell>
                       <TableCell>{formatDate(item.start_date)}</TableCell>
+                      <TableCell align="right">{rowActions(item)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -288,6 +321,17 @@ function AdditionalsContent() {
           </Box>
         </>
       )}
+
+      <NotifyFinishDialog
+        open={!!finishTarget}
+        additional={finishTarget}
+        onClose={() => setFinishTarget(null)}
+        onFinished={(updated) => {
+          setSuccess(`Finalización de ${updated.code} notificada a gerencia`);
+          loadItems();
+        }}
+        onError={setError}
+      />
 
       <AppDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Nuevo adicional</DialogTitle>
