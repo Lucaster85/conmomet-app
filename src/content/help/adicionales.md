@@ -60,6 +60,35 @@ En la ficha del adicional hay una sección **Seguimiento** para ir dejando notas
 material para…", "se hizo…"), con fotos opcionales. Es el seguimiento del proyecto del adicional y se puede cargar
 desde el celular. Ver el tema **Seguimiento de proyectos y adicionales**.
 
+## Notificar la finalización
+
+Cuando el trabajo del adicional terminó, hay que avisarle a **gerencia** para que cargue los márgenes y
+envíe el presupuesto al cliente. Eso se hace con el botón **"Notificar finalización"**: está en la
+columna **Acciones** del listado (ícono de bandera) y en el encabezado de la ficha del adicional.
+
+Al confirmar:
+
+- Elegís **a quién avisar**. Solo se ofrece **gerencia** (quienes pueden enviar presupuestos), podés
+  elegir **varias personas** y tiene que haber **al menos una**.
+- El adicional pasa a **Completado** y se le pone como fecha de fin la de **hoy** (si no tenía una). Desde
+  ese momento **ya no se pueden cargar horas**, y la mano de obra del presupuesto deja de cambiar.
+- A cada persona elegida le llega una notificación (campanita y celular) y le aparece la tarjeta
+  **"Adicionales para presupuestar"** en la pantalla de inicio. Ver el tema **Avisos del inicio y campanita
+  de notificaciones**.
+- En la ficha queda escrita la línea **"Finalización notificada el dd/mm a …"**.
+
+El botón se ve con el permiso de modificar adicionales, mientras el adicional **no esté cancelado** y su
+presupuesto **siga en borrador**. Si el presupuesto ya se envió, no hay nada que presupuestar y el botón
+desaparece.
+
+**Se puede volver a usar** sobre un adicional que ya está Completado: sirve para **cambiar los
+responsables**. La lista nueva **reemplaza** a la anterior (no se suma) y se vuelve a avisar a los elegidos.
+Con responsables cargados, el ícono del listado cambia de color y su ayuda dice a quién se avisó.
+
+**Cambiar el estado a Completado desde "Datos generales" no avisa a nadie.** Es válido, pero el adicional
+queda sin responsables y no aparece en ninguna tarjeta: para avisar a gerencia hay que usar el botón
+"Notificar finalización".
+
 ## Nombre y descripción compartidos con el presupuesto
 
 Mientras el presupuesto esté en **borrador**, el **nombre** del adicional es el **título** del
@@ -69,7 +98,9 @@ actualiza el otro (también la planta). Cuando el presupuesto se **envía** al c
 
 ## Cuando se envía el presupuesto
 
-Los materiales pasan a **solo lectura** en el adicional (un aviso lo indica).
+Los materiales pasan a **solo lectura** en el adicional (un aviso lo indica). Además, el adicional sale de la
+tarjeta **"Adicionales para presupuestar"** de las personas a las que se les había avisado: ya no hay nada
+que presupuestar.
 
 ## Si el cliente rechaza el presupuesto
 
@@ -97,4 +128,7 @@ El acceso al módulo se asigna con los permisos **additionals_***. Alcanza con e
 adicionales y cargar materiales, sin necesidad de acceso a Presupuestos ni a Proyectos (esos accesos
 solo habilitan los enlaces a esas pantallas). Sin el permiso de costos no se ve el costo real.
 
-<!-- ref: conmomet-app/src/app/dashboard/additionals/page.tsx, conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/utils/projectCode.ts, api_conmomet/controllers/additionalController.js, api_conmomet/services/additionalBudgetService.js, api_conmomet/services/budgetMaterialService.js, api_conmomet/services/projectFactory.js -->
+El botón **"Notificar finalización"** requiere el permiso de **modificar adicionales**
+(**additionals_update**). La lista de personas a las que se puede avisar no pide ningún permiso extra.
+
+<!-- ref: conmomet-app/src/app/dashboard/additionals/page.tsx, conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/utils/projectCode.ts, conmomet-app/src/components/additionals/NotifyFinishDialog.tsx, conmomet-app/src/components/common/AdditionalPendingBudgetAlert.tsx, api_conmomet/controllers/additionalController.js, api_conmomet/services/additionalBudgetService.js, api_conmomet/services/budgetMaterialService.js, api_conmomet/services/projectFactory.js -->

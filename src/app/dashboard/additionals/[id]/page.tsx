@@ -8,13 +8,14 @@ import {
 import AppDialog from '@/components/common/AppDialog';
 import {
   AddOutlined as AddIcon, ArrowBackOutlined as BackIcon, DeleteOutlined as DeleteIcon, SaveOutlined as SaveIcon,
-  OpenInNewOutlined as OpenIcon, RequestQuoteOutlined as BudgetIcon, ScheduleOutlined as HoursIcon, InfoOutlined as InfoIcon,
+  OpenInNewOutlined as OpenIcon, OutlinedFlag as FinishIcon, RequestQuoteOutlined as BudgetIcon, ScheduleOutlined as HoursIcon, InfoOutlined as InfoIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '../../../../components/FeedbackModal';
 import GearSpinner from '../../../../components/GearSpinner';
 import CurrencyInput from '../../../../components/CurrencyInput';
 import ProjectCodeLabel from '../../../../components/projects/ProjectCodeLabel';
 import ProjectLogPanel from '../../../../components/projects/ProjectLogPanel';
+import NotifyFinishDialog from '../../../../components/additionals/NotifyFinishDialog';
 import MaterialSelect from '../../../../components/materials/MaterialSelect';
 import ProviderPriceAutocomplete from '../../../../components/materials/ProviderPriceAutocomplete';
 import {
@@ -25,6 +26,7 @@ import { useAuth } from '../../../../utils/auth';
 import { ConflictError } from '../../../../utils/apiErrors';
 import { findPrice } from '../../../../utils/materialPrices';
 import { BUDGET_STATUS_CHIP, PROJECT_STATUS_LABELS } from '../../../../utils/additionalStatus';
+import { assigneesLabel, canNotifyFinish } from '../../../../utils/additionalFinish';
 
 interface GeneralForm {
   name: string;
@@ -97,6 +99,7 @@ export default function AdditionalDetailPage() {
   const [quickAdd, setQuickAdd] = useState<QuickAdd>(closedQuickAdd());
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [creatingBudget, setCreatingBudget] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
 
   const applyAdditional = useCallback((data: Additional) => {
     setAdditional(data);
@@ -391,8 +394,18 @@ export default function AdditionalDetailPage() {
             <Typography variant="body2" color="text.secondary">
               {additional.client?.razonSocial}{additional.plant ? ` · ${additional.plant.name}` : ''}
             </Typography>
+            {additional.finish_notified_at && additional.budgetAssignees && additional.budgetAssignees.length > 0 && (
+              <Typography variant="body2" color="text.secondary" mt={0.5}>
+                Finalización notificada el {new Date(additional.finish_notified_at).toLocaleDateString('es-AR')} a {assigneesLabel(additional)}
+              </Typography>
+            )}
           </Box>
           <Box display="flex" gap={1} flexWrap="wrap" alignItems="center">
+            {canUpdate && canNotifyFinish(additional) && (
+              <Button size="small" variant="outlined" startIcon={<FinishIcon />} onClick={() => setFinishOpen(true)}>
+                {additional.budgetAssignees?.length ? 'Cambiar responsables' : 'Notificar finalización'}
+              </Button>
+            )}
             <Chip size="small" label={PROJECT_STATUS_LABELS[additional.status]} color={additional.status === 'active' ? 'success' : 'default'} />
             {budget && budgetChip && (hasBudgetsRead ? (
               <Chip size="small" icon={<BudgetIcon />} clickable label={`${budget.number} · ${budgetChip.label}`} color={budgetChip.color}
@@ -406,6 +419,19 @@ export default function AdditionalDetailPage() {
           </Box>
         </Box>
       </Paper>
+
+      <NotifyFinishDialog
+        open={finishOpen}
+        additional={additional}
+        onClose={() => setFinishOpen(false)}
+        onFinished={(updated) => {
+          // Se conserva lo que el usuario venía editando en materiales (sin guardar).
+          setAdditional(updated);
+          setGeneral(toGeneralForm(updated));
+          setSuccess('Finalización notificada a gerencia');
+        }}
+        onError={setError}
+      />
 
       {/* Presupuesto rechazado */}
       {budget?.status === 'rejected' && (

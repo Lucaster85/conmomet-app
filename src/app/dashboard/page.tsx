@@ -21,6 +21,7 @@ import OcaBudgetAlert from '../../components/common/OcaBudgetAlert';
 import SalaryAdvanceDeletionAlert from '../../components/common/SalaryAdvanceDeletionAlert';
 import LoanChangeAlert from '../../components/common/LoanChangeAlert';
 import TerminationAgreementAlert from '../../components/common/TerminationAgreementAlert';
+import AdditionalPendingBudgetAlert from '../../components/common/AdditionalPendingBudgetAlert';
 import QuoteRequestAlert from '../../components/common/QuoteRequestAlert';
 import EppExpiringAlert from '../../components/common/EppExpiringAlert';
 import DocumentExpirationAlert from '../../components/common/DocumentExpirationAlert';
@@ -93,6 +94,7 @@ export default function DashboardPage() {
       <QuoteRequestAlert />
       <DocumentExpirationAlert onError={setError} onSuccess={setSuccess} />
       <OcaBudgetAlert />
+      <AdditionalPendingBudgetAlert />
       <EppExpiringAlert />
       <RepairToolsAlert />
       <SalaryAdvanceDeletionAlert />
