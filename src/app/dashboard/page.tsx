@@ -92,16 +92,38 @@ export default function DashboardPage() {
           (ver FLOWS.md §36). Debajo, cada aviso solo abre su tarjeta si tiene algo sin ver. */}
       <DashboardAlertSummaryBar />
 
-      <QuoteRequestAlert />
-      <DocumentExpirationAlert onError={setError} onSuccess={setSuccess} />
-      <OcaBudgetAlert />
-      <AdditionalPendingBudgetAlert />
-      <BudgetAwaitingResponseAlert />
-      <EppExpiringAlert />
-      <RepairToolsAlert />
-      <SalaryAdvanceDeletionAlert />
-      <LoanChangeAlert />
-      <TerminationAgreementAlert />
+      {/* Avisos con detalle: dos columnas en desktop (desde lg) y una en pantallas chicas. Se usan
+          columnas CSS (mampostería) y no una grilla por filas: en una grilla cada fila mide lo que
+          la tarjeta más alta, y la de al lado dejaba un hueco. Acá cada tarjeta se apila debajo de
+          la anterior de su columna. Contrapartida: el orden de lectura es por columna (primero baja
+          la izquierda, después la derecha) y, al marcar items como vistos, las tarjetas pueden
+          reacomodarse entre columnas. `break-inside: avoid` evita que una tarjeta se parta en dos.
+          Las tarjetas sin nada para mostrar no renderizan nada: el contenedor vacío se oculta. */}
+      <Box
+        sx={{
+          columnCount: { xs: 1, lg: 2 },
+          columnGap: 3,
+          // El margen de abajo va TAMBIÉN en el contenedor: en columnas CSS el margen inferior del
+          // último hijo de cada columna se trunca al cortar, y sin esto el bloque siguiente (notas,
+          // préstamos, accesos rápidos) queda pegado a las tarjetas o se les solapa.
+          // `flow-root` hace que el contenedor encierre a sus hijos (y su altura los incluya).
+          display: 'flow-root',
+          mb: 3,
+          '& > *': { breakInside: 'avoid', mb: 3 },
+          '&:empty': { display: 'none' },
+        }}
+      >
+        <QuoteRequestAlert />
+        <DocumentExpirationAlert onError={setError} onSuccess={setSuccess} />
+        <OcaBudgetAlert />
+        <AdditionalPendingBudgetAlert />
+        <BudgetAwaitingResponseAlert />
+        <EppExpiringAlert />
+        <RepairToolsAlert />
+        <SalaryAdvanceDeletionAlert />
+        <LoanChangeAlert />
+        <TerminationAgreementAlert />
+      </Box>
 
       {/* Accesos rápidos — prueba: solo mobile, en desktop ya está el menú del drawer siempre visible */}
       {quickAccessItems.length > 0 && (

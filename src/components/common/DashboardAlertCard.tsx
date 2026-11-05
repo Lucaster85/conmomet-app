@@ -13,6 +13,9 @@ import { useAlertViews } from './AlertViewsProvider';
 // estaba copiado y pegado en los 5 componentes de aviso; ahora vive una sola vez y agrega el
 // acuse de vista encima.
 //
+// El espacio entre tarjetas y su ancho (mitad en desktop) los define la grilla de dashboard/page.tsx,
+// no la tarjeta: por eso el Paper no lleva margen propio.
+//
 // El contenido de cada item lo pone quien lo usa vía `renderItem`: el shell no sabe nada de
 // chips de vencimiento, de comentarios ni de botones de Renovar/Resolver.
 
@@ -93,7 +96,7 @@ export default function DashboardAlertCard({
   );
 
   return (
-    <Paper sx={{ p: 3, borderRadius: 2, mb: 3, borderLeft: '4px solid', borderLeftColor: `${color}.main` }}>
+    <Paper sx={{ p: 3, borderRadius: 2, borderLeft: '4px solid', borderLeftColor: `${color}.main` }}>
       <Box display="flex" alignItems="center" gap={1} mb={2} flexWrap="wrap">
         <Box sx={{ display: 'flex', color: `${color}.main` }}>{icon}</Box>
         <Typography variant="h6" fontWeight="bold">{title}</Typography>

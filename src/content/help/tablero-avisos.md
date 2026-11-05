@@ -9,7 +9,8 @@ vehículo), así que ese contador es solo informativo. El detalle está en la ta
 Vencimientos", y desde ahí se llega a la ficha de cada documento con "Ver detalle".
 
 Debajo aparecen los **avisos con detalle**: una tarjeta por tema, con la lista de los items
-concretos y los botones para actuar sobre ellos.
+concretos y los botones para actuar sobre ellos. En una pantalla de computadora las tarjetas se acomodan **en dos columnas**, cada una
+ocupando la mitad del ancho y apiladas sin dejar huecos; en el celular y en pantallas chicas van una debajo de otra.
 
 Entre esos avisos está **Cuotas de indemnización vencidas**: lista las cuotas de un acuerdo de pago de un egreso que ya pasaron su fecha de vencimiento sin pagarse, con el empleado, el monto y los días de atraso, y un botón **Ver egreso**. Solo lo ven quienes pueden ver egresos y sueldos. Desaparece solo cuando se paga la cuota.
 
