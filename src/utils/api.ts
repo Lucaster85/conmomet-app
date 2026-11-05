@@ -1864,6 +1864,10 @@ export interface Budget {
   project?: { id: number; name: string; code: string; is_additional?: boolean; parent?: { id: number; name: string; code: string } };
   createdBy?: { id: number; name: string; lastname: string };
   approvedBy?: { id: number; name: string; lastname: string };
+  // Quien envió el presupuesto: responsable de conseguir la respuesta del cliente (FLOWS.md §51).
+  // No es approvedBy (quién cargó la aprobación) ni approvedBySupervisor (el contacto del cliente).
+  followup_user_id?: number | null;
+  followupUser?: { id: number; name: string; lastname: string } | null;
   // Contacto externo del cliente que aprobó — distinto de approvedBy (usuario interno)
   approvedBySupervisor?: { id: number; name: string; lastname: string; email?: string; phone?: string };
   // El N° de cotización del cliente vive en la PC, no acá — el presupuesto lo lee a través de
@@ -1975,13 +1979,14 @@ export interface BudgetMaterialImportRow {
 }
 
 export class BudgetService {
-  static async getAll(params?: { status?: string; client_id?: number; q?: string }): Promise<Budget[]> {
+  static async getAll(params?: { status?: string; client_id?: number; q?: string; awaiting_response_for_me?: boolean }): Promise<Budget[]> {
     let url = `${API_BASE_URL}/budgets`;
     if (params) {
       const qs = new URLSearchParams();
       if (params.status) qs.append('status', params.status);
       if (params.client_id) qs.append('client_id', params.client_id.toString());
       if (params.q) qs.append('q', params.q);
+      if (params.awaiting_response_for_me) qs.append('awaiting_response_for_me', 'true');
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);

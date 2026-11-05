@@ -145,6 +145,18 @@ function assignedChip(qr: NonNullable<Budget['quoteRequest']>): { label: string;
   return null;
 }
 
+// Chip de estado. En "Enviado" lleva un tooltip con quién sigue la respuesta del cliente (quien lo
+// envió, FLOWS.md §51); tocable en mobile.
+function statusChip(b: Budget) {
+  const chip = <Chip label={STATUS_LABELS[b.status].label} color={STATUS_LABELS[b.status].color} size="small" />;
+  if (b.status !== 'sent' || !b.followupUser) return chip;
+  return (
+    <Tooltip enterTouchDelay={0} leaveTouchDelay={4000} title={`Seguimiento: ${b.followupUser.name} ${b.followupUser.lastname}`}>
+      {chip}
+    </Tooltip>
+  );
+}
+
 export default function BudgetsPage() {
   return (
     <Suspense fallback={<Box display="flex" justifyContent="center" py={8}><GearSpinner /></Box>}>
@@ -1359,7 +1371,7 @@ function BudgetsPageContent() {
                     </Box>
                     <Typography variant="body2" color="text.secondary">{b.client?.razonSocial}</Typography>
                     <Box>
-                      <Chip label={STATUS_LABELS[b.status].label} color={STATUS_LABELS[b.status].color} size="small" />
+                      {statusChip(b)}
                       {daysExpired(b) !== null && (
                         <Chip label={`Vencido hace ${daysExpired(b)} día(s)`} color="warning" size="small" variant="outlined" sx={{ ml: 0.5 }} />
                       )}
@@ -1483,7 +1495,7 @@ function BudgetsPageContent() {
                       </TableCell>
                       <TableCell>{b.client?.razonSocial}</TableCell>
                       <TableCell>
-                        <Chip label={STATUS_LABELS[b.status].label} color={STATUS_LABELS[b.status].color} size="small" />
+                        {statusChip(b)}
                         {daysExpired(b) !== null && (
                           <Chip label={`Vencido hace ${daysExpired(b)} día(s)`} color="warning" size="small" variant="outlined" sx={{ ml: 0.5 }} />
                         )}
@@ -2179,6 +2191,10 @@ function BudgetsPageContent() {
                     <Typography variant="body2"><strong>Aprobado por:</strong> {printBudget.approvedBySupervisor.lastname}, {printBudget.approvedBySupervisor.name}{printBudget.approved_at ? ` — ${new Date(printBudget.approved_at).toLocaleDateString('es-AR')}` : ''}</Typography>
                   )}
                   {printBudget.project && !printBudget.existingProject && <Typography variant="body2"><strong>Proyecto generado:</strong> {printBudget.project.code}</Typography>}
+                  {/* Dato interno: no sale en la copia impresa para el cliente. */}
+                  {printBudget.followupUser && (
+                    <Typography variant="body2" className="no-print"><strong>Seguimiento:</strong> {printBudget.followupUser.name} {printBudget.followupUser.lastname}</Typography>
+                  )}
                 </Grid>
               </Grid>
               {printBudget.description && <Typography variant="body2" sx={{ mb: 2 }}>{printBudget.description}</Typography>}

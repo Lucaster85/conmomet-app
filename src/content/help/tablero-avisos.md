@@ -20,6 +20,14 @@ ficha del adicional. **Solo lo ves si te eligieron como responsable** y tenés a
 solo cuando el presupuesto se **envía** al cliente. Si alguien vuelve a notificar la finalización del mismo
 adicional (por ejemplo para cambiar los responsables), **reaparece** aunque ya lo hubieras marcado como visto.
 
+También está **Presupuestos esperando respuesta**: lista los presupuestos que **enviaste vos** al cliente y
+que todavía no tienen aprobación ni rechazo (el que envía queda como responsable del seguimiento, ver el
+tema **Presupuestos**). Cada item muestra el número, el título, el cliente, hace cuántos días se envió y,
+si tiene días de vigencia, si **vence en N días** o ya está **vencida** (es solo un dato: aprobar uno
+vencido sigue permitido). Los más viejos van primero y al tocar uno se abre el presupuesto, donde están
+**Aprobar** y **Rechazar**. Lo ves si tenés acceso a Presupuestos, y desaparece solo cuando se carga la
+aprobación o el rechazo, lo cargues vos u otra persona.
+
 Solo ves los contadores y los avisos de los temas a los que tenés acceso. Si tu rol no maneja
 documentación, por ejemplo, ese aviso no existe para vos.
 
@@ -131,4 +139,4 @@ Marcar un aviso del inicio como visto **no** marca leída ninguna notificación 
 revés. Son dos preguntas distintas, y está bien que una misma novedad aparezca en los dos lugares:
 en la campanita como "esto pasó el martes", en el inicio como "esto todavía te falta hacer".
 
-<!-- ref: conmomet-app/src/components/common/TerminationAgreementAlert.tsx, conmomet-app/src/components/common/AdditionalPendingBudgetAlert.tsx, conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->
+<!-- ref: conmomet-app/src/components/common/TerminationAgreementAlert.tsx, conmomet-app/src/components/common/AdditionalPendingBudgetAlert.tsx, conmomet-app/src/components/common/BudgetAwaitingResponseAlert.tsx, conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->

@@ -265,6 +265,20 @@ sí quede oculto.
   mismo botón sirve para **reemplazar el documento firmado** sin cambiar de estado.
 - **"Rechazar"**: pide un **motivo obligatorio**.
 
+### Quién sigue la respuesta del cliente
+
+Quien **envía** el presupuesto queda como **responsable del seguimiento**: es quien tiene que conseguir
+la respuesta del cliente. No hay que elegirlo ni hay diálogo extra, se guarda solo al apretar "Enviar".
+Se ve como **"Seguimiento: Nombre"** al pasar el cursor (o tocar, en el celular) sobre el estado
+**Enviado** del listado, y dentro de **Ver / Imprimir** (esa línea **no sale en la copia impresa**).
+
+Mientras el presupuesto siga **Enviado**, el responsable lo ve en su pantalla de inicio, en la tarjeta
+**"Presupuestos esperando respuesta"**. Sale de ahí cuando se carga la **aprobación** o el **rechazo**, y
+**cualquier persona con permiso para modificar presupuestos puede cargarla**, no solo el responsable.
+Aprobar o rechazar no cambia quién figura como responsable: queda como historial. Los presupuestos que
+ya estaban enviados antes de esta función toman como responsable a quien los envió, si ese dato quedó
+registrado; si no, no tienen responsable y no aparecen en ninguna tarjeta.
+
 **Rechazado es un estado final**: a diferencia de las OCAs, un Presupuesto rechazado no tiene
 un botón de "corregir" — la forma de arrancar de nuevo es **Duplicarlo** (ver abajo).
 
@@ -372,4 +386,4 @@ Alguien sin permiso de precios igual puede armar el presupuesto — crear y edit
 obra (rubro y cantidad) y los materiales con su margen, duplicarlo y generar el proyecto — pero no ve
 ni define los valores de mano de obra, ni envía ni imprime.
 
-<!-- ref: conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts, api_conmomet/services/budgetMaterialService.js, api_conmomet/controllers/additionalController.js, conmomet-app/src/utils/apiErrors.ts, api_conmomet/services/auditLogService.js, api_conmomet/helpers/budgetAuditDiff.js, api_conmomet/helpers/budgetAuditDescribe.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/budgets/BudgetHistoryPanel.tsx, conmomet-app/src/components/budgets/MaterialCostStatusLine.tsx, conmomet-app/src/utils/materialPrices.ts, conmomet-app/src/utils/dates.ts, FLOWS.md §35, FLOWS.md §19c -->
+<!-- ref: conmomet-app/src/components/common/BudgetAwaitingResponseAlert.tsx, conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts, api_conmomet/services/budgetMaterialService.js, api_conmomet/controllers/additionalController.js, conmomet-app/src/utils/apiErrors.ts, api_conmomet/services/auditLogService.js, api_conmomet/helpers/budgetAuditDiff.js, api_conmomet/helpers/budgetAuditDescribe.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/budgets/BudgetHistoryPanel.tsx, conmomet-app/src/components/budgets/MaterialCostStatusLine.tsx, conmomet-app/src/utils/materialPrices.ts, conmomet-app/src/utils/dates.ts, FLOWS.md §35, FLOWS.md §19c -->

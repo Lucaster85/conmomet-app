@@ -100,7 +100,9 @@ actualiza el otro (también la planta). Cuando el presupuesto se **envía** al c
 
 Los materiales pasan a **solo lectura** en el adicional (un aviso lo indica). Además, el adicional sale de la
 tarjeta **"Adicionales para presupuestar"** de las personas a las que se les había avisado: ya no hay nada
-que presupuestar.
+que presupuestar. Quien lo **envía** queda como responsable de conseguir la respuesta del cliente y lo ve
+en su tarjeta **"Presupuestos esperando respuesta"** hasta que se carga la aprobación o el rechazo (ver el
+tema **Presupuestos**).
 
 ## Si el cliente rechaza el presupuesto
 
