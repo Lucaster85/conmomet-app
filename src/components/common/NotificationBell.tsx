@@ -39,6 +39,7 @@ const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
   budget_sent: <SentIcon fontSize="small" color="success" />,
   tool_in_repair_assigned: <RepairIcon fontSize="small" color="warning" />,
   oca_budget_pending: <QuoteIcon fontSize="small" color="info" />,
+  additional_finished: <QuoteIcon fontSize="small" color="info" />,
   // Vencido en rojo, por vencer en amarillo: el color es la única diferencia visual rápida entre
   // "ya es tarde" y "te queda tiempo".
   document_expiring: <DocumentIcon fontSize="small" color="warning" />,

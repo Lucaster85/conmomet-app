@@ -327,6 +327,12 @@ export interface LookupDocumentCategory {
   id: number;
   name: string;
 }
+// Gerencia: usuarios con budgets_send (o admin_granted). Solo id y nombre.
+export interface LookupBudgetManager {
+  id: number;
+  name: string;
+  lastname: string;
+}
 
 export class LookupService {
   static async getRoles(): Promise<Pick<Role, 'id' | 'name' | 'level' | 'has_dashboard_access'>[]> {
@@ -405,6 +411,14 @@ export class LookupService {
   static async getEmployeeDocumentCategories(): Promise<LookupDocumentCategory[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/employee-document-categories`);
     if (!response.ok) throw new Error('Error al obtener categorías de documento');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  // Gerencia (budgets_send): combo de "Notificar finalización" en Adicionales (FLOWS.md §50).
+  static async getBudgetManagers(): Promise<LookupBudgetManager[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/budget-managers`);
+    if (!response.ok) throw new Error('Error al obtener usuarios de gerencia');
     const data = await response.json();
     return data.data || [];
   }
@@ -1850,6 +1864,10 @@ export interface Budget {
   project?: { id: number; name: string; code: string; is_additional?: boolean; parent?: { id: number; name: string; code: string } };
   createdBy?: { id: number; name: string; lastname: string };
   approvedBy?: { id: number; name: string; lastname: string };
+  // Quien envió el presupuesto: responsable de conseguir la respuesta del cliente (FLOWS.md §51).
+  // No es approvedBy (quién cargó la aprobación) ni approvedBySupervisor (el contacto del cliente).
+  followup_user_id?: number | null;
+  followupUser?: { id: number; name: string; lastname: string } | null;
   // Contacto externo del cliente que aprobó — distinto de approvedBy (usuario interno)
   approvedBySupervisor?: { id: number; name: string; lastname: string; email?: string; phone?: string };
   // El N° de cotización del cliente vive en la PC, no acá — el presupuesto lo lee a través de
@@ -1961,13 +1979,14 @@ export interface BudgetMaterialImportRow {
 }
 
 export class BudgetService {
-  static async getAll(params?: { status?: string; client_id?: number; q?: string }): Promise<Budget[]> {
+  static async getAll(params?: { status?: string; client_id?: number; q?: string; awaiting_response_for_me?: boolean }): Promise<Budget[]> {
     let url = `${API_BASE_URL}/budgets`;
     if (params) {
       const qs = new URLSearchParams();
       if (params.status) qs.append('status', params.status);
       if (params.client_id) qs.append('client_id', params.client_id.toString());
       if (params.q) qs.append('q', params.q);
+      if (params.awaiting_response_for_me) qs.append('awaiting_response_for_me', 'true');
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);
@@ -3308,6 +3327,8 @@ export type NotificationType =
   | 'budget_sent'
   | 'tool_in_repair_assigned'
   | 'oca_budget_pending'
+  // Un adicional se finalizó y gerencia tiene que cerrar su presupuesto (FLOWS.md §50).
+  | 'additional_finished'
   // Eventos de reloj: los genera el barrido de vencimientos (FLOWS.md §38).
   | 'document_expiring'
   | 'document_expired'
@@ -6344,6 +6365,9 @@ export interface Additional extends Project {
   current_budget_items?: AdditionalMaterialItem[];
   budget_history?: AdditionalBudgetSummary[];
   consumed_hours_own: number;
+  // Gerencia a la que se le pidió cerrar el presupuesto al notificar la finalización (FLOWS.md §50).
+  budgetAssignees?: { id: number; name: string; lastname: string }[];
+  finish_notified_at?: string | null;
 }
 
 export interface CreateAdditionalData {
@@ -6389,12 +6413,13 @@ export class AdditionalService {
     return data.data;
   }
 
-  static async getAll(params?: { client_id?: number; status?: string; has_parent?: boolean; q?: string }): Promise<Additional[]> {
+  static async getAll(params?: { client_id?: number; status?: string; has_parent?: boolean; q?: string; pending_budget_for_me?: boolean }): Promise<Additional[]> {
     const qs = new URLSearchParams();
     if (params?.client_id) qs.append('client_id', String(params.client_id));
     if (params?.status) qs.append('status', params.status);
     if (params?.has_parent !== undefined) qs.append('has_parent', String(params.has_parent));
     if (params?.q) qs.append('q', params.q);
+    if (params?.pending_budget_for_me) qs.append('pending_budget_for_me', 'true');
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals${qs.toString() ? `?${qs}` : ''}`);
     return (await this.parse<Additional[]>(response, 'Error al obtener adicionales')) || [];
   }
@@ -6412,6 +6437,13 @@ export class AdditionalService {
   static async update(id: number, body: UpdateAdditionalData): Promise<Additional> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/${id}`, { method: 'PUT', body: JSON.stringify(body) });
     return this.parse<Additional>(response, 'Error al actualizar el adicional');
+  }
+
+  // "Notificar finalización": pasa el adicional a Completado y avisa a gerencia (assignee_ids, al
+  // menos uno con budgets_send). Reemplaza el set de responsables si ya había (FLOWS.md §50).
+  static async finish(id: number, assignee_ids: number[]): Promise<Additional> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals/${id}/finish`, { method: 'PUT', body: JSON.stringify({ assignee_ids }) });
+    return this.parse<Additional>(response, 'Error al notificar la finalización');
   }
 
   // Materiales del presupuesto vigente (solo en borrador; 409 si ya se envió). `revision` es
