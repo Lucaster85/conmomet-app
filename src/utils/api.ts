@@ -4818,12 +4818,14 @@ export interface CreateLoanPaymentData {
 }
 
 export class LoanService {
-  static async getAll(params?: { status?: string; employee_id?: number }): Promise<Loan[]> {
+  static async getAll(params?: { status?: string; employee_id?: number; q?: string; include_closed?: boolean }): Promise<Loan[]> {
     let url = `${API_BASE_URL}/loans`;
     if (params) {
       const query = new URLSearchParams();
       if (params.status) query.append('status', params.status);
       if (params.employee_id) query.append('employee_id', params.employee_id.toString());
+      if (params.q) query.append('q', params.q);
+      if (params.include_closed) query.append('include_closed', 'true');
       url += `?${query.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);

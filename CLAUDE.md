@@ -133,6 +133,11 @@ Usar siempre `src/components/common/ListFilters.tsx`:
   su propia fila — nunca un campo de texto más entre los selects.
 - `<FilterSelect label="Cliente" value={...} onChange={...} emptyLabel="Todos los clientes" options={[...]} />`
   por cada select — reemplaza tanto al `TextField select native` como al `FormControl`+`Select`+`MenuItem`.
+- `<FilterSwitch label="Ver terminados" checked={...} onChange={...} />` — para "mostrar también lo
+  que ya terminó/está inactivo". Reemplaza cualquier `Switch`+`FormControlLabel` armado a mano
+  (eso generó 5 variantes con nombres distintos — "Ver inactivos", "Ver anuladas", "Ver
+  cancelados", "Mostrar resueltos" — antes de que existiera, ver `FLOWS.md` flujo 52). Un estado
+  explícito elegido en un `FilterSelect` de la misma página le gana al switch — nunca al revés.
 - El botón "Limpiar filtros" lo pone el componente solo si se pasa `onClear` y `hasActiveFilters` es `true`.
 
 Convenciones de contenido (las impone el componente, no se pisan a mano):

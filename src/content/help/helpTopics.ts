@@ -98,6 +98,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'reprogramar', 'reprogramacion', 'reprogramación', 'cancelar', 'cancelacion', 'cancelación',
       'dolares', 'dólares', 'dolar', 'dólar', 'usd', 'cotizacion', 'cotización',
       'tipo de cambio', 'bna', 'cotizacion de entrega', 'cotización de entrega',
+      'cancelado', 'terminado', 'terminados', 'ver terminados', 'no aparece', 'desapareció',
+      'filtro', 'filtros',
     ],
     file: 'prestamos.md',
   },
