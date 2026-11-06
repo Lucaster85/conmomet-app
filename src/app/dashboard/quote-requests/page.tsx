@@ -11,7 +11,7 @@ import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import DateField from '../../../components/DateField';
 import QuoteRequestDueChip from '../../../components/quote-requests/QuoteRequestDueChip';
-import ListFilters, { FilterSelect } from '../../../components/common/ListFilters';
+import ListFilters, { FilterSelect, FilterSwitch } from '../../../components/common/ListFilters';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   RefreshOutlined as RefreshIcon, RequestQuoteOutlined as TitleIcon,
@@ -126,9 +126,10 @@ function QuoteRequestsPageContent() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterAssigneeId, setFilterAssigneeId] = useState('');
   const [filterDue, setFilterDue] = useState<'' | 'overdue' | 'due_soon'>('');
-  const hasActiveFilters = !!(search || filterClientId || filterStatus || filterAssigneeId || filterDue);
+  const [includeClosed, setIncludeClosed] = useState(false);
+  const hasActiveFilters = !!(search || filterClientId || filterStatus || filterAssigneeId || filterDue || includeClosed);
   const clearFilters = () => {
-    setSearch(''); setFilterClientId(''); setFilterStatus(''); setFilterAssigneeId(''); setFilterDue('');
+    setSearch(''); setFilterClientId(''); setFilterStatus(''); setFilterAssigneeId(''); setFilterDue(''); setIncludeClosed(false);
   };
 
   const [openDialog, setOpenDialog] = useState(false);
@@ -171,6 +172,7 @@ function QuoteRequestsPageContent() {
         status: filterStatus || undefined,
         assignee_id: filterAssigneeId ? Number(filterAssigneeId) : undefined,
         due: filterDue || undefined,
+        include_closed: includeClosed,
       });
       setQuoteRequests(Array.isArray(qrs) ? qrs : []);
     } catch (err) {
@@ -178,7 +180,7 @@ function QuoteRequestsPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [search, filterClientId, filterStatus, filterAssigneeId, filterDue]);
+  }, [search, filterClientId, filterStatus, filterAssigneeId, filterDue, includeClosed]);
 
   // Los filtros consultan al servidor; la búsqueda por texto con un pequeño debounce.
   useEffect(() => {
@@ -509,6 +511,7 @@ function QuoteRequestsPageContent() {
             { value: 'due_soon', label: 'Vencen esta semana' },
           ]}
         />
+        <FilterSwitch label="Ver terminados" checked={includeClosed} onChange={setIncludeClosed} />
       </ListFilters>
 
       {/* Mobile Cards */}

@@ -124,6 +124,12 @@ Solo se puede si **no tiene horas cargadas** y su presupuesto **sigue en borrado
 ese caso se eliminan el adicional y su presupuesto. Si ya tiene horas o el presupuesto salió de borrador,
 la forma de darlo de baja es cambiar su **estado** a "Cancelado".
 
+## El listado arranca mostrando solo los adicionales vivos
+
+Por defecto, el listado **no muestra** los adicionales **Completados** ni **Cancelados**. Para
+verlos, activá **"Ver terminados"** en el panel de filtros, o elegí directamente ese estado en el
+select de **Estado**.
+
 ## Permisos
 
 El acceso al módulo se asigna con los permisos **additionals_***. Alcanza con ellos para crear

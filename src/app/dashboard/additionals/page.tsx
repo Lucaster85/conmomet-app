@@ -3,11 +3,12 @@ import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  DialogTitle, DialogContent, DialogActions, TextField, Stack, Chip, Grid, InputAdornment, IconButton, Tooltip,
+  DialogTitle, DialogContent, DialogActions, TextField, Stack, Chip, Grid, IconButton, Tooltip,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import ListFilters, { FilterSelect, FilterSwitch } from '@/components/common/ListFilters';
 import {
-  AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, PostAddOutlined as TitleIcon,
+  AddOutlined as AddIcon, RefreshOutlined as RefreshIcon, PostAddOutlined as TitleIcon,
   VisibilityOutlined as ViewIcon, OutlinedFlag as FinishIcon,
 } from '@mui/icons-material';
 import FeedbackModal from '../../../components/FeedbackModal';
@@ -49,11 +50,16 @@ function AdditionalsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Filtros
+  // Filtros — consultan al servidor (ver FLOWS.md §52).
   const [search, setSearch] = useState('');
   const [filterClientId, setFilterClientId] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterParent, setFilterParent] = useState<'' | 'true' | 'false'>('');
+  const [includeClosed, setIncludeClosed] = useState(false);
+  const hasActiveFilters = !!(search || filterClientId || filterStatus || filterParent || includeClosed);
+  const clearFilters = () => {
+    setSearch(''); setFilterClientId(''); setFilterStatus(''); setFilterParent(''); setIncludeClosed(false);
+  };
 
   // Alta
   const [openDialog, setOpenDialog] = useState(false);
@@ -75,6 +81,7 @@ function AdditionalsContent() {
         client_id: filterClientId ? Number(filterClientId) : undefined,
         status: filterStatus || undefined,
         has_parent: filterParent ? filterParent === 'true' : undefined,
+        include_closed: includeClosed,
       });
       setItems(data);
     } catch (err) {
@@ -82,7 +89,7 @@ function AdditionalsContent() {
     } finally {
       setLoading(false);
     }
-  }, [search, filterClientId, filterStatus, filterParent]);
+  }, [search, filterClientId, filterStatus, filterParent, includeClosed]);
 
   useEffect(() => {
     Promise.all([AdditionalService.getCatalogClients(), AdditionalService.getCatalogPlants()])
@@ -215,36 +222,36 @@ function AdditionalsContent() {
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />
 
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField size="small" fullWidth placeholder="Buscar por nombre o código…" value={search} onChange={(e) => setSearch(e.target.value)}
-              InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} />
-          </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField label="Cliente" select size="small" fullWidth value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}
-              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-              <option value="">Todos los clientes</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.razonSocial}</option>)}
-            </TextField>
-          </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField label="Estado" select size="small" fullWidth value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-              <option value="">Todos los estados</option>
-              {Object.entries(PROJECT_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </TextField>
-          </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField label="Proyecto padre" select size="small" fullWidth value={filterParent} onChange={(e) => setFilterParent(e.target.value as '' | 'true' | 'false')}
-              SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}>
-              <option value="">Todos</option>
-              <option value="true">Con padre</option>
-              <option value="false">Sin padre</option>
-            </TextField>
-          </Grid>
-        </Grid>
-      </Paper>
+      <ListFilters
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar por nombre o código…"
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      >
+        <FilterSelect
+          label="Cliente"
+          value={filterClientId}
+          onChange={setFilterClientId}
+          emptyLabel="Todos los clientes"
+          options={clients.map((c) => ({ value: String(c.id), label: c.razonSocial }))}
+        />
+        <FilterSelect
+          label="Estado"
+          value={filterStatus}
+          onChange={setFilterStatus}
+          emptyLabel="Todos los estados"
+          options={Object.entries(PROJECT_STATUS_LABELS).map(([value, label]) => ({ value, label }))}
+        />
+        <FilterSelect
+          label="Proyecto padre"
+          value={filterParent}
+          onChange={(v) => setFilterParent(v as '' | 'true' | 'false')}
+          emptyLabel="Todos"
+          options={[{ value: 'true', label: 'Con padre' }, { value: 'false', label: 'Sin padre' }]}
+        />
+        <FilterSwitch label="Ver terminados" checked={includeClosed} onChange={setIncludeClosed} />
+      </ListFilters>
 
       {loading && items.length === 0 ? (
         <Box display="flex" justifyContent="center" py={6}><GearSpinner /></Box>

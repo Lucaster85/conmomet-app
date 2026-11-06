@@ -85,7 +85,8 @@ Desde que entra el pedido del cliente hasta que se genera el Proyecto:
 ```
 
 **Cancelar** está disponible en cualquier punto antes de Cotizado, y un pedido cancelado se
-puede reabrir después.
+puede reabrir después. Por eso el listado **no muestra** los cancelados por defecto — activá
+**"Ver terminados"** en el panel de filtros para verlos (o volver a reabrirlos).
 
 ## El ida y vuelta entre responsable y gerencia
 

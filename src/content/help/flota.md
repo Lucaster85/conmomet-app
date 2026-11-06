@@ -20,6 +20,10 @@ flota.
   conceptos que en Herramientas. A diferencia de las herramientas, acá **no existe el estado
   "Extraviada"**.
 
+Por defecto, el listado **no muestra** los vehículos **De baja** ni los que tienen "Habilitado
+para Carga de Horas" apagado. Para verlos, activá **"Ver terminados"** en el panel de filtros,
+o elegí directamente el estado "De baja" en el select de **Estado**.
+
 ## Cambiar el estado
 
 Igual que con las herramientas: se puede cambiar a cualquier estado **excepto "Entregada"**, que

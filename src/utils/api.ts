@@ -1137,7 +1137,7 @@ export class PublicInvitationService {
 }
 
 export class ProjectService {
-  static async getAll(params?: { client_id?: number; status?: string; plant_id?: number; include_children?: boolean; without_budget?: boolean; is_additional?: boolean; q?: string }): Promise<Project[]> {
+  static async getAll(params?: { client_id?: number; status?: string; plant_id?: number; include_children?: boolean; without_budget?: boolean; is_additional?: boolean; q?: string; include_closed?: boolean }): Promise<Project[]> {
     let url = `${API_BASE_URL}/projects`;
     if (params) {
       const qs = new URLSearchParams();
@@ -1148,6 +1148,7 @@ export class ProjectService {
       if (params.without_budget) qs.append('without_budget', 'true');
       if (params.is_additional !== undefined) qs.append('is_additional', String(params.is_additional));
       if (params.q) qs.append('q', params.q);
+      if (params.include_closed) qs.append('include_closed', 'true');
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);
@@ -1467,13 +1468,14 @@ export interface ToolStatusLogEntry {
 }
 
 export class ToolService {
-  static async getAll(params?: { tool_type_id?: number; status?: ToolStatus; q?: string }): Promise<Tool[]> {
+  static async getAll(params?: { tool_type_id?: number; status?: ToolStatus; q?: string; include_closed?: boolean }): Promise<Tool[]> {
     let url = `${API_BASE_URL}/tools`;
     if (params) {
       const qs = new URLSearchParams();
       if (params.tool_type_id) qs.append('tool_type_id', params.tool_type_id.toString());
       if (params.status) qs.append('status', params.status);
       if (params.q) qs.append('q', params.q);
+      if (params.include_closed) qs.append('include_closed', 'true');
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);
@@ -1979,7 +1981,7 @@ export interface BudgetMaterialImportRow {
 }
 
 export class BudgetService {
-  static async getAll(params?: { status?: string; client_id?: number; q?: string; awaiting_response_for_me?: boolean }): Promise<Budget[]> {
+  static async getAll(params?: { status?: string; client_id?: number; q?: string; awaiting_response_for_me?: boolean; include_closed?: boolean }): Promise<Budget[]> {
     let url = `${API_BASE_URL}/budgets`;
     if (params) {
       const qs = new URLSearchParams();
@@ -1987,6 +1989,7 @@ export class BudgetService {
       if (params.client_id) qs.append('client_id', params.client_id.toString());
       if (params.q) qs.append('q', params.q);
       if (params.awaiting_response_for_me) qs.append('awaiting_response_for_me', 'true');
+      if (params.include_closed) qs.append('include_closed', 'true');
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);
@@ -2245,7 +2248,7 @@ export interface QuoteRequestHistoryEntry {
 }
 
 export class QuoteRequestService {
-  static async getAll(params?: { status?: string; client_id?: number; assigned_to_me?: boolean; q?: string; assignee_id?: number; due?: 'overdue' | 'due_soon' }): Promise<QuoteRequest[]> {
+  static async getAll(params?: { status?: string; client_id?: number; assigned_to_me?: boolean; q?: string; assignee_id?: number; due?: 'overdue' | 'due_soon'; include_closed?: boolean }): Promise<QuoteRequest[]> {
     let url = `${API_BASE_URL}/quote-requests`;
     if (params) {
       const qs = new URLSearchParams();
@@ -2255,6 +2258,7 @@ export class QuoteRequestService {
       if (params.q) qs.append('q', params.q);
       if (params.assignee_id) qs.append('assignee_id', params.assignee_id.toString());
       if (params.due) qs.append('due', params.due);
+      if (params.include_closed) qs.append('include_closed', 'true');
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);
@@ -2818,12 +2822,13 @@ export class AttendanceService {
 
 // LeaveRequest Service
 export class LeaveRequestService {
-  static async getAll(filters?: { employee_id?: number; leave_type?: string; status?: string; year?: number }): Promise<LeaveRequest[]> {
+  static async getAll(filters?: { employee_id?: number; leave_type?: string; status?: string; year?: number; include_closed?: boolean }): Promise<LeaveRequest[]> {
     const params = new URLSearchParams();
     if (filters?.employee_id) params.append('employee_id', filters.employee_id.toString());
     if (filters?.leave_type) params.append('leave_type', filters.leave_type);
     if (filters?.status) params.append('status', filters.status);
     if (filters?.year) params.append('year', filters.year.toString());
+    if (filters?.include_closed) params.append('include_closed', 'true');
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/leave-requests?${params.toString()}`);
     if (!response.ok) throw new Error('Error al obtener solicitudes de licencia');
     return (await response.json()).data || [];
@@ -3175,11 +3180,12 @@ async function throwSalaryAdvanceError(response: Response, fallback: string): Pr
 }
 
 export class SalaryAdvanceService {
-  static async getAll(params?: { employee_id?: number; status?: string; paid?: boolean }): Promise<SalaryAdvance[]> {
+  static async getAll(params?: { employee_id?: number; status?: string; paid?: boolean; include_closed?: boolean }): Promise<SalaryAdvance[]> {
     const query = new URLSearchParams();
     if (params?.employee_id) query.append('employee_id', params.employee_id.toString());
     if (params?.status) query.append('status', params.status);
     if (params?.paid !== undefined) query.append('paid', params.paid.toString());
+    if (params?.include_closed) query.append('include_closed', 'true');
     const qs = query.toString();
     const url = qs ? `${API_BASE_URL}/salary-advances?${qs}` : `${API_BASE_URL}/salary-advances`;
     const response = await TokenManager.authenticatedFetch(url);
@@ -5212,6 +5218,7 @@ export interface InvoiceFilters {
   date_to?: string;
   budget_id?: number;
   project_id?: number;
+  include_closed?: boolean;
 }
 
 export interface BillableFilters {
@@ -5766,12 +5773,14 @@ export class ClientSupervisorService {
 }
 
 export class VehicleService {
-  static async getAll(params?: { type?: string; is_active?: boolean }): Promise<Vehicle[]> {
+  static async getAll(params?: { type?: string; is_active?: boolean; status?: VehicleStatus; include_closed?: boolean }): Promise<Vehicle[]> {
     let url = `${API_BASE_URL}/vehicles`;
     const qs = new URLSearchParams();
     if (params) {
       if (params.type) qs.append('type', params.type);
       if (params.is_active !== undefined) qs.append('is_active', params.is_active.toString());
+      if (params.status) qs.append('status', params.status);
+      if (params.include_closed) qs.append('include_closed', 'true');
       if (qs.toString()) url += `?${qs.toString()}`;
     }
     const response = await TokenManager.authenticatedFetch(url);
@@ -6415,13 +6424,14 @@ export class AdditionalService {
     return data.data;
   }
 
-  static async getAll(params?: { client_id?: number; status?: string; has_parent?: boolean; q?: string; pending_budget_for_me?: boolean }): Promise<Additional[]> {
+  static async getAll(params?: { client_id?: number; status?: string; has_parent?: boolean; q?: string; pending_budget_for_me?: boolean; include_closed?: boolean }): Promise<Additional[]> {
     const qs = new URLSearchParams();
     if (params?.client_id) qs.append('client_id', String(params.client_id));
     if (params?.status) qs.append('status', params.status);
     if (params?.has_parent !== undefined) qs.append('has_parent', String(params.has_parent));
     if (params?.q) qs.append('q', params.q);
     if (params?.pending_budget_for_me) qs.append('pending_budget_for_me', 'true');
+    if (params?.include_closed) qs.append('include_closed', 'true');
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/additionals${qs.toString() ? `?${qs}` : ''}`);
     return (await this.parse<Additional[]>(response, 'Error al obtener adicionales')) || [];
   }

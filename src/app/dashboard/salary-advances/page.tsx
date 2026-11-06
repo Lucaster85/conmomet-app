@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, DialogTitle, DialogContent,
@@ -28,7 +28,7 @@ import {
 } from '@mui/icons-material';
 import { SalaryAdvance, SalaryAdvanceService, DuplicateAdvanceError, DuplicateAdvanceConflict, Employee, EmployeeService, PayPeriod, PayPeriodService, PayrollService } from '../../../utils/api';
 import { buildWhatsAppLink } from '../../../utils/whatsapp';
-import Switch from '@mui/material/Switch';
+import { FilterSwitch } from '@/components/common/ListFilters';
 import { isSacPeriod, sacShortLabel, isFinalPeriod, finalPeriodShortLabel } from '../../../utils/payPeriods';
 
 const STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success' | 'error' | 'default' }> = {
@@ -50,10 +50,11 @@ export default function SalaryAdvancesPage() {
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
 
-  // Filters
+  // Filters — empleado e "include_closed" consultan al servidor (ver FLOWS.md §52); el de
+  // pendiente/descontado es client-side porque no es un `status`, se calcula de `pay_period_id`.
   const [filterEmployee, setFilterEmployee] = useState<number | ''>('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'discounted'>('all');
-  const [showCancelled, setShowCancelled] = useState(false);
+  const [includeClosed, setIncludeClosed] = useState(false);
 
   // Adelanto duplicado en la misma quincena (al crear/aprobar)
   const [duplicateConflict, setDuplicateConflict] = useState<{ context: 'create' | 'approve'; conflicts: DuplicateAdvanceConflict[] } | null>(null);
@@ -98,29 +99,33 @@ export default function SalaryAdvancesPage() {
   const [reassignBlockedPeriodIds, setReassignBlockedPeriodIds] = useState<Set<number>>(new Set());
   const [loadingReassignOptions, setLoadingReassignOptions] = useState(false);
 
-  const loadData = async () => {
+  // Catálogos: se cargan una sola vez, no en cada refiltrado del listado.
+  useEffect(() => {
+    Promise.all([EmployeeService.getAll(), PayPeriodService.getAll()])
+      .then(([emps, periods]) => { setEmployees(emps); setPayPeriods(periods); })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar'));
+  }, []);
+
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [advs, emps, periods] = await Promise.all([
-        SalaryAdvanceService.getAll(),
-        EmployeeService.getAll(),
-        PayPeriodService.getAll(),
-      ]);
+      const advs = await SalaryAdvanceService.getAll({
+        employee_id: filterEmployee || undefined,
+        include_closed: includeClosed,
+      });
       setAdvances(advs);
-      setEmployees(emps);
-      setPayPeriods(periods);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar');
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterEmployee, includeClosed]);
 
   // Los adelantos se descuentan de las quincenas: el aguinaldo (SAC) nunca se ofrece como destino.
   const openPeriods = payPeriods.filter(p => p.status === 'open' && !isSacPeriod(p) && !isFinalPeriod(p));
   const formatPeriodLabel = (p: PayPeriod) => isSacPeriod(p) ? sacShortLabel(p) : isFinalPeriod(p) ? finalPeriodShortLabel(p) : `${p.type === 'first_half' ? '1ra' : '2da'} quincena ${p.month}/${p.year}`;
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleOpenDialog = () => {
     setSelectedEmployees([]);
@@ -357,14 +362,12 @@ export default function SalaryAdvancesPage() {
   };
 
   const filteredAdvances = advances.filter(a => {
-    if (!showCancelled && a.status === 'cancelled') return false;
-    if (filterEmployee && a.employee_id !== filterEmployee) return false;
     if (filterStatus === 'pending' && a.pay_period_id) return false;
     if (filterStatus === 'discounted' && !a.pay_period_id) return false;
     return true;
   });
 
-  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
+  if (loading && advances.length === 0) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><GearSpinner /></Box>;
 
   return (
     <Box>
@@ -417,10 +420,7 @@ export default function SalaryAdvancesPage() {
             </TextField>
           </Grid>
           <Grid size={{ xs: 12 }}>
-            <FormControlLabel
-              control={<Switch checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />}
-              label="Ver cancelados"
-            />
+            <FilterSwitch label="Ver terminados" checked={includeClosed} onChange={setIncludeClosed} />
           </Grid>
         </Grid>
       </Paper>
