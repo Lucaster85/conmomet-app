@@ -74,9 +74,7 @@ En el detalle de un préstamo de cuota fija se ve la frecuencia y la tabla con c
 
 ## El listado arranca mostrando solo los préstamos vivos
 
-Por defecto, el listado de Préstamos **no muestra** los rechazados, completados ni cancelados —
-así el día a día no se ensucia con lo que ya terminó. Para verlos, activá **"Ver terminados"** en
-el panel de filtros. Si en vez de eso elegís un estado puntual (por ejemplo "Cancelado") en el
-select de **Estado**, ese estado se busca igual aunque el switch esté apagado.
+Por defecto, el listado **no muestra** los rechazados, completados ni cancelados (ver tema
+**Filtros de los listados** para el switch "Ver terminados" y cómo combinarlo con el Estado).
 
 <!-- ref: api_conmomet/services/loanSettlement.js, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/utils/loanAmortization.ts, conmomet-app/src/components/PaymentReceiptDialog.tsx, conmomet-app/src/components/common/LoanChangeAlert.tsx, conmomet-app/src/app/portal/requests/page.tsx, api_conmomet/controllers/loanController.js, api_conmomet/controllers/loanChangeAlertController.js, api_conmomet/helpers/loanValidations.js, api_conmomet/services/loanAmortizationService.js, api_conmomet/services/loanInstallmentDue.js, api_conmomet/controllers/payrollController.js, api_conmomet/services/exchangeRateService.js, api_conmomet/helpers/systemSettings.js, api_conmomet/controllers/exchangeRateController.js, api_conmomet/controllers/payPeriodController.js, conmomet-app/src/app/dashboard/system-settings/page.tsx, conmomet-app/src/components/common/ListFilters.tsx -->

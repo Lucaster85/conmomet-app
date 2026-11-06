@@ -126,9 +126,8 @@ la forma de darlo de baja es cambiar su **estado** a "Cancelado".
 
 ## El listado arranca mostrando solo los adicionales vivos
 
-Por defecto, el listado **no muestra** los adicionales **Completados** ni **Cancelados**. Para
-verlos, activá **"Ver terminados"** en el panel de filtros, o elegí directamente ese estado en el
-select de **Estado**.
+Por defecto, el listado **no muestra** los adicionales **Completados** ni **Cancelados** (ver
+tema **Filtros de los listados**).
 
 ## Permisos
 

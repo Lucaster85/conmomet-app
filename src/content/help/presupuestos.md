@@ -281,8 +281,7 @@ registrado; si no, no tienen responsable y no aparecen en ninguna tarjeta.
 
 **Rechazado es un estado final**: a diferencia de las OCAs, un Presupuesto rechazado no tiene
 un botón de "corregir" — la forma de arrancar de nuevo es **Duplicarlo** (ver abajo). Por eso el
-listado **no muestra** los rechazados por defecto — activá **"Ver terminados"** en el panel de
-filtros para verlos.
+listado **no muestra** los rechazados por defecto (ver tema **Filtros de los listados**).
 
 Si el presupuesto nació de un Pedido de Cotización, antes de llegar a "Enviado" pasa por un
 ida y vuelta interno entre quien lo arma y gerencia. Cuando el presupuesto ya tiene cargados los

@@ -7,9 +7,8 @@ presupuestadas precargadas, desglosadas por rubro (ver abajo).
 
 ## El listado arranca mostrando solo los proyectos vivos
 
-Por defecto, el listado **no muestra** los proyectos **Completados** ni **Cancelados** — así el
-día a día no se ensucia con lo que ya terminó. Para verlos, activá **"Ver terminados"** en el
-panel de filtros, o elegí directamente ese estado en el select de **Estado**.
+Por defecto, el listado **no muestra** los proyectos **Completados** ni **Cancelados** (ver tema
+**Filtros de los listados**).
 
 ## Horas por Rubro
 

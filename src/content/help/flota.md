@@ -21,8 +21,7 @@ flota.
   "Extraviada"**.
 
 Por defecto, el listado **no muestra** los vehículos **De baja** ni los que tienen "Habilitado
-para Carga de Horas" apagado. Para verlos, activá **"Ver terminados"** en el panel de filtros,
-o elegí directamente el estado "De baja" en el select de **Estado**.
+para Carga de Horas" apagado (ver tema **Filtros de los listados**).
 
 ## Cambiar el estado
 

@@ -161,9 +161,12 @@ Criterio server-side vs. client-side (no es libre, es por tipo de listado):
 - El debounce (solo en la búsqueda de texto, los selects consultan al tocarlos) sigue el patrón de
   `additionals/page.tsx`: `setTimeout(load, search ? 300 : 0)`.
 
-Migrados a este estándar: Proyectos (`dashboard/projects/page.tsx`), Pedidos de Cotización
-(`dashboard/quote-requests/page.tsx`) y Presupuestos (`dashboard/budgets/page.tsx`). El resto de
-los listados queda pendiente de migrar — ver `FLOWS.md` flujo 39 para la lista completa.
+Migrados a este estándar: Proyectos, Pedidos de Cotización, Presupuestos, Préstamos, Adicionales,
+Herramientas, Vehículos y Empleados. Adelantos, Licencias, Facturación (tab Facturas), OCAs y
+Carga de Horas usan `FilterSwitch` pero **no** migraron el contenedor a `ListFilters` — no tienen
+campo de búsqueda y agregar uno habría sido una funcionalidad nueva, no la unificación pedida (ver
+`FLOWS.md` flujo 52, Etapa 3). El resto de los listados sin tocar queda pendiente — ver `FLOWS.md`
+flujo 39 para la lista completa.
 
 ## Regla obligatoria: los diálogos usan `AppDialog`, no el `Dialog` de MUI
 

@@ -43,6 +43,21 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'notas-rapidas.md',
   },
   {
+    // Misma categoría que los avisos del inicio y las notas: el panel de filtros y el switch
+    // "Ver terminados"/"Ver inactivos" son transversales a casi todos los listados, no cuelgan
+    // de ningún grupo del menú (ver FLOWS.md §52).
+    id: 'listados-filtros',
+    category: 'Inicio',
+    title: 'Filtros de los listados',
+    keywords: [
+      'filtro', 'filtros', 'panel de filtros', 'buscar', 'busqueda', 'búsqueda',
+      'limpiar filtros', 'ver terminados', 'ver inactivos', 'ver anuladas', 'mostrar resueltos',
+      'terminado', 'terminados', 'cancelado', 'rechazado', 'completado', 'inactivo', 'anulado',
+      'no aparece', 'desapareció', 'desaparecio', 'donde esta', 'dónde está',
+    ],
+    file: 'listados-filtros.md',
+  },
+  {
     id: 'crear-oca',
     category: 'Gestión de Clientes',
     title: 'Creación de OCAs (Remitos)',

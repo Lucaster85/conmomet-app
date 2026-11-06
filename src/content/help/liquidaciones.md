@@ -260,8 +260,8 @@ qué (el empleado que lo anuló no ve este aviso). Si la liquidación de ese emp
 quincena ya está Confirmada o Pagada, no se puede anular el adelanto — hay que esperar a que la
 corrección se pueda hacer sin tocar una liquidación cerrada.
 
-Por defecto el listado **no muestra** los adelantos rechazados ni cancelados. Para verlos,
-activá **"Ver terminados"** en el panel de filtros.
+Por defecto el listado **no muestra** los adelantos rechazados ni cancelados (ver tema
+**Filtros de los listados** para el switch "Ver terminados").
 
 Un adelanto anulado **deja de aparecer** en el detalle y en el recibo de la liquidación (y en el
 total de Adelantos del Resumen de Gastos), no solo en el neto: si lo anulás y cargás uno nuevo

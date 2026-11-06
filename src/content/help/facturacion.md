@@ -109,8 +109,8 @@ Una factura recién cargada queda **Pendiente de cobro**.
 Las facturas **no se borran nunca**: así queda siempre el registro. Si cargaste mal un dato, corregí;
 si la factura dejó de existir, anulá.
 
-Por defecto, el listado de **Facturas** no muestra las anuladas — activá **"Ver terminados"** en
-el panel de filtros para verlas (siguen marcadas con menor opacidad, igual que antes).
+Por defecto, el listado de **Facturas** no muestra las anuladas (ver tema **Filtros de los
+listados**) — cuando se muestran, siguen marcadas con menor opacidad, igual que antes.
 
 ## Cobros sin factura
 
