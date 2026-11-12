@@ -14,10 +14,8 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HelpMarkdown from './HelpMarkdown';
+import { fold, highlightChildren } from './highlight';
 import { HelpTopicWithContent } from '../../utils/helpContent';
-
-// Sin mayúsculas ni tildes: "habiles" encuentra "hábiles".
-const fold = (v: string) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 export default function HelpPageClient({ topics }: { topics: HelpTopicWithContent[] }) {
   const [search, setSearch] = useState('');
@@ -104,7 +102,7 @@ export default function HelpPageClient({ topics }: { topics: HelpTopicWithConten
             sx={{ mb: 1 }}
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography fontWeight={600}>{category}</Typography>
+              <Typography fontWeight={600}>{highlightChildren(category, searchTerms)}</Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ pt: 0 }}>
               {categoryTopics.map((topic) => {
@@ -123,11 +121,11 @@ export default function HelpPageClient({ topics }: { topics: HelpTopicWithConten
                     sx={{ mb: 1, '&:before': { display: 'none' } }}
                   >
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                      <Typography>{topic.title}</Typography>
+                      <Typography>{highlightChildren(topic.title, searchTerms)}</Typography>
                     </AccordionSummary>
                     <AccordionDetails>
                       <Box sx={{ '& > *:last-child': { mb: 0 } }}>
-                        <HelpMarkdown content={topic.content} />
+                        <HelpMarkdown content={topic.content} highlightTerms={searchTerms} />
                       </Box>
                     </AccordionDetails>
                   </Accordion>
