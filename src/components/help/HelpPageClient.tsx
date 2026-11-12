@@ -16,13 +16,19 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HelpMarkdown from './HelpMarkdown';
 import { HelpTopicWithContent } from '../../utils/helpContent';
 
+// Sin mayúsculas ni tildes: "habiles" encuentra "hábiles".
+const fold = (v: string) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
 export default function HelpPageClient({ topics }: { topics: HelpTopicWithContent[] }) {
   const [search, setSearch] = useState('');
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [openTopics, setOpenTopics] = useState<Record<string, boolean>>({});
 
-  const normalizedSearch = search.trim().toLowerCase();
-  const isSearching = normalizedSearch.length > 0;
+  // Cada palabra de la búsqueda tiene que aparecer (en cualquier orden) en el título, la categoría o las
+  // palabras clave del tema: "carga horas adicionales" encuentra Adicionales aunque ninguna palabra
+  // clave sea esa frase exacta.
+  const searchTerms = useMemo(() => fold(search).split(/\s+/).filter(Boolean), [search]);
+  const isSearching = searchTerms.length > 0;
 
   const groupedByCategory = useMemo(() => {
     const categories: string[] = [];
@@ -35,15 +41,13 @@ export default function HelpPageClient({ topics }: { topics: HelpTopicWithConten
         const categoryTopics = topics.filter((topic) => {
           if (topic.category !== category) return false;
           if (!isSearching) return true;
-          const haystack = [topic.title, topic.category, ...topic.keywords]
-            .join(' ')
-            .toLowerCase();
-          return haystack.includes(normalizedSearch);
+          const haystack = fold([topic.title, topic.category, ...topic.keywords].join(' '));
+          return searchTerms.every((term) => haystack.includes(term));
         });
         return { category, topics: categoryTopics };
       })
       .filter((group) => group.topics.length > 0);
-  }, [topics, normalizedSearch, isSearching]);
+  }, [topics, searchTerms, isSearching]);
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
