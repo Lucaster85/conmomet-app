@@ -133,6 +133,11 @@ Usar siempre `src/components/common/ListFilters.tsx`:
   su propia fila — nunca un campo de texto más entre los selects.
 - `<FilterSelect label="Cliente" value={...} onChange={...} emptyLabel="Todos los clientes" options={[...]} />`
   por cada select — reemplaza tanto al `TextField select native` como al `FormControl`+`Select`+`MenuItem`.
+- `<FilterSwitch label="Ver terminados" checked={...} onChange={...} />` — para "mostrar también lo
+  que ya terminó/está inactivo". Reemplaza cualquier `Switch`+`FormControlLabel` armado a mano
+  (eso generó 5 variantes con nombres distintos — "Ver inactivos", "Ver anuladas", "Ver
+  cancelados", "Mostrar resueltos" — antes de que existiera, ver `FLOWS.md` flujo 52). Un estado
+  explícito elegido en un `FilterSelect` de la misma página le gana al switch — nunca al revés.
 - El botón "Limpiar filtros" lo pone el componente solo si se pasa `onClear` y `hasActiveFilters` es `true`.
 
 Convenciones de contenido (las impone el componente, no se pisan a mano):
@@ -156,9 +161,12 @@ Criterio server-side vs. client-side (no es libre, es por tipo de listado):
 - El debounce (solo en la búsqueda de texto, los selects consultan al tocarlos) sigue el patrón de
   `additionals/page.tsx`: `setTimeout(load, search ? 300 : 0)`.
 
-Migrados a este estándar: Proyectos (`dashboard/projects/page.tsx`), Pedidos de Cotización
-(`dashboard/quote-requests/page.tsx`) y Presupuestos (`dashboard/budgets/page.tsx`). El resto de
-los listados queda pendiente de migrar — ver `FLOWS.md` flujo 39 para la lista completa.
+Migrados a este estándar: Proyectos, Pedidos de Cotización, Presupuestos, Préstamos, Adicionales,
+Herramientas, Vehículos y Empleados. Adelantos, Licencias, Facturación (tab Facturas), OCAs y
+Carga de Horas usan `FilterSwitch` pero **no** migraron el contenedor a `ListFilters` — no tienen
+campo de búsqueda y agregar uno habría sido una funcionalidad nueva, no la unificación pedida (ver
+`FLOWS.md` flujo 52, Etapa 3). El resto de los listados sin tocar queda pendiente — ver `FLOWS.md`
+flujo 39 para la lista completa.
 
 ## Regla obligatoria: los diálogos usan `AppDialog`, no el `Dialog` de MUI
 

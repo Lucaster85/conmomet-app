@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import {
-  Box, Grid, Paper, TextField, InputAdornment, Button,
+  Box, Grid, Paper, TextField, InputAdornment, Button, FormControlLabel, Switch, Typography,
 } from '@mui/material';
 import { SearchOutlined as SearchIcon, ClearOutlined as ClearIcon } from '@mui/icons-material';
 
@@ -94,5 +94,31 @@ export function FilterSelect({ label, value, onChange, emptyLabel, options, disa
       <option value="">{emptyLabel}</option>
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </TextField>
+  );
+}
+
+interface FilterSwitchProps {
+  label: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}
+
+// Switch estándar de los paneles de filtro para "mostrar también lo que ya terminó/está
+// inactivo" — copia el look de employees/page.tsx (label rojo cuando está prendido). Un
+// estado explícito elegido en un FilterSelect de la misma página tiene que ganarle a este
+// switch: ver conmomet-app/CLAUDE.md y FLOWS.md §52.
+export function FilterSwitch({ label, checked, onChange }: FilterSwitchProps) {
+  return (
+    <FormControlLabel
+      control={(
+        <Switch
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          size="small"
+          color="error"
+        />
+      )}
+      label={<Typography variant="body2" color={checked ? 'error' : 'text.secondary'} noWrap>{label}</Typography>}
+    />
   );
 }

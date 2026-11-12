@@ -10,7 +10,7 @@ import {
 import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
-import ListFilters, { FilterSelect } from '../../../components/common/ListFilters';
+import ListFilters, { FilterSelect, FilterSwitch } from '../../../components/common/ListFilters';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon, OpenInNewOutlined as DetailIcon,
   RefreshOutlined as RefreshIcon, GroupsOutlined as TeamIcon, CheckCircleOutlined as CompleteIcon,
@@ -55,9 +55,10 @@ export default function ProjectsPage() {
   const [filterClientId, setFilterClientId] = useState('');
   const [filterPlantId, setFilterPlantId] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const hasActiveFilters = !!(search || filterClientId || filterPlantId || filterStatus);
+  const [includeClosed, setIncludeClosed] = useState(false);
+  const hasActiveFilters = !!(search || filterClientId || filterPlantId || filterStatus || includeClosed);
   const clearFilters = () => {
-    setSearch(''); setFilterClientId(''); setFilterPlantId(''); setFilterStatus('');
+    setSearch(''); setFilterClientId(''); setFilterPlantId(''); setFilterStatus(''); setIncludeClosed(false);
   };
 
   const [openDialog, setOpenDialog] = useState(false);
@@ -110,6 +111,7 @@ export default function ProjectsPage() {
         client_id: filterClientId ? Number(filterClientId) : undefined,
         plant_id: filterPlantId ? Number(filterPlantId) : undefined,
         status: filterStatus || undefined,
+        include_closed: includeClosed,
       });
 
       const rawProjects = Array.isArray(projs) ? projs : [];
@@ -127,7 +129,7 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, filterClientId, filterPlantId, filterStatus]);
+  }, [search, filterClientId, filterPlantId, filterStatus, includeClosed]);
 
   const loadClientSupervisors = async (clientId: number) => {
     try {
@@ -363,6 +365,7 @@ export default function ProjectsPage() {
           emptyLabel="Todos los estados"
           options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
         />
+        <FilterSwitch label="Ver terminados" checked={includeClosed} onChange={setIncludeClosed} />
       </ListFilters>
 
       {/* Mobile view */}

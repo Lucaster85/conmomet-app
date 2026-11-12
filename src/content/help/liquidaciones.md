@@ -253,12 +253,15 @@ quincenas ya cerradas.
 ## Anular un adelanto ya pagado
 
 Si se cargó un adelanto duplicado por error y ya quedó marcado como pagado, se puede **anular**
-desde el listado (no se borra: queda en la tabla con estado "Cancelado", visible activando el
-switch **"Ver cancelados"**). Anular un adelanto ya pagado requiere cargar una **justificación
-obligatoria**, y genera un aviso en el dashboard visible solo para el rol **Socios Gerentes**, con
-el detalle de qué se anuló, por cuánto y por qué (el empleado que lo anuló no ve este aviso). Si
-la liquidación de ese empleado para esa quincena ya está Confirmada o Pagada, no se puede anular
-el adelanto — hay que esperar a que la corrección se pueda hacer sin tocar una liquidación cerrada.
+desde el listado (no se borra: queda en la tabla con estado "Cancelado"). Anular un adelanto ya
+pagado requiere cargar una **justificación obligatoria**, y genera un aviso en el dashboard
+visible solo para el rol **Socios Gerentes**, con el detalle de qué se anuló, por cuánto y por
+qué (el empleado que lo anuló no ve este aviso). Si la liquidación de ese empleado para esa
+quincena ya está Confirmada o Pagada, no se puede anular el adelanto — hay que esperar a que la
+corrección se pueda hacer sin tocar una liquidación cerrada.
+
+Por defecto el listado **no muestra** los adelantos rechazados ni cancelados (ver tema
+**Filtros de los listados** para el switch "Ver terminados").
 
 Un adelanto anulado **deja de aparecer** en el detalle y en el recibo de la liquidación (y en el
 total de Adelantos del Resumen de Gastos), no solo en el neto: si lo anulás y cargás uno nuevo

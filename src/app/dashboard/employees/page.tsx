@@ -4,10 +4,11 @@ import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack,
-  Chip, InputAdornment, Divider, MenuItem, Select, FormControl, InputLabel,
-  FormHelperText, Switch, FormControlLabel
+  Chip, Divider, MenuItem, Select, FormControl, InputLabel,
+  FormHelperText,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import ListFilters, { FilterSwitch } from '@/components/common/ListFilters';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
@@ -20,7 +21,7 @@ import PhoneField from '../../../components/PhoneField';
 import EmailField from '../../../components/EmailField';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, PersonOffOutlined as TerminateIcon,
-  RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, VisibilityOutlined as VisibilityIcon,
+  RefreshOutlined as RefreshIcon, VisibilityOutlined as VisibilityIcon,
   LinkOutlined as LinkIcon, LinkOffOutlined as LinkOffIcon, BadgeOutlined as TitleIcon,
 } from '@mui/icons-material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
@@ -316,27 +317,13 @@ export default function EmployeesPage() {
         </Box>
       </Box>
 
-      {/* Search */}
-      <Box display="flex" alignItems="center" gap={2} sx={{ mb: 2 }}>
-        <TextField
-          placeholder="Buscar por nombre, apellido o DNI..."
-          fullWidth size="small"
-          value={search} onChange={(e) => setSearch(e.target.value)}
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-        />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showInactive}
-              onChange={(e) => setShowInactive(e.target.checked)}
-              size="small"
-              color="error"
-            />
-          }
-          label={<Typography variant="body2" color={showInactive ? 'error' : 'text.secondary'} noWrap>Ver inactivos</Typography>}
-          sx={{ flexShrink: 0 }}
-        />
-      </Box>
+      <ListFilters
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar por nombre, apellido o DNI…"
+      >
+        <FilterSwitch label="Ver inactivos" checked={showInactive} onChange={setShowInactive} />
+      </ListFilters>
 
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />

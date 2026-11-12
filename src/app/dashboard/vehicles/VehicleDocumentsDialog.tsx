@@ -26,6 +26,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import { FilterSwitch } from '@/components/common/ListFilters';
 import {
   CloseOutlined as CloseIcon,
   CloudUploadOutlined as CloudUploadIcon,
@@ -318,10 +319,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
 
         {/* Action Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <FormControlLabel
-            control={<Switch size="small" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} />}
-            label="Mostrar resueltos"
-          />
+          <FilterSwitch label="Mostrar resueltos" checked={showResolved} onChange={setShowResolved} />
           <Button
             variant="contained"
             startIcon={<CloudUploadIcon />}

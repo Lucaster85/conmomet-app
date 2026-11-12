@@ -37,11 +37,11 @@ import {
   Alert,
   useTheme,
   useMediaQuery,
-  Switch,
   FormControlLabel,
   Autocomplete,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import { FilterSwitch } from '@/components/common/ListFilters';
 import {
   ExpandMoreOutlined as ExpandMoreIcon,
   AddOutlined as AddIcon,
@@ -1788,17 +1788,7 @@ export default function OcasPage() {
                 </Grid>
               )}
               <Grid size={{ xs: 12, sm: 4 }} display="flex" alignItems="center" gap={2} justifyContent="flex-end">
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={showAnuladas}
-                      onChange={(e) => setShowAnuladas(e.target.checked)}
-                      size="small"
-                      color="error"
-                    />
-                  }
-                  label={<Typography variant="body2" color={showAnuladas ? 'error' : 'text.secondary'}>Ver anuladas</Typography>}
-                />
+                <FilterSwitch label="Ver anuladas" checked={showAnuladas} onChange={setShowAnuladas} />
                 <Button
                   variant="outlined"
                   onClick={loadData}

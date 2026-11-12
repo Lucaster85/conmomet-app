@@ -11,7 +11,7 @@ import {
 import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
-import ListFilters, { FilterSelect } from '../../../components/common/ListFilters';
+import ListFilters, { FilterSelect, FilterSwitch } from '../../../components/common/ListFilters';
 import CurrencyInput from '../../../components/CurrencyInput';
 import DeliverToManagementDialog from '../../../components/common/DeliverToManagementDialog';
 import QuoteRequestDueChip from '../../../components/quote-requests/QuoteRequestDueChip';
@@ -210,9 +210,10 @@ function BudgetsPageContent() {
   const [search, setSearch] = useState('');
   const [filterClientId, setFilterClientId] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const hasActiveFilters = !!(search || filterClientId || filterStatus);
+  const [includeClosed, setIncludeClosed] = useState(false);
+  const hasActiveFilters = !!(search || filterClientId || filterStatus || includeClosed);
   const clearFilters = () => {
-    setSearch(''); setFilterClientId(''); setFilterStatus('');
+    setSearch(''); setFilterClientId(''); setFilterStatus(''); setIncludeClosed(false);
   };
 
   const [openDialog, setOpenDialog] = useState(false);
@@ -319,6 +320,7 @@ function BudgetsPageContent() {
         q: search || undefined,
         client_id: filterClientId ? Number(filterClientId) : undefined,
         status: filterStatus || undefined,
+        include_closed: includeClosed,
       });
       setBudgets(Array.isArray(bgs) ? bgs : []);
     } catch (err) {
@@ -326,7 +328,7 @@ function BudgetsPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [search, filterClientId, filterStatus]);
+  }, [search, filterClientId, filterStatus, includeClosed]);
 
   // Los filtros consultan al servidor; la búsqueda por texto con un pequeño debounce.
   useEffect(() => {
@@ -1344,6 +1346,7 @@ function BudgetsPageContent() {
           emptyLabel="Todos los estados"
           options={Object.entries(STATUS_LABELS).map(([value, { label }]) => ({ value, label }))}
         />
+        <FilterSwitch label="Ver terminados" checked={includeClosed} onChange={setIncludeClosed} />
       </ListFilters>
 
       {budgets.length === 0 ? (

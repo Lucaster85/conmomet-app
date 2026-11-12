@@ -6,6 +6,7 @@ import {
   DialogContent, DialogActions, Divider, IconButton, Tooltip, Switch, Grid, Alert
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import { FilterSwitch } from '@/components/common/ListFilters';
 import dayjs from 'dayjs';
 import { TimeField } from '@mui/x-date-pickers/TimeField';
 import FeedbackModal from '../../../components/FeedbackModal';
@@ -641,17 +642,7 @@ export default function TimeEntriesPage() {
           )}
 
           <Grid size={{ xs: 12 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={showVoided}
-                  onChange={(e) => setShowVoided(e.target.checked)}
-                  size="small"
-                  color="error"
-                />
-              }
-              label={<Typography variant="body2" color={showVoided ? 'error' : 'text.secondary'}>Ver anuladas</Typography>}
-            />
+            <FilterSwitch label="Ver anuladas" checked={showVoided} onChange={setShowVoided} />
           </Grid>
         </Grid>
       </Paper>

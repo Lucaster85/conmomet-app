@@ -5,6 +5,11 @@ Un proyecto puede crearse a mano acá, o nacer automáticamente al **generar el 
 Presupuesto** (ver el tema **Presupuestos**) — en ese caso ya viene con cliente, planta y horas
 presupuestadas precargadas, desglosadas por rubro (ver abajo).
 
+## El listado arranca mostrando solo los proyectos vivos
+
+Por defecto, el listado **no muestra** los proyectos **Completados** ni **Cancelados** (ver tema
+**Filtros de los listados**).
+
 ## Horas por Rubro
 
 En la pestaña **Resumen** de la ficha del proyecto, las horas presupuestadas ya no son un único
