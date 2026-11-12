@@ -58,6 +58,20 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'listados-filtros.md',
   },
   {
+    // Transversal igual que los filtros: lo usan casi todos los módulos que tienen archivos
+    // adjuntos, no cuelga de ningún grupo del menú (ver FLOWS.md §54).
+    id: 'ver-documentos',
+    category: 'Inicio',
+    title: 'Ver y descargar documentos',
+    keywords: [
+      'documento', 'documentos', 'archivo', 'archivos', 'adjunto', 'adjuntos', 'ver archivo',
+      'abrir', 'abrir documento', 'visor', 'vista previa', 'previsualizar', 'descargar', 'descarga',
+      'se descarga', 'pdf', 'word', 'doc', 'docx', 'excel', 'xls', 'xlsx', 'imagen', 'foto',
+      'comprobante', 'carnet', 'btb', 'permiso de planta', 'pedido original', 'no se ve',
+    ],
+    file: 'ver-documentos.md',
+  },
+  {
     id: 'crear-oca',
     category: 'Gestión de Clientes',
     title: 'Creación de OCAs (Remitos)',

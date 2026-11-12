@@ -5,6 +5,7 @@ import {
   Box, Typography, Chip, Button, IconButton, Tooltip, Stack,
   DialogTitle, DialogContent, DialogActions, TextField,
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import {
   WarningOutlined as WarningIcon,
@@ -58,6 +59,7 @@ interface DocumentExpirationAlertProps {
 }
 
 export default function DocumentExpirationAlert({ onError, onSuccess }: DocumentExpirationAlertProps) {
+  const { openFile } = useFileViewer();
   const router = useRouter();
   const { user } = useAuth();
   // Antes no hacía falta chequear esto: todo rol real tenía casi todos los permisos. Con un rol
@@ -247,7 +249,7 @@ export default function DocumentExpirationAlert({ onError, onSuccess }: Document
                       size="small"
                       color="info"
                       sx={{ display: { xs: 'inline-flex', sm: 'none' }, border: 1, borderColor: 'info.main' }}
-                      onClick={() => window.open(doc.file_url, '_blank', 'noopener,noreferrer')}
+                      onClick={() => openFile(doc.file_url, doc.file_name || doc.title)}
                     >
                       <DescriptionIcon fontSize="small" />
                     </IconButton>
@@ -296,7 +298,7 @@ export default function DocumentExpirationAlert({ onError, onSuccess }: Document
                     color="info"
                     startIcon={<DescriptionIcon />}
                     sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-                    onClick={() => window.open(doc.file_url, '_blank', 'noopener,noreferrer')}
+                    onClick={() => openFile(doc.file_url, doc.file_name || doc.title)}
                   >
                     Ver archivo
                   </Button>
@@ -306,7 +308,7 @@ export default function DocumentExpirationAlert({ onError, onSuccess }: Document
           ),
         };
       }),
-    [expiringDocs, router, user]
+    [expiringDocs, router, user, openFile]
   );
 
   const ready = canSeeDocuments && !loading;

@@ -27,6 +27,7 @@ import {
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth, TokenManager } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import { FileViewerProvider } from '../../components/common/FileViewer';
 import ChangePasswordDialog from '../../components/ChangePasswordDialog';
 import PushNotificationsDialog from '../../components/common/PushNotificationsDialog';
 import { reconcilePushSubscriptionOnLoad, unsubscribeFromPush, unsubscribeFromPushLocalOnly } from '../../utils/push';
@@ -116,6 +117,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   return (
     <ProtectedRoute>
+    <FileViewerProvider>
       <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
         <AppBar
           position="fixed"
@@ -271,6 +273,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           {children}
         </Container>
       </Box>
+    </FileViewerProvider>
     </ProtectedRoute>
   );
 }

@@ -8,6 +8,7 @@ import {
   Autocomplete, createFilterOptions, useMediaQuery, useTheme,
   FormControlLabel, Switch,
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
@@ -166,6 +167,7 @@ export default function BudgetsPage() {
 }
 
 function BudgetsPageContent() {
+  const { fileLinkProps } = useFileViewer();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -1413,7 +1415,7 @@ function BudgetsPageContent() {
                       {b.status === 'approved' && b.approved_document_url && (
                         <Box display="flex" alignItems="center" gap={0.5} mt={0.5}>
                           <DocumentIcon fontSize="inherit" color="action" />
-                          <a href={b.approved_document_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem' }}>documento firmado</a>
+                          <a {...fileLinkProps(b.approved_document_url)} style={{ fontSize: '0.75rem' }}>documento firmado</a>
                         </Box>
                       )}
                     </Box>
@@ -1537,7 +1539,7 @@ function BudgetsPageContent() {
                         {b.status === 'approved' && b.approved_document_url && (
                           <Box display="flex" alignItems="center" gap={0.5} mt={0.5}>
                             <DocumentIcon fontSize="inherit" color="action" />
-                            <a href={b.approved_document_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem' }}>documento firmado</a>
+                            <a {...fileLinkProps(b.approved_document_url)} style={{ fontSize: '0.75rem' }}>documento firmado</a>
                           </Box>
                         )}
                       </TableCell>
@@ -1613,7 +1615,7 @@ function BudgetsPageContent() {
                 <Typography variant="body2" fontWeight={600}>Pliego del Pedido de Cotización {editingBudget?.quoteRequest?.number}</Typography>
                 {(editingBudget?.quoteRequest?.files || []).map((f) => (
                   <Typography key={f.id} variant="body2">
-                    <Link href={f.file_url} target="_blank" rel="noopener noreferrer" underline="hover">{f.file_name || 'Archivo'}</Link>
+                    <Link {...fileLinkProps(f.file_url, f.file_name || undefined)} underline="hover">{f.file_name || 'Archivo'}</Link>
                     {f.size_bytes ? ` (${f.size_bytes >= 1048576 ? `${(f.size_bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(f.size_bytes / 1024))} KB`})` : ''}
                   </Typography>
                 ))}

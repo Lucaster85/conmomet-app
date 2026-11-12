@@ -40,6 +40,7 @@ import {
   FormControlLabel,
   Autocomplete,
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import { FilterSwitch } from '@/components/common/ListFilters';
 import {
@@ -108,6 +109,7 @@ const STATUS_LABELS: Record<Oca['status'], string> = {
 };
 
 export default function OcasPage() {
+  const { openFile } = useFileViewer();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useAuth();
@@ -1862,13 +1864,13 @@ export default function OcasPage() {
                                 component="span"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  window.open(oca.approved_img_url, '_blank');
+                                  openFile(oca.approved_img_url);
                                 }}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' || e.key === ' ') {
                                     e.stopPropagation();
                                     e.preventDefault();
-                                    window.open(oca.approved_img_url, '_blank');
+                                    openFile(oca.approved_img_url);
                                   }
                                 }}
                                 role="button"
@@ -1981,7 +1983,7 @@ export default function OcasPage() {
                             variant="contained"
                             color="success"
                             startIcon={<VisibilityIcon />}
-                            onClick={() => window.open(oca.approved_img_url, '_blank')}
+                            onClick={() => openFile(oca.approved_img_url)}
                             size="small"
                           >
                             Ver Comprobante
@@ -2116,7 +2118,7 @@ export default function OcasPage() {
                               variant="outlined"
                               size="small"
                               color="success"
-                              onClick={() => window.open(oca.approved_img_url, '_blank')}
+                              onClick={() => openFile(oca.approved_img_url)}
                             >
                               Ver Comprobante Digital
                             </Button>
