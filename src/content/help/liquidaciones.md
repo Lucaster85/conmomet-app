@@ -83,8 +83,16 @@ neto de la quincena, pero **no cuenta para el aguinaldo (SAC)**. El caso típico
 ## Qué entra en el cálculo
 
 - **Horas trabajadas** y sus **extras** (50% y 100%).
-- **Feriados**: trabajados (se pagan aparte) y no trabajados (se pagan igual, jornada
-  estándar).
+- **Feriados**: trabajados (se pagan al doble) y no trabajados (se pagan igual, jornada
+  estándar). En el detalle y en el recibo de un jornalizado se ven así: si en una semana de
+  40 hs una de las jornadas fue feriado, aparecen **32 hs regulares** y **8 hs de "Feriado
+  trabajado al 100%"** (a tarifa doble); el total es el mismo que antes, solo que la
+  presentación es más clara. El feriado no trabajado aparece como **"Feriado no trabajado
+  (pago)"**, 8 hs a tarifa de gremio. Debajo de cada una de estas líneas se ve la **fecha y el
+  nombre del feriado**; si en la quincena hubo más de un feriado y el empleado trabajó solo
+  algunos, no se muestra la fecha (no se puede saber cuál fue cuál). Esto vale también para
+  quincenas ya cerradas. En el Excel de **Exportar Horas** hay una columna **Hs Feriado**, y esas
+  horas ya no se cuentan dentro de "Hs Regulares".
 - **Vacaciones**: se descuentan del período correspondiente y se pagan aparte, con su propia
   tarifa diaria.
 - **Licencia médica**: igual criterio que vacaciones — se descuenta y se paga aparte.
@@ -274,4 +282,4 @@ Si se aplica un aumento de Convenio Colectivo con fecha retroactiva, el sistema 
 automáticamente líneas de **"Retroactivo"** en la liquidación del período correspondiente, con
 la diferencia calculada sobre lo ya liquidado en los períodos anteriores afectados.
 
-<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#delete, api_conmomet/controllers/salaryAdvanceController.js#findDuplicateAdvance, api_conmomet/controllers/salaryAdvanceDeletionAlertController.js, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, api_conmomet/controllers/payrollController.js#generateSac, api_conmomet/services/sacService.js, api_conmomet/helpers/sacCalculations.js, api_conmomet/services/finalPayrollService.js, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/FinalEntries.tsx, api_conmomet/controllers/categoryController.js#applyBonus, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/SacEntries.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/PayrollAdjustmentsModal.tsx, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/components/common/SalaryAdvanceDeletionAlert.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx, api_conmomet/controllers/payPeriodController.js#close, api_conmomet/services/exchangeRateService.js, conmomet-app/src/app/dashboard/pay-periods/page.tsx -->
+<!-- ref: api_conmomet/controllers/loanController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#markAsPaid, api_conmomet/controllers/salaryAdvanceController.js#delete, api_conmomet/controllers/salaryAdvanceController.js#findDuplicateAdvance, api_conmomet/controllers/salaryAdvanceDeletionAlertController.js, api_conmomet/controllers/payrollController.js#attachSignature, api_conmomet/controllers/payrollAdjustmentController.js, api_conmomet/controllers/payrollController.js#generateSac, api_conmomet/services/sacService.js, api_conmomet/helpers/sacCalculations.js, api_conmomet/services/finalPayrollService.js, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/FinalEntries.tsx, api_conmomet/controllers/categoryController.js#applyBonus, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/SacEntries.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/PayrollAdjustmentsModal.tsx, conmomet-app/src/components/SignaturePad.tsx, conmomet-app/src/components/common/SalaryAdvanceDeletionAlert.tsx, conmomet-app/src/app/dashboard/loans/page.tsx, conmomet-app/src/app/dashboard/salary-advances/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/page.tsx, conmomet-app/src/app/dashboard/pay-periods/[id]/payroll/displayLines.ts, api_conmomet/controllers/payPeriodController.js#close, api_conmomet/services/exchangeRateService.js, conmomet-app/src/app/dashboard/pay-periods/page.tsx -->

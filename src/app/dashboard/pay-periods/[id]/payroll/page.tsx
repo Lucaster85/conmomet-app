@@ -12,7 +12,8 @@ import GearSpinner from '../../../../../components/GearSpinner';
 import { RefreshOutlined as RefreshIcon, EditOutlined as EditIcon, CheckCircleOutlined as ConfirmIcon, CalculateOutlined as CalcIcon, ArrowBackOutlined as BackIcon, PaymentOutlined as PaymentIcon, VisibilityOutlined as ViewIcon, PrintOutlined as PrintIcon, DrawOutlined as SignatureIcon } from '@mui/icons-material';
 import Divider from '@mui/material/Divider';
 import { TableChartOutlined as ExcelIcon } from '@mui/icons-material';
-import { PayrollEntry, PayrollService, PayPeriod, PayrollLine, PayrollAdjustment, LoanInstallment } from '../../../../../utils/api';
+import { PayrollEntry, PayrollService, PayPeriod, PayrollLine, PayrollAdjustment, LoanInstallment, LookupService } from '../../../../../utils/api';
+import { buildDisplayLines, isWorkedHolidayLine, type DisplayLine, type PeriodHoliday } from './displayLines';
 import SignaturePad from '../../../../../components/SignaturePad';
 import { TokenManager } from '../../../../../utils/auth';
 import { isFixedSalaryPayType, payTypeLabel } from '../../../../../utils/payType';
@@ -155,6 +156,24 @@ export default function PayrollPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadData(); }, [payPeriodId]);
 
+  // Feriados de la quincena, solo para mostrar fecha y nombre debajo de las líneas de feriado del
+  // detalle y del recibo (FLOWS.md §53). Es cosmético: si falla, las líneas salen sin fecha.
+  const [periodHolidays, setPeriodHolidays] = useState<PeriodHoliday[]>([]);
+  useEffect(() => {
+    if (!period || isSacPeriod(period) || isFinalPeriod(period)) {
+      setPeriodHolidays([]);
+      return;
+    }
+    let cancelled = false;
+    LookupService.getHolidays(period.year)
+      .then((all) => {
+        if (cancelled) return;
+        setPeriodHolidays(all.filter((h) => h.date >= period.start_date && h.date <= period.end_date));
+      })
+      .catch(() => { if (!cancelled) setPeriodHolidays([]); });
+    return () => { cancelled = true; };
+  }, [period]);
+
   const isSac = isSacPeriod(period);
   // La liquidación final se genera desde el egreso y se confirma/paga por empleado (PLAN_EGRESOS.md §6.1).
   const isFinal = isFinalPeriod(period);
@@ -248,7 +267,7 @@ export default function PayrollPage() {
         [''],
         [
           'Empleado',
-          'Hs Regulares', 'Hs Extra 50%', 'Hs Extra 100%', 'Hs Especial', 'Hs Licencia/enfermedad', 'Hs Vacaciones',
+          'Hs Regulares', 'Hs Extra 50%', 'Hs Extra 100%', 'Hs Especial', 'Hs Feriado', 'Hs Licencia/enfermedad', 'Hs Vacaciones',
           'Hs PEP', 'Hs PEP 50%', 'Hs PEP 100%'
         ],
         ...filteredEntries.map(e => {
@@ -262,7 +281,15 @@ export default function PayrollPage() {
           const baseOt50 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_50' && l.concept_id === null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
           const baseOt100 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_100' && l.concept_id === null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
 
-          const rowReg = isFixedSalary ? rawReg : Math.max(0, baseRegRaw - baseOt50 - baseOt100);
+          // Las horas de feriado trabajado salen de "Hs Regulares"/"Hs Especial" y van a "Hs Feriado"
+          // (el backend las guarda dentro de la línea regular, ver displayLines.ts).
+          const workedHolidayHours = (withConcept: boolean) => e.lines
+            ? e.lines
+                .filter((l: PayrollLine) => isWorkedHolidayLine(l) && (l.concept_id !== null) === withConcept)
+                .reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0)
+            : 0;
+
+          const rowReg = isFixedSalary ? rawReg : Math.max(0, baseRegRaw - baseOt50 - baseOt100 - workedHolidayHours(false));
           const rowOt50 = ot50;
           const rowOt100 = ot100;
 
@@ -270,12 +297,19 @@ export default function PayrollPage() {
           const diffRegRaw = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'regular' && l.concept_id !== null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
           const diffOt50 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_50' && l.concept_id !== null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
           const diffOt100 = e.lines ? e.lines.filter((l: PayrollLine) => l.line_type === 'extras_100' && l.concept_id !== null).reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0) : 0;
-          const rowEspecial = isFixedSalary ? 0 : Math.max(0, diffRegRaw - diffOt50 - diffOt100);
+          const rowEspecial = isFixedSalary ? 0 : Math.max(0, diffRegRaw - diffOt50 - diffOt100 - workedHolidayHours(true));
 
-          // Hs Licencia/enfermedad: medical_leave + justified absences + holidays (both worked and non-worked)
+          // Hs Feriado: feriados trabajados + no trabajados (8 hs por feriado)
+          const rowFeriado = e.lines
+            ? e.lines
+                .filter((l: PayrollLine) => l.line_type === 'holiday')
+                .reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0)
+            : 0;
+
+          // Hs Licencia/enfermedad: medical_leave + justified absences (los feriados van en "Hs Feriado")
           const rowLicencia = e.lines
             ? e.lines
-                .filter((l: PayrollLine) => l.line_type === 'medical_leave' || l.line_type === 'justified' || l.line_type === 'holiday')
+                .filter((l: PayrollLine) => l.line_type === 'medical_leave' || l.line_type === 'justified')
                 .reduce((sum: number, l: PayrollLine) => sum + Number(l.quantity || 0), 0)
             : 0;
 
@@ -311,6 +345,7 @@ export default function PayrollPage() {
             rowOt50,
             rowOt100,
             rowEspecial,
+            rowFeriado,
             rowLicencia,
             rowVacaciones,
             pepReg,
@@ -327,6 +362,7 @@ export default function PayrollPage() {
         { wch: 13 }, // Hs Extra 50%
         { wch: 13 }, // Hs Extra 100%
         { wch: 13 }, // Hs Especial
+        { wch: 13 }, // Hs Feriado
         { wch: 22 }, // Hs Licencia/enfermedad
         { wch: 15 }, // Hs Vacaciones
         { wch: 10 }, // Hs PEP
@@ -1092,61 +1128,7 @@ export default function PayrollPage() {
                     if (detailEntry.lines && detailEntry.lines.length > 0) {
                       const isFixedSalary = isFixedSalaryPayType(detailEntry.employee?.pay_type);
 
-                      let displayLines = detailEntry.lines;
-                      if (!isFixedSalary) {
-                        const extrasMap: Record<string, { ot50: number; ot100: number }> = {};
-                        detailEntry.lines.forEach((l: PayrollLine) => {
-                          if (l.line_type === 'extras_50' || l.line_type === 'extras_100') {
-                            const cid = String(l.concept_id || 'null');
-                            if (!extrasMap[cid]) {
-                              extrasMap[cid] = { ot50: 0, ot100: 0 };
-                            }
-                            if (l.line_type === 'extras_50') {
-                              extrasMap[cid].ot50 += Number(l.quantity || 0);
-                            } else {
-                              extrasMap[cid].ot100 += Number(l.quantity || 0);
-                            }
-                          }
-                        });
-
-                        displayLines = detailEntry.lines.map((l: PayrollLine) => {
-                          const cid = String(l.concept_id || 'null');
-                          if (l.line_type === 'regular') {
-                            const extras = extrasMap[cid] || { ot50: 0, ot100: 0 };
-                            const totalOt = extras.ot50 + extras.ot100;
-                            if (totalOt > 0) {
-                              const newQty = Math.max(0, Number(l.quantity || 0) - totalOt);
-                              const rate = Number(l.rate || 0);
-                              return {
-                                ...l,
-                                quantity: newQty,
-                                subtotal: newQty * rate
-                              };
-                            }
-                          } else if (l.line_type === 'extras_50') {
-                            const baseRate = Number(l.rate || 0) * 2;
-                            const fullRate = baseRate * 1.5;
-                            const qty = Number(l.quantity || 0);
-                            return {
-                              ...l,
-                              label: l.label.replace('Recargo 50%', 'Horas Extra 50%'),
-                              rate: fullRate,
-                              subtotal: qty * fullRate
-                            };
-                          } else if (l.line_type === 'extras_100') {
-                            const baseRate = Number(l.rate || 0);
-                            const fullRate = baseRate * 2.0;
-                            const qty = Number(l.quantity || 0);
-                            return {
-                              ...l,
-                              label: l.label.replace('Recargo 100%', 'Horas Extra 100%'),
-                              rate: fullRate,
-                              subtotal: qty * fullRate
-                            };
-                          }
-                          return l;
-                        });
-                      }
+                      const displayLines = buildDisplayLines(detailEntry.lines, isFixedSalary, periodHolidays);
 
                       const totalHours = isFixedSalary
                         ? 0
@@ -1166,12 +1148,17 @@ export default function PayrollPage() {
                               </TableRow>
                             </TableHead>
                             <TableBody>
-                              {displayLines.map((line: { id: number, label: string, quantity: number, rate: number, subtotal: number }) => (
+                              {displayLines.map((line: DisplayLine) => (
                                 <TableRow key={line.id}>
                                   <TableCell sx={{ maxWidth: { xs: 150, sm: 400, md: 500 } }}>
                                     <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
                                       {line.label}
                                     </Typography>
+                                    {line.holidayDetail && (
+                                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+                                        {line.holidayDetail}
+                                      </Typography>
+                                    )}
                                   </TableCell>
                                   <TableCell align="right"><Typography variant="body2">{Number(line.quantity).toFixed(1)}</Typography></TableCell>
                                   <TableCell align="right"><Typography variant="body2">{formatCurrency(line.rate)}</Typography></TableCell>
@@ -1547,61 +1534,7 @@ export default function PayrollPage() {
                   if (entry.lines && entry.lines.length > 0) {
                     const isFixedSalary = isFixedSalaryPayType(entry.employee?.pay_type);
 
-                    let displayLines = entry.lines;
-                    if (!isFixedSalary) {
-                      const extrasMap: Record<string, { ot50: number; ot100: number }> = {};
-                      entry.lines.forEach((l: PayrollLine) => {
-                        if (l.line_type === 'extras_50' || l.line_type === 'extras_100') {
-                          const cid = String(l.concept_id || 'null');
-                          if (!extrasMap[cid]) {
-                            extrasMap[cid] = { ot50: 0, ot100: 0 };
-                          }
-                          if (l.line_type === 'extras_50') {
-                            extrasMap[cid].ot50 += Number(l.quantity || 0);
-                          } else {
-                            extrasMap[cid].ot100 += Number(l.quantity || 0);
-                          }
-                        }
-                      });
-
-                      displayLines = entry.lines.map((l: PayrollLine) => {
-                        const cid = String(l.concept_id || 'null');
-                        if (l.line_type === 'regular') {
-                          const extras = extrasMap[cid] || { ot50: 0, ot100: 0 };
-                          const totalOt = extras.ot50 + extras.ot100;
-                          if (totalOt > 0) {
-                            const newQty = Math.max(0, Number(l.quantity || 0) - totalOt);
-                            const rate = Number(l.rate || 0);
-                            return {
-                              ...l,
-                              quantity: newQty,
-                              subtotal: newQty * rate
-                            };
-                          }
-                        } else if (l.line_type === 'extras_50') {
-                          const baseRate = Number(l.rate || 0) * 2;
-                          const fullRate = baseRate * 1.5;
-                          const qty = Number(l.quantity || 0);
-                          return {
-                            ...l,
-                            label: l.label.replace('Recargo 50%', 'Horas Extra 50%'),
-                            rate: fullRate,
-                            subtotal: qty * fullRate
-                          };
-                        } else if (l.line_type === 'extras_100') {
-                          const baseRate = Number(l.rate || 0);
-                          const fullRate = baseRate * 2.0;
-                          const qty = Number(l.quantity || 0);
-                          return {
-                            ...l,
-                            label: l.label.replace('Recargo 100%', 'Horas Extra 100%'),
-                            rate: fullRate,
-                            subtotal: qty * fullRate
-                          };
-                        }
-                        return l;
-                      });
-                    }
+                    const displayLines = buildDisplayLines(entry.lines, isFixedSalary, periodHolidays);
 
                     const totalHours = isFixedSalary
                       ? 0
@@ -1621,12 +1554,17 @@ export default function PayrollPage() {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {displayLines.map((line: { id: number, label: string, quantity: number, rate: number, subtotal: number }) => (
+                            {displayLines.map((line: DisplayLine) => (
                               <TableRow key={line.id}>
                                 <TableCell sx={{ py: 0.1, px: 0, maxWidth: 400 }}>
                                   <Typography variant="caption" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
                                     {line.label}
                                   </Typography>
+                                  {line.holidayDetail && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+                                      {line.holidayDetail}
+                                    </Typography>
+                                  )}
                                 </TableCell>
                                 <TableCell align="right" sx={{ py: 0.1, px: 0 }}><Typography variant="caption">{Number(line.quantity).toFixed(1)}</Typography></TableCell>
                                 <TableCell align="right" sx={{ py: 0.1, px: 0 }}><Typography variant="caption">{formatCurrency(line.rate)}</Typography></TableCell>

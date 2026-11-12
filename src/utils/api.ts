@@ -306,6 +306,7 @@ export interface LookupVehicle {
 }
 export interface LookupHoliday {
   date: string;
+  name?: string;
 }
 export interface LookupBudgetItemType {
   id: number;
