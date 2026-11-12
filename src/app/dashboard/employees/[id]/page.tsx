@@ -11,6 +11,7 @@ import {
   LinearProgress, Alert
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import { FilterSwitch } from '@/components/common/ListFilters';
 import GearSpinner from '@/components/GearSpinner';
 import DateField from '../../../../components/DateField';
 import ArrowBackIcon from '@mui/icons-material/ArrowBackOutlined';
@@ -775,10 +776,7 @@ function EmployeeDetailPageContent() {
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
             <Box display="flex" alignItems="center" gap={2}>
               <Typography variant="h6">Legajo Virtual</Typography>
-              <FormControlLabel
-                control={<Switch size="small" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} />}
-                label="Mostrar resueltos"
-              />
+              <FilterSwitch label="Mostrar resueltos" checked={showResolved} onChange={setShowResolved} />
             </Box>
             <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={() => {
               setEditingDoc(null);

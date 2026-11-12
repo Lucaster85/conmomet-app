@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, DialogTitle, DialogContent,
@@ -21,6 +21,7 @@ import {
   BeachAccessOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { LeaveRequest, LeaveRequestService, Employee, EmployeeService, LeaveBalance } from '../../../utils/api';
+import { FilterSwitch } from '@/components/common/ListFilters';
 
 const LEAVE_TYPES = {
   vacation: { label: 'Vacaciones', color: 'success' as const },
@@ -43,10 +44,11 @@ export default function LeaveRequestsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Filters
+  // Filters — consultan al servidor (ver FLOWS.md §52).
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('');
   const [filterEmployee, setFilterEmployee] = useState<string>('');
+  const [includeClosed, setIncludeClosed] = useState(false);
 
   // Dialog State
   const [openDialog, setOpenDialog] = useState(false);
@@ -70,26 +72,33 @@ export default function LeaveRequestsPage() {
     file: null,
   });
 
-  const loadData = async () => {
+  // Empleados: catálogo para los combos, se carga una sola vez.
+  useEffect(() => {
+    EmployeeService.getAll().then((data) => setEmployees(Array.isArray(data) ? data : []))
+      .catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar empleados'));
+  }, []);
+
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [requestsData, employeesData] = await Promise.all([
-        LeaveRequestService.getAll(),
-        EmployeeService.getAll(),
-      ]);
+      const requestsData = await LeaveRequestService.getAll({
+        employee_id: filterEmployee ? Number(filterEmployee) : undefined,
+        leave_type: filterType || undefined,
+        status: filterStatus || undefined,
+        include_closed: includeClosed,
+      });
       setRequests(Array.isArray(requestsData) ? requestsData : []);
-      setEmployees(Array.isArray(employeesData) ? employeesData : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar datos');
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterEmployee, filterType, filterStatus, includeClosed]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -107,13 +116,6 @@ export default function LeaveRequestsPage() {
     };
     fetchBalance();
   }, [form.employee_id, form.leave_type]);
-
-  const filteredRequests = requests.filter(req => {
-    if (filterStatus && req.status !== filterStatus) return false;
-    if (filterType && req.leave_type !== filterType) return false;
-    if (filterEmployee && req.employee_id !== Number(filterEmployee)) return false;
-    return true;
-  });
 
   const calculateDays = () => {
     if (!form.start_date || !form.end_date) return 0;
@@ -239,10 +241,11 @@ export default function LeaveRequestsPage() {
             <MenuItem value="cancelled">Cancelada</MenuItem>
           </Select>
         </FormControl>
+        <FilterSwitch label="Ver terminados" checked={includeClosed} onChange={setIncludeClosed} />
       </Paper>
 
       {/* Content */}
-      {loading ? (
+      {loading && requests.length === 0 ? (
         <Box display="flex" justifyContent="center" p={4}><GearSpinner /></Box>
       ) : (
         <TableContainer component={Paper}>
@@ -258,7 +261,7 @@ export default function LeaveRequestsPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredRequests.map(req => {
+              {requests.map(req => {
                 const typeConfig = LEAVE_TYPES[req.leave_type];
                 const statusConfig = STATUS_LABELS[req.status];
                 
@@ -307,7 +310,7 @@ export default function LeaveRequestsPage() {
                   </TableRow>
                 );
               })}
-              {filteredRequests.length === 0 && (
+              {requests.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                     <Typography color="text.secondary">No se encontraron solicitudes.</Typography>

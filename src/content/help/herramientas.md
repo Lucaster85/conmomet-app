@@ -26,6 +26,9 @@ Se crea con el botón **"Nueva Herramienta"**:
 - **De baja**: dada de baja del inventario activo.
 - **Extraviada**: se perdió o no se sabe dónde está.
 
+Por defecto, el listado **no muestra** las herramientas **De baja** ni **Extraviadas** (ver
+tema **Filtros de los listados**).
+
 ## Cambiar el estado
 
 Desde el listado o la ficha de la herramienta, con el botón **"Cambiar estado"**. Se puede pasar

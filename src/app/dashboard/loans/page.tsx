@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, DialogTitle, DialogContent,
@@ -7,9 +7,10 @@ import {
   MenuItem, FormControl, InputLabel, Select, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import ListFilters, { FilterSelect, FilterSwitch } from '@/components/common/ListFilters';
 import {
   AddOutlined as AddIcon, DeleteOutlined as DeleteIcon, VisibilityOutlined as VisibilityIcon,
-  RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon,
+  RefreshOutlined as RefreshIcon,
   CheckCircleOutlined as ApproveIcon, CancelOutlined as RejectIcon,
   WarningAmberOutlined as ConflictIcon, PercentOutlined as InterestIcon,
   LocalAtmOutlined as CashIcon, AccountBalanceOutlined as BankIcon,
@@ -83,7 +84,17 @@ export default function LoansPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Filtros del listado — consultan al servidor (ver FLOWS.md §52).
   const [search, setSearch] = useState('');
+  const [employeeFilter, setEmployeeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [includeClosed, setIncludeClosed] = useState(false);
+  const hasActiveFilters = !!(search || employeeFilter || statusFilter || includeClosed);
+  const clearFilters = () => {
+    setSearch(''); setEmployeeFilter(''); setStatusFilter(''); setIncludeClosed(false);
+  };
+
   const [openDialog, setOpenDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Loan | null }>({ open: false, item: null });
   const [form, setForm] = useState(emptyForm);
@@ -112,23 +123,33 @@ export default function LoansPage() {
   const [cancelJustification, setCancelJustification] = useState('');
   const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
 
-  const loadData = async () => {
+  // Empleados: catálogo para los combos del form y del filtro, se carga una sola vez.
+  useEffect(() => {
+    EmployeeService.getAll().then(setEmployees).catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar empleados'));
+  }, []);
+
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [loansData, empsData] = await Promise.all([
-        LoanService.getAll(),
-        EmployeeService.getAll()
-      ]);
+      const loansData = await LoanService.getAll({
+        q: search || undefined,
+        employee_id: employeeFilter ? Number(employeeFilter) : undefined,
+        status: statusFilter || undefined,
+        include_closed: includeClosed,
+      });
       setLoans(loansData);
-      setEmployees(empsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar préstamos');
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, employeeFilter, statusFilter, includeClosed]);
 
-  useEffect(() => { loadData(); }, []);
+  // Los filtros consultan al servidor; la búsqueda por texto con un pequeño debounce.
+  useEffect(() => {
+    const timeout = setTimeout(loadData, search ? 300 : 0);
+    return () => clearTimeout(timeout);
+  }, [loadData, search]);
 
   const handleOpenCreate = () => {
     setApprovingLoan(null);
@@ -487,20 +508,17 @@ export default function LoansPage() {
     );
   };
 
-  const filtered = loans.filter(c => {
-    const term = search.toLowerCase();
-    const empName = c.employee ? `${c.employee.lastname} ${c.employee.name}`.toLowerCase() : '';
-    const notes = c.notes?.toLowerCase() || '';
-    return empName.includes(term) || notes.includes(term);
-  });
-
-  if (loading) {
+  if (loading && loans.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <GearSpinner />
       </Box>
     );
   }
+
+  const emptyMessage = hasActiveFilters
+    ? 'No hay préstamos que coincidan con los filtros'
+    : 'No hay préstamos registrados';
 
   return (
     <Box>
@@ -530,23 +548,39 @@ export default function LoansPage() {
         </Box>
       </Box>
 
-      {/* Search */}
-      <TextField
-        placeholder="Buscar por empleado o notas..."
-        fullWidth size="small" sx={{ mb: 2 }}
-        value={search} onChange={(e) => setSearch(e.target.value)}
-        InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-      />
+      <ListFilters
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar por empleado o notas…"
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      >
+        <FilterSelect
+          label="Empleado"
+          value={employeeFilter}
+          onChange={setEmployeeFilter}
+          emptyLabel="Todos los empleados"
+          options={employees.map((e) => ({ value: String(e.id), label: `${e.lastname}, ${e.name}` }))}
+        />
+        <FilterSelect
+          label="Estado"
+          value={statusFilter}
+          onChange={setStatusFilter}
+          emptyLabel="Todos los estados"
+          options={Object.entries(LOAN_STATUS_LABEL).map(([value, { label }]) => ({ value, label }))}
+        />
+        <FilterSwitch label="Ver terminados" checked={includeClosed} onChange={setIncludeClosed} />
+      </ListFilters>
 
       {/* Mobile view */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-        {filtered.length === 0 ? (
+        {loans.length === 0 ? (
           <Paper sx={{ p: 4, textAlign: 'center' }}>
-            <Typography color="text.secondary">No hay préstamos registrados</Typography>
+            <Typography color="text.secondary">{emptyMessage}</Typography>
           </Paper>
         ) : (
           <Stack spacing={2}>
-            {filtered.map((loan) => (
+            {loans.map((loan) => (
               <Card key={loan.id} sx={{ p: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
                   <Box>
@@ -656,14 +690,14 @@ export default function LoansPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filtered.length === 0 ? (
+              {loans.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
-                    <Typography variant="body2" color="text.secondary">No hay préstamos registrados</Typography>
+                    <Typography variant="body2" color="text.secondary">{emptyMessage}</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((loan) => (
+                loans.map((loan) => (
                   <TableRow key={loan.id} hover>
                     <TableCell>
                       {new Date(loan.start_date).toLocaleDateString('es-AR')}

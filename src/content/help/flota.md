@@ -20,6 +20,9 @@ flota.
   conceptos que en Herramientas. A diferencia de las herramientas, acá **no existe el estado
   "Extraviada"**.
 
+Por defecto, el listado **no muestra** los vehículos **De baja** ni los que tienen "Habilitado
+para Carga de Horas" apagado (ver tema **Filtros de los listados**).
+
 ## Cambiar el estado
 
 Igual que con las herramientas: se puede cambiar a cualquier estado **excepto "Entregada"**, que

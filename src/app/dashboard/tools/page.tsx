@@ -1,18 +1,18 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack, Chip, Autocomplete,
-  InputAdornment,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import ListFilters, { FilterSelect, FilterSwitch } from '@/components/common/ListFilters';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
-  RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon, HistoryOutlined as HistoryIcon,
+  RefreshOutlined as RefreshIcon, HistoryOutlined as HistoryIcon,
   SwapHorizOutlined as StatusIcon, VisibilityOutlined as ViewIcon, BuildOutlined as TitleIcon,
   AssignmentIndOutlined as AssignIcon,
 } from '@mui/icons-material';
@@ -51,7 +51,15 @@ export default function ToolsPage() {
   const router = useRouter();
   const [items, setItems] = useState<Tool[]>([]);
   const [toolTypes, setToolTypes] = useState<ToolType[]>([]);
+  // Filtros — consultan al servidor (ver FLOWS.md §52).
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState<ToolStatus | ''>('');
+  const [includeClosed, setIncludeClosed] = useState(false);
+  const hasActiveFilters = !!(search || filterStatus || includeClosed);
+  const clearFilters = () => {
+    setSearch(''); setFilterStatus(''); setIncludeClosed(false);
+  };
+
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
@@ -69,29 +77,34 @@ export default function ToolsPage() {
     { open: false, item: null, entries: [], loading: false }
   );
 
-  const loadData = async (q?: string) => {
+  // Catálogo de tipos: se carga una sola vez, no en cada refiltrado.
+  useEffect(() => {
+    ToolTypeService.getAll(true).then((types) => setToolTypes(Array.isArray(types) ? types : []))
+      .catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar tipos de herramienta'));
+  }, []);
+
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [tools, types] = await Promise.all([
-        ToolService.getAll(q ? { q } : undefined),
-        ToolTypeService.getAll(true),
-      ]);
+      const tools = await ToolService.getAll({
+        q: search || undefined,
+        status: filterStatus || undefined,
+        include_closed: includeClosed,
+      });
       setItems(Array.isArray(tools) ? tools : []);
-      setToolTypes(Array.isArray(types) ? types : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar herramientas');
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, filterStatus, includeClosed]);
 
-  useEffect(() => { loadData(); }, []);
-
+  // Los filtros consultan al servidor; la búsqueda por texto con un pequeño debounce.
   useEffect(() => {
-    const timeout = setTimeout(() => loadData(search || undefined), 300);
+    const timeout = setTimeout(loadData, search ? 300 : 0);
     return () => clearTimeout(timeout);
-  }, [search]);
+  }, [loadData, search]);
 
   const handleOpenCreate = () => {
     setEditingItem(null);
@@ -151,7 +164,7 @@ export default function ToolsPage() {
         setSuccess('Herramienta creada');
       }
       setOpenDialog(false);
-      loadData(search || undefined);
+      loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
     } finally {
@@ -165,7 +178,7 @@ export default function ToolsPage() {
       await ToolService.delete(deleteDialog.item.id);
       setDeleteDialog({ open: false, item: null });
       setSuccess('Herramienta eliminada');
-      loadData(search || undefined);
+      loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar');
     }
@@ -181,7 +194,7 @@ export default function ToolsPage() {
       await ToolService.changeStatus(statusDialog.item.id, statusDialog.status, statusDialog.notes || undefined);
       setSuccess('Estado actualizado');
       setStatusDialog({ open: false, item: null, status: 'available', notes: '' });
-      loadData(search || undefined);
+      loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cambiar el estado');
     }
@@ -229,7 +242,7 @@ export default function ToolsPage() {
           <Typography variant="h4" fontWeight={700} letterSpacing="-0.02em" color="#1E293B">Herramientas</Typography>
         </Box>
         <Box display="flex" gap={1}>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => loadData(search || undefined)} size="small">Actualizar</Button>
+          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => loadData()} size="small">Actualizar</Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} size="small">Nueva Herramienta</Button>
         </Box>
       </Box>
@@ -239,15 +252,22 @@ export default function ToolsPage() {
         después. Para entregar o recibir una herramienta usá la página de Asignaciones.
       </Typography>
 
-      <TextField
-        placeholder="Buscar por nombre, código, marca..."
-        size="small"
-        fullWidth
-        sx={{ mb: 2 }}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-      />
+      <ListFilters
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar por nombre, código, marca…"
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      >
+        <FilterSelect
+          label="Estado"
+          value={filterStatus}
+          onChange={(v) => setFilterStatus(v as ToolStatus | '')}
+          emptyLabel="Todos los estados"
+          options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
+        />
+        <FilterSwitch label="Ver terminados" checked={includeClosed} onChange={setIncludeClosed} />
+      </ListFilters>
 
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       <FeedbackModal open={!!success} onClose={() => setSuccess('')} message={success} type="success" />

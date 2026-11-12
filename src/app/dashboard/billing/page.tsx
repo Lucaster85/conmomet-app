@@ -7,6 +7,7 @@ import {
 import {
   AddOutlined as AddIcon, ReceiptOutlined as TitleIcon, RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon,
 } from '@mui/icons-material';
+import { FilterSwitch } from '@/components/common/ListFilters';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import DateField from '../../../components/DateField';
@@ -54,6 +55,7 @@ function BillingContent() {
   const [invTypeFilter, setInvTypeFilter] = useState<VoucherType | ''>('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [invIncludeClosed, setInvIncludeClosed] = useState(false);
 
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [payTarget, setPayTarget] = useState<Invoice | null>(null);
@@ -104,6 +106,7 @@ function BillingContent() {
         voucher_type: invTypeFilter || undefined,
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
+        include_closed: invIncludeClosed,
       });
       if (request === invoicesRequest.current) setInvoices(result);
     } catch (err) {
@@ -111,7 +114,7 @@ function BillingContent() {
     } finally {
       if (request === invoicesRequest.current) setLoadingInvoices(false);
     }
-  }, [invStatusFilter, invClientFilter, invTypeFilter, dateFrom, dateTo]);
+  }, [invStatusFilter, invClientFilter, invTypeFilter, dateFrom, dateTo, invIncludeClosed]);
 
   useEffect(() => { loadRows(); }, [loadRows]);
   useEffect(() => { loadInvoices(); }, [loadInvoices]);
@@ -217,6 +220,7 @@ function BillingContent() {
               </TextField>
               <DateField label="Emitida desde" size="small" value={dateFrom} onChange={setDateFrom} />
               <DateField label="Emitida hasta" size="small" value={dateTo} onChange={setDateTo} />
+              <FilterSwitch label="Ver terminados" checked={invIncludeClosed} onChange={setInvIncludeClosed} />
             </Stack>
           </Paper>
           {loadingInvoices ? (

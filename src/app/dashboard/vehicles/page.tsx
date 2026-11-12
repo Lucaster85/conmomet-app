@@ -19,20 +19,17 @@ import {
   Tooltip,
   TextField,
   Stack,
-  Grid,
   Divider,
   Chip,
   Switch,
   MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
   Card,
   CardContent,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import ListFilters, { FilterSelect, FilterSwitch } from '@/components/common/ListFilters';
 import GearSpinner from '../../../components/GearSpinner';
 import {
   AddOutlined as AddIcon,
@@ -41,7 +38,6 @@ import {
   RefreshOutlined as RefreshIcon,
   LocalShippingOutlined as TruckIcon,
   FolderOpenOutlined as FolderIcon,
-  SearchOutlined as SearchIcon,
   BuildOutlined as CraneIcon,
   DirectionsCarOutlined as OtherVehicleIcon,
   LocalShippingOutlined as TitleIcon,
@@ -99,10 +95,15 @@ function VehiclesPageContent() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Search and Filter State
+  // Filtros — consultan al servidor (ver FLOWS.md §52).
   const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<VehicleStatus | ''>('');
+  const [includeClosed, setIncludeClosed] = useState(false);
+  const hasActiveFilters = !!(searchTerm || typeFilter || statusFilter || includeClosed);
+  const clearFilters = () => {
+    setSearchTerm(''); setTypeFilter(''); setStatusFilter(''); setIncludeClosed(false);
+  };
 
   // Modals State
   const [openDialog, setOpenDialog] = useState(false);
@@ -136,14 +137,18 @@ function VehiclesPageContent() {
     try {
       setLoading(true);
       setError('');
-      const data = await VehicleService.getAll();
+      const data = await VehicleService.getAll({
+        type: typeFilter || undefined,
+        status: statusFilter || undefined,
+        include_closed: includeClosed,
+      });
       setVehicles(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar la flota de vehículos');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [typeFilter, statusFilter, includeClosed]);
 
   useEffect(() => {
     loadVehicles();
@@ -277,21 +282,15 @@ function VehiclesPageContent() {
     }
   };
 
-  // Filter vehicles logic
+  // Tipo, Estado e "incluir terminados" ya se resuelven server-side (ver loadVehicles). La
+  // búsqueda de texto queda client-side: el controller de vehículos no tiene `q` todavía.
   const filteredVehicles = vehicles.filter(v => {
     const searchLower = searchTerm.toLowerCase();
-    const matchesSearch =
+    return (
       v.plate.toLowerCase().includes(searchLower) ||
       (v.brand && v.brand.toLowerCase().includes(searchLower)) ||
-      (v.model && v.model.toLowerCase().includes(searchLower));
-
-    const matchesType = typeFilter === 'all' || v.type === typeFilter;
-    
-    let matchesStatus = true;
-    if (statusFilter === 'active') matchesStatus = v.is_active;
-    if (statusFilter === 'inactive') matchesStatus = !v.is_active;
-
-    return matchesSearch && matchesType && matchesStatus;
+      (v.model && v.model.toLowerCase().includes(searchLower))
+    );
   });
 
   return (
@@ -319,65 +318,39 @@ function VehiclesPageContent() {
         </Button>
       </Box>
 
-      {/* Filters Card */}
-      <Card sx={{ mb: 4, borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Buscar por marca, modelo o patente..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
-                }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Tipo de Vehículo</InputLabel>
-                <Select
-                  value={typeFilter}
-                  label="Tipo de Vehículo"
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                >
-                  <MenuItem value="all">Todos los tipos</MenuItem>
-                  <MenuItem value="crane">Grúas</MenuItem>
-                  <MenuItem value="truck">Camiones</MenuItem>
-                  <MenuItem value="other">Otros / Utilitarios</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Estado</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Estado"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <MenuItem value="all">Todos los estados</MenuItem>
-                  <MenuItem value="active">Activos</MenuItem>
-                  <MenuItem value="inactive">Inactivos</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 2 }} display="flex" justifyContent="flex-end">
-              <Button
-                variant="outlined"
-                onClick={loadVehicles}
-                startIcon={<RefreshIcon />}
-                fullWidth
-                sx={{ borderRadius: 2 }}
-              >
-                Actualizar
-              </Button>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+      <ListFilters
+        search={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por marca, modelo o patente…"
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      >
+        <FilterSelect
+          label="Tipo de Vehículo"
+          value={typeFilter}
+          onChange={setTypeFilter}
+          emptyLabel="Todos los tipos"
+          options={[
+            { value: 'crane', label: 'Grúas' },
+            { value: 'truck', label: 'Camiones' },
+            { value: 'other', label: 'Otros / Utilitarios' },
+          ]}
+        />
+        <FilterSelect
+          label="Estado"
+          value={statusFilter}
+          onChange={(v) => setStatusFilter(v as VehicleStatus | '')}
+          emptyLabel="Todos los estados"
+          options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
+        />
+        <FilterSwitch label="Ver terminados" checked={includeClosed} onChange={setIncludeClosed} />
+      </ListFilters>
+
+      <Box display="flex" justifyContent="flex-end" mb={2}>
+        <Button variant="outlined" onClick={loadVehicles} startIcon={<RefreshIcon />} sx={{ borderRadius: 2 }}>
+          Actualizar
+        </Button>
+      </Box>
 
       {/* Vehicles list */}
       {loading ? (
