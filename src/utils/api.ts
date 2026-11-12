@@ -914,6 +914,15 @@ export interface LeaveBalance {
   corresponding_days: number;
   used_days: number;
   balance: number;
+  // De dónde salen los días correspondientes (FLOWS.md §55). Opcional: respuestas viejas no lo traen.
+  entitlement?: {
+    is_override: boolean;     // días cargados a mano en el legajo
+    is_proportional: boolean; // ingresó este año y no llega a la mitad de los días hábiles
+    full_days: number;        // lo que le correspondería por antigüedad, año completo
+    worked_days: number;
+    year_workdays: number;
+    required_days: number;
+  };
 }
 
 export interface TimeEntry {
@@ -5051,6 +5060,8 @@ export interface SystemSetting {
   // Fuente de la cotización del dólar usada para descontar cuotas de préstamos en USD.
   usd_rate_casa: 'oficial' | 'blue' | 'mayorista' | 'bolsa';
   usd_rate_side: 'venta' | 'compra';
+  // Semana laboral de la empresa: define los días hábiles de las vacaciones proporcionales.
+  work_week: 'mon_fri' | 'mon_sat';
 }
 
 export class SystemSettingService {
@@ -5067,6 +5078,7 @@ export class SystemSettingService {
     invoice_iva_rates?: number[];
     usd_rate_casa?: 'oficial' | 'blue' | 'mayorista' | 'bolsa';
     usd_rate_side?: 'venta' | 'compra';
+    work_week?: 'mon_fri' | 'mon_sat';
   }): Promise<SystemSetting> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings`, {
       method: 'PUT',

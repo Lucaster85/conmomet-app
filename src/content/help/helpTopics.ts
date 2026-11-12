@@ -93,6 +93,19 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'carga-horas.md',
   },
   {
+    id: 'vacaciones',
+    category: 'Personal',
+    title: 'Días de vacaciones y saldo',
+    keywords: [
+      'vacaciones', 'vacacion', 'vacación', 'saldo', 'saldo de vacaciones', 'dias de vacaciones',
+      'días de vacaciones', 'correspondientes', 'corresponden', 'antiguedad', 'antigüedad',
+      'proporcional', '14 dias', '14 días', '1 dia cada 20', 'empleado nuevo', 'ingreso',
+      'semana laboral', 'lunes a sabado', 'lunes a sábado', 'lunes a viernes', 'sobre-escribir',
+      'licencia', 'licencias', 'lct', 'art 150', 'art 151', 'art 153',
+    ],
+    file: 'vacaciones.md',
+  },
+  {
     id: 'epp',
     category: 'Personal',
     title: 'Entrega de EPP, vencimientos y talles',

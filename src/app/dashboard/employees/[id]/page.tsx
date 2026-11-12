@@ -10,6 +10,7 @@ import {
   Switch, FormControlLabel, Card, CardContent, Divider, Grid,
   LinearProgress, Alert
 } from '@mui/material';
+import { vacationBalanceNote } from '@/utils/vacationBalance';
 import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import { FilterSwitch } from '@/components/common/ListFilters';
@@ -1027,7 +1028,7 @@ function EmployeeDetailPageContent() {
                           color={leaveBalance.balance === 0 ? 'error' : 'primary'}
                         />
                         <Typography variant="caption" color="text.secondary" display="block" mt={1.5}>
-                          * Calculado según antigüedad (Art. 150 LCT).
+                          * {vacationBalanceNote(leaveBalance)}
                         </Typography>
                       </Box>
                     ) : (
