@@ -28,6 +28,10 @@ export default function SystemSettingsPage() {
   const [usdRateSide, setUsdRateSide] = useState<'venta' | 'compra'>('venta');
   const [savingUsdRate, setSavingUsdRate] = useState(false);
 
+  // Semana laboral (vacaciones proporcionales, FLOWS.md §55).
+  const [workWeek, setWorkWeek] = useState<'mon_fri' | 'mon_sat'>('mon_sat');
+  const [savingWorkWeek, setSavingWorkWeek] = useState(false);
+
   useEffect(() => {
     SystemSettingService.get()
       .then((settings) => {
@@ -36,6 +40,7 @@ export default function SystemSettingsPage() {
         setIvaRates(settings.invoice_iva_rates && settings.invoice_iva_rates.length > 0 ? settings.invoice_iva_rates : [21]);
         setUsdRateCasa(settings.usd_rate_casa || 'oficial');
         setUsdRateSide(settings.usd_rate_side || 'venta');
+        setWorkWeek(settings.work_week || 'mon_sat');
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Error al cargar la configuración'))
       .finally(() => setLoading(false));
@@ -112,6 +117,19 @@ export default function SystemSettingsPage() {
     }
   };
 
+  const handleSaveWorkWeek = async () => {
+    setSavingWorkWeek(true);
+    try {
+      const updated = await SystemSettingService.update({ work_week: workWeek });
+      setWorkWeek(updated.work_week);
+      setSuccess('Configuración actualizada correctamente.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar la configuración');
+    } finally {
+      setSavingWorkWeek(false);
+    }
+  };
+
   const USD_RATE_OPTIONS: Array<{ casa: 'oficial' | 'blue' | 'mayorista' | 'bolsa'; side: 'venta' | 'compra'; label: string }> = [
     { casa: 'oficial', side: 'venta', label: 'Oficial — venta' },
     { casa: 'oficial', side: 'compra', label: 'Oficial — compra' },
@@ -185,6 +203,33 @@ export default function SystemSettingsPage() {
             </TextField>
             <Button variant="contained" onClick={handleSaveUsdRate} disabled={savingUsdRate} sx={{ alignSelf: 'flex-start' }}>
               {savingUsdRate ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Card sx={{ maxWidth: 480, borderRadius: 3, mt: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="h6" fontWeight={600} mb={0.5}>Vacaciones — Semana laboral</Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Define qué son los días hábiles al calcular las vacaciones de quien ingresó este año:
+            con menos de la mitad de los días hábiles del año trabajados le corresponde 1 día de
+            vacaciones cada 20 trabajados (LCT arts. 151 y 153). Los domingos no cuentan aunque se
+            trabajen como extra.
+          </Typography>
+          <Stack spacing={2}>
+            <TextField
+              select
+              label="Semana laboral de la empresa"
+              fullWidth
+              value={workWeek}
+              onChange={(e) => setWorkWeek(e.target.value as 'mon_fri' | 'mon_sat')}
+            >
+              <MenuItem value="mon_sat">Lunes a sábado</MenuItem>
+              <MenuItem value="mon_fri">Lunes a viernes</MenuItem>
+            </TextField>
+            <Button variant="contained" onClick={handleSaveWorkWeek} disabled={savingWorkWeek} sx={{ alignSelf: 'flex-start' }}>
+              {savingWorkWeek ? 'Guardando…' : 'Guardar'}
             </Button>
           </Stack>
         </CardContent>

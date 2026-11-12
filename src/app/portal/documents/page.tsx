@@ -15,12 +15,14 @@ import {
   IconButton,
   Tooltip
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import { VisibilityOutlined as ViewIcon, ArticleOutlined as TitleIcon } from '@mui/icons-material';
 import { SelfService, EntityDocument } from '@/utils/api';
 import GearSpinner from '@/components/GearSpinner';
 import dayjs from 'dayjs';
 
 export default function PortalDocuments() {
+  const { fileLinkProps } = useFileViewer();
   const [documents, setDocuments] = useState<EntityDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +112,7 @@ export default function PortalDocuments() {
                   <Box display="flex" flexDirection="column" alignItems="flex-end" gap={1}>
                     {getStatusChip(doc)}
                     {doc.file_url && (
-                      <IconButton component="a" href={doc.file_url} target="_blank" size="small" color="primary" sx={{ mt: 1 }}>
+                      <IconButton component="a" {...fileLinkProps(doc.file_url)} size="small" color="primary" sx={{ mt: 1 }}>
                         <ViewIcon />
                       </IconButton>
                     )}
@@ -159,7 +161,7 @@ export default function PortalDocuments() {
                       <TableCell align="right">
                         {doc.file_url && (
                           <Tooltip title="Ver/Descargar">
-                            <IconButton component="a" href={doc.file_url} target="_blank" size="small" color="primary">
+                            <IconButton component="a" {...fileLinkProps(doc.file_url)} size="small" color="primary">
                               <ViewIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>

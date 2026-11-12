@@ -58,6 +58,20 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'listados-filtros.md',
   },
   {
+    // Transversal igual que los filtros: lo usan casi todos los módulos que tienen archivos
+    // adjuntos, no cuelga de ningún grupo del menú (ver FLOWS.md §54).
+    id: 'ver-documentos',
+    category: 'Inicio',
+    title: 'Ver y descargar documentos',
+    keywords: [
+      'documento', 'documentos', 'archivo', 'archivos', 'adjunto', 'adjuntos', 'ver archivo',
+      'abrir', 'abrir documento', 'visor', 'vista previa', 'previsualizar', 'descargar', 'descarga',
+      'se descarga', 'pdf', 'word', 'doc', 'docx', 'excel', 'xls', 'xlsx', 'imagen', 'foto',
+      'comprobante', 'carnet', 'btb', 'permiso de planta', 'pedido original', 'no se ve',
+    ],
+    file: 'ver-documentos.md',
+  },
+  {
     id: 'crear-oca',
     category: 'Gestión de Clientes',
     title: 'Creación de OCAs (Remitos)',
@@ -77,6 +91,19 @@ export const HELP_TOPICS: HelpTopic[] = [
       'quincena', 'supervisor', 'grua', 'grúa',
     ],
     file: 'carga-horas.md',
+  },
+  {
+    id: 'vacaciones',
+    category: 'Personal',
+    title: 'Días de vacaciones y saldo',
+    keywords: [
+      'vacaciones', 'vacacion', 'vacación', 'saldo', 'saldo de vacaciones', 'dias de vacaciones',
+      'días de vacaciones', 'correspondientes', 'corresponden', 'antiguedad', 'antigüedad',
+      'proporcional', '14 dias', '14 días', '1 dia cada 20', 'empleado nuevo', 'ingreso',
+      'semana laboral', 'lunes a sabado', 'lunes a sábado', 'lunes a viernes', 'sobre-escribir',
+      'licencia', 'licencias', 'lct', 'art 150', 'art 151', 'art 153',
+    ],
+    file: 'vacaciones.md',
   },
   {
     id: 'epp',

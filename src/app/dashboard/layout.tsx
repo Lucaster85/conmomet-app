@@ -77,6 +77,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../utils/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import { FileViewerProvider } from '../../components/common/FileViewer';
 import { AlertViewsProvider } from '../../components/common/AlertViewsProvider';
 import { QuickNotesProvider } from '../../components/notes/QuickNotesProvider';
 import QuickNotesFab from '../../components/notes/QuickNotesFab';
@@ -617,6 +618,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <ThemeProvider theme={dashboardTheme}>
     <ProtectedRoute>
+    <FileViewerProvider>
     {/* Acuse de vista de los avisos del tablero (FLOWS.md §36). Va en el layout, no en la page:
         una sola carga de GET /me/alert-views para toda la banda de avisos. */}
     <AlertViewsProvider>
@@ -822,6 +824,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </Box>
     </QuickNotesProvider>
     </AlertViewsProvider>
+    </FileViewerProvider>
     </ProtectedRoute>
     </ThemeProvider>
   );

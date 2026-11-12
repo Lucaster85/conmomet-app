@@ -7,6 +7,7 @@ import {
   DialogActions, Tooltip, TextField, Stack,
   Chip, MenuItem, Select, FormControl, InputLabel,
 } from '@mui/material';
+import { vacationBalanceNote } from '@/utils/vacationBalance';
 import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
@@ -384,6 +385,11 @@ export default function LeaveRequestsPage() {
                     <Typography variant="body2" color={calculateDays() > balance.balance ? 'error' : 'text.secondary'}>
                       🏖️ Saldo: {balance.balance} días disponibles (Corresponden: {balance.corresponding_days}, Usados: {balance.used_days})
                     </Typography>
+                    {(balance.entitlement?.is_proportional || balance.entitlement?.is_override) && (
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                        {vacationBalanceNote(balance)}
+                      </Typography>
+                    )}
                     {calculateDays() <= balance.balance && (
                       <Typography variant="body2" color="success.main" sx={{ mt: 0.5 }}>
                         → Quedarían {balance.balance - calculateDays()} días restantes

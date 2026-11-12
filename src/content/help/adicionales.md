@@ -41,8 +41,15 @@ En cualquier momento, desde **Datos generales** del adicional. El padre tiene qu
 ## Cargar horas
 
 Un adicional aparece en **Carga de Horas** como cualquier otro proyecto, con el formato
-**A-2026-001 · nombre (adicional de P-2026-063)**. En su ficha se ve el total de horas consumidas, con
-accesos para ir a cargar horas o al proyecto completo.
+**A-2026-001 · nombre (adicional de P-2026-063)**. En su ficha, en la sección **Horas**, se ve una barra
+**por rubro** con lo consumido (horas de empleados aprobadas + horas manuales, con el desglose debajo) y,
+si tenés permiso para ver presupuestos, contra lo presupuestado. Hay accesos para ir a cargar horas o al
+proyecto completo.
+
+Las horas que no son de ningún empleado se cargan ahí mismo como **horas manuales**: botón **"Cargar horas
+manuales"**, con rubro, horas, fecha y un detalle obligatorio. Descuentan de la bolsa del rubro, pero no
+modifican el presupuesto, la liquidación ni las OCAs, y se anulan con motivo (no se editan ni se borran). Todo el
+detalle está en el tema **Proyectos**, sección "Horas manuales".
 
 ## Cargar materiales
 
@@ -120,8 +127,9 @@ Si se aprueba el presupuesto nuevo, **no se crea ningún proyecto nuevo**: el ad
 
 ## Eliminar un adicional
 
-Solo se puede si **no tiene horas cargadas** y su presupuesto **sigue en borrador** (no fue enviado). En
-ese caso se eliminan el adicional y su presupuesto. Si ya tiene horas o el presupuesto salió de borrador,
+Solo se puede si **no tiene horas cargadas** (de empleados ni **horas manuales** activas) y su presupuesto
+**sigue en borrador** (no fue enviado). En ese caso se eliminan el adicional y su presupuesto. Si ya tiene
+horas o el presupuesto salió de borrador,
 la forma de darlo de baja es cambiar su **estado** a "Cancelado".
 
 ## El listado arranca mostrando solo los adicionales vivos
@@ -138,4 +146,4 @@ solo habilitan los enlaces a esas pantallas). Sin el permiso de costos no se ve 
 El botón **"Notificar finalización"** requiere el permiso de **modificar adicionales**
 (**additionals_update**). La lista de personas a las que se puede avisar no pide ningún permiso extra.
 
-<!-- ref: conmomet-app/src/app/dashboard/additionals/page.tsx, conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/utils/projectCode.ts, conmomet-app/src/components/additionals/NotifyFinishDialog.tsx, conmomet-app/src/components/common/AdditionalPendingBudgetAlert.tsx, api_conmomet/controllers/additionalController.js, api_conmomet/services/additionalBudgetService.js, api_conmomet/services/budgetMaterialService.js, api_conmomet/services/projectFactory.js -->
+<!-- ref: conmomet-app/src/app/dashboard/additionals/page.tsx, conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/utils/projectCode.ts, conmomet-app/src/components/additionals/NotifyFinishDialog.tsx, conmomet-app/src/components/common/AdditionalPendingBudgetAlert.tsx, api_conmomet/controllers/additionalController.js, api_conmomet/services/additionalBudgetService.js, api_conmomet/services/budgetMaterialService.js, api_conmomet/services/projectFactory.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

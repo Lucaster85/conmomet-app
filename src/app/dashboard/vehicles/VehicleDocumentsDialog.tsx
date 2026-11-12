@@ -25,6 +25,7 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import { FilterSwitch } from '@/components/common/ListFilters';
 import {
@@ -66,6 +67,7 @@ const STATUS_CONFIG = {
 } as const;
 
 export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlightDocId }: VehicleDocumentsDialogProps) {
+  const { openFile } = useFileViewer();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -507,7 +509,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
                         <TableCell>{doc.expiration_date ? new Date(doc.expiration_date + 'T00:00:00').toLocaleDateString('es-AR') : 'Permanente'}</TableCell>
                         <TableCell align="center">
                           {doc.file_url ? (
-                            <IconButton size="small" color="info" onClick={() => window.open(doc.file_url, '_blank')}>
+                            <IconButton size="small" color="info" onClick={() => openFile(doc.file_url, doc.file_name || doc.title)}>
                               <VisibilityIcon fontSize="inherit" />
                             </IconButton>
                           ) : '—'}
@@ -573,7 +575,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
                           <TableCell align="center">
                             {doc.file_url ? (
                               <Tooltip title="Ver Archivo">
-                                <IconButton size="small" color="info" onClick={() => window.open(doc.file_url, '_blank')}>
+                                <IconButton size="small" color="info" onClick={() => openFile(doc.file_url, doc.file_name || doc.title)}>
                                   <VisibilityIcon fontSize="inherit" />
                                 </IconButton>
                               </Tooltip>
@@ -672,7 +674,7 @@ export default function VehicleDocumentsDialog({ open, onClose, vehicle, highlig
                         </Box>
                         <Box display="flex" gap={0.5}>
                           {doc.file_url && (
-                            <IconButton size="small" color="info" onClick={() => window.open(doc.file_url, '_blank')}>
+                            <IconButton size="small" color="info" onClick={() => openFile(doc.file_url, doc.file_name || doc.title)}>
                               <VisibilityIcon fontSize="small" />
                             </IconButton>
                           )}

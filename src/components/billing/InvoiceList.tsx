@@ -4,6 +4,7 @@ import {
   Box, Card, Chip, IconButton, Link as MuiLink, Paper, Stack, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import {
   BlockOutlined as CancelIcon,
   CheckCircleOutline as PayIcon,
@@ -33,6 +34,7 @@ export default function InvoiceList({
   invoices, emptyText = 'No hay facturas registradas', hideBudgetColumns = false,
   canUpdate, canCorrect, onView, onEdit, onPay, onCancel,
 }: InvoiceListProps) {
+  const { fileLinkProps } = useFileViewer();
   const renderActions = (invoice: Invoice) => (
     <Box display="flex" gap={0.5} flexWrap="wrap">
       <Tooltip title="Ver"><IconButton size="small" onClick={() => onView(invoice)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
@@ -58,12 +60,12 @@ export default function InvoiceList({
   const pdfLink = (invoice: Invoice) => (invoice.file_url || invoice.payment_file_url ? (
     <Stack spacing={0.25}>
       {invoice.file_url && (
-        <MuiLink href={invoice.file_url} target="_blank" rel="noopener noreferrer" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+        <MuiLink {...fileLinkProps(invoice.file_url, invoice.file_name || undefined)} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
           <PdfIcon fontSize="small" /> PDF
         </MuiLink>
       )}
       {invoice.payment_file_url && (
-        <MuiLink href={invoice.payment_file_url} target="_blank" rel="noopener noreferrer" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+        <MuiLink {...fileLinkProps(invoice.payment_file_url, invoice.payment_file_name || undefined)} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
           <PdfIcon fontSize="small" /> Comprobante de pago
         </MuiLink>
       )}

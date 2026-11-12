@@ -224,7 +224,12 @@ export default function BillingDetailPage() {
                   <TableRow key={b.budget_item_type_id ?? 'general'}>
                     <TableCell>{b.item_type_name}</TableCell>
                     <TableCell align="right">{formatHours(b.budgeted_hours)}</TableCell>
-                    <TableCell align="right">{formatHours(b.consumed_hours)}</TableCell>
+                    <TableCell align="right">
+                      {formatHours(b.consumed_hours)}
+                      {(b.consumed_hours_manual ?? 0) > 0 && (
+                        <Typography variant="caption" color="text.secondary" display="block">(incl. {formatHours(b.consumed_hours_manual as number)} manuales)</Typography>
+                      )}
+                    </TableCell>
                     <TableCell align="right">{b.budgeted_hours > 0 ? formatPercent((b.consumed_hours / b.budgeted_hours) * 100) : '—'}</TableCell>
                   </TableRow>
                 ))}

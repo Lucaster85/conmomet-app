@@ -5,6 +5,7 @@ import {
   TableHead, TableRow, DialogTitle, DialogContent,
   DialogActions, TextField, Stack, Chip, Autocomplete, Grid, useTheme, useMediaQuery
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../../../components/FeedbackModal';
 import DateField from '../../../components/DateField';
@@ -39,6 +40,7 @@ const STATUS_LABEL: Record<string, { label: string; color: 'warning' | 'success'
 };
 
 export default function SalaryAdvancesPage() {
+  const { fileLinkProps } = useFileViewer();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -491,7 +493,7 @@ export default function SalaryAdvancesPage() {
                 )}
                 {a.payment_proof_url && (
                   <Box mt={1.5}>
-                    <Button size="small" variant="outlined" startIcon={<ProofIcon />} component="a" href={a.payment_proof_url} target="_blank" rel="noopener noreferrer">
+                    <Button size="small" variant="outlined" startIcon={<ProofIcon />} component="a" {...fileLinkProps(a.payment_proof_url)}>
                       Ver comprobante
                     </Button>
                   </Box>
@@ -615,7 +617,7 @@ export default function SalaryAdvancesPage() {
                       {a.payment_proof_url && (
                         <Box display="flex" gap={0.5} justifyContent="flex-end">
                           <Tooltip title="Ver comprobante">
-                            <IconButton size="small" color="primary" component="a" href={a.payment_proof_url} target="_blank" rel="noopener noreferrer">
+                            <IconButton size="small" color="primary" component="a" {...fileLinkProps(a.payment_proof_url)}>
                               <ProofIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>

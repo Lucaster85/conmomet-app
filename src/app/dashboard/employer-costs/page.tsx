@@ -6,6 +6,7 @@ import {
   DialogActions, Tooltip, Stack, TextField, InputAdornment,
   MenuItem, FormControl, InputLabel, Select
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import {
   AddOutlined as AddIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
@@ -20,6 +21,7 @@ import { EmployerCost, EmployerCostCategory, EmployerCostService, EmployerCostCa
 const emptyForm = { category_id: 0, month: new Date().getMonth() + 1, year: new Date().getFullYear(), amount: 0, notes: '' };
 
 export default function EmployerCostsPage() {
+  const { fileLinkProps } = useFileViewer();
   const [costs, setCosts] = useState<EmployerCost[]>([]);
   const [categories, setCategories] = useState<EmployerCostCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,9 +240,7 @@ export default function EmployerCostsPage() {
                         <Button 
                           size="small" 
                           startIcon={<OpenInNewIcon fontSize="small" />} 
-                          href={cost.file_url} 
-                          target="_blank"
-                          sx={{ mt: 0.5, p: 0, minWidth: 'auto', textTransform: 'none' }}
+                          {...fileLinkProps(cost.file_url)} sx={{ mt: 0.5, p: 0, minWidth: 'auto', textTransform: 'none' }}
                         >
                           Ver Adjunto
                         </Button>
