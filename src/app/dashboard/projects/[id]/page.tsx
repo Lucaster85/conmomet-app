@@ -21,6 +21,8 @@ import { formatLaborQuantity } from '../../../../utils/laborFormat';
 import { formatProjectCode } from '../../../../utils/projectCode';
 import ProjectCodeLabel from '../../../../components/projects/ProjectCodeLabel';
 import ProjectLogPanel from '../../../../components/projects/ProjectLogPanel';
+import ManualHoursPanel from '../../../../components/projects/ManualHoursPanel';
+import HourProgress from '../../../../components/projects/HourProgress';
 import IconTileGrid, { IconTileItem } from '../../../../components/common/IconTileGrid';
 import GearSpinner from '../../../../components/GearSpinner';
 import TotalWithTax from '../../../../components/budgets/TotalWithTax';
@@ -173,6 +175,12 @@ export default function ProjectDetailPage() {
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Refresca el proyecto sin el spinner de pantalla completa: lo usa el panel de horas manuales
+  // para actualizar las barras al cargar o anular, sin desmontar la pestaña.
+  const refreshProject = useCallback(async () => {
+    setProject(await ProjectService.getById(projectId));
+  }, [projectId]);
 
   // Load TimeEntries for Horas tab
   useEffect(() => {
@@ -370,7 +378,7 @@ export default function ProjectDetailPage() {
               {project.hour_buckets.map((bucket) => (
                 <Box key={bucket.budget_item_type_id ?? 'general'}>
                   <Typography variant="body2" fontWeight="medium" sx={{ mb: 0.5 }}>{bucket.item_type_name}</Typography>
-                  {renderProgress(bucket.consumed_hours, bucket.budgeted_hours)}
+                  <HourProgress consumed={bucket.consumed_hours} budgeted={bucket.budgeted_hours} manual={bucket.consumed_hours_manual} />
                 </Box>
               ))}
             </Stack>
@@ -469,6 +477,14 @@ export default function ProjectDetailPage() {
       {/* Tab Horas */}
       {tab === horasTabIndex && (
         <Paper sx={{ p: 3 }}>
+          {/* Horas manuales (FLOWS.md §56): sin empleado, con detalle; descuentan de la bolsa del rubro. */}
+          <ManualHoursPanel
+            projectId={project.id}
+            hourBuckets={project.hour_buckets}
+            projectStatus={project.status}
+            onChanged={refreshProject}
+          />
+          <Divider sx={{ mb: 3 }} />
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6">Horas Cargadas</Typography>
             {project.subprojects && project.subprojects.length > 0 && (

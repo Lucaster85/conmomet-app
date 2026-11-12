@@ -28,8 +28,8 @@ Cada presupuesto muestra:
 - **Materiales** y **Mano de obra**: el importe **neto con la bonificación ya aplicada**, una barra
   con el porcentaje ya facturado, y el **saldo** que queda.
 - **Avance de horas** (en mano de obra): por ejemplo "70 de 270 hs (26%)". Son las horas **propias**
-  del proyecto de ese presupuesto: las de sus adicionales **no** se suman, porque cada adicional
-  tiene su propia fila.
+  del proyecto de ese presupuesto, **incluidas las horas manuales** (la tabla por rubro indica cuántas son
+  manuales): las de sus adicionales **no** se suman, porque cada adicional tiene su propia fila.
 - **Saldo total**: lo que queda por facturar, con la leyenda **"+ IVA"** y el importe del IVA debajo.
 - **Estado**: *Sin facturar*, *Facturado parcial*, *Facturado* (no queda saldo, pero hay facturas
   sin cobrar) o *Facturado y cobrado*. Si hay facturas sin cobrar, además se indica cuántas.
@@ -153,4 +153,4 @@ sin cargarlas a mano. Para eso ya se guardan el **CUIT** y la **condición de IV
 (ver el tema **Clientes**). Cuando exista la emisión, las notas de crédito van a reemplazar a "anular"
 en los comprobantes oficiales.
 
-<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js -->
+<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

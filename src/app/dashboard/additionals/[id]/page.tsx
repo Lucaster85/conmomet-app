@@ -15,6 +15,8 @@ import GearSpinner from '../../../../components/GearSpinner';
 import CurrencyInput from '../../../../components/CurrencyInput';
 import ProjectCodeLabel from '../../../../components/projects/ProjectCodeLabel';
 import ProjectLogPanel from '../../../../components/projects/ProjectLogPanel';
+import ManualHoursPanel from '../../../../components/projects/ManualHoursPanel';
+import HourProgress from '../../../../components/projects/HourProgress';
 import NotifyFinishDialog from '../../../../components/additionals/NotifyFinishDialog';
 import MaterialSelect from '../../../../components/materials/MaterialSelect';
 import ProviderPriceAutocomplete from '../../../../components/materials/ProviderPriceAutocomplete';
@@ -106,6 +108,12 @@ export default function AdditionalDetailPage() {
     setGeneral(toGeneralForm(data));
     setItems(data.current_budget_items || []);
   }, []);
+
+  // Refresca solo el adicional (barras de horas) tras cargar o anular horas manuales: no pasa por
+  // applyAdditional, que pisaría lo que se esté editando en los formularios de datos y materiales.
+  const refreshHours = useCallback(async () => {
+    setAdditional(await AdditionalService.get(id));
+  }, [id]);
 
   const load = useCallback(async () => {
     try {
@@ -561,7 +569,7 @@ export default function AdditionalDetailPage() {
             <Box>
               <Typography variant="h6" fontWeight={700}>Horas</Typography>
               <Typography variant="body2" color="text.secondary">
-                {additional.consumed_hours_own.toLocaleString('es-AR', { maximumFractionDigits: 1 })} hs consumidas (aprobadas)
+                {additional.consumed_hours_own.toLocaleString('es-AR', { maximumFractionDigits: 1 })} hs consumidas (empleados aprobadas + manuales)
               </Typography>
             </Box>
           </Box>
@@ -571,8 +579,28 @@ export default function AdditionalDetailPage() {
           </Box>
         </Box>
         <Typography variant="caption" color="text.secondary" display="block" mt={1}>
-          Las horas se cargan desde Carga de Horas, eligiendo este adicional como cualquier proyecto.
+          Las horas de empleados se cargan desde Carga de Horas, eligiendo este adicional como cualquier proyecto. Las horas sin empleado se cargan acá, como horas manuales.
         </Typography>
+
+        {/* Una barra por rubro: consumido = empleados + manuales. Sin budgets_read solo se ve lo consumido. */}
+        {(additional.hour_buckets || []).length > 0 && (
+          <Stack spacing={2} sx={{ mt: 2 }}>
+            {(additional.hour_buckets || []).map((bucket) => (
+              <Box key={bucket.budget_item_type_id ?? 'general'}>
+                <Typography variant="body2" fontWeight="medium" sx={{ mb: 0.5 }}>{bucket.item_type_name}</Typography>
+                <HourProgress consumed={bucket.consumed_hours} budgeted={hasBudgetsRead ? bucket.budgeted_hours : undefined} manual={bucket.consumed_hours_manual} />
+              </Box>
+            ))}
+          </Stack>
+        )}
+
+        <Divider sx={{ my: 2 }} />
+        <ManualHoursPanel
+          projectId={additional.id}
+          hourBuckets={additional.hour_buckets}
+          projectStatus={additional.status}
+          onChanged={refreshHours}
+        />
       </Paper>
 
       {/* Seguimiento: notas de seguimiento con fecha y fotos (solo agregar). Es la del proyecto del adicional. */}

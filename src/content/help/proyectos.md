@@ -19,6 +19,33 @@ horas que se cargan en **Carga de Horas** sin elegir rubro caen en una bolsa apa
 **"Generales"**, que también se muestra ahí. Abajo de las bolsas por rubro se ve el total propio
 y el total consolidado (propio + subproyectos).
 
+Lo **cargado** de cada rubro es la suma de las **horas de los empleados** (aprobadas) y las **horas
+manuales** (ver más abajo). Cuando un rubro tiene horas manuales, debajo de su barra se ve el
+desglose, por ejemplo "20 hs empleados + 15 hs manuales".
+
+## Horas manuales
+
+Sirven para registrar horas que **no son de ningún empleado** y verlas descontadas de la bolsa del
+rubro: por ejemplo, "20 hs de Construcción: armado en taller". Es un registro para **estimar y
+presupuestar mejor** después ("estimé 100 hs y me llevó 120"). Se cargan desde la pestaña **Horas** de
+la ficha del proyecto (y desde la ficha de un adicional), arriba de la lista de horas de empleados.
+
+- **Cargar**: botón **"Cargar horas manuales"**. Elegís el **rubro** (cada uno dice cuántas horas le
+  quedan, o **Generales**), las **horas**, la **fecha** (por defecto hoy; no puede ser futura) y un
+  **detalle** obligatorio. Si con esas horas el rubro se pasa de lo presupuestado, el formulario lo
+  avisa, pero **deja guardar igual**. Solo se pueden cargar a rubros que tengan bolsa en el proyecto.
+  No se pueden cargar en un proyecto **completado o cancelado**.
+- **Anular**: una carga equivocada no se edita ni se borra: se **anula** con un **motivo** obligatorio.
+  Deja de descontar de la bolsa y queda en la lista **tachada**, con quién la anuló, cuándo y por qué.
+- **Qué NO tocan**: las horas manuales **no modifican el presupuesto** (ni las bolsas ni los precios),
+  ni las horas de los empleados, ni la **liquidación**, ni las **OCAs**, ni el **costo de mano de obra**
+  del proyecto (no tienen empleado ni tarifa). Solo se suman a lo consumido de cada rubro, también en el
+  listado de proyectos y adicionales, en "Ya cargado en el proyecto" del presupuesto y en el avance de horas de
+  Facturación.
+- **Permisos**: son los mismos de la Carga de Horas — ver, cargar y anular horas.
+- Un proyecto con horas manuales **activas** no se puede eliminar (las anuladas no cuentan); la forma de
+  darlo de baja es cambiarlo a "Cancelado".
+
 Si el presupuesto tenía un **rubro repetido** en varias líneas (ej. dos líneas de Construcción con
 precios distintos), las horas de ese rubro se **suman en una sola bolsa**. Si el rubro es **por
 días**, las horas cotizadas son **días × 9**: 2 días cotizados aparecen como 18 hs. En la pestaña
@@ -71,4 +98,4 @@ Arriba del listado hay una barra de búsqueda (por código o nombre del proyecto
 **Cliente**, **Planta** (se acota según el cliente elegido) y **Estado**. Como ya se dijo más
 arriba, los adicionales no aparecen acá aunque tengan un proyecto padre.
 
-<!-- ref: conmomet-app/src/app/dashboard/additionals/page.tsx, conmomet-app/src/app/dashboard/projects/page.tsx, conmomet-app/src/app/dashboard/projects/[id]/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, api_conmomet/controllers/projectController.js, api_conmomet/services/projectFactory.js, conmomet-app/src/components/budgets/TotalWithTax.tsx -->
+<!-- ref: conmomet-app/src/app/dashboard/additionals/page.tsx, conmomet-app/src/app/dashboard/projects/page.tsx, conmomet-app/src/app/dashboard/projects/[id]/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, api_conmomet/controllers/projectController.js, api_conmomet/services/projectFactory.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
