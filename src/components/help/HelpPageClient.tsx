@@ -23,6 +23,9 @@ export default function HelpPageClient({ topics }: { topics: HelpTopicWithConten
   const [search, setSearch] = useState('');
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [openTopics, setOpenTopics] = useState<Record<string, boolean>>({});
+  // Lo que el usuario abrió o cerró a mano MIENTRAS busca (clave "c:<categoría>" o "t:<tema>"). Se
+  // limpia al cambiar la búsqueda y es independiente del estado de cuando no hay búsqueda.
+  const [searchOpen, setSearchOpen] = useState<Record<string, boolean>>({});
 
   // Cada palabra de la búsqueda tiene que aparecer (en cualquier orden) en el título, la categoría o las
   // palabras clave del tema: "carga horas adicionales" encuentra Adicionales aunque ninguna palabra
@@ -49,6 +52,8 @@ export default function HelpPageClient({ topics }: { topics: HelpTopicWithConten
       .filter((group) => group.topics.length > 0);
   }, [topics, searchTerms, isSearching]);
 
+  const singleResult = groupedByCategory.reduce((sum, g) => sum + g.topics.length, 0) === 1;
+
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Typography variant="h5" fontWeight={600} gutterBottom>
@@ -62,7 +67,7 @@ export default function HelpPageClient({ topics }: { topics: HelpTopicWithConten
         fullWidth
         placeholder="Buscar por palabra clave (ej: rechazar, tarifas, usuarios)..."
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => { setSearch(e.target.value); setSearchOpen({}); }}
         sx={{ mb: 3 }}
         slotProps={{
           input: {
@@ -82,13 +87,18 @@ export default function HelpPageClient({ topics }: { topics: HelpTopicWithConten
       )}
 
       {groupedByCategory.map(({ category, topics: categoryTopics }) => {
-        const categoryExpanded = isSearching ? true : !!openCategories[category];
+        // Buscando: las categorías arrancan abiertas para ver qué temas coinciden, y los temas
+        // cerrados (solo el título) para elegir el que interesa; con un único resultado se abre solo.
+        // Todo se puede abrir y cerrar a mano.
+        const categoryExpanded = isSearching ? (searchOpen[`c:${category}`] ?? true) : !!openCategories[category];
         return (
           <Accordion
             key={category}
             expanded={categoryExpanded}
             onChange={(_, expanded) =>
-              setOpenCategories((prev) => ({ ...prev, [category]: expanded }))
+              isSearching
+                ? setSearchOpen((prev) => ({ ...prev, [`c:${category}`]: expanded }))
+                : setOpenCategories((prev) => ({ ...prev, [category]: expanded }))
             }
             disableGutters
             sx={{ mb: 1 }}
@@ -98,13 +108,15 @@ export default function HelpPageClient({ topics }: { topics: HelpTopicWithConten
             </AccordionSummary>
             <AccordionDetails sx={{ pt: 0 }}>
               {categoryTopics.map((topic) => {
-                const topicExpanded = isSearching ? true : !!openTopics[topic.id];
+                const topicExpanded = isSearching ? (searchOpen[`t:${topic.id}`] ?? singleResult) : !!openTopics[topic.id];
                 return (
                   <Accordion
                     key={topic.id}
                     expanded={topicExpanded}
                     onChange={(_, expanded) =>
-                      setOpenTopics((prev) => ({ ...prev, [topic.id]: expanded }))
+                      isSearching
+                        ? setSearchOpen((prev) => ({ ...prev, [`t:${topic.id}`]: expanded }))
+                        : setOpenTopics((prev) => ({ ...prev, [topic.id]: expanded }))
                     }
                     disableGutters
                     variant="outlined"
