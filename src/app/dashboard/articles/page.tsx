@@ -207,7 +207,7 @@ export default function ArticlesPage() {
               >
                 <CardMedia
                   component="img"
-                  image={article.url}
+                  image={article.view_url ?? article.url}
                   alt={article.title || 'Artículo'}
                   sx={{
                     height: 160,

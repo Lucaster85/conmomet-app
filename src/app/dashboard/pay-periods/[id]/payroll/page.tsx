@@ -23,6 +23,7 @@ import RateChangesModal from './RateChangesModal';
 import ListFilters from '@/components/common/ListFilters';
 import SacEntries from './SacEntries';
 import FinalEntries, { FinalLinesBlock, isFinalEntry } from './FinalEntries';
+import StoredImage from '../../../../../components/common/StoredImage';
 import { isSacPeriod, sacPeriodLabel, sacSemester, sacDueNotice, sacGenerateFrom, isFinalPeriod, finalPeriodLabel } from '../../../../../utils/payPeriods';
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -1344,10 +1345,7 @@ export default function PayrollPage() {
                       Recibí de conformidad la liquidación detallada arriba.
                     </Typography>
                     <Box display="flex" justifyContent="center" py={1}>
-                      {/* eslint-disable-next-line @next/next/no-img-element -- URL dinámica de R2
-                          (dominio distinto por ambiente), no es parte del render crítico de la
-                          página, next/image no aporta nada acá. */}
-                      <img src={detailEntry.signature_url} alt="Firma del empleado" style={{ maxHeight: 120, maxWidth: '100%' }} />
+                      <StoredImage src={detailEntry.signature_url} alt="Firma del empleado" style={{ maxHeight: 120, maxWidth: '100%' }} />
                     </Box>
                     <Typography variant="body2" fontWeight={700} textAlign="center">
                       {detailEntry.employee?.lastname}, {detailEntry.employee?.name}

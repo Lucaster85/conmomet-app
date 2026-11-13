@@ -20,6 +20,9 @@ Solo si lo necesitás: en la parte de abajo de la ventana está el botón **Desc
 el archivo con su nombre original. En PDF e imágenes también hay **Abrir en pestaña**, útil en el
 celular para ver un PDF más grande.
 
+**Abrir en pestaña** genera un link temporal que vence a los pocos minutos y no sirve para
+compartir. Si necesitás mandarle el archivo a alguien, descargalo y enviáselo.
+
 Cerrá la ventana con **Cerrar** o con la cruz de arriba a la derecha.
 
 ## Si quedás sin ver el documento
@@ -28,5 +31,7 @@ Cerrá la ventana con **Cerrar** o con la cruz de arriba a la derecha.
   leer archivos de hasta unos 10 MB y a veces demora.
 - Si **Descargar** falla, probá de nuevo; si el mensaje dice que el archivo no existe, hay que
   volver a cargarlo.
+- Si la ventana muestra un aviso en rojo al abrir, cerrala y volvé a abrir el archivo: el acceso se
+  renueva cada vez que lo abrís.
 
 <!-- ref: conmomet-app/src/components/common/FileViewer.tsx, conmomet-app/src/utils/fileKind.ts, conmomet-app/src/utils/fileService.ts, api_conmomet/controllers/fileController.js -->

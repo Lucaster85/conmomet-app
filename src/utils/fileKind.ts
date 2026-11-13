@@ -25,7 +25,8 @@ export function getFileKind(url: string, name?: string): FileKind {
   return 'other';
 }
 
-// Visor online de Microsoft: lee el archivo desde su URL pública (el bucket ya lo es).
-export function officeViewerUrl(fileUrl: string): string {
-  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+// Visor online de Microsoft: lee el archivo desde la URL que se le pasa. Con el bucket privado tiene
+// que ser la URL FIRMADA (FileService.getSignedUrl): Office la lee mientras dure la firma (10 min).
+export function officeViewerUrl(signedUrl: string): string {
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(signedUrl)}`;
 }

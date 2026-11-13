@@ -4,6 +4,8 @@ import {
   Alert, Box, Button, Card, DialogActions, DialogContent, IconButton, Link, Paper, Stack, TextField, Typography,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import StoredImage from '@/components/common/StoredImage';
+import { useFileViewer } from '@/components/common/FileViewer';
 import {
   AddPhotoAlternateOutlined as PhotoIcon, CloseOutlined as CloseIcon, SendOutlined as SendIcon,
 } from '@mui/icons-material';
@@ -42,6 +44,7 @@ const timeLabel = (iso: string) => new Date(iso).toLocaleTimeString('es-AR', { h
 // cargarse desde el celular (un campo, un botón de foto, un botón de enviar) y leerse igual en
 // escritorio. Es un registro de solo agregar: no hay edición ni borrado.
 export default function ProjectLogPanel({ projectId }: Props) {
+  const { fileLinkProps } = useFileViewer();
   const { user } = useAuth();
   const permissions: string[] = Array.isArray((user as unknown as Record<string, unknown>)?.permissions)
     ? ((user as unknown as Record<string, unknown>).permissions as string[])
@@ -207,8 +210,7 @@ export default function ProjectLogPanel({ projectId }: Props) {
                         {entry.files.map((file) => (
                           <Box key={file.id} component="button" type="button" onClick={() => setLightbox(file)}
                             sx={{ p: 0, border: 0, bgcolor: 'transparent', cursor: 'pointer', borderRadius: 1, overflow: 'hidden', width: 96, height: 96 }}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={file.file_url} alt={file.file_name || 'Foto'} loading="lazy" style={{ width: 96, height: 96, objectFit: 'cover' }} />
+                            <StoredImage src={file.file_url} alt={file.file_name || 'Foto'} loading="lazy" style={{ width: 96, height: 96, objectFit: 'cover' }} />
                           </Box>
                         ))}
                       </Box>
@@ -229,12 +231,11 @@ export default function ProjectLogPanel({ projectId }: Props) {
       <AppDialog open={!!lightbox} onClose={() => setLightbox(null)} maxWidth="md" fullWidth>
         <DialogContent sx={{ p: 1, textAlign: 'center' }}>
           {lightbox && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={lightbox.file_url} alt={lightbox.file_name || 'Foto'} style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain' }} />
+            <StoredImage src={lightbox.file_url} alt={lightbox.file_name || 'Foto'} style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain' }} />
           )}
         </DialogContent>
         <DialogActions>
-          {lightbox && <Link href={lightbox.file_url} target="_blank" rel="noopener noreferrer" underline="hover" sx={{ mr: 'auto', ml: 1 }}>Abrir original</Link>}
+          {lightbox && <Link {...fileLinkProps(lightbox.file_url, lightbox.file_name || undefined)} underline="hover" sx={{ mr: 'auto', ml: 1 }}>Abrir original</Link>}
           <Button onClick={() => setLightbox(null)}>Cerrar</Button>
         </DialogActions>
       </AppDialog>

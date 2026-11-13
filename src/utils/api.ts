@@ -623,7 +623,10 @@ export interface Media {
   type: MediaType;
   title?: string;
   description?: string;
+  // Referencia guardada en la base (el bucket es privado, no abre sola): usar `view_url ?? url` para mostrar.
   url: string;
+  // URL firmada (la API la manda en cada lectura, vence a las 6 h). Nunca se guarda ni se reenvía.
+  view_url?: string | null;
   order?: number;
   is_active: boolean;
   created_at: string;

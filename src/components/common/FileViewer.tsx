@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   Alert, Box, Button, CircularProgress, DialogActions, DialogContent, DialogTitle, IconButton,
   Typography, useMediaQuery, useTheme,
@@ -16,29 +16,41 @@ import { getFileExtension, getFileKind, officeViewerUrl } from '../../utils/file
 
 // Visor de documentos de la app (FLOWS.md §54). Cualquier archivo guardado en el bucket se abre
 // acá, en una ventana, en lugar de bajarse al disco; la descarga es un botón del propio visor.
+// El bucket es privado (FLOWS.md §57): lo guardado en la base (`file_url`) es solo una referencia
+// y no abre por sí sola. El visor la guarda tal cual y, al abrir, pide la URL firmada (10 min) con
+// FileService.getSignedUrl; esa es la que usan el iframe, la imagen y el visor de Office.
 // Uso: const { openFile, fileLinkProps } = useFileViewer();
 //   <Button onClick={() => openFile(doc.file_url, doc.file_name)}>Ver</Button>
-//   <Link {...fileLinkProps(doc.file_url, doc.file_name)}>Ver archivo</Link>   // conserva el href
+//   <Link {...fileLinkProps(doc.file_url, doc.file_name)}>Ver archivo</Link>   // todo click abre el visor
 
 interface OpenFile { url: string; name?: string }
 
 interface FileViewerContextValue {
   openFile: (url: string | null | undefined, name?: string | null) => void;
-  // Props para un <a>/Link/Button con href: el click normal abre el visor; click con Ctrl/Cmd/Shift
-  // o botón del medio sigue siendo el comportamiento nativo del navegador (abrir en otra pestaña).
+  // Props para un <a>/Link/Button: cualquier click abre el visor. El href es "#" a propósito: la URL
+  // del bucket ya no abre sola, así que no hay "abrir en otra pestaña" nativo (ctrl/cmd-click); para
+  // eso está el botón "Abrir en pestaña" del propio visor.
   fileLinkProps: (url: string, name?: string) => {
     href: string;
-    target: string;
-    rel: string;
     onClick: (e: React.MouseEvent) => void;
   };
 }
 
 const FileViewerContext = createContext<FileViewerContextValue | null>(null);
 
-// Si algún componente se usa fuera del provider, cae al comportamiento viejo en vez de romperse.
+// Si algún componente se usa fuera del provider, abre el archivo en una pestaña nueva en vez de
+// romperse. Resuelve la URL firmada antes de navegar: la pestaña se abre ya mismo (dentro del click,
+// para que el navegador no la bloquee) y se redirige cuando llega la firma.
 const fallbackOpen = (url: string | null | undefined) => {
-  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  if (!url) return;
+  const tab = window.open('', '_blank');
+  if (tab) tab.opener = null;
+  FileService.getSignedUrl(url)
+    .then((signed) => {
+      if (tab) tab.location.href = signed;
+      else window.open(signed, '_blank', 'noopener,noreferrer');
+    })
+    .catch(() => tab?.close());
 };
 
 export function useFileViewer(): FileViewerContextValue {
@@ -46,7 +58,13 @@ export function useFileViewer(): FileViewerContextValue {
   if (ctx) return ctx;
   return {
     openFile: fallbackOpen,
-    fileLinkProps: (url) => ({ href: url, target: '_blank', rel: 'noopener noreferrer', onClick: () => undefined }),
+    fileLinkProps: (url) => ({
+      href: '#',
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        fallbackOpen(url);
+      },
+    }),
   };
 }
 
@@ -59,11 +77,8 @@ export function FileViewerProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const fileLinkProps = useCallback((url: string, name?: string) => ({
-    href: url,
-    target: '_blank',
-    rel: 'noopener noreferrer',
+    href: '#',
     onClick: (e: React.MouseEvent) => {
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
       e.preventDefault();
       openFile(url, name);
     },
@@ -85,6 +100,9 @@ function FileViewerDialog({ file, onClose }: { file: OpenFile | null; onClose: (
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+  // URL firmada con la que se muestra el archivo (null mientras se resuelve) y su error, si falla.
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [signError, setSignError] = useState('');
 
   // El visor se reutiliza para todos los archivos: estado limpio cada vez que cambia el archivo.
   const [lastUrl, setLastUrl] = useState<string | null>(null);
@@ -92,9 +110,27 @@ function FileViewerDialog({ file, onClose }: { file: OpenFile | null; onClose: (
     setLastUrl(file.url);
     setError('');
     setLoaded(false);
+    setSignedUrl(null);
+    setSignError('');
   }
 
   const kind = file ? getFileKind(file.url, file.name) : 'other';
+
+  // Se firma al abrir (no antes) para que el link no venza con la pestaña abierta. Los archivos sin
+  // vista previa ('other') solo se descargan, y la descarga pasa por la API: no necesitan firma.
+  const fileUrl = file?.url;
+  useEffect(() => {
+    if (!fileUrl || kind === 'other') return;
+    let cancelled = false;
+    FileService.getSignedUrl(fileUrl)
+      .then((signed) => { if (!cancelled) setSignedUrl(signed); })
+      .catch((err) => {
+        if (!cancelled) setSignError(err instanceof Error ? err.message : 'No se pudo abrir el archivo');
+      });
+    return () => { cancelled = true; };
+  }, [fileUrl, kind]);
+
+  const resolving = !!file && kind !== 'other' && !signedUrl && !signError;
   const title = file?.name || (file ? decodeURIComponent(file.url.split('?')[0].split('/').pop() || 'Archivo') : '');
 
   const handleDownload = async () => {
@@ -122,16 +158,21 @@ function FileViewerDialog({ file, onClose }: { file: OpenFile | null; onClose: (
         <IconButton onClick={onClose} aria-label="Cerrar"><CloseIcon /></IconButton>
       </DialogTitle>
       <DialogContent dividers sx={{ p: 0, height: { xs: 'auto', sm: '70vh' }, flex: { xs: 1, sm: 'none' }, display: 'flex', flexDirection: 'column' }}>
-        {file && kind === 'pdf' && (
-          <Box component="iframe" src={file.url} title={title} sx={{ flex: 1, width: '100%', border: 0 }} />
-        )}
-        {file && kind === 'image' && (
-          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover', overflow: 'auto', p: 1 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={file.url} alt={title} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+        {resolving && (
+          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CircularProgress size={32} />
           </Box>
         )}
-        {file && kind === 'office' && (
+        {file && signedUrl && kind === 'pdf' && (
+          <Box component="iframe" src={signedUrl} title={title} sx={{ flex: 1, width: '100%', border: 0 }} />
+        )}
+        {file && signedUrl && kind === 'image' && (
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover', overflow: 'auto', p: 1 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={signedUrl} alt={title} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          </Box>
+        )}
+        {file && signedUrl && kind === 'office' && (
           <Box sx={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
             {!loaded && (
               <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -140,7 +181,7 @@ function FileViewerDialog({ file, onClose }: { file: OpenFile | null; onClose: (
             )}
             <Box
               component="iframe"
-              src={officeViewerUrl(file.url)}
+              src={officeViewerUrl(signedUrl)}
               title={title}
               onLoad={() => setLoaded(true)}
               sx={{ flex: 1, width: '100%', border: 0 }}
@@ -155,6 +196,7 @@ function FileViewerDialog({ file, onClose }: { file: OpenFile | null; onClose: (
           </Box>
         )}
       </DialogContent>
+      {signError && <Alert severity="error" sx={{ borderRadius: 0 }}>{signError}</Alert>}
       {error && <Alert severity="error" sx={{ borderRadius: 0 }}>{error}</Alert>}
       <DialogActions sx={{ px: 2, py: 1.5, gap: 1, flexWrap: 'wrap' }}>
         {kind === 'office' && (
@@ -162,11 +204,12 @@ function FileViewerDialog({ file, onClose }: { file: OpenFile | null; onClose: (
             Vista provista por Microsoft Office Online. Si no carga, descargá el archivo.
           </Typography>
         )}
-        {file && (kind === 'pdf' || kind === 'image') && (
-          // En el celular el visor de PDF embebido es limitado: el navegador lo muestra mejor en su propia pestaña.
+        {file && signedUrl && (kind === 'pdf' || kind === 'image') && (
+          // En el celular el visor de PDF embebido es limitado: el navegador lo muestra mejor en su propia
+          // pestaña. Es un link temporal (vence a los 10 minutos): no sirve para compartir.
           <Button
             component="a"
-            href={file.url}
+            href={signedUrl}
             target="_blank"
             rel="noopener noreferrer"
             startIcon={<OpenInNewIcon />}
