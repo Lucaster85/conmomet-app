@@ -14,6 +14,8 @@ interface SliderMedia {
   title?: string;
   description?: string;
   url: string;
+  // URL firmada que manda la API (el bucket es privado): se muestra `view_url ?? url`.
+  view_url?: string | null;
   order?: number;
 }
 
@@ -35,7 +37,7 @@ export default function ArticlesSection() {
           sorted.map((item) => ({
             title: item.title || '',
             description: item.description || '',
-            image: item.url,
+            image: item.view_url ?? item.url,
           }))
         );
       })

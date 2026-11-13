@@ -4,6 +4,7 @@ import {
   Box, Typography, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Stack, Chip, IconButton, Tooltip, Button,
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import { AutorenewOutlined as RenewIcon, DrawOutlined as SignatureIcon, DeleteOutlined as DeleteIcon } from '@mui/icons-material';
 import { SafetyEquipment } from '../../utils/api';
 import { CATEGORY_LABELS, CONDITION_COLORS, CONDITION_LABELS, EPP_STATUS_CONFIG, eppExpirationLabel } from '../../utils/epp';
@@ -24,6 +25,7 @@ interface EppDeliveriesListProps {
 }
 
 export default function EppDeliveriesList({ deliveries, variant = 'full', onRenew, onDelete, emptyMessage = 'No hay entregas registradas' }: EppDeliveriesListProps) {
+  const { fileLinkProps } = useFileViewer();
   const showEmployee = variant === 'full';
   const showActions = !!onRenew || !!onDelete;
   const columnCount = (showEmployee ? 9 : 8) + (showActions ? 1 : 0);
@@ -56,7 +58,7 @@ export default function EppDeliveriesList({ deliveries, variant = 'full', onRene
                     <Chip label={statusCfg.label} size="small" color={statusCfg.color} variant={statusCfg.color === 'default' ? 'outlined' : 'filled'} />
                     {e.signature_url && (
                       <Tooltip title="Ver firma">
-                        <IconButton size="small" color="primary" component="a" href={e.signature_url} target="_blank" rel="noopener noreferrer">
+                        <IconButton size="small" color="primary" component="a" {...fileLinkProps(e.signature_url)}>
                           <SignatureIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -126,7 +128,7 @@ export default function EppDeliveriesList({ deliveries, variant = 'full', onRene
                       <TableCell align="center">
                         {e.signature_url && (
                           <Tooltip title="Ver firma">
-                            <IconButton size="small" color="primary" component="a" href={e.signature_url} target="_blank" rel="noopener noreferrer">
+                            <IconButton size="small" color="primary" component="a" {...fileLinkProps(e.signature_url)}>
                               <SignatureIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>

@@ -3,6 +3,7 @@ import React from 'react';
 import Image from 'next/image';
 import { DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Divider } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import StoredImage from '@/components/common/StoredImage';
 import { PrintOutlined as PrintIcon } from '@mui/icons-material';
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
@@ -93,10 +94,7 @@ export default function PaymentReceiptDialog({
             Recibí de Conmomet la suma de <strong>{formatCurrency(amount)}</strong> en concepto de {concept.toLowerCase()}.
           </Typography>
           <Box display="flex" justifyContent="center" py={1}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- URL dinámica de R2 (dominio
-                distinto por ambiente) dentro de un recibo solo para imprimir: no es parte del
-                render crítico, next/image no aporta nada acá. */}
-            <img src={signatureUrl} alt="Firma del empleado" style={{ maxHeight: 120, maxWidth: '100%' }} />
+            <StoredImage src={signatureUrl} alt="Firma del empleado" style={{ maxHeight: 120, maxWidth: '100%' }} />
           </Box>
           <Typography variant="body2" fontWeight={700} textAlign="center">
             {employeeName}

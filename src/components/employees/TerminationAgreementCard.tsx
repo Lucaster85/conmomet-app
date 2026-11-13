@@ -5,6 +5,7 @@ import {
   Alert, Box, Button, Card, CardContent, Chip, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton,
   MenuItem, Paper, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography,
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import dayjs from 'dayjs';
 import AppDialog from '@/components/common/AppDialog';
@@ -38,6 +39,7 @@ interface Props {
  * liquidación final y se pagan cuota por cuota.
  */
 export default function TerminationAgreementCard({ termination, onChanged, onError, onSuccess }: Props) {
+  const { fileLinkProps } = useFileViewer();
   const user = TokenManager.getUser();
   const canWrite = userHasPermission(user, 'termination_agreements_write');
   const agreement = termination.agreement || null;
@@ -154,7 +156,7 @@ export default function TerminationAgreementCard({ termination, onChanged, onErr
 
   const instActions = (i: TerminationAgreementInstallment) => (
     <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="flex-end">
-      {i.payment_proof_url && <Button size="small" href={i.payment_proof_url} target="_blank" rel="noopener noreferrer">Comprobante</Button>}
+      {i.payment_proof_url && <Button size="small" {...fileLinkProps(i.payment_proof_url)}>Comprobante</Button>}
       {!i.paid_at && canWrite && <Button size="small" variant="contained" onClick={() => openPay(i)} disabled={busy}>Marcar pagada</Button>}
     </Stack>
   );

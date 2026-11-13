@@ -40,7 +40,7 @@ export default function ArticleForm({ open, onClose, onSuccess, editItem }: Arti
       if (editItem) {
         setTitle(editItem.title || '');
         setDescription(editItem.description || '');
-        setPreview(editItem.url);
+        setPreview(editItem.view_url ?? editItem.url);
       } else {
         setTitle('');
         setDescription('');

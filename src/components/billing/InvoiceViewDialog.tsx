@@ -3,6 +3,7 @@ import React from 'react';
 import {
   Box, Button, Chip, DialogActions, DialogContent, DialogTitle, Divider, Link as MuiLink, Stack, Typography,
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import { Invoice } from '../../utils/api';
 import {
@@ -12,6 +13,7 @@ import { formatCuit } from '../../utils/cuit';
 
 // Solo lectura: encabezado, líneas por concepto y totales de una factura.
 export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoice | null; onClose: () => void }) {
+  const { fileLinkProps } = useFileViewer();
   const row = (label: string, value: React.ReactNode) => (
     <Box display="flex" justifyContent="space-between" gap={2}>
       <Typography variant="body2" color="text.secondary">{label}</Typography>
@@ -38,10 +40,10 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
               {invoice.exchange_rate && row('Cotización', invoice.exchange_rate.toLocaleString('es-AR', { maximumFractionDigits: 4 }))}
               {invoice.createdBy && row('Cargada por', `${invoice.createdBy.name} ${invoice.createdBy.lastname}`)}
               {invoice.payment_file_url && row('Comprobante de pago', (
-                <MuiLink href={invoice.payment_file_url} target="_blank" rel="noopener noreferrer">{invoice.payment_file_name || 'Ver comprobante'}</MuiLink>
+                <MuiLink {...fileLinkProps(invoice.payment_file_url, invoice.payment_file_name || undefined)}>{invoice.payment_file_name || 'Ver comprobante'}</MuiLink>
               ))}
               {invoice.file_url && row('Factura (PDF)', (
-                <MuiLink href={invoice.file_url} target="_blank" rel="noopener noreferrer">{invoice.file_name || 'Ver PDF'}</MuiLink>
+                <MuiLink {...fileLinkProps(invoice.file_url, invoice.file_name || undefined)}>{invoice.file_name || 'Ver PDF'}</MuiLink>
               ))}
             </Stack>
 

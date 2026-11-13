@@ -306,6 +306,7 @@ export interface LookupVehicle {
 }
 export interface LookupHoliday {
   date: string;
+  name?: string;
 }
 export interface LookupBudgetItemType {
   id: number;
@@ -622,7 +623,10 @@ export interface Media {
   type: MediaType;
   title?: string;
   description?: string;
+  // Referencia guardada en la base (el bucket es privado, no abre sola): usar `view_url ?? url` para mostrar.
   url: string;
+  // URL firmada (la API la manda en cada lectura, vence a las 6 h). Nunca se guarda ni se reenvía.
+  view_url?: string | null;
   order?: number;
   is_active: boolean;
   created_at: string;
@@ -753,7 +757,10 @@ export interface HourBucket {
   budget_item_type_id: number | null;
   item_type_name: string;
   budgeted_hours: number;
+  // Total consumido = horas de empleados + horas manuales (FLOWS.md §56).
   consumed_hours: number;
+  // La parte manual de consumed_hours, para mostrar el desglose. Sin budgets_read el backend no manda budgeted_hours.
+  consumed_hours_manual?: number;
 }
 
 export interface Project {
@@ -913,6 +920,15 @@ export interface LeaveBalance {
   corresponding_days: number;
   used_days: number;
   balance: number;
+  // De dónde salen los días correspondientes (FLOWS.md §55). Opcional: respuestas viejas no lo traen.
+  entitlement?: {
+    is_override: boolean;     // días cargados a mano en el legajo
+    is_proportional: boolean; // ingresó este año y no llega a la mitad de los días hábiles
+    full_days: number;        // lo que le correspondería por antigüedad, año completo
+    worked_days: number;
+    year_workdays: number;
+    required_days: number;
+  };
 }
 
 export interface TimeEntry {
@@ -5050,6 +5066,8 @@ export interface SystemSetting {
   // Fuente de la cotización del dólar usada para descontar cuotas de préstamos en USD.
   usd_rate_casa: 'oficial' | 'blue' | 'mayorista' | 'bolsa';
   usd_rate_side: 'venta' | 'compra';
+  // Semana laboral de la empresa: define los días hábiles de las vacaciones proporcionales.
+  work_week: 'mon_fri' | 'mon_sat';
 }
 
 export class SystemSettingService {
@@ -5066,6 +5084,7 @@ export class SystemSettingService {
     invoice_iva_rates?: number[];
     usd_rate_casa?: 'oficial' | 'blue' | 'mayorista' | 'bolsa';
     usd_rate_side?: 'venta' | 'compra';
+    work_week?: 'mon_fri' | 'mon_sat';
   }): Promise<SystemSetting> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings`, {
       method: 'PUT',
@@ -6376,6 +6395,8 @@ export interface Additional extends Project {
   current_budget_items?: AdditionalMaterialItem[];
   budget_history?: AdditionalBudgetSummary[];
   consumed_hours_own: number;
+  // La parte manual de consumed_hours_own (horas manuales, FLOWS.md §56). hour_buckets viene de Project.
+  consumed_hours_manual_own?: number;
   // Gerencia a la que se le pidió cerrar el presupuesto al notificar la finalización (FLOWS.md §50).
   budgetAssignees?: { id: number; name: string; lastname: string }[];
   finish_notified_at?: string | null;
@@ -6597,5 +6618,56 @@ export class ProjectLogService {
     }
     const data = await response.json();
     return data.data;
+  }
+}
+
+// --- HORAS MANUALES (FLOWS.md §56) ---
+// Horas registradas a mano en un proyecto o adicional, con un detalle: descuentan de la bolsa del
+// rubro pero nunca tocan presupuesto, liquidación, OCAs ni costo de mano de obra. No se editan ni se
+// borran: se anulan con motivo.
+export interface ManualHourEntry {
+  id: number;
+  project_id: number;
+  budget_item_type_id: number | null;
+  hours: number;
+  date: string;
+  description: string;
+  status: 'active' | 'voided';
+  created_by: number;
+  voided_by?: number | null;
+  voided_at?: string | null;
+  void_reason?: string | null;
+  created_at: string;
+  itemType?: { id: number; name: string } | null;
+  author?: { id: number; name: string; lastname: string } | null;
+  voider?: { id: number; name: string; lastname: string } | null;
+}
+
+export class ManualHoursService {
+  private static async parse<T>(response: Response, fallback: string): Promise<T> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallback);
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  static async list(projectId: number): Promise<ManualHourEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/time-entries/manual?project_id=${projectId}`);
+    return (await this.parse<ManualHourEntry[]>(response, 'Error al obtener las horas manuales')) || [];
+  }
+
+  static async create(body: { project_id: number; budget_item_type_id: number | null; hours: number; date?: string; description: string }): Promise<ManualHourEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/time-entries/manual`, { method: 'POST', body: JSON.stringify(body) });
+    return this.parse<ManualHourEntry>(response, 'Error al registrar las horas manuales');
+  }
+
+  static async void(id: number, voidReason: string): Promise<ManualHourEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/time-entries/manual/${id}/void`, {
+      method: 'PUT',
+      body: JSON.stringify({ void_reason: voidReason }),
+    });
+    return this.parse<ManualHourEntry>(response, 'Error al anular las horas manuales');
   }
 }

@@ -6,6 +6,7 @@ import {
   DialogActions, Tooltip, Stack, TextField, InputAdornment,
   MenuItem, FormControl, InputLabel, Select, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import ListFilters, { FilterSelect, FilterSwitch } from '@/components/common/ListFilters';
 import {
@@ -79,6 +80,7 @@ const formatPeriodLabel = (p?: PayPeriod) => {
 };
 
 export default function LoansPage() {
+  const { fileLinkProps } = useFileViewer();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -490,7 +492,7 @@ export default function LoansPage() {
     if (!loan.payment_proof_url) return null;
     return (
       <Tooltip title="Ver comprobante de pago">
-        <IconButton size="small" color="primary" component="a" href={loan.payment_proof_url} target="_blank" rel="noopener noreferrer">
+        <IconButton size="small" color="primary" component="a" {...fileLinkProps(loan.payment_proof_url)}>
           <ProofIcon fontSize="small" />
         </IconButton>
       </Tooltip>

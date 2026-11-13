@@ -6,6 +6,7 @@ import {
   DialogActions, Tooltip, TextField, Stack,
   Chip, Link, Grid, useTheme, useMediaQuery
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import dayjs from 'dayjs';
 import FeedbackModal from '../../../components/FeedbackModal';
@@ -28,6 +29,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: 'error' | 'warning' 
 };
 
 export default function AttendancePage() {
+  const { fileLinkProps } = useFileViewer();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -320,7 +322,7 @@ export default function AttendancePage() {
                     <Chip label={STATUS_CONFIG[att.status]?.label || att.status} color={STATUS_CONFIG[att.status]?.color || 'default'} size="small" sx={{ mt: 1, mb: 1 }} />
                     {att.notes && <Typography variant="body2" color="text.secondary">Notas: {att.notes}</Typography>}
                     {att.document_url && (
-                      <Link href={att.document_url} target="_blank" rel="noopener noreferrer" variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+                      <Link {...fileLinkProps(att.document_url, att.document_name)} variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
                         <OpenIcon fontSize="small" /> Ver justificativo
                       </Link>
                     )}
@@ -359,7 +361,7 @@ export default function AttendancePage() {
                     <TableCell>
                       {att.document_url ? (
                         <Tooltip title="Ver documento adjunto">
-                          <IconButton component="a" href={att.document_url} target="_blank" rel="noopener noreferrer" size="small" color="info">
+                          <IconButton component="a" {...fileLinkProps(att.document_url, att.document_name)} size="small" color="info">
                             <OpenIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>

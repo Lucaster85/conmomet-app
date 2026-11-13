@@ -6,6 +6,7 @@ import {
   Link, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField,
   Tooltip, Typography,
 } from '@mui/material';
+import { useFileViewer } from '@/components/common/FileViewer';
 import CloudUploadIcon from '@mui/icons-material/CloudUploadOutlined';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import EditIcon from '@mui/icons-material/EditOutlined';
@@ -47,6 +48,7 @@ interface Props {
 export default function EmployeeTerminationPanel({
   employee, terminations, canWrite, canConfirm, canSeeAmounts, onChanged, onError, onSuccess,
 }: Props) {
+  const { fileLinkProps } = useFileViewer();
   const current = terminations.find((t) => t.status !== 'cancelled') || null;
   const cancelled = terminations.filter((t) => t.status === 'cancelled');
 
@@ -249,7 +251,7 @@ export default function EmployeeTerminationPanel({
                         {doc.notes && <Typography variant="body2" mt={0.5}>{doc.notes}</Typography>}
                         <Stack direction="row" spacing={1} mt={1}>
                           {doc.file_url && (
-                            <Button size="small" startIcon={<VisibilityIcon />} href={doc.file_url} target="_blank" rel="noopener noreferrer">Ver archivo</Button>
+                            <Button size="small" startIcon={<VisibilityIcon />} {...fileLinkProps(doc.file_url)}>Ver archivo</Button>
                           )}
                           {canWrite && (
                             <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => deleteDoc(doc)} disabled={busy}>Eliminar</Button>
@@ -286,7 +288,7 @@ export default function EmployeeTerminationPanel({
                           <TableCell align="center">
                             {doc.file_url && (
                               <Tooltip title="Ver archivo">
-                                <IconButton size="small" component={Link} href={doc.file_url} target="_blank" rel="noopener noreferrer"><VisibilityIcon fontSize="small" /></IconButton>
+                                <IconButton size="small" component={Link} {...fileLinkProps(doc.file_url)}><VisibilityIcon fontSize="small" /></IconButton>
                               </Tooltip>
                             )}
                             {canWrite && (

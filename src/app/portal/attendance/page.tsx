@@ -18,6 +18,7 @@ import {
   TableRow,
   Paper,
 } from '@mui/material';
+import { vacationBalanceNote } from '@/utils/vacationBalance';
 import {
   BeachAccessOutlined as VacationIcon,
   LocalHospitalOutlined as MedicalIcon,
@@ -141,7 +142,7 @@ export default function PortalAttendance() {
                     />
                   </Box>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-                    * Los días se calculan según tu antigüedad (Art. 150 LCT).
+                    * {vacationBalanceNote(balance, true)}
                   </Typography>
                 </Box>
               ) : (

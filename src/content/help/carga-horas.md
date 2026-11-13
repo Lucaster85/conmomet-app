@@ -99,6 +99,13 @@ ingreso/egreso/horas regulares — solo lo demás (recargos, proyecto, PEP, etc.
 es el mismo para ambas figuras; la única diferencia entre ellas está en la liquidación (ver
 **Liquidación de Sueldos**).
 
+## Horas sin empleado: horas manuales
+
+Esta pantalla es para horas **de un empleado**. Si necesitás registrar horas que no son de nadie en
+particular (por ejemplo, "20 hs de Construcción: armado en taller") para ver cuánto llevó un proyecto o un
+adicional, se cargan como **horas manuales** desde la ficha del proyecto o del adicional, no desde acá. No
+afectan la liquidación ni las OCAs. Ver el tema **Proyectos**, sección "Horas manuales".
+
 ## Filtros del listado
 
 - **Empleado**: ver todos o filtrar por uno en particular.
@@ -106,3 +113,5 @@ es el mismo para ambas figuras; la única diferencia entre ellas está en la liq
   todos, o un rango de fechas personalizado.
 - **Ver anuladas**: los registros anulados quedan ocultos por defecto — este switch los vuelve
   a mostrar.
+
+<!-- ref: conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

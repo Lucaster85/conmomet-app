@@ -10,6 +10,8 @@ import {
   Switch, FormControlLabel, Card, CardContent, Divider, Grid,
   LinearProgress, Alert
 } from '@mui/material';
+import { vacationBalanceNote } from '@/utils/vacationBalance';
+import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import { FilterSwitch } from '@/components/common/ListFilters';
 import GearSpinner from '@/components/GearSpinner';
@@ -82,6 +84,7 @@ export default function EmployeeDetailPage() {
 }
 
 function EmployeeDetailPageContent() {
+  const { openFile } = useFileViewer();
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -832,7 +835,7 @@ function EmployeeDetailPageContent() {
                         <TableCell align="center">
                           {doc.file_url ? (
                             <Tooltip title="Ver Documento">
-                              <IconButton size="small" color="info" onClick={() => window.open(doc.file_url, '_blank')}>
+                              <IconButton size="small" color="info" onClick={() => openFile(doc.file_url, doc.file_name || doc.title)}>
                                 <VisibilityIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
@@ -967,7 +970,7 @@ function EmployeeDetailPageContent() {
                             <TableCell align="center">
                               {att.document_url ? (
                                 <Tooltip title="Ver comprobante">
-                                  <IconButton size="small" color="info" onClick={() => window.open(att.document_url, '_blank')}>
+                                  <IconButton size="small" color="info" onClick={() => openFile(att.document_url, att.document_name)}>
                                     <VisibilityIcon fontSize="small" />
                                   </IconButton>
                                 </Tooltip>
@@ -1025,7 +1028,7 @@ function EmployeeDetailPageContent() {
                           color={leaveBalance.balance === 0 ? 'error' : 'primary'}
                         />
                         <Typography variant="caption" color="text.secondary" display="block" mt={1.5}>
-                          * Calculado según antigüedad (Art. 150 LCT).
+                          * {vacationBalanceNote(leaveBalance)}
                         </Typography>
                       </Box>
                     ) : (
@@ -1100,7 +1103,7 @@ function EmployeeDetailPageContent() {
                                     )}
                                     {req.document_url && (
                                       <Tooltip title="Ver comprobante">
-                                        <IconButton size="small" color="info" onClick={() => window.open(req.document_url, '_blank')}>
+                                        <IconButton size="small" color="info" onClick={() => openFile(req.document_url, req.document_name)}>
                                           <VisibilityIcon fontSize="small" />
                                         </IconButton>
                                       </Tooltip>
@@ -1650,7 +1653,7 @@ function EmployeeDetailPageContent() {
                         <TableCell>
                           {doc.file_url && (
                              <Tooltip title="Ver">
-                               <IconButton size="small" color="info" onClick={() => window.open(doc.file_url, '_blank')}>
+                               <IconButton size="small" color="info" onClick={() => openFile(doc.file_url, doc.file_name || doc.title)}>
                                  <VisibilityIcon fontSize="small" />
                                </IconButton>
                              </Tooltip>
