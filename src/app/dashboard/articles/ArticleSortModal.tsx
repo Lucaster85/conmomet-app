@@ -98,7 +98,7 @@ function SortableItem({ item, index }: { item: Media; index: number }) {
       {/* Thumbnail */}
       <Box
         component="img"
-        src={item.url}
+        src={item.view_url ?? item.url}
         alt={item.title || 'Artículo'}
         sx={{
           width: 48,
