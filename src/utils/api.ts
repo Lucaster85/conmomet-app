@@ -335,12 +335,25 @@ export interface LookupBudgetManager {
   lastname: string;
 }
 
+export interface LookupCategory {
+  id: number;
+  name: string;
+}
+
 export class LookupService {
   static async getRoles(): Promise<Pick<Role, 'id' | 'name' | 'level' | 'has_dashboard_access'>[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/roles`);
     if (!response.ok) {
       throw new Error('Error al obtener los roles disponibles');
     }
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  // Categorías (CCT) para el combo del postulante, sin requerir categories_read. Solo id + nombre.
+  static async getCategories(): Promise<LookupCategory[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/categories`);
+    if (!response.ok) throw new Error('Error al obtener las categorías');
     const data = await response.json();
     return data.data || [];
   }
@@ -871,6 +884,8 @@ export interface Employee {
   sizes?: EmployeeSize[];
   vacation_days_override?: number | null;
   user?: { id: number; email: string; name: string; lastname: string };
+  // Solo para quien tiene candidates_read (FLOWS.md §62).
+  origin_candidate?: { id: number; name: string; lastname: string; converted_at?: string | null } | null;
   category?: Omit<Category, 'guild_hourly_rate'> & { guild_hourly_rate?: number };
   invitation_status?: 'pending' | 'expired' | null;
   createdAt: string;
@@ -894,6 +909,8 @@ export interface CreateEmployeeData {
   category_id?: number | null;
   notes?: string;
   vacation_days_override?: number | null;
+  // Alta desde un postulante (FLOWS.md §62): el backend lo convierte en una sola transacción.
+  candidate_id?: number;
 }
 
 export interface LeaveRequest {
@@ -3357,7 +3374,13 @@ export type NotificationType =
   | 'epp_expiring'
   | 'epp_expired'
   // Una nota rápida propia que venció o vence hoy (FLOWS.md §48, etapa 3).
-  | 'quick_note_due';
+  | 'quick_note_due'
+  // Llegó una consulta por el formulario de contacto de la web (FLOWS.md §58). Se avisa por permiso.
+  | 'contact_inquiry_received'
+  // Llegó una postulación por "Trabajá con nosotros", o alguien volvió a mandar su CV (FLOWS.md §60).
+  | 'job_application_received'
+  // Te asignaron o reprogramaron una entrevista a un postulante (FLOWS.md §61).
+  | 'candidate_interview_assigned';
 
 export interface AppNotification {
   id: number;
@@ -6669,5 +6692,487 @@ export class ManualHoursService {
       body: JSON.stringify({ void_reason: voidReason }),
     });
     return this.parse<ManualHourEntry>(response, 'Error al anular las horas manuales');
+  }
+}
+
+// Consultas que entran por el formulario de contacto de la web institucional (FLOWS.md §58).
+// Se crean solo desde el endpoint público; en el dashboard se listan, se toman, se cierran y se
+// borran. Lo que escribió el visitante no se edita.
+export type ContactInquiryReason = 'budget_request' | 'general' | 'supplier' | 'other';
+export type ContactInquiryStatus = 'new' | 'in_progress' | 'closed';
+
+export interface ContactInquiry {
+  id: number;
+  reason: ContactInquiryReason;
+  name: string;
+  company?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  message: string;
+  status: ContactInquiryStatus;
+  internal_notes?: string | null;
+  handled_by?: number | null;
+  handled_at?: string | null;
+  closed_by?: number | null;
+  closed_at?: string | null;
+  // Sequelize `underscored` deja los timestamps en camelCase en el JSON.
+  createdAt: string;
+  updatedAt: string;
+  handledByUser?: { id: number; name: string; lastname: string } | null;
+  closedByUser?: { id: number; name: string; lastname: string } | null;
+}
+
+export class ContactInquiryService {
+  static async getAll(params?: { reason?: ContactInquiryReason; status?: ContactInquiryStatus; q?: string; include_closed?: boolean }): Promise<ContactInquiry[]> {
+    const qs = new URLSearchParams();
+    if (params?.reason) qs.append('reason', params.reason);
+    if (params?.status) qs.append('status', params.status);
+    if (params?.q) qs.append('q', params.q);
+    if (params?.include_closed) qs.append('include_closed', 'true');
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/contact-inquiries${suffix}`);
+    if (!response.ok) throw new Error('Error al obtener las consultas web');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getById(id: number): Promise<ContactInquiry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/contact-inquiries/${id}`);
+    if (!response.ok) throw new Error('Error al obtener la consulta');
+    return (await response.json()).data;
+  }
+
+  static async update(id: number, body: { status?: ContactInquiryStatus; internal_notes?: string }): Promise<ContactInquiry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/contact-inquiries/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al actualizar la consulta');
+    }
+    return (await response.json()).data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/contact-inquiries/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al eliminar la consulta');
+    }
+  }
+}
+
+// Postulantes (FLOWS.md §59): la PERSONA que se presenta a trabajar (Candidate) y sus postulaciones
+// (CandidateApplication). Carga interna desde el dashboard; el formulario público y la conversión en
+// empleado son etapas siguientes.
+export type CandidateStage = 'new' | 'screening' | 'interview' | 'offer' | 'hired' | 'rejected' | 'withdrawn';
+export type CandidateSource = 'web' | 'in_person' | 'referral' | 'other';
+export type CandidateFileKind = 'cv' | 'cover_letter' | 'certificate' | 'other';
+export type CandidateRejectionReason =
+  | 'profile_mismatch' | 'no_vacancies' | 'no_response' | 'failed_interview' | 'salary_expectations' | 'other';
+
+export interface CandidateApplication {
+  id: number;
+  candidate_id: number;
+  stage: CandidateStage;
+  position_of_interest?: string | null;
+  cover_letter?: string | null;
+  rejection_reason?: CandidateRejectionReason | null;
+  rejection_notes?: string | null;
+  source: CandidateSource;
+  applied_at: string;
+}
+
+export interface CandidateFile {
+  id: number;
+  candidate_id: number;
+  application_id?: number | null;
+  kind: CandidateFileKind;
+  file_url: string;
+  file_name?: string | null;
+  mime_type?: string | null;
+  size_bytes?: number | null;
+  uploader?: { id: number; name: string; lastname: string } | null;
+}
+
+// Empleado (actual o ex) que comparte DNI/CUIL con un postulante — se calcula al leer en el backend.
+export interface CandidateEmployeeMatch {
+  id: number;
+  name: string;
+  lastname: string;
+  status: string;
+  termination_date?: string | null;
+  deleted: boolean;
+}
+
+export interface Candidate {
+  id: number;
+  name: string;
+  lastname: string;
+  dni?: string | null;
+  cuil?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  birth_date?: string | null;
+  address?: string | null;
+  locality?: string | null;
+  trade?: string | null;
+  category_id?: number | null;
+  years_experience?: number | null;
+  has_driver_license: boolean;
+  notes?: string | null;
+  source: CandidateSource;
+  referred_by_employee_id?: number | null;
+  employee_id?: number | null;
+  // Consentimiento de tratamiento de datos: cuándo aceptó y qué versión del texto (la carga interna no lo tiene).
+  consent_accepted_at?: string | null;
+  consent_version?: string | null;
+  // Sequelize `underscored` deja los timestamps automáticos en camelCase en el JSON.
+  createdAt: string;
+  // Solo en el listado:
+  files_count?: number | string;
+  // Listado (versión resumida) y detalle:
+  applications?: CandidateApplication[];
+  category?: { id: number; name: string } | null;
+  // Solo en el detalle:
+  files?: CandidateFile[];
+  employee?: { id: number; name: string; lastname: string } | null;
+  referredBy?: { id: number; name: string; lastname: string } | null;
+  createdByUser?: { id: number; name: string; lastname: string } | null;
+  former_employee?: CandidateEmployeeMatch | null;
+  current_employee?: CandidateEmployeeMatch | null;
+  interviews?: CandidateInterview[];
+}
+
+export interface CandidateDuplicates {
+  candidates: (Pick<Candidate, 'id' | 'name' | 'lastname' | 'dni' | 'cuil' | 'email' | 'phone'> & { matched_on: ('dni' | 'cuil' | 'email' | 'phone')[] })[];
+  current_employees: CandidateEmployeeMatch[];
+  former_employees: CandidateEmployeeMatch[];
+}
+
+export interface CandidateHistoryEntry {
+  id: number;
+  application_id: number;
+  position_of_interest?: string | null;
+  event: 'created' | 'stage_changed' | 'reopened' | 'resubmitted' | 'converted'
+    | 'interview_scheduled' | 'interview_rescheduled' | 'interview_cancelled' | 'interview_result';
+  from_stage?: CandidateStage | null;
+  to_stage?: CandidateStage | null;
+  comment?: string | null;
+  at: string;
+  actor: { id: number; name: string; lastname: string } | null;
+}
+
+// Los datos de la persona tal cual se tipean en el formulario (strings; el backend normaliza).
+export interface CandidateFormValues {
+  name: string;
+  lastname: string;
+  dni: string;
+  cuil: string;
+  email: string;
+  phone: string;
+  birth_date: string;
+  address: string;
+  locality: string;
+  trade: string;
+  category_id: string;
+  years_experience: string;
+  has_driver_license: boolean;
+  notes: string;
+  source: Exclude<CandidateSource, 'web'>;
+}
+
+export interface CandidateCreateValues extends CandidateFormValues {
+  position_of_interest: string;
+  cover_letter: string;
+}
+
+export interface CandidateUploadFile {
+  file: File;
+  kind: CandidateFileKind;
+}
+
+export type InterviewModality = 'in_person' | 'phone' | 'video';
+export type InterviewStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+export type InterviewRecommendation = 'advance' | 'hold' | 'reject';
+
+export interface CandidateInterview {
+  id: number;
+  application_id: number;
+  scheduled_at: string;
+  duration_minutes: number;
+  modality: InterviewModality;
+  location?: string | null;
+  status: InterviewStatus;
+  rating?: number | null;
+  recommendation?: InterviewRecommendation | null;
+  feedback?: string | null;
+  interviewers?: { id: number; name: string; lastname: string }[];
+}
+
+// Entrevista de hoy o mañana del usuario, con el postulante (aviso del tablero).
+export interface UpcomingInterview extends CandidateInterview {
+  application: {
+    id: number;
+    position_of_interest?: string | null;
+    candidate: { id: number; name: string; lastname: string; phone?: string | null };
+  };
+}
+
+export interface InterviewScheduleValues {
+  application_id?: number;
+  scheduled_at: string; // ISO
+  duration_minutes: number;
+  modality: InterviewModality;
+  location: string;
+  interviewer_ids: number[];
+}
+
+export class CandidateService {
+  private static async parse<T>(response: Response, fallback: string): Promise<T> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallback);
+    }
+    return (await response.json()).data;
+  }
+
+  private static appendFields(formData: FormData, values: Record<string, string | boolean | undefined>) {
+    Object.entries(values).forEach(([key, value]) => {
+      if (value === undefined) return;
+      formData.append(key, typeof value === 'boolean' ? String(value) : value);
+    });
+  }
+
+  private static appendFiles(formData: FormData, files: CandidateUploadFile[]) {
+    files.forEach((f) => formData.append('files', f.file));
+    // Mismo orden que `files`: el backend asocia cada tipo con el archivo de su posición.
+    formData.append('file_kinds', JSON.stringify(files.map((f) => f.kind)));
+  }
+
+  static async getAll(params?: { q?: string; stage?: CandidateStage; source?: CandidateSource; include_closed?: boolean }): Promise<Candidate[]> {
+    const qs = new URLSearchParams();
+    if (params?.q) qs.append('q', params.q);
+    if (params?.stage) qs.append('stage', params.stage);
+    if (params?.source) qs.append('source', params.source);
+    if (params?.include_closed) qs.append('include_closed', 'true');
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates${suffix}`);
+    return (await this.parse<Candidate[]>(response, 'Error al obtener los postulantes')) || [];
+  }
+
+  static async getById(id: number): Promise<Candidate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}`);
+    return this.parse<Candidate>(response, 'Error al obtener el postulante');
+  }
+
+  static async checkDuplicates(params: { dni?: string; cuil?: string; email?: string; phone?: string; exclude_id?: number }): Promise<CandidateDuplicates> {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') qs.append(key, String(value));
+    });
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/check-duplicates?${qs.toString()}`);
+    return this.parse<CandidateDuplicates>(response, 'Error al buscar duplicados');
+  }
+
+  static async create(values: CandidateCreateValues, files: CandidateUploadFile[]): Promise<Candidate> {
+    const formData = new FormData();
+    this.appendFields(formData, { ...values });
+    this.appendFiles(formData, files);
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' },
+      body: formData,
+    });
+    return this.parse<Candidate>(response, 'Error al crear el postulante');
+  }
+
+  static async update(id: number, values: Partial<CandidateFormValues>): Promise<Candidate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    });
+    return this.parse<Candidate>(response, 'Error al actualizar el postulante');
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al eliminar el postulante');
+    }
+  }
+
+  static async addFiles(id: number, files: CandidateUploadFile[], applicationId?: number): Promise<Candidate> {
+    const formData = new FormData();
+    if (applicationId) formData.append('application_id', String(applicationId));
+    this.appendFiles(formData, files);
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}/files`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' },
+      body: formData,
+    });
+    return this.parse<Candidate>(response, 'Error al subir los archivos');
+  }
+
+  static async removeFile(id: number, fileId: number): Promise<Candidate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}/files/${fileId}`, { method: 'DELETE' });
+    return this.parse<Candidate>(response, 'Error al eliminar el archivo');
+  }
+
+  static async createApplication(id: number, body: { position_of_interest?: string; cover_letter?: string }): Promise<Candidate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}/applications`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return this.parse<Candidate>(response, 'Error al crear la postulación');
+  }
+
+  static async changeStage(
+    id: number,
+    applicationId: number,
+    body: { stage: CandidateStage; comment?: string; rejection_reason?: CandidateRejectionReason; rejection_notes?: string }
+  ): Promise<Candidate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}/applications/${applicationId}/stage`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    return this.parse<Candidate>(response, 'Error al cambiar la etapa');
+  }
+
+  static async getHistory(id: number): Promise<CandidateHistoryEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}/history`);
+    return (await this.parse<CandidateHistoryEntry[]>(response, 'Error al obtener el historial')) || [];
+  }
+}
+
+// "Trabajá con nosotros" (FLOWS.md §60): formulario público, SIN sesión, así que no pasa por
+// TokenManager.authenticatedFetch. Multipart: los datos van como campos y el CV (y la carta, si hay)
+// como `files`, con `file_kinds` en el mismo orden.
+export interface JobApplicationValues {
+  name: string;
+  lastname: string;
+  dni: string;
+  email: string;
+  phone: string;
+  birth_date: string;
+  locality: string;
+  trade: string;
+  years_experience: string;
+  has_driver_license: boolean;
+  cover_letter: string;
+  // Campo trampa: oculto para las personas; si viene completo el servidor descarta el envío.
+  website: string;
+}
+
+export class PublicJobApplicationService {
+  // `consentVersion`: la versión del texto de privacidad que la persona VIO al aceptar (la que trajo getPublicCurrent).
+  static async submit(values: JobApplicationValues, cv: File, coverLetterFile: File | null | undefined, consentVersion: number): Promise<string> {
+    const formData = new FormData();
+    Object.entries(values).forEach(([key, value]) => formData.append(key, typeof value === 'boolean' ? String(value) : value));
+    formData.append('consent', 'true');
+    formData.append('consent_version', String(consentVersion));
+    const files: { file: File; kind: 'cv' | 'cover_letter' }[] = [{ file: cv, kind: 'cv' }];
+    if (coverLetterFile) files.push({ file: coverLetterFile, kind: 'cover_letter' });
+    files.forEach((f) => formData.append('files', f.file));
+    formData.append('file_kinds', JSON.stringify(files.map((f) => f.kind)));
+
+    // Sin header Content-Type: el navegador lo arma con el boundary del multipart.
+    const response = await fetch(`${API_BASE_URL}/public/job-applications`, { method: 'POST', body: formData });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'No pudimos enviar tu postulación. Probá de nuevo en unos minutos.');
+    return body.message || 'Recibimos tu postulación.';
+  }
+}
+
+export class CandidateInterviewService {
+  private static async parse<T>(response: Response, fallback: string): Promise<T> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallback);
+    }
+    return (await response.json()).data;
+  }
+
+  static async create(candidateId: number, values: InterviewScheduleValues): Promise<CandidateInterview> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${candidateId}/interviews`, {
+      method: 'POST',
+      body: JSON.stringify(values),
+    });
+    return this.parse(response, 'Error al agendar la entrevista');
+  }
+
+  static async update(
+    candidateId: number,
+    interviewId: number,
+    values: Partial<Omit<InterviewScheduleValues, 'application_id'>> & { status?: 'cancelled' | 'no_show' }
+  ): Promise<CandidateInterview> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${candidateId}/interviews/${interviewId}`, {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    });
+    return this.parse(response, 'Error al actualizar la entrevista');
+  }
+
+  static async saveResult(
+    candidateId: number,
+    interviewId: number,
+    values: { rating: number; recommendation: InterviewRecommendation; feedback: string }
+  ): Promise<CandidateInterview> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${candidateId}/interviews/${interviewId}/result`, {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    });
+    return this.parse(response, 'Error al guardar el resultado');
+  }
+
+  static async getUpcoming(): Promise<UpcomingInterview[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/interviews/upcoming`);
+    return (await this.parse<UpcomingInterview[]>(response, 'Error al obtener las entrevistas')) || [];
+  }
+
+  // Usuarios que pueden ver postulantes, para el combo de entrevistadores (sin exigir users_read).
+  static async getInterviewers(): Promise<{ id: number; name: string; lastname: string }[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/interviewers`);
+    return (await this.parse<{ id: number; name: string; lastname: string }[]>(response, 'Error al obtener los entrevistadores')) || [];
+  }
+}
+
+// Texto de privacidad de "Trabajá con nosotros" (FLOWS.md §63): versionado y de solo agregar. El público
+// lee solo la versión vigente; el historial y la publicación son de Configuración General.
+export interface ConsentText {
+  id: number;
+  version: number;
+  content: string;
+  created_at: string;
+  created_by: { id: number; name: string; lastname: string } | null;
+}
+
+export class ConsentTextService {
+  // Sin sesión: lo usa la página pública. Devuelve la versión que después se manda al enviar el formulario.
+  static async getPublicCurrent(): Promise<{ version: number; content: string }> {
+    const response = await fetch(`${API_BASE_URL}/public/job-applications/privacy`);
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'No se pudo cargar el texto de privacidad.');
+    return body.data;
+  }
+
+  static async list(): Promise<ConsentText[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings/privacy-texts`);
+    if (!response.ok) throw new Error('Error al obtener el historial del texto de privacidad');
+    return (await response.json()).data || [];
+  }
+
+  static async publish(content: string): Promise<ConsentText> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings/privacy-texts`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al publicar el texto de privacidad');
+    }
+    return (await response.json()).data;
   }
 }

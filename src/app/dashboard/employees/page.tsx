@@ -1,11 +1,11 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import {
   Box, Typography, Button, Paper, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, DialogTitle, DialogContent,
   DialogActions, Tooltip, TextField, Stack,
   Chip, Divider, MenuItem, Select, FormControl, InputLabel,
-  FormHelperText,
+  FormHelperText, Alert,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
 import ListFilters, { FilterSwitch } from '@/components/common/ListFilters';
@@ -25,8 +25,9 @@ import {
   LinkOutlined as LinkIcon, LinkOffOutlined as LinkOffIcon, BadgeOutlined as TitleIcon,
 } from '@mui/icons-material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
-import { useRouter } from 'next/navigation';
-import { Employee, EmployeeService, EmployeeTerminationService, TerminationStatus, CreateEmployeeData, User, UserService, CategoryService, Category, EppItem, EppItemService, EmployeeSizeService } from '../../../utils/api';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Employee, EmployeeService, EmployeeTerminationService, TerminationStatus, CreateEmployeeData, User, UserService, CategoryService, Category, EppItem, EppItemService, EmployeeSizeService, CandidateService } from '../../../utils/api';
+import { isOpenStage, fullName as candidateFullName } from '../../../utils/candidates';
 import { isFixedSalaryPayType } from '../../../utils/payType';
 import { TokenManager, userHasPermission } from '../../../utils/auth';
 import { validateDni, validateCuit, validatePhone, validateEmail } from '../../../utils/validators';
@@ -46,7 +47,17 @@ function TerminationChip({ status, sx }: { status?: TerminationStatus; sx?: obje
 }
 
 export default function EmployeesPage() {
+  // useSearchParams (alta desde un postulante, ?candidate_id=) exige Suspense en el App Router.
+  return (
+    <Suspense fallback={<GearSpinner />}>
+      <EmployeesPageContent />
+    </Suspense>
+  );
+}
+
+function EmployeesPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Gating por permiso real del usuario logueado — el backend ya lo valida (403/campos
   // borrados si falta), esto es para no mostrar botones/campos que después van a fallar o a
@@ -76,6 +87,8 @@ export default function EmployeesPage() {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [inviteTarget, setInviteTarget] = useState<Employee | null>(null);
+  // Nombre del postulante del que viene el alta en curso (FLOWS.md §62); null si es un alta común.
+  const [originCandidateName, setOriginCandidateName] = useState<string | null>(null);
 
   const emptyForm: CreateEmployeeData & { status?: string; pay_type?: string; monthly_salary?: number; vacation_days_override?: number | null } = {
     name: '', lastname: '', dni: '', cuil: '', address: '', phone: '', email: '',
@@ -161,7 +174,54 @@ export default function EmployeesPage() {
     return `${e.name} ${e.lastname} ${e.dni}`.toLowerCase().includes(q);
   });
 
+
+  // Alta desde un postulante (FLOWS.md §62): "Dar de alta como empleado" en su ficha trae acá con
+  // ?candidate_id=X, y se abre el alta PRECARGADA con sus datos. Antes de abrir se revisa lo mismo que va a
+  // revisar el backend, para no hacer cargar un alta que después se rechaza: un ex-empleado no se convierte
+  // (el reingreso se trata aparte), ni uno ya convertido, ni uno sin postulación en entrevista u oferta.
+  const candidateHandled = useRef(false);
+  useEffect(() => {
+    const candidateId = searchParams.get('candidate_id');
+    if (!candidateId || candidateHandled.current) return;
+    candidateHandled.current = true;
+    router.replace('/dashboard/employees');
+    if (!canCreate) {
+      setError('No tenés permiso para dar de alta empleados.');
+      return;
+    }
+    CandidateService.getById(Number(candidateId))
+      .then((candidate) => {
+        const hiring = (candidate.applications || []).find((a) => isOpenStage(a.stage) && ['interview', 'offer'].includes(a.stage));
+        if (candidate.employee_id) return setError('Este postulante ya fue dado de alta como empleado.');
+        if (candidate.former_employee) return setError('Este postulante es un ex-empleado. El reingreso se trata aparte: no se puede dar de alta desde Postulantes.');
+        if (candidate.current_employee) return setError('El DNI o CUIL de este postulante ya pertenece a un empleado actual.');
+        if (!hiring) return setError('Para dar de alta a un postulante su postulación tiene que estar en entrevista o en oferta.');
+        setEditingEmployee(null);
+        setSizesForm({ ...emptySizesForm });
+        setSubmitAttempted(false);
+        setForm({
+          ...emptyForm,
+          candidate_id: candidate.id,
+          name: candidate.name,
+          lastname: candidate.lastname,
+          dni: candidate.dni || '',
+          cuil: candidate.cuil || '',
+          phone: candidate.phone || '',
+          email: candidate.email || '',
+          address: candidate.address || '',
+          birth_date: candidate.birth_date || '',
+          position: hiring.position_of_interest || candidate.trade || '',
+          category_id: candidate.category_id || null,
+        });
+        setOriginCandidateName(candidateFullName(candidate));
+        setOpenDialog(true);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'No se pudo cargar al postulante.'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleOpenCreate = () => {
+    setOriginCandidateName(null);
     setEditingEmployee(null);
     setForm({ ...emptyForm });
     setSizesForm({ ...emptySizesForm });
@@ -170,6 +230,7 @@ export default function EmployeesPage() {
   };
 
   const handleOpenEdit = async (emp: Employee) => {
+    setOriginCandidateName(null);
     setEditingEmployee(emp);
     setSubmitAttempted(false);
     setForm({
@@ -235,7 +296,8 @@ export default function EmployeesPage() {
         setSuccess('Empleado actualizado');
       } else {
         saved = await EmployeeService.create(form);
-        setSuccess('Empleado creado');
+        setSuccess(originCandidateName ? `Empleado creado. La postulación de ${originCandidateName} quedó como contratada.` : 'Empleado creado');
+        setOriginCandidateName(null);
       }
 
       // Los 3 talles básicos ya no viajan en el payload del empleado: se guardan aparte, una
@@ -455,6 +517,12 @@ export default function EmployeesPage() {
         <DialogTitle>{editingEmployee ? 'Editar Empleado' : 'Nuevo Empleado'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
+            {originCandidateName && (
+              <Alert severity="info">
+                Alta desde la postulación de <strong>{originCandidateName}</strong>. Completá la fecha de ingreso y lo que falte; al
+                crearlo, su postulación pasa a <strong>Contratada</strong>.
+              </Alert>
+            )}
             {!editingEmployee && availableUsers.length > 0 && (
               <Box mb={1}>
                 <Typography variant="h6" gutterBottom color="primary.main" sx={{ fontSize: '1.05rem' }}>

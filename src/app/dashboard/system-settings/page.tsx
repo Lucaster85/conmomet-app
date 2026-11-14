@@ -5,6 +5,7 @@ import GearSpinner from '@/components/GearSpinner';
 import { SettingsOutlined as TitleIcon } from '@mui/icons-material';
 import CurrencyInput from '@/components/CurrencyInput';
 import FeedbackModal from '@/components/FeedbackModal';
+import PrivacyTextSettingsCard from '@/components/settings/PrivacyTextSettingsCard';
 import { SystemSettingService, UserService, User } from '@/utils/api';
 
 export default function SystemSettingsPage() {
@@ -291,6 +292,8 @@ export default function SystemSettingsPage() {
           </Stack>
         </CardContent>
       </Card>
+
+      <PrivacyTextSettingsCard onSuccess={setSuccess} onError={setError} />
     </Box>
   );
 }

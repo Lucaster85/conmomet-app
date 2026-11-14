@@ -17,6 +17,8 @@ import {
   SecurityOutlined as EppIcon,
   ErrorOutlineOutlined as ExpiredIcon,
   EditNoteOutlined as NoteIcon,
+  ForumOutlined as InquiryIcon,
+  PersonSearchOutlined as CandidateIcon,
 } from '@mui/icons-material';
 import { NotificationService, AppNotification, NotificationType } from '../../utils/api';
 import { useAuth } from '../../utils/auth';
@@ -48,6 +50,9 @@ const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
   epp_expired: <ExpiredIcon fontSize="small" color="error" />,
   // Mismo ícono que el botón flotante de notas, así se reconoce de dónde viene.
   quick_note_due: <NoteIcon fontSize="small" color="warning" />,
+  contact_inquiry_received: <InquiryIcon fontSize="small" color="info" />,
+  job_application_received: <CandidateIcon fontSize="small" color="info" />,
+  candidate_interview_assigned: <CandidateIcon fontSize="small" color="warning" />,
 };
 
 export default function NotificationBell() {

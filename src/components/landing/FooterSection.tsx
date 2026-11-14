@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { Box, Container, Paper, Stack, Typography } from '@mui/material';
-import { CheckroomOutlined as Checkroom, EmailOutlined as Email, FacebookOutlined as Facebook, Instagram, LocationOnOutlined as LocationOn, PhoneOutlined as Phone, WhatsApp } from '@mui/icons-material';
+import { BadgeOutlined as Badge, CheckroomOutlined as Checkroom, EmailOutlined as Email, FacebookOutlined as Facebook, Instagram, LocationOnOutlined as LocationOn, PhoneOutlined as Phone, WhatsApp } from '@mui/icons-material';
 
 export default function FooterSection() {
   return (
@@ -119,6 +119,17 @@ export default function FooterSection() {
                 Enlaces Rápidos
               </Typography>
               <Stack spacing={1}>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <Badge sx={{ mr: 1, fontSize: 20 }} />
+                  <Typography
+                    component="a"
+                    href="/trabaja-con-nosotros"
+                    color="grey.400"
+                    sx={{ textDecoration: "none", "&:hover": { color: "white" } }}
+                  >
+                    Trabajá con nosotros
+                  </Typography>
+                </Box>
                 <Box sx={{ display: "flex", alignItems: "center" }}>
                   <Instagram sx={{ mr: 1, fontSize: 20 }} />
                   <Typography
