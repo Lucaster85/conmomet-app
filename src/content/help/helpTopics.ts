@@ -244,6 +244,20 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'proyectos.md',
   },
   {
+    id: 'consultas-web',
+    category: 'Gestión de Clientes',
+    title: 'Consultas web',
+    keywords: [
+      'consulta', 'consultas', 'consultas web', 'formulario', 'formulario de contacto', 'contacto',
+      'contactanos', 'contactános', 'pagina web', 'página web', 'landing', 'sitio', 'web',
+      'visitante', 'mensaje', 'mensajes', 'motivo', 'pedido de presupuesto', 'proveedores',
+      'tomar consulta', 'cerrar consulta', 'nueva', 'en curso', 'cerrada', 'notas internas',
+      'whatsapp', 'llamar', 'email', 'mail', 'correo', 'no llega', 'no me llega', 'aviso',
+      'campanita', 'notificacion', 'notificación', 'spam', 'bot', 'limite', 'límite',
+    ],
+    file: 'consultas-web.md',
+  },
+  {
     id: 'pedidos-cotizacion',
     category: 'Gestión de Clientes',
     title: 'Pedidos de Cotización',

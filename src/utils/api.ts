@@ -3357,7 +3357,9 @@ export type NotificationType =
   | 'epp_expiring'
   | 'epp_expired'
   // Una nota rápida propia que venció o vence hoy (FLOWS.md §48, etapa 3).
-  | 'quick_note_due';
+  | 'quick_note_due'
+  // Llegó una consulta por el formulario de contacto de la web (FLOWS.md §58). Se avisa por permiso.
+  | 'contact_inquiry_received';
 
 export interface AppNotification {
   id: number;
@@ -6669,5 +6671,73 @@ export class ManualHoursService {
       body: JSON.stringify({ void_reason: voidReason }),
     });
     return this.parse<ManualHourEntry>(response, 'Error al anular las horas manuales');
+  }
+}
+
+// Consultas que entran por el formulario de contacto de la web institucional (FLOWS.md §58).
+// Se crean solo desde el endpoint público; en el dashboard se listan, se toman, se cierran y se
+// borran. Lo que escribió el visitante no se edita.
+export type ContactInquiryReason = 'budget_request' | 'general' | 'supplier' | 'other';
+export type ContactInquiryStatus = 'new' | 'in_progress' | 'closed';
+
+export interface ContactInquiry {
+  id: number;
+  reason: ContactInquiryReason;
+  name: string;
+  company?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  message: string;
+  status: ContactInquiryStatus;
+  internal_notes?: string | null;
+  handled_by?: number | null;
+  handled_at?: string | null;
+  closed_by?: number | null;
+  closed_at?: string | null;
+  // Sequelize `underscored` deja los timestamps en camelCase en el JSON.
+  createdAt: string;
+  updatedAt: string;
+  handledByUser?: { id: number; name: string; lastname: string } | null;
+  closedByUser?: { id: number; name: string; lastname: string } | null;
+}
+
+export class ContactInquiryService {
+  static async getAll(params?: { reason?: ContactInquiryReason; status?: ContactInquiryStatus; q?: string; include_closed?: boolean }): Promise<ContactInquiry[]> {
+    const qs = new URLSearchParams();
+    if (params?.reason) qs.append('reason', params.reason);
+    if (params?.status) qs.append('status', params.status);
+    if (params?.q) qs.append('q', params.q);
+    if (params?.include_closed) qs.append('include_closed', 'true');
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/contact-inquiries${suffix}`);
+    if (!response.ok) throw new Error('Error al obtener las consultas web');
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  static async getById(id: number): Promise<ContactInquiry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/contact-inquiries/${id}`);
+    if (!response.ok) throw new Error('Error al obtener la consulta');
+    return (await response.json()).data;
+  }
+
+  static async update(id: number, body: { status?: ContactInquiryStatus; internal_notes?: string }): Promise<ContactInquiry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/contact-inquiries/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al actualizar la consulta');
+    }
+    return (await response.json()).data;
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/contact-inquiries/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al eliminar la consulta');
+    }
   }
 }

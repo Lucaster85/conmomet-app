@@ -24,6 +24,7 @@ import TerminationAgreementAlert from '../../components/common/TerminationAgreem
 import AdditionalPendingBudgetAlert from '../../components/common/AdditionalPendingBudgetAlert';
 import BudgetAwaitingResponseAlert from '../../components/common/BudgetAwaitingResponseAlert';
 import QuoteRequestAlert from '../../components/common/QuoteRequestAlert';
+import ContactInquiryAlert from '../../components/common/ContactInquiryAlert';
 import EppExpiringAlert from '../../components/common/EppExpiringAlert';
 import DocumentExpirationAlert from '../../components/common/DocumentExpirationAlert';
 import QuickNotesWidget from '../../components/notes/QuickNotesWidget';
@@ -113,6 +114,7 @@ export default function DashboardPage() {
           '&:empty': { display: 'none' },
         }}
       >
+        <ContactInquiryAlert />
         <QuoteRequestAlert />
         <DocumentExpirationAlert onError={setError} onSuccess={setSuccess} />
         <OcaBudgetAlert />
