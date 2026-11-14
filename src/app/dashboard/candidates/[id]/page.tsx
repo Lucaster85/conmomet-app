@@ -12,6 +12,7 @@ import GearSpinner from '../../../../components/GearSpinner';
 import CandidateFormFields, { emptyCandidateForm } from '../../../../components/candidates/CandidateFormFields';
 import CandidateDuplicateAlerts from '../../../../components/candidates/CandidateDuplicateAlerts';
 import CandidateFilePicker from '../../../../components/candidates/CandidateFilePicker';
+import CandidateInterviewsSection from '../../../../components/candidates/CandidateInterviewsSection';
 import {
   ArrowBackOutlined as BackIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   AddOutlined as AddIcon, AttachFileOutlined as AttachIcon, WhatsApp as WhatsAppIcon,
@@ -74,6 +75,10 @@ const EVENT_LABELS: Record<CandidateHistoryEntry['event'], string> = {
   stage_changed: 'Cambio de etapa',
   reopened: 'Postulación reabierta',
   resubmitted: 'Volvió a enviar su CV',
+  interview_scheduled: 'Entrevista agendada',
+  interview_rescheduled: 'Entrevista reprogramada',
+  interview_cancelled: 'Entrevista cancelada',
+  interview_result: 'Resultado de entrevista',
   converted: 'Dado de alta como empleado',
 };
 
@@ -96,6 +101,8 @@ export default function CandidateDetailPage() {
   const canWrite = userHasPermission(user, 'candidates_write');
   const canUpdate = userHasPermission(user, 'candidates_update');
   const canDelete = userHasPermission(user, 'candidates_delete');
+  // Dar de alta como empleado: lo valida el backend con employees_write Y candidates_update.
+  const canHire = userHasPermission(user, 'employees_write') && canUpdate;
   const id = Number(params.id);
 
   const [candidate, setCandidate] = useState<Candidate | null>(null);
@@ -405,6 +412,13 @@ export default function CandidateDetailPage() {
                       {application.rejection_notes ? ` — ${application.rejection_notes}` : ''}
                     </Typography>
                   )}
+                  {canHire && ['interview', 'offer'].includes(application.stage) && !candidate.employee_id && !candidate.former_employee && !candidate.current_employee && (
+                    <Box mt={2}>
+                      <Button size="small" variant="contained" color="success" onClick={() => router.push(`/dashboard/employees?candidate_id=${candidate.id}`)}>
+                        Dar de alta como empleado
+                      </Button>
+                    </Box>
+                  )}
                   {canUpdate && targets.length > 0 && (
                     <Box display="flex" gap={1} mt={2} flexWrap="wrap">
                       {targets.map((target) => (
@@ -426,6 +440,16 @@ export default function CandidateDetailPage() {
           </Stack>
         )}
       </Paper>
+
+      {/* Entrevistas */}
+      <CandidateInterviewsSection
+        candidate={candidate}
+        canWrite={canWrite}
+        canUpdate={canUpdate}
+        hasOpenApplication={hasOpenApplication}
+        onError={setError}
+        onChanged={async (message) => { setSuccess(message); await load(); }}
+      />
 
       {/* Papeles */}
       <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
