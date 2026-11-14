@@ -52,6 +52,7 @@ const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
   quick_note_due: <NoteIcon fontSize="small" color="warning" />,
   contact_inquiry_received: <InquiryIcon fontSize="small" color="info" />,
   job_application_received: <CandidateIcon fontSize="small" color="info" />,
+  candidate_interview_assigned: <CandidateIcon fontSize="small" color="warning" />,
 };
 
 export default function NotificationBell() {

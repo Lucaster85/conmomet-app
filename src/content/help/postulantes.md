@@ -100,6 +100,7 @@ Al tocar un postulante se abre su ficha, con:
 - **Postulaciones**, con la etapa de cada una y los botones para moverla.
 - **Papeles**: se abren con un clic en el nombre del archivo. Se pueden **agregar** más o **eliminar** uno. Los que
   mandó la propia persona por la web dicen "enviado por el postulante".
+- **Entrevistas**: agendarlas, cargar el resultado y avisar al postulante (ver más abajo).
 - **Historial**: qué cambió, quién lo hizo y cuándo.
 
 ## Etapas de una postulación
@@ -122,6 +123,40 @@ muestran los pasos permitidos. Cada cambio permite dejar un **comentario** que q
 **Reabrir:** una postulación *Rechazada* o *Retirada* se puede **reabrir**, y vuelve a *En revisión* (no a la
 etapa en la que estaba: retomarla es una decisión nueva). Un postulante solo puede tener **una postulación
 abierta** a la vez, así que no se puede reabrir una si ya hay otra en curso.
+
+## Entrevistas
+
+Desde la ficha, en la sección **Entrevistas**, el botón **"Agendar entrevista"** (para quien tiene permiso para crear)
+registra una entrevista de la postulación abierta:
+
+- **Fecha y hora**, **duración** (en minutos), **modalidad** (*Presencial*, *Telefónica* o *Videollamada*) y el **lugar**
+  o el **link** de la videollamada.
+- **Entrevistadores** (al menos uno): solo se pueden elegir personas con acceso a Postulantes. Cada uno recibe un
+  **aviso en la campanita** (y en el celular, si lo activó). A quien agenda no se le avisa a sí mismo.
+
+Al agendar, una postulación en *Nueva* o *En revisión* **pasa sola a *Entrevista*** y queda en el historial. Si ya
+estaba en *Oferta*, se agenda igual pero **no vuelve de etapa**. Una postulación rechazada o retirada no se puede
+entrevistar: primero hay que reabrirla.
+
+En cada entrevista agendada hay botones para:
+
+- **Avisar por WhatsApp**: abre la conversación con el postulante con el mensaje ya escrito (día, hora, modalidad y
+  lugar). Lo envía quien aprieta "enviar", no el sistema.
+- **Cargar resultado**: **puntaje de 1 a 5 estrellas**, **recomendación** (*Avanzar*, *Esperar* o *No avanzar*) y una
+  **devolución** libre. La entrevista pasa a *Realizada*. **Cargar el resultado no cambia la etapa de la postulación**:
+  pasarla a *Oferta* o rechazarla se decide aparte, con sus botones. Se puede **corregir** después.
+- **Reprogramar**: cambia fecha, lugar o entrevistadores. Los entrevistadores nuevos reciben el aviso de asignación y los
+  que ya estaban reciben uno de "reprogramada" si cambió la hora.
+- **No vino** y **Cancelar**: la entrevista queda registrada con ese estado (no se borra) y no avisa a nadie.
+
+Una entrevista ya realizada no se reprograma; solo se corrige su resultado. Todo queda en el **historial**.
+
+### Aviso en el inicio
+
+La tarjeta **"Entrevistas de hoy y mañana"** muestra las entrevistas agendadas **donde vos sos entrevistador**. A
+diferencia de "Consultas web" o "Postulaciones nuevas", **es personal**. También incluye las de hoy que **ya pasaron y
+siguen sin resultado**, marcadas como *Sin resultado*: son las que falta cerrar. Si una entrevista se reprograma,
+reaparece aunque la hubieras marcado como vista; desaparece sola al cargar el resultado, cancelarla o marcar que no vino.
 
 ## Qué se ve en el listado
 
@@ -146,8 +181,8 @@ Documentación ni en los avisos de vencimientos.
 ## Permisos
 
 - **Postulantes — ver**: entrar al módulo y abrir fichas.
-- **Postulantes — crear**: cargar postulantes, crear postulaciones y agregar archivos.
-- **Postulantes — modificar**: editar datos y cambiar de etapa.
+- **Postulantes — crear**: cargar postulantes, crear postulaciones, agregar archivos y agendar entrevistas.
+- **Postulantes — modificar**: editar datos, cambiar de etapa y reprogramar, cancelar o cargar el resultado de una entrevista.
 - **Postulantes — eliminar**: borrar postulantes y archivos.
 
-<!-- ref: conmomet-app/src/app/trabaja-con-nosotros/page.tsx, conmomet-app/src/components/landing/LandingHeader.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, api_conmomet/controllers/publicJobApplicationController.js, conmomet-app/src/app/dashboard/candidates/page.tsx, conmomet-app/src/app/dashboard/candidates/[id]/page.tsx, conmomet-app/src/components/candidates/CandidateFormFields.tsx, conmomet-app/src/components/candidates/CandidateDuplicateAlerts.tsx, conmomet-app/src/components/candidates/CandidateFilePicker.tsx, conmomet-app/src/utils/candidates.ts, api_conmomet/controllers/candidateController.js, api_conmomet/helpers/candidateStages.js, api_conmomet/helpers/candidateMatching.js, api_conmomet/helpers/phone.js, api_conmomet/middlewares/candidateUpload.js, api_conmomet/models/candidate.js -->
+<!-- ref: conmomet-app/src/components/candidates/CandidateInterviewsSection.tsx, conmomet-app/src/components/common/EntrevistasProximasAlert.tsx, api_conmomet/controllers/candidateInterviewController.js, api_conmomet/helpers/candidateInterviews.js, conmomet-app/src/app/trabaja-con-nosotros/page.tsx, conmomet-app/src/components/landing/LandingHeader.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, api_conmomet/controllers/publicJobApplicationController.js, conmomet-app/src/app/dashboard/candidates/page.tsx, conmomet-app/src/app/dashboard/candidates/[id]/page.tsx, conmomet-app/src/components/candidates/CandidateFormFields.tsx, conmomet-app/src/components/candidates/CandidateDuplicateAlerts.tsx, conmomet-app/src/components/candidates/CandidateFilePicker.tsx, conmomet-app/src/utils/candidates.ts, api_conmomet/controllers/candidateController.js, api_conmomet/helpers/candidateStages.js, api_conmomet/helpers/candidateMatching.js, api_conmomet/helpers/phone.js, api_conmomet/middlewares/candidateUpload.js, api_conmomet/models/candidate.js -->

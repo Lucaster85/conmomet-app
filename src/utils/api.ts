@@ -3374,7 +3374,9 @@ export type NotificationType =
   // Llegó una consulta por el formulario de contacto de la web (FLOWS.md §58). Se avisa por permiso.
   | 'contact_inquiry_received'
   // Llegó una postulación por "Trabajá con nosotros", o alguien volvió a mandar su CV (FLOWS.md §60).
-  | 'job_application_received';
+  | 'job_application_received'
+  // Te asignaron o reprogramaron una entrevista a un postulante (FLOWS.md §61).
+  | 'candidate_interview_assigned';
 
 export interface AppNotification {
   id: number;
@@ -6833,6 +6835,7 @@ export interface Candidate {
   createdByUser?: { id: number; name: string; lastname: string } | null;
   former_employee?: CandidateEmployeeMatch | null;
   current_employee?: CandidateEmployeeMatch | null;
+  interviews?: CandidateInterview[];
 }
 
 export interface CandidateDuplicates {
@@ -6845,7 +6848,8 @@ export interface CandidateHistoryEntry {
   id: number;
   application_id: number;
   position_of_interest?: string | null;
-  event: 'created' | 'stage_changed' | 'reopened' | 'resubmitted' | 'converted';
+  event: 'created' | 'stage_changed' | 'reopened' | 'resubmitted' | 'converted'
+    | 'interview_scheduled' | 'interview_rescheduled' | 'interview_cancelled' | 'interview_result';
   from_stage?: CandidateStage | null;
   to_stage?: CandidateStage | null;
   comment?: string | null;
@@ -6880,6 +6884,42 @@ export interface CandidateCreateValues extends CandidateFormValues {
 export interface CandidateUploadFile {
   file: File;
   kind: CandidateFileKind;
+}
+
+export type InterviewModality = 'in_person' | 'phone' | 'video';
+export type InterviewStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+export type InterviewRecommendation = 'advance' | 'hold' | 'reject';
+
+export interface CandidateInterview {
+  id: number;
+  application_id: number;
+  scheduled_at: string;
+  duration_minutes: number;
+  modality: InterviewModality;
+  location?: string | null;
+  status: InterviewStatus;
+  rating?: number | null;
+  recommendation?: InterviewRecommendation | null;
+  feedback?: string | null;
+  interviewers?: { id: number; name: string; lastname: string }[];
+}
+
+// Entrevista de hoy o mañana del usuario, con el postulante (aviso del tablero).
+export interface UpcomingInterview extends CandidateInterview {
+  application: {
+    id: number;
+    position_of_interest?: string | null;
+    candidate: { id: number; name: string; lastname: string; phone?: string | null };
+  };
+}
+
+export interface InterviewScheduleValues {
+  application_id?: number;
+  scheduled_at: string; // ISO
+  duration_minutes: number;
+  modality: InterviewModality;
+  location: string;
+  interviewer_ids: number[];
 }
 
 export class CandidateService {
@@ -7034,5 +7074,58 @@ export class PublicJobApplicationService {
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || 'No pudimos enviar tu postulación. Probá de nuevo en unos minutos.');
     return body.message || 'Recibimos tu postulación.';
+  }
+}
+
+export class CandidateInterviewService {
+  private static async parse<T>(response: Response, fallback: string): Promise<T> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallback);
+    }
+    return (await response.json()).data;
+  }
+
+  static async create(candidateId: number, values: InterviewScheduleValues): Promise<CandidateInterview> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${candidateId}/interviews`, {
+      method: 'POST',
+      body: JSON.stringify(values),
+    });
+    return this.parse(response, 'Error al agendar la entrevista');
+  }
+
+  static async update(
+    candidateId: number,
+    interviewId: number,
+    values: Partial<Omit<InterviewScheduleValues, 'application_id'>> & { status?: 'cancelled' | 'no_show' }
+  ): Promise<CandidateInterview> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${candidateId}/interviews/${interviewId}`, {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    });
+    return this.parse(response, 'Error al actualizar la entrevista');
+  }
+
+  static async saveResult(
+    candidateId: number,
+    interviewId: number,
+    values: { rating: number; recommendation: InterviewRecommendation; feedback: string }
+  ): Promise<CandidateInterview> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${candidateId}/interviews/${interviewId}/result`, {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    });
+    return this.parse(response, 'Error al guardar el resultado');
+  }
+
+  static async getUpcoming(): Promise<UpcomingInterview[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/interviews/upcoming`);
+    return (await this.parse<UpcomingInterview[]>(response, 'Error al obtener las entrevistas')) || [];
+  }
+
+  // Usuarios que pueden ver postulantes, para el combo de entrevistadores (sin exigir users_read).
+  static async getInterviewers(): Promise<{ id: number; name: string; lastname: string }[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/interviewers`);
+    return (await this.parse<{ id: number; name: string; lastname: string }[]>(response, 'Error al obtener los entrevistadores')) || [];
   }
 }

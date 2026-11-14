@@ -12,6 +12,7 @@ import GearSpinner from '../../../../components/GearSpinner';
 import CandidateFormFields, { emptyCandidateForm } from '../../../../components/candidates/CandidateFormFields';
 import CandidateDuplicateAlerts from '../../../../components/candidates/CandidateDuplicateAlerts';
 import CandidateFilePicker from '../../../../components/candidates/CandidateFilePicker';
+import CandidateInterviewsSection from '../../../../components/candidates/CandidateInterviewsSection';
 import {
   ArrowBackOutlined as BackIcon, EditOutlined as EditIcon, DeleteOutlined as DeleteIcon,
   AddOutlined as AddIcon, AttachFileOutlined as AttachIcon, WhatsApp as WhatsAppIcon,
@@ -74,6 +75,10 @@ const EVENT_LABELS: Record<CandidateHistoryEntry['event'], string> = {
   stage_changed: 'Cambio de etapa',
   reopened: 'Postulación reabierta',
   resubmitted: 'Volvió a enviar su CV',
+  interview_scheduled: 'Entrevista agendada',
+  interview_rescheduled: 'Entrevista reprogramada',
+  interview_cancelled: 'Entrevista cancelada',
+  interview_result: 'Resultado de entrevista',
   converted: 'Dado de alta como empleado',
 };
 
@@ -426,6 +431,16 @@ export default function CandidateDetailPage() {
           </Stack>
         )}
       </Paper>
+
+      {/* Entrevistas */}
+      <CandidateInterviewsSection
+        candidate={candidate}
+        canWrite={canWrite}
+        canUpdate={canUpdate}
+        hasOpenApplication={hasOpenApplication}
+        onError={setError}
+        onChanged={async (message) => { setSuccess(message); await load(); }}
+      />
 
       {/* Papeles */}
       <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>

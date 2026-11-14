@@ -1,5 +1,5 @@
 import type {
-  CandidateFileKind, CandidateRejectionReason, CandidateSource, CandidateStage, CandidateApplication, Candidate,
+  InterviewModality, InterviewRecommendation, InterviewStatus, CandidateFileKind, CandidateRejectionReason, CandidateSource, CandidateStage, CandidateApplication, Candidate,
 } from './api';
 
 // Vocabulario de Postulantes (ver FLOWS.md §59). Espejo de api_conmomet/helpers/candidateStages.js y de
@@ -96,3 +96,30 @@ export function currentApplication(candidate: Pick<Candidate, 'applications'>): 
 }
 
 export const fullName = (c: { name: string; lastname: string }) => `${c.name} ${c.lastname}`;
+
+// Entrevistas (FLOWS.md §61). Espejo de api_conmomet/helpers/candidateInterviews.js.
+export const INTERVIEW_MODALITY_LABELS: Record<InterviewModality, string> = {
+  in_person: 'Presencial',
+  phone: 'Telefónica',
+  video: 'Videollamada',
+};
+
+export const INTERVIEW_STATUS_LABELS: Record<InterviewStatus, { label: string; color: ChipColor }> = {
+  scheduled: { label: 'Agendada', color: 'info' },
+  completed: { label: 'Realizada', color: 'success' },
+  cancelled: { label: 'Cancelada', color: 'default' },
+  no_show: { label: 'No vino', color: 'warning' },
+};
+
+export const INTERVIEW_RECOMMENDATION_LABELS: Record<InterviewRecommendation, { label: string; color: ChipColor }> = {
+  advance: { label: 'Avanzar', color: 'success' },
+  hold: { label: 'Esperar', color: 'warning' },
+  reject: { label: 'No avanzar', color: 'error' },
+};
+
+// "mié 3/12, 15:30" en hora de Argentina (la que se agendó).
+export function formatInterviewWhen(iso: string): string {
+  return new Date(iso).toLocaleString('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires', weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}

@@ -117,7 +117,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'trabajá con nosotros', 'busqueda laboral', 'búsqueda laboral', 'selección', 'seleccion', 'reclutamiento',
       'entrevista', 'oferta', 'rechazar', 'rechazada', 'retirada', 'reabrir', 'etapa', 'etapas', 'duplicado',
       'duplicados', 'ex empleado', 'ex-empleado', 'exempleado', 'reingreso', 'dni', 'cuil', 'oficio', 'archivo',
-      'archivos', 'pdf', 'carta de presentacion', 'formulario', 'pagina web', 'página web', 'web', 'consentimiento', 'spam', 'reenvio', 'reenvío', 'privacidad', 'datos personales', 'eliminar', 'ver terminados',
+      'archivos', 'pdf', 'carta de presentacion', 'agendar', 'agenda', 'reprogramar', 'puntaje', 'estrellas', 'recomendacion', 'recomendación', 'devolucion', 'devolución', 'no vino', 'whatsapp', 'entrevistador', 'entrevistadores', 'formulario', 'pagina web', 'página web', 'web', 'consentimiento', 'spam', 'reenvio', 'reenvío', 'privacidad', 'datos personales', 'eliminar', 'ver terminados',
     ],
     file: 'postulantes.md',
   },

@@ -13,7 +13,8 @@ export type AlertType =
   | 'additional_pending_budget'
   | 'budget_awaiting_response'
   | 'contact_inquiry'
-  | 'candidate_application';
+  | 'candidate_application'
+  | 'candidate_interview';
 
 // Orden fijo de la barra de resumen, para que los chips no bailen de lugar según cuál termine de
 // cargar primero. De más accionable a más informativo.
@@ -30,6 +31,7 @@ export const ALERT_ORDER: AlertType[] = [
   'budget_awaiting_response',
   'contact_inquiry',
   'candidate_application',
+  'candidate_interview',
 ];
 
 // Etiqueta corta para el chip de la barra (la tarjeta usa su propio título largo).
@@ -46,6 +48,7 @@ export const ALERT_SHORT_LABEL: Record<AlertType, string> = {
   budget_awaiting_response: 'Presupuestos sin respuesta',
   contact_inquiry: 'Consultas web',
   candidate_application: 'Postulaciones nuevas',
+  candidate_interview: 'Entrevistas',
 };
 
 // Cuántos items no vistos se muestran en una tarjeta antes de resumir el resto en "y N más".
