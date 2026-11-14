@@ -6825,6 +6825,9 @@ export interface Candidate {
   source: CandidateSource;
   referred_by_employee_id?: number | null;
   employee_id?: number | null;
+  // Consentimiento de tratamiento de datos: cuándo aceptó y qué versión del texto (la carga interna no lo tiene).
+  consent_accepted_at?: string | null;
+  consent_version?: string | null;
   // Sequelize `underscored` deja los timestamps automáticos en camelCase en el JSON.
   createdAt: string;
   // Solo en el listado:
@@ -7064,10 +7067,12 @@ export interface JobApplicationValues {
 }
 
 export class PublicJobApplicationService {
-  static async submit(values: JobApplicationValues, cv: File, coverLetterFile?: File | null): Promise<string> {
+  // `consentVersion`: la versión del texto de privacidad que la persona VIO al aceptar (la que trajo getPublicCurrent).
+  static async submit(values: JobApplicationValues, cv: File, coverLetterFile: File | null | undefined, consentVersion: number): Promise<string> {
     const formData = new FormData();
     Object.entries(values).forEach(([key, value]) => formData.append(key, typeof value === 'boolean' ? String(value) : value));
     formData.append('consent', 'true');
+    formData.append('consent_version', String(consentVersion));
     const files: { file: File; kind: 'cv' | 'cover_letter' }[] = [{ file: cv, kind: 'cv' }];
     if (coverLetterFile) files.push({ file: coverLetterFile, kind: 'cover_letter' });
     files.forEach((f) => formData.append('files', f.file));
@@ -7131,5 +7136,43 @@ export class CandidateInterviewService {
   static async getInterviewers(): Promise<{ id: number; name: string; lastname: string }[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/interviewers`);
     return (await this.parse<{ id: number; name: string; lastname: string }[]>(response, 'Error al obtener los entrevistadores')) || [];
+  }
+}
+
+// Texto de privacidad de "Trabajá con nosotros" (FLOWS.md §63): versionado y de solo agregar. El público
+// lee solo la versión vigente; el historial y la publicación son de Configuración General.
+export interface ConsentText {
+  id: number;
+  version: number;
+  content: string;
+  created_at: string;
+  created_by: { id: number; name: string; lastname: string } | null;
+}
+
+export class ConsentTextService {
+  // Sin sesión: lo usa la página pública. Devuelve la versión que después se manda al enviar el formulario.
+  static async getPublicCurrent(): Promise<{ version: number; content: string }> {
+    const response = await fetch(`${API_BASE_URL}/public/job-applications/privacy`);
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'No se pudo cargar el texto de privacidad.');
+    return body.data;
+  }
+
+  static async list(): Promise<ConsentText[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings/privacy-texts`);
+    if (!response.ok) throw new Error('Error al obtener el historial del texto de privacidad');
+    return (await response.json()).data || [];
+  }
+
+  static async publish(content: string): Promise<ConsentText> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings/privacy-texts`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al publicar el texto de privacidad');
+    }
+    return (await response.json()).data;
   }
 }

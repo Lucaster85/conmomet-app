@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert, Box, Button, Checkbox, Collapse, Container, FormControlLabel, FormHelperText, Link, Paper,
   Stack, Switch, TextField, Typography,
@@ -15,7 +15,7 @@ import DniField from '../../components/DniField';
 import PhoneField from '../../components/PhoneField';
 import EmailField from '../../components/EmailField';
 import DateField from '../../components/DateField';
-import { JobApplicationValues, PublicJobApplicationService } from '../../utils/api';
+import { ConsentTextService, JobApplicationValues, PublicJobApplicationService } from '../../utils/api';
 import { validateDni, validateEmail, validatePhone } from '../../utils/validators';
 import { validateCandidateFile, CANDIDATE_ACCEPT } from '../../utils/candidates';
 
@@ -37,29 +37,14 @@ const initialValues: JobApplicationValues = {
   website: '',
 };
 
-// Versión del texto de abajo: tiene que coincidir con CONSENT_VERSION de
-// api_conmomet/controllers/publicJobApplicationController.js si se cambia el texto.
-function PrivacyText() {
+// El texto de privacidad NO está escrito acá: lo edita Personal desde Configuración General y viene del backend
+// (FLOWS.md §63), junto con su número de versión. Se muestra como texto plano (`pre-line`, nunca HTML) y la versión
+// se manda al enviar, para que quede guardado qué texto vio la persona al aceptar.
+function PrivacyText({ content }: { content: string }) {
   return (
-    <Stack spacing={1} sx={{ mt: 1, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-      <Typography variant="body2">
-        <strong>Responsable:</strong> Conmomet S.A. Usamos los datos que nos enviás (incluidos tu DNI y tu CV) únicamente para
-        evaluar tu postulación y para contactarte por búsquedas laborales de la empresa.
-      </Typography>
-      <Typography variant="body2">
-        <strong>Quién los ve:</strong> solo el personal de la empresa que se ocupa de las contrataciones. No los cedemos a terceros.
-      </Typography>
-      <Typography variant="body2">
-        <strong>Por cuánto tiempo:</strong> los conservamos mientras sean necesarios para evaluar tu postulación y futuras
-        búsquedas, o hasta que nos pidas que los eliminemos.
-      </Typography>
-      <Typography variant="body2">
-        <strong>Tus derechos:</strong> podés pedirnos acceso, rectificación o supresión de tus datos escribiendo a{' '}
-        <Link href="mailto:montajes@conmomet.com.ar">montajes@conmomet.com.ar</Link>. Según la Ley 25.326 el titular puede ejercer
-        el derecho de acceso en forma gratuita a intervalos no inferiores a seis meses, y la Agencia de Acceso a la Información
-        Pública, órgano de control de esa ley, atiende las denuncias y reclamos por incumplimientos.
-      </Typography>
-    </Stack>
+    <Box sx={{ mt: 1, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+      <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>{content}</Typography>
+    </Box>
   );
 }
 
@@ -69,12 +54,20 @@ export default function JobApplicationPage() {
   const [letterFile, setLetterFile] = useState<File | null>(null);
   const [consent, setConsent] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [privacy, setPrivacy] = useState<{ version: number; content: string } | null>(null);
+  const [privacyError, setPrivacyError] = useState('');
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
   const cvInput = useRef<HTMLInputElement>(null);
   const letterInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    ConsentTextService.getPublicCurrent()
+      .then(setPrivacy)
+      .catch((err) => setPrivacyError(err instanceof Error ? err.message : 'No se pudo cargar el texto de privacidad.'));
+  }, []);
 
   const set = (patch: Partial<JobApplicationValues>) => setValues((prev) => ({ ...prev, ...patch }));
 
@@ -108,14 +101,14 @@ export default function JobApplicationPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitAttempted(true);
-    if (hasErrors || !cv) {
+    if (hasErrors || !cv || !privacy) {
       setError('Revisá los campos marcados antes de enviar.');
       return;
     }
     setError('');
     setSending(true);
     try {
-      setDone(await PublicJobApplicationService.submit(values, cv, letterFile));
+      setDone(await PublicJobApplicationService.submit(values, cv, letterFile, privacy.version));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No pudimos enviar tu postulación. Probá de nuevo en unos minutos.');
@@ -217,6 +210,7 @@ export default function JobApplicationPage() {
                   </label>
                 </Box>
 
+                {privacyError && <Alert severity="error">{privacyError} Recargá la página para poder enviar tu postulación.</Alert>}
                 <Box>
                   <FormControlLabel
                     control={<Checkbox checked={consent} onChange={(e) => setConsent(e.target.checked)} />}
@@ -229,10 +223,10 @@ export default function JobApplicationPage() {
                       {showPrivacy ? 'Ocultar' : 'Ver'} cómo tratamos tus datos
                     </Link>
                   </FormHelperText>
-                  <Collapse in={showPrivacy}><PrivacyText /></Collapse>
+                  <Collapse in={showPrivacy}>{privacy && <PrivacyText content={privacy.content} />}</Collapse>
                 </Box>
 
-                <Button type="submit" variant="contained" size="large" disabled={sending}
+                <Button type="submit" variant="contained" size="large" disabled={sending || !privacy}
                   endIcon={sending ? <GearSpinner size={18} /> : <SendIcon />} sx={{ borderRadius: '10px', fontWeight: 600, alignSelf: { sm: 'flex-end' }, px: 4 }}>
                   {sending ? 'Enviando...' : 'Enviar postulación'}
                 </Button>
