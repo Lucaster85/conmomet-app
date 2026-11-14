@@ -363,6 +363,11 @@ export default function CandidateDetailPage() {
           <DataRow label="Años de experiencia">{candidate.years_experience !== null && candidate.years_experience !== undefined ? String(candidate.years_experience) : null}</DataRow>
           <DataRow label="Registro de conducir">{candidate.has_driver_license ? 'Sí' : 'No'}</DataRow>
           <DataRow label="Recomendado por">{candidate.referredBy ? fullName(candidate.referredBy) : null}</DataRow>
+          <DataRow label="Consentimiento de datos">
+            {candidate.consent_accepted_at
+              ? `Aceptó el texto de privacidad (versión ${candidate.consent_version || '—'}) el ${formatDate(candidate.consent_accepted_at)}`
+              : null}
+          </DataRow>
           <DataRow label="Cargado">
             {formatDate(candidate.createdAt)}{candidate.createdByUser ? ` por ${fullName(candidate.createdByUser)}` : ''}
           </DataRow>

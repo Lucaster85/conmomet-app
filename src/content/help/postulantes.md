@@ -64,12 +64,29 @@ y en el pie de página). Lleva a un formulario **público, sin usuario**, donde 
 - **Oficio o puesto de interés**, años de experiencia, si tiene registro de conducir y un texto libre.
 - **CV** (obligatorio) y, si quiere, una **carta de presentación** adjunta.
 - **Aceptar el tratamiento de sus datos personales**: sin eso no se puede enviar. Queda guardado cuándo aceptó, desde
-  qué conexión y qué versión del texto de privacidad leyó.
+  qué conexión y **qué versión del texto de privacidad leyó** (se ve en la ficha, en "Consentimiento de datos").
 
 Al enviar, la postulación queda en este módulo con origen **Web** y etapa **Nueva**, y se avisa a **todas las personas
 con acceso a Postulantes**: por la **campanita** (y el celular, si lo activaron) y con la tarjeta **"Postulaciones nuevas"**
 del inicio, que se mantiene mientras la postulación siga en etapa *Nueva*. Al tocar el aviso se abre la ficha.
 La persona ve siempre el mismo mensaje de agradecimiento, y no se le dice si ya estaba cargada.
+
+### Cambiar el texto de privacidad
+
+El texto que la persona acepta **se edita desde Configuración General → "Trabajá con nosotros — Texto de privacidad"** (para
+quien tiene permiso de configuración). Tiene estas reglas:
+
+- **Cada cambio es una versión nueva.** Se escribe el texto y se toca **"Publicar nueva versión"**; vale solo para las
+  postulaciones que lleguen **desde ese momento**.
+- **Las versiones anteriores no se modifican ni se borran**: cada postulante conserva la versión que aceptó, y con el
+  historial se puede ver exactamente qué texto era. Por eso el botón no dice "Guardar" y no existe "Eliminar versión".
+- **Para volver atrás**, en el historial se elige **"Usar como base"** sobre la versión anterior y se publica como una versión nueva.
+- No se puede publicar un texto vacío, igual al vigente o de más de 20.000 caracteres.
+- Se muestra como **texto plano**: los saltos de línea y los párrafos separados por una línea en blanco se respetan; no admite
+  formato ni enlaces activos.
+- Si una persona ya tenía el formulario abierto cuando se publicó la versión nueva, se le guarda **la que ella vio**.
+
+Conviene que el texto lo revise quien corresponda en lo legal antes de publicarlo.
 
 ### Si la persona ya estaba cargada
 
@@ -211,4 +228,4 @@ Documentación ni en los avisos de vencimientos.
 - **Postulantes — modificar**: editar datos, cambiar de etapa y reprogramar, cancelar o cargar el resultado de una entrevista. También hace falta, junto con el permiso de dar de alta empleados, para **dar de alta a un postulante como empleado**.
 - **Postulantes — eliminar**: borrar postulantes y archivos.
 
-<!-- ref: api_conmomet/services/candidateConversion.js, conmomet-app/src/app/dashboard/employees/page.tsx, conmomet-app/src/components/candidates/CandidateInterviewsSection.tsx, conmomet-app/src/components/common/EntrevistasProximasAlert.tsx, api_conmomet/controllers/candidateInterviewController.js, api_conmomet/helpers/candidateInterviews.js, conmomet-app/src/app/trabaja-con-nosotros/page.tsx, conmomet-app/src/components/landing/LandingHeader.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, api_conmomet/controllers/publicJobApplicationController.js, conmomet-app/src/app/dashboard/candidates/page.tsx, conmomet-app/src/app/dashboard/candidates/[id]/page.tsx, conmomet-app/src/components/candidates/CandidateFormFields.tsx, conmomet-app/src/components/candidates/CandidateDuplicateAlerts.tsx, conmomet-app/src/components/candidates/CandidateFilePicker.tsx, conmomet-app/src/utils/candidates.ts, api_conmomet/controllers/candidateController.js, api_conmomet/helpers/candidateStages.js, api_conmomet/helpers/candidateMatching.js, api_conmomet/helpers/phone.js, api_conmomet/middlewares/candidateUpload.js, api_conmomet/models/candidate.js -->
+<!-- ref: conmomet-app/src/components/settings/PrivacyTextSettingsCard.tsx, api_conmomet/controllers/consentTextController.js, api_conmomet/models/consentText.js, api_conmomet/services/candidateConversion.js, conmomet-app/src/app/dashboard/employees/page.tsx, conmomet-app/src/components/candidates/CandidateInterviewsSection.tsx, conmomet-app/src/components/common/EntrevistasProximasAlert.tsx, api_conmomet/controllers/candidateInterviewController.js, api_conmomet/helpers/candidateInterviews.js, conmomet-app/src/app/trabaja-con-nosotros/page.tsx, conmomet-app/src/components/landing/LandingHeader.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, api_conmomet/controllers/publicJobApplicationController.js, conmomet-app/src/app/dashboard/candidates/page.tsx, conmomet-app/src/app/dashboard/candidates/[id]/page.tsx, conmomet-app/src/components/candidates/CandidateFormFields.tsx, conmomet-app/src/components/candidates/CandidateDuplicateAlerts.tsx, conmomet-app/src/components/candidates/CandidateFilePicker.tsx, conmomet-app/src/utils/candidates.ts, api_conmomet/controllers/candidateController.js, api_conmomet/helpers/candidateStages.js, api_conmomet/helpers/candidateMatching.js, api_conmomet/helpers/phone.js, api_conmomet/middlewares/candidateUpload.js, api_conmomet/models/candidate.js -->
