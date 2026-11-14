@@ -108,6 +108,20 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'vacaciones.md',
   },
   {
+    id: 'postulantes',
+    category: 'Personal',
+    title: 'Postulantes: cargar a quien se presenta a trabajar',
+    keywords: [
+      'postulante', 'postulantes', 'postulacion', 'postulación', 'postulaciones', 'candidato',
+      'candidatos', 'cv', 'curriculum', 'currículum', 'curriculum vitae', 'trabajar', 'trabaja con nosotros',
+      'trabajá con nosotros', 'busqueda laboral', 'búsqueda laboral', 'selección', 'seleccion', 'reclutamiento',
+      'entrevista', 'oferta', 'rechazar', 'rechazada', 'retirada', 'reabrir', 'etapa', 'etapas', 'duplicado',
+      'duplicados', 'ex empleado', 'ex-empleado', 'exempleado', 'reingreso', 'dni', 'cuil', 'oficio', 'archivo',
+      'archivos', 'pdf', 'carta de presentacion', 'privacidad', 'datos personales', 'eliminar', 'ver terminados',
+    ],
+    file: 'postulantes.md',
+  },
+  {
     id: 'epp',
     category: 'Personal',
     title: 'Entrega de EPP, vencimientos y talles',

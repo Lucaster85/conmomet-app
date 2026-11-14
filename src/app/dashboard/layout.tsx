@@ -44,6 +44,7 @@ import {
   AdminPanelSettingsOutlined as RolesIcon,
   FactoryOutlined as FactoryIcon,
   BadgeOutlined as BadgeIcon,
+  PersonSearchOutlined as CandidateIcon,
   AccessTimeOutlined as TimeIcon,
   EventAvailableOutlined as EventAvailableIcon,
   PaymentsOutlined as PaymentsIcon,
@@ -125,6 +126,7 @@ const menuGroups: MenuGroupDef[] = [
     icon: <PersonnelGroupIcon />,
     items: [
       { text: 'Empleados', icon: <BadgeIcon />, path: '/dashboard/employees', requiredPermission: 'employees_read' },
+      { text: 'Postulantes', icon: <CandidateIcon />, path: '/dashboard/candidates', requiredPermission: 'candidates_read' },
       { text: 'Licencias y Vacaciones', icon: <BeachAccessIcon />, path: '/dashboard/leave-requests', requiredPermission: 'leave_requests_read' },
       { text: 'Carga de Horas', icon: <TimeIcon />, path: '/dashboard/time-entries', requiredPermission: 'time_entries_read' },
       { text: 'Presentismo', icon: <EventAvailableIcon />, path: '/dashboard/attendance', requiredPermission: 'attendance_read' },

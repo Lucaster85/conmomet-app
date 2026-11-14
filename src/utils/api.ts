@@ -335,12 +335,25 @@ export interface LookupBudgetManager {
   lastname: string;
 }
 
+export interface LookupCategory {
+  id: number;
+  name: string;
+}
+
 export class LookupService {
   static async getRoles(): Promise<Pick<Role, 'id' | 'name' | 'level' | 'has_dashboard_access'>[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/roles`);
     if (!response.ok) {
       throw new Error('Error al obtener los roles disponibles');
     }
+    const data = await response.json();
+    return data.data || [];
+  }
+
+  // Categorías (CCT) para el combo del postulante, sin requerir categories_read. Solo id + nombre.
+  static async getCategories(): Promise<LookupCategory[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/lookup/categories`);
+    if (!response.ok) throw new Error('Error al obtener las categorías');
     const data = await response.json();
     return data.data || [];
   }
@@ -6739,5 +6752,248 @@ export class ContactInquiryService {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.error || 'Error al eliminar la consulta');
     }
+  }
+}
+
+// Postulantes (FLOWS.md §59): la PERSONA que se presenta a trabajar (Candidate) y sus postulaciones
+// (CandidateApplication). Carga interna desde el dashboard; el formulario público y la conversión en
+// empleado son etapas siguientes.
+export type CandidateStage = 'new' | 'screening' | 'interview' | 'offer' | 'hired' | 'rejected' | 'withdrawn';
+export type CandidateSource = 'web' | 'in_person' | 'referral' | 'other';
+export type CandidateFileKind = 'cv' | 'cover_letter' | 'certificate' | 'other';
+export type CandidateRejectionReason =
+  | 'profile_mismatch' | 'no_vacancies' | 'no_response' | 'failed_interview' | 'salary_expectations' | 'other';
+
+export interface CandidateApplication {
+  id: number;
+  candidate_id: number;
+  stage: CandidateStage;
+  position_of_interest?: string | null;
+  cover_letter?: string | null;
+  rejection_reason?: CandidateRejectionReason | null;
+  rejection_notes?: string | null;
+  source: CandidateSource;
+  applied_at: string;
+}
+
+export interface CandidateFile {
+  id: number;
+  candidate_id: number;
+  application_id?: number | null;
+  kind: CandidateFileKind;
+  file_url: string;
+  file_name?: string | null;
+  mime_type?: string | null;
+  size_bytes?: number | null;
+  uploader?: { id: number; name: string; lastname: string } | null;
+}
+
+// Empleado (actual o ex) que comparte DNI/CUIL con un postulante — se calcula al leer en el backend.
+export interface CandidateEmployeeMatch {
+  id: number;
+  name: string;
+  lastname: string;
+  status: string;
+  termination_date?: string | null;
+  deleted: boolean;
+}
+
+export interface Candidate {
+  id: number;
+  name: string;
+  lastname: string;
+  dni?: string | null;
+  cuil?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  birth_date?: string | null;
+  address?: string | null;
+  locality?: string | null;
+  trade?: string | null;
+  category_id?: number | null;
+  years_experience?: number | null;
+  has_driver_license: boolean;
+  notes?: string | null;
+  source: CandidateSource;
+  referred_by_employee_id?: number | null;
+  employee_id?: number | null;
+  // Sequelize `underscored` deja los timestamps automáticos en camelCase en el JSON.
+  createdAt: string;
+  // Solo en el listado:
+  files_count?: number | string;
+  // Listado (versión resumida) y detalle:
+  applications?: CandidateApplication[];
+  category?: { id: number; name: string } | null;
+  // Solo en el detalle:
+  files?: CandidateFile[];
+  employee?: { id: number; name: string; lastname: string } | null;
+  referredBy?: { id: number; name: string; lastname: string } | null;
+  createdByUser?: { id: number; name: string; lastname: string } | null;
+  former_employee?: CandidateEmployeeMatch | null;
+  current_employee?: CandidateEmployeeMatch | null;
+}
+
+export interface CandidateDuplicates {
+  candidates: (Pick<Candidate, 'id' | 'name' | 'lastname' | 'dni' | 'cuil' | 'email' | 'phone'> & { matched_on: ('dni' | 'cuil' | 'email' | 'phone')[] })[];
+  current_employees: CandidateEmployeeMatch[];
+  former_employees: CandidateEmployeeMatch[];
+}
+
+export interface CandidateHistoryEntry {
+  id: number;
+  application_id: number;
+  position_of_interest?: string | null;
+  event: 'created' | 'stage_changed' | 'reopened' | 'resubmitted' | 'converted';
+  from_stage?: CandidateStage | null;
+  to_stage?: CandidateStage | null;
+  comment?: string | null;
+  at: string;
+  actor: { id: number; name: string; lastname: string } | null;
+}
+
+// Los datos de la persona tal cual se tipean en el formulario (strings; el backend normaliza).
+export interface CandidateFormValues {
+  name: string;
+  lastname: string;
+  dni: string;
+  cuil: string;
+  email: string;
+  phone: string;
+  birth_date: string;
+  address: string;
+  locality: string;
+  trade: string;
+  category_id: string;
+  years_experience: string;
+  has_driver_license: boolean;
+  notes: string;
+  source: Exclude<CandidateSource, 'web'>;
+}
+
+export interface CandidateCreateValues extends CandidateFormValues {
+  position_of_interest: string;
+  cover_letter: string;
+}
+
+export interface CandidateUploadFile {
+  file: File;
+  kind: CandidateFileKind;
+}
+
+export class CandidateService {
+  private static async parse<T>(response: Response, fallback: string): Promise<T> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallback);
+    }
+    return (await response.json()).data;
+  }
+
+  private static appendFields(formData: FormData, values: Record<string, string | boolean | undefined>) {
+    Object.entries(values).forEach(([key, value]) => {
+      if (value === undefined) return;
+      formData.append(key, typeof value === 'boolean' ? String(value) : value);
+    });
+  }
+
+  private static appendFiles(formData: FormData, files: CandidateUploadFile[]) {
+    files.forEach((f) => formData.append('files', f.file));
+    // Mismo orden que `files`: el backend asocia cada tipo con el archivo de su posición.
+    formData.append('file_kinds', JSON.stringify(files.map((f) => f.kind)));
+  }
+
+  static async getAll(params?: { q?: string; stage?: CandidateStage; source?: CandidateSource; include_closed?: boolean }): Promise<Candidate[]> {
+    const qs = new URLSearchParams();
+    if (params?.q) qs.append('q', params.q);
+    if (params?.stage) qs.append('stage', params.stage);
+    if (params?.source) qs.append('source', params.source);
+    if (params?.include_closed) qs.append('include_closed', 'true');
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates${suffix}`);
+    return (await this.parse<Candidate[]>(response, 'Error al obtener los postulantes')) || [];
+  }
+
+  static async getById(id: number): Promise<Candidate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}`);
+    return this.parse<Candidate>(response, 'Error al obtener el postulante');
+  }
+
+  static async checkDuplicates(params: { dni?: string; cuil?: string; email?: string; phone?: string; exclude_id?: number }): Promise<CandidateDuplicates> {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') qs.append(key, String(value));
+    });
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/check-duplicates?${qs.toString()}`);
+    return this.parse<CandidateDuplicates>(response, 'Error al buscar duplicados');
+  }
+
+  static async create(values: CandidateCreateValues, files: CandidateUploadFile[]): Promise<Candidate> {
+    const formData = new FormData();
+    this.appendFields(formData, { ...values });
+    this.appendFiles(formData, files);
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' },
+      body: formData,
+    });
+    return this.parse<Candidate>(response, 'Error al crear el postulante');
+  }
+
+  static async update(id: number, values: Partial<CandidateFormValues>): Promise<Candidate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    });
+    return this.parse<Candidate>(response, 'Error al actualizar el postulante');
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al eliminar el postulante');
+    }
+  }
+
+  static async addFiles(id: number, files: CandidateUploadFile[], applicationId?: number): Promise<Candidate> {
+    const formData = new FormData();
+    if (applicationId) formData.append('application_id', String(applicationId));
+    this.appendFiles(formData, files);
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}/files`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' },
+      body: formData,
+    });
+    return this.parse<Candidate>(response, 'Error al subir los archivos');
+  }
+
+  static async removeFile(id: number, fileId: number): Promise<Candidate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}/files/${fileId}`, { method: 'DELETE' });
+    return this.parse<Candidate>(response, 'Error al eliminar el archivo');
+  }
+
+  static async createApplication(id: number, body: { position_of_interest?: string; cover_letter?: string }): Promise<Candidate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}/applications`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return this.parse<Candidate>(response, 'Error al crear la postulación');
+  }
+
+  static async changeStage(
+    id: number,
+    applicationId: number,
+    body: { stage: CandidateStage; comment?: string; rejection_reason?: CandidateRejectionReason; rejection_notes?: string }
+  ): Promise<Candidate> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}/applications/${applicationId}/stage`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    return this.parse<Candidate>(response, 'Error al cambiar la etapa');
+  }
+
+  static async getHistory(id: number): Promise<CandidateHistoryEntry[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}/history`);
+    return (await this.parse<CandidateHistoryEntry[]>(response, 'Error al obtener el historial')) || [];
   }
 }
