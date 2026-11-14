@@ -8,7 +8,7 @@ import {
   TableContainer, TableHead, TableRow, Tooltip, Stack,
   DialogTitle, DialogContent, DialogActions, TextField,
   Switch, FormControlLabel, Card, CardContent, Divider, Grid,
-  LinearProgress, Alert
+  LinearProgress, Alert, Link as MuiLink
 } from '@mui/material';
 import { vacationBalanceNote } from '@/utils/vacationBalance';
 import { useFileViewer } from '@/components/common/FileViewer';
@@ -758,6 +758,22 @@ function EmployeeDetailPageContent() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Postulación de origen (FLOWS.md §62): solo si el empleado salió de un postulante y quien mira tiene candidates_read */}
+                {employee.origin_candidate && (
+                  <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)' }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="subtitle2" fontWeight={600} gutterBottom>Postulación de origen</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Ingresó a través de una postulación
+                        {employee.origin_candidate.converted_at ? ` (dado de alta el ${new Date(employee.origin_candidate.converted_at).toLocaleDateString('es-AR')})` : ''}.
+                      </Typography>
+                      <MuiLink href={`/dashboard/candidates/${employee.origin_candidate.id}`} underline="hover" sx={{ display: 'inline-block', mt: 1 }}>
+                        Ver a {employee.origin_candidate.name} {employee.origin_candidate.lastname} en Postulantes
+                      </MuiLink>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Notas */}
                 {employee.notes && (

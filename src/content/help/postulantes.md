@@ -51,8 +51,8 @@ otro postulante**: en ese caso hay que abrir al que ya existe.
 ### Ex-empleados
 
 Una persona que ya trabajó en la empresa **se puede cargar como postulante**, pero se muestra un aviso
-destacado en su ficha. **No se la va a poder dar de alta como empleado desde este módulo**: el reingreso se
-trata aparte. (La conversión de postulante en empleado todavía no está disponible.)
+destacado en su ficha. **No se la puede dar de alta como empleado desde este módulo**: el reingreso se
+trata aparte.
 
 ## Postulaciones que llegan por la web
 
@@ -113,7 +113,7 @@ Al tocar un postulante se abre su ficha, con:
 | **Oferta** | Se le hizo una oferta. |
 | **Rechazada** | No sigue. Hay que indicar el **motivo**. |
 | **Retirada** | La persona dejó de estar interesada. |
-| **Contratada** | Se la dio de alta como empleado (todavía no disponible). |
+| **Contratada** | Se la dio de alta como empleado. Solo se alcanza con **"Dar de alta como empleado"**, no con un botón de etapa. |
 
 No se puede saltar cualquier etapa: desde **Nueva** se pasa a *En revisión*, *Entrevista*, *Rechazada* o
 *Retirada*; desde **En revisión** a *Entrevista*, *Oferta*, *Rechazada* o *Retirada*; desde **Entrevista** a
@@ -158,6 +158,32 @@ diferencia de "Consultas web" o "Postulaciones nuevas", **es personal**. Tambié
 siguen sin resultado**, marcadas como *Sin resultado*: son las que falta cerrar. Si una entrevista se reprograma,
 reaparece aunque la hubieras marcado como vista; desaparece sola al cargar el resultado, cancelarla o marcar que no vino.
 
+## Dar de alta a un postulante como empleado
+
+Cuando alguien queda seleccionado, **no hace falta volver a cargar sus datos**. En la ficha, la postulación que esté en
+**Entrevista** u **Oferta** muestra el botón **"Dar de alta como empleado"** (solo para quien puede dar de alta empleados
+**y** modificar postulantes). Lleva al alta de Empleados con el formulario **ya completado**: nombre, apellido, DNI, CUIL,
+teléfono, email, dirección, fecha de nacimiento, puesto y categoría. Faltan los datos que solo conoce la empresa: la
+**fecha de ingreso**, la forma de pago y el sueldo o valor hora.
+
+Al crear el empleado, **todo ocurre junto o no ocurre**:
+
+- el postulante queda **vinculado al empleado**;
+- su postulación pasa a **Contratada** y queda en el historial ("Dado de alta como empleado");
+- las **otras postulaciones abiertas** de esa persona pasan a *Retirada*, y las **entrevistas que seguían agendadas** se cancelan.
+
+Si algo falla (por ejemplo, un DNI repetido), no queda nada a medias: el postulante sigue como estaba.
+
+**Cuándo no se puede:**
+
+- La postulación está en *Nueva* o *En revisión*, o no hay ninguna abierta: primero hay que pasarla a *Entrevista* u *Oferta*.
+- El postulante **ya fue dado de alta** como empleado.
+- Es un **ex-empleado**: el sistema lo detecta por DNI o CUIL y **no deja convertirlo** desde acá. El reingreso se trata aparte.
+- El DNI o CUIL ya es de un **empleado actual**.
+
+Una vez dado de alta, el postulante **no se puede eliminar** ni cambiar de etapa, y en la **ficha del empleado** aparece la tarjeta
+**"Postulación de origen"** con un enlace a su ficha de postulante (solo la ve quien tiene acceso a Postulantes).
+
 ## Qué se ve en el listado
 
 Las postulaciones que llegaron por la web se ven igual que las demás, con origen **Web**. Por defecto el listado **oculta a los postulantes que ya terminaron** (todas sus postulaciones rechazadas,
@@ -182,7 +208,7 @@ Documentación ni en los avisos de vencimientos.
 
 - **Postulantes — ver**: entrar al módulo y abrir fichas.
 - **Postulantes — crear**: cargar postulantes, crear postulaciones, agregar archivos y agendar entrevistas.
-- **Postulantes — modificar**: editar datos, cambiar de etapa y reprogramar, cancelar o cargar el resultado de una entrevista.
+- **Postulantes — modificar**: editar datos, cambiar de etapa y reprogramar, cancelar o cargar el resultado de una entrevista. También hace falta, junto con el permiso de dar de alta empleados, para **dar de alta a un postulante como empleado**.
 - **Postulantes — eliminar**: borrar postulantes y archivos.
 
-<!-- ref: conmomet-app/src/components/candidates/CandidateInterviewsSection.tsx, conmomet-app/src/components/common/EntrevistasProximasAlert.tsx, api_conmomet/controllers/candidateInterviewController.js, api_conmomet/helpers/candidateInterviews.js, conmomet-app/src/app/trabaja-con-nosotros/page.tsx, conmomet-app/src/components/landing/LandingHeader.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, api_conmomet/controllers/publicJobApplicationController.js, conmomet-app/src/app/dashboard/candidates/page.tsx, conmomet-app/src/app/dashboard/candidates/[id]/page.tsx, conmomet-app/src/components/candidates/CandidateFormFields.tsx, conmomet-app/src/components/candidates/CandidateDuplicateAlerts.tsx, conmomet-app/src/components/candidates/CandidateFilePicker.tsx, conmomet-app/src/utils/candidates.ts, api_conmomet/controllers/candidateController.js, api_conmomet/helpers/candidateStages.js, api_conmomet/helpers/candidateMatching.js, api_conmomet/helpers/phone.js, api_conmomet/middlewares/candidateUpload.js, api_conmomet/models/candidate.js -->
+<!-- ref: api_conmomet/services/candidateConversion.js, conmomet-app/src/app/dashboard/employees/page.tsx, conmomet-app/src/components/candidates/CandidateInterviewsSection.tsx, conmomet-app/src/components/common/EntrevistasProximasAlert.tsx, api_conmomet/controllers/candidateInterviewController.js, api_conmomet/helpers/candidateInterviews.js, conmomet-app/src/app/trabaja-con-nosotros/page.tsx, conmomet-app/src/components/landing/LandingHeader.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, api_conmomet/controllers/publicJobApplicationController.js, conmomet-app/src/app/dashboard/candidates/page.tsx, conmomet-app/src/app/dashboard/candidates/[id]/page.tsx, conmomet-app/src/components/candidates/CandidateFormFields.tsx, conmomet-app/src/components/candidates/CandidateDuplicateAlerts.tsx, conmomet-app/src/components/candidates/CandidateFilePicker.tsx, conmomet-app/src/utils/candidates.ts, api_conmomet/controllers/candidateController.js, api_conmomet/helpers/candidateStages.js, api_conmomet/helpers/candidateMatching.js, api_conmomet/helpers/phone.js, api_conmomet/middlewares/candidateUpload.js, api_conmomet/models/candidate.js -->

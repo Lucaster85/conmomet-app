@@ -884,6 +884,8 @@ export interface Employee {
   sizes?: EmployeeSize[];
   vacation_days_override?: number | null;
   user?: { id: number; email: string; name: string; lastname: string };
+  // Solo para quien tiene candidates_read (FLOWS.md §62).
+  origin_candidate?: { id: number; name: string; lastname: string; converted_at?: string | null } | null;
   category?: Omit<Category, 'guild_hourly_rate'> & { guild_hourly_rate?: number };
   invitation_status?: 'pending' | 'expired' | null;
   createdAt: string;
@@ -907,6 +909,8 @@ export interface CreateEmployeeData {
   category_id?: number | null;
   notes?: string;
   vacation_days_override?: number | null;
+  // Alta desde un postulante (FLOWS.md §62): el backend lo convierte en una sola transacción.
+  candidate_id?: number;
 }
 
 export interface LeaveRequest {

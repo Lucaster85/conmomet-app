@@ -101,6 +101,8 @@ export default function CandidateDetailPage() {
   const canWrite = userHasPermission(user, 'candidates_write');
   const canUpdate = userHasPermission(user, 'candidates_update');
   const canDelete = userHasPermission(user, 'candidates_delete');
+  // Dar de alta como empleado: lo valida el backend con employees_write Y candidates_update.
+  const canHire = userHasPermission(user, 'employees_write') && canUpdate;
   const id = Number(params.id);
 
   const [candidate, setCandidate] = useState<Candidate | null>(null);
@@ -409,6 +411,13 @@ export default function CandidateDetailPage() {
                       Motivo: {application.rejection_reason ? CANDIDATE_REJECTION_LABELS[application.rejection_reason] : '—'}
                       {application.rejection_notes ? ` — ${application.rejection_notes}` : ''}
                     </Typography>
+                  )}
+                  {canHire && ['interview', 'offer'].includes(application.stage) && !candidate.employee_id && !candidate.former_employee && !candidate.current_employee && (
+                    <Box mt={2}>
+                      <Button size="small" variant="contained" color="success" onClick={() => router.push(`/dashboard/employees?candidate_id=${candidate.id}`)}>
+                        Dar de alta como empleado
+                      </Button>
+                    </Box>
                   )}
                   {canUpdate && targets.length > 0 && (
                     <Box display="flex" gap={1} mt={2} flexWrap="wrap">
