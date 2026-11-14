@@ -108,6 +108,20 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'vacaciones.md',
   },
   {
+    id: 'postulantes',
+    category: 'Personal',
+    title: 'Postulantes: cargar a quien se presenta a trabajar',
+    keywords: [
+      'postulante', 'postulantes', 'postulacion', 'postulación', 'postulaciones', 'candidato',
+      'candidatos', 'cv', 'curriculum', 'currículum', 'curriculum vitae', 'trabajar', 'trabaja con nosotros',
+      'trabajá con nosotros', 'busqueda laboral', 'búsqueda laboral', 'selección', 'seleccion', 'reclutamiento',
+      'entrevista', 'oferta', 'rechazar', 'rechazada', 'retirada', 'reabrir', 'etapa', 'etapas', 'duplicado',
+      'duplicados', 'ex empleado', 'ex-empleado', 'exempleado', 'reingreso', 'dni', 'cuil', 'oficio', 'archivo',
+      'archivos', 'pdf', 'carta de presentacion', 'formulario', 'pagina web', 'página web', 'web', 'consentimiento', 'spam', 'reenvio', 'reenvío', 'privacidad', 'datos personales', 'eliminar', 'ver terminados',
+    ],
+    file: 'postulantes.md',
+  },
+  {
     id: 'epp',
     category: 'Personal',
     title: 'Entrega de EPP, vencimientos y talles',
@@ -242,6 +256,20 @@ export const HELP_TOPICS: HelpTopic[] = [
       'cuanto llevo', 'cuánto llevó', 'anular horas', 'adicionales',
     ],
     file: 'proyectos.md',
+  },
+  {
+    id: 'consultas-web',
+    category: 'Gestión de Clientes',
+    title: 'Consultas web',
+    keywords: [
+      'consulta', 'consultas', 'consultas web', 'formulario', 'formulario de contacto', 'contacto',
+      'contactanos', 'contactános', 'pagina web', 'página web', 'landing', 'sitio', 'web',
+      'visitante', 'mensaje', 'mensajes', 'motivo', 'pedido de presupuesto', 'proveedores',
+      'tomar consulta', 'cerrar consulta', 'nueva', 'en curso', 'cerrada', 'notas internas',
+      'whatsapp', 'llamar', 'email', 'mail', 'correo', 'no llega', 'no me llega', 'aviso',
+      'campanita', 'notificacion', 'notificación', 'spam', 'bot', 'limite', 'límite',
+    ],
+    file: 'consultas-web.md',
   },
   {
     id: 'pedidos-cotizacion',

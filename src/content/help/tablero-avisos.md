@@ -29,6 +29,17 @@ vencido sigue permitido). Los más viejos van primero y al tocar uno se abre el 
 **Aprobar** y **Rechazar**. Lo ves si tenés acceso a Presupuestos, y desaparece solo cuando se carga la
 aprobación o el rechazo, lo cargues vos u otra persona.
 
+Otro aviso es **Consultas web sin atender**: lista lo que escribió un visitante en el formulario de contacto de
+la página web y todavía nadie tomó (ver el tema **Consultas web**). Cada item muestra el nombre, el motivo, la
+empresa, hace cuántos días llegó y el comienzo del mensaje, y al tocarlo se abre la consulta. Lo ve **todo el
+equipo que tenga acceso a Consultas web**, no una sola persona. Desaparece solo cuando alguien la **toma** o la
+**cierra**.
+
+También está **Postulaciones nuevas**: lista las postulaciones que todavía nadie miró (etapa *Nueva*), tanto las que
+llegaron por **"Trabajá con nosotros"** de la web como las cargadas a mano (ver el tema **Postulantes**). Cada item muestra
+el nombre, el origen, el puesto y hace cuántos días llegó, y al tocarlo se abre la ficha. Lo ve **todo el equipo con acceso a
+Postulantes**, y desaparece solo cuando la postulación pasa a otra etapa.
+
 Solo ves los contadores y los avisos de los temas a los que tenés acceso. Si tu rol no maneja
 documentación, por ejemplo, ese aviso no existe para vos.
 
@@ -103,7 +114,12 @@ La campanita registra:
 - que hay una **OCA aprobada esperando presupuesto** (solo al usuario configurado para eso);
 - que un **adicional se finalizó** y hay que cerrar su presupuesto (solo a quienes eligieron al notificarlo);
 - que un **documento** o un **EPP** está por vencer o ya venció;
-- que una **nota tuya** venció o es para hoy (ver el tema **Notas rápidas**).
+- que una **nota tuya** venció o es para hoy (ver el tema **Notas rápidas**);
+- que **llegó una postulación por la web** ("Trabajá con nosotros"), o que alguien **volvió a enviar su CV** (a los que
+  tienen acceso a Postulantes, con la misma salvedad de abajo);
+- que **llegó una consulta por la web** (a todos los que tienen acceso a Consultas web; ojo: les llega a quienes
+  tenían el acceso **en ese momento**, quien lo reciba después no ve las anteriores en la campanita, pero sí el
+  aviso del inicio mientras sigan sin atender).
 
 Las notificaciones se guardan por **90 días**; las más viejas se borran solas.
 
@@ -140,4 +156,4 @@ Marcar un aviso del inicio como visto **no** marca leída ninguna notificación 
 revés. Son dos preguntas distintas, y está bien que una misma novedad aparezca en los dos lugares:
 en la campanita como "esto pasó el martes", en el inicio como "esto todavía te falta hacer".
 
-<!-- ref: conmomet-app/src/components/common/TerminationAgreementAlert.tsx, conmomet-app/src/components/common/AdditionalPendingBudgetAlert.tsx, conmomet-app/src/components/common/BudgetAwaitingResponseAlert.tsx, conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->
+<!-- ref: conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, conmomet-app/src/components/common/ContactInquiryAlert.tsx, conmomet-app/src/components/common/TerminationAgreementAlert.tsx, conmomet-app/src/components/common/AdditionalPendingBudgetAlert.tsx, conmomet-app/src/components/common/BudgetAwaitingResponseAlert.tsx, conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->
