@@ -3372,7 +3372,9 @@ export type NotificationType =
   // Una nota rápida propia que venció o vence hoy (FLOWS.md §48, etapa 3).
   | 'quick_note_due'
   // Llegó una consulta por el formulario de contacto de la web (FLOWS.md §58). Se avisa por permiso.
-  | 'contact_inquiry_received';
+  | 'contact_inquiry_received'
+  // Llegó una postulación por "Trabajá con nosotros", o alguien volvió a mandar su CV (FLOWS.md §60).
+  | 'job_application_received';
 
 export interface AppNotification {
   id: number;
@@ -6995,5 +6997,42 @@ export class CandidateService {
   static async getHistory(id: number): Promise<CandidateHistoryEntry[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/candidates/${id}/history`);
     return (await this.parse<CandidateHistoryEntry[]>(response, 'Error al obtener el historial')) || [];
+  }
+}
+
+// "Trabajá con nosotros" (FLOWS.md §60): formulario público, SIN sesión, así que no pasa por
+// TokenManager.authenticatedFetch. Multipart: los datos van como campos y el CV (y la carta, si hay)
+// como `files`, con `file_kinds` en el mismo orden.
+export interface JobApplicationValues {
+  name: string;
+  lastname: string;
+  dni: string;
+  email: string;
+  phone: string;
+  birth_date: string;
+  locality: string;
+  trade: string;
+  years_experience: string;
+  has_driver_license: boolean;
+  cover_letter: string;
+  // Campo trampa: oculto para las personas; si viene completo el servidor descarta el envío.
+  website: string;
+}
+
+export class PublicJobApplicationService {
+  static async submit(values: JobApplicationValues, cv: File, coverLetterFile?: File | null): Promise<string> {
+    const formData = new FormData();
+    Object.entries(values).forEach(([key, value]) => formData.append(key, typeof value === 'boolean' ? String(value) : value));
+    formData.append('consent', 'true');
+    const files: { file: File; kind: 'cv' | 'cover_letter' }[] = [{ file: cv, kind: 'cv' }];
+    if (coverLetterFile) files.push({ file: coverLetterFile, kind: 'cover_letter' });
+    files.forEach((f) => formData.append('files', f.file));
+    formData.append('file_kinds', JSON.stringify(files.map((f) => f.kind)));
+
+    // Sin header Content-Type: el navegador lo arma con el boundary del multipart.
+    const response = await fetch(`${API_BASE_URL}/public/job-applications`, { method: 'POST', body: formData });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'No pudimos enviar tu postulación. Probá de nuevo en unos minutos.');
+    return body.message || 'Recibimos tu postulación.';
   }
 }

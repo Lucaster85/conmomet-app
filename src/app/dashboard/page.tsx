@@ -25,6 +25,7 @@ import AdditionalPendingBudgetAlert from '../../components/common/AdditionalPend
 import BudgetAwaitingResponseAlert from '../../components/common/BudgetAwaitingResponseAlert';
 import QuoteRequestAlert from '../../components/common/QuoteRequestAlert';
 import ContactInquiryAlert from '../../components/common/ContactInquiryAlert';
+import PostulacionesNuevasAlert from '../../components/common/PostulacionesNuevasAlert';
 import EppExpiringAlert from '../../components/common/EppExpiringAlert';
 import DocumentExpirationAlert from '../../components/common/DocumentExpirationAlert';
 import QuickNotesWidget from '../../components/notes/QuickNotesWidget';
@@ -115,6 +116,7 @@ export default function DashboardPage() {
         }}
       >
         <ContactInquiryAlert />
+        <PostulacionesNuevasAlert />
         <QuoteRequestAlert />
         <DocumentExpirationAlert onError={setError} onSuccess={setSuccess} />
         <OcaBudgetAlert />

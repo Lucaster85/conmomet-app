@@ -5,8 +5,9 @@ Es el registro de las **personas que se presentan a trabajar** y todavía no son
 currículum **no se pierda en un papel o en el WhatsApp de alguien**: queda cargada con sus datos, sus
 papeles y el seguimiento de cómo va su postulación.
 
-Hoy se carga **a mano** desde acá. Más adelante, el formulario "Trabajá con nosotros" de la página web va a
-cargar a los postulantes solo, en este mismo módulo.
+Hay **dos formas** de que alguien llegue acá: se lo carga **a mano** (alguien de Personal), o la propia persona
+se postula desde el botón **"Trabajá con nosotros"** de la página web (ver más abajo). En los dos casos queda en este
+mismo módulo.
 
 ## Persona y postulación: dos cosas distintas
 
@@ -25,7 +26,8 @@ Con el botón **"Nuevo postulante"** (solo para quien tiene permiso para crear):
 - **DNI y CUIL**, **teléfono** y **email**, **fecha de nacimiento**, **localidad** y **dirección**.
 - **Oficio o puesto de interés**, **categoría** (la del convenio, si ya se sabe), **años de experiencia** y si
   tiene **registro de conducir**.
-- **Cómo llegó**: *Presencial*, *Recomendado* u *Otro*. "Web" no se elige a mano: lo pone solo el formulario público.
+- **Cómo llegó**: *Presencial*, *Recomendado* u *Otro*. "Web" no se elige a mano: lo pone solo el formulario público
+  (en la ficha de alguien que llegó por la web, este campo no aparece).
 - **Notas** internas: solo las ve el equipo.
 - **Puesto al que se postula** y **carta o comentario**: son de la postulación. Si no se indica el puesto, se usa el oficio.
 - **Papeles**: se pueden adjuntar hasta **5 archivos** (PDF, Word, JPG o PNG, **hasta 10 MB cada uno**), y a cada
@@ -52,13 +54,52 @@ Una persona que ya trabajó en la empresa **se puede cargar como postulante**, p
 destacado en su ficha. **No se la va a poder dar de alta como empleado desde este módulo**: el reingreso se
 trata aparte. (La conversión de postulante en empleado todavía no está disponible.)
 
+## Postulaciones que llegan por la web
+
+En la página web de la empresa hay un botón **"Trabajá con nosotros"** (en el menú de arriba, en el menú del celular
+y en el pie de página). Lleva a un formulario **público, sin usuario**, donde la persona completa:
+
+- **Nombre, apellido y DNI** (obligatorios), fecha de nacimiento y localidad.
+- **Teléfono o email**: al menos uno, para poder comunicarse con ella.
+- **Oficio o puesto de interés**, años de experiencia, si tiene registro de conducir y un texto libre.
+- **CV** (obligatorio) y, si quiere, una **carta de presentación** adjunta.
+- **Aceptar el tratamiento de sus datos personales**: sin eso no se puede enviar. Queda guardado cuándo aceptó, desde
+  qué conexión y qué versión del texto de privacidad leyó.
+
+Al enviar, la postulación queda en este módulo con origen **Web** y etapa **Nueva**, y se avisa a **todas las personas
+con acceso a Postulantes**: por la **campanita** (y el celular, si lo activaron) y con la tarjeta **"Postulaciones nuevas"**
+del inicio, que se mantiene mientras la postulación siga en etapa *Nueva*. Al tocar el aviso se abre la ficha.
+La persona ve siempre el mismo mensaje de agradecimiento, y no se le dice si ya estaba cargada.
+
+### Si la persona ya estaba cargada
+
+El sistema la busca por **DNI**; si no la encuentra, por **email** y por **teléfono**, pero esas dos pistas solo
+valen contra alguien cargado a mano **sin DNI** (si ya tiene otro DNI, compartir un email o un teléfono no la hace la
+misma persona). Cuando la encuentra, **no la duplica y no le pisa los datos**: solo completa los que estaban vacíos.
+Después, según el caso:
+
+- **Tiene una postulación abierta**: se le suman los archivos nuevos a esa postulación y en el historial queda
+  **"Volvió a enviar su CV"**. No se crea otra postulación.
+- **No tiene ninguna abierta** (todas rechazadas o retiradas): se crea una **postulación nueva**.
+- **Ya fue dada de alta como empleada**: no se crea nada.
+
+Lo que mandó la persona queda siempre guardado tal cual en la postulación, aunque después se completen o corrijan sus
+datos.
+
+### Protección contra spam
+
+El formulario público tiene un **tope de envíos** (5 cada 15 minutos desde la misma conexión) y un **campo oculto** que solo
+completan los programas automáticos; esos envíos se descartan sin guardarse. Si una persona real supera el tope, ve un aviso
+para volver a intentar en unos minutos.
+
 ## La ficha del postulante
 
 Al tocar un postulante se abre su ficha, con:
 
 - **Datos**, con acceso rápido a **WhatsApp** si tiene teléfono. **Editar datos** corrige cualquier campo.
 - **Postulaciones**, con la etapa de cada una y los botones para moverla.
-- **Papeles**: se abren con un clic en el nombre del archivo. Se pueden **agregar** más o **eliminar** uno.
+- **Papeles**: se abren con un clic en el nombre del archivo. Se pueden **agregar** más o **eliminar** uno. Los que
+  mandó la propia persona por la web dicen "enviado por el postulante".
 - **Historial**: qué cambió, quién lo hizo y cuándo.
 
 ## Etapas de una postulación
@@ -84,7 +125,7 @@ abierta** a la vez, así que no se puede reabrir una si ya hay otra en curso.
 
 ## Qué se ve en el listado
 
-Por defecto el listado **oculta a los postulantes que ya terminaron** (todas sus postulaciones rechazadas,
+Las postulaciones que llegaron por la web se ven igual que las demás, con origen **Web**. Por defecto el listado **oculta a los postulantes que ya terminaron** (todas sus postulaciones rechazadas,
 retiradas o contratadas) para que se vea lo que está en curso. Para verlos, activá **"Ver terminados"**. Elegir
 una **etapa** en el filtro muestra a quienes tienen una postulación en esa etapa, aunque estén terminados.
 También se puede filtrar por **origen** y buscar por nombre, DNI, CUIL, email, teléfono u oficio.
@@ -109,4 +150,4 @@ Documentación ni en los avisos de vencimientos.
 - **Postulantes — modificar**: editar datos y cambiar de etapa.
 - **Postulantes — eliminar**: borrar postulantes y archivos.
 
-<!-- ref: conmomet-app/src/app/dashboard/candidates/page.tsx, conmomet-app/src/app/dashboard/candidates/[id]/page.tsx, conmomet-app/src/components/candidates/CandidateFormFields.tsx, conmomet-app/src/components/candidates/CandidateDuplicateAlerts.tsx, conmomet-app/src/components/candidates/CandidateFilePicker.tsx, conmomet-app/src/utils/candidates.ts, api_conmomet/controllers/candidateController.js, api_conmomet/helpers/candidateStages.js, api_conmomet/helpers/candidateMatching.js, api_conmomet/helpers/phone.js, api_conmomet/middlewares/candidateUpload.js, api_conmomet/models/candidate.js -->
+<!-- ref: conmomet-app/src/app/trabaja-con-nosotros/page.tsx, conmomet-app/src/components/landing/LandingHeader.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, api_conmomet/controllers/publicJobApplicationController.js, conmomet-app/src/app/dashboard/candidates/page.tsx, conmomet-app/src/app/dashboard/candidates/[id]/page.tsx, conmomet-app/src/components/candidates/CandidateFormFields.tsx, conmomet-app/src/components/candidates/CandidateDuplicateAlerts.tsx, conmomet-app/src/components/candidates/CandidateFilePicker.tsx, conmomet-app/src/utils/candidates.ts, api_conmomet/controllers/candidateController.js, api_conmomet/helpers/candidateStages.js, api_conmomet/helpers/candidateMatching.js, api_conmomet/helpers/phone.js, api_conmomet/middlewares/candidateUpload.js, api_conmomet/models/candidate.js -->
