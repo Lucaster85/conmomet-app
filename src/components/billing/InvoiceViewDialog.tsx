@@ -7,7 +7,7 @@ import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import { Invoice } from '../../utils/api';
 import {
-  ARCA_CONCEPT_LABELS, ARCA_STATUS_LABELS, CONCEPT_LABELS, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS,
+  ARCA_CONCEPT_LABELS, ARCA_STATUS_LABELS, CONCEPT_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS,
 } from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 
@@ -45,6 +45,14 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
               {invoice.source === 'arca' && invoice.pointOfSale && row('Punto de venta', `${String(invoice.pointOfSale.number).padStart(4, '0')}${invoice.pointOfSale.usage_description ? ` — ${invoice.pointOfSale.usage_description}` : ''}`)}
               {invoice.source === 'arca' && invoice.arca_concept && row('Concepto', ARCA_CONCEPT_LABELS[invoice.arca_concept])}
               {invoice.service_from && invoice.service_to && row('Período facturado', `${formatDate(invoice.service_from)} al ${formatDate(invoice.service_to)}`)}
+              {invoice.cbte_tipo === FCE_CBTE_TIPO && (invoice.issuer_snapshot?.bank || invoice.bankAccount) && row('Cuenta del emisor', (() => {
+                const bank = invoice.issuer_snapshot?.bank || invoice.bankAccount!;
+                return `${bank.bank_name} · CBU ${bank.cbu}${bank.alias ? ` · ${bank.alias}` : ''}`;
+              })())}
+              {invoice.cbte_tipo === FCE_CBTE_TIPO && invoice.fce_transfer_option && row('Opción de transferencia', FCE_TRANSFER_LABELS[invoice.fce_transfer_option])}
+              {invoice.cbte_tipo === FCE_CBTE_TIPO && invoice.arca_status === 'authorized' && row('Aceptación del cliente', (
+                <Chip size="small" color={FCE_ACCEPTANCE_LABELS[invoice.fce_acceptance || 'pending'].color} label={FCE_ACCEPTANCE_LABELS[invoice.fce_acceptance || 'pending'].label} />
+              ))}
               {invoice.cae && row('CAE', `${invoice.cae}${invoice.cae_expiration ? ` (vence ${formatDate(invoice.cae_expiration)})` : ''}`)}
               {invoice.arca_env && row('Ambiente', invoice.arca_env === 'homologacion' ? 'Homologación (pruebas, sin validez fiscal)' : 'Producción')}
               {invoice.sale_condition && row('Condición de venta', invoice.sale_condition)}

@@ -13,7 +13,7 @@ import {
   InvoiceLineInput, InvoiceProjectOption, InvoiceService, IvaInfo, VoucherType,
 } from '../../utils/api';
 import {
-  ARCA_CONCEPT_LABELS, CBTE_OPTIONS_BY_LETTER, CONCEPT_LABELS, DEFAULT_CBTE_BY_LETTER, formatHours, formatMoney, formatPercent,
+  ARCA_CONCEPT_LABELS, CBTE_OPTIONS_BY_LETTER, CONCEPT_LABELS, DEFAULT_CBTE_BY_LETTER, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatHours, formatMoney, formatPercent,
   ivaOf, roundMoney, roundPercent, todayISO, VOUCHER_TYPE_OPTIONS,
 } from '../../utils/billing';
 import { formatCuit, TAX_CONDITION_LABELS } from '../../utils/cuit';
@@ -97,7 +97,12 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
   const [remito, setRemito] = useState('');
   const [commercialRef, setCommercialRef] = useState('');
   const [rateLoading, setRateLoading] = useState(false);
+  // Tipo que se emite por ARCA: Factura A (1) o Factura de Crédito Electrónica A (201). Lo elige a mano quien factura: no hay regla automática.
+  const [arcaCbte, setArcaCbte] = useState<1 | 201>(1);
+  const [bankAccountId, setBankAccountId] = useState<number | ''>('');
+  const [fceTransfer, setFceTransfer] = useState<'SCA' | 'ADC'>('SCA');
   const isArca = mode === 'arca';
+  const isFce = isArca && arcaCbte === FCE_CBTE_TIPO;
 
   // Saldo disponible de un concepto en la moneda elegida. Al corregir, el monto de la propia
   // factura vuelve a estar disponible (el servidor lo excluye del cálculo igual).
@@ -142,6 +147,9 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
       setServiceFrom(invoice.service_from || '');
       setServiceTo(invoice.service_to || '');
       setRecipientVatId(invoice.recipient_vat_condition_id || '');
+      setArcaCbte(invoice.cbte_tipo === FCE_CBTE_TIPO ? FCE_CBTE_TIPO : 1);
+      setBankAccountId(invoice.bank_account_id || '');
+      setFceTransfer(invoice.fce_transfer_option || 'SCA');
       setSameCurrency(!!invoice.same_currency_payment);
       setSaleCondition(invoice.sale_condition || '');
       setRemito(invoice.remito_number || '');
@@ -172,6 +180,9 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
       setServiceFrom('');
       setServiceTo('');
       setRecipientVatId('');
+      setArcaCbte(1);
+      setBankAccountId('');
+      setFceTransfer('SCA');
       setSameCurrency(false);
       setSaleCondition('');
       setRemito('');
@@ -202,11 +213,21 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
       const client = detail.budget.client;
       const mapped = client?.tax_condition ? opts.client_tax_condition_map[client.tax_condition] : undefined;
       if (!invoice && mapped) setRecipientVatId(mapped);
+      // Opción de transferencia de la FCE: la del cliente (Bunge pide ADC) o, si no tiene, la de la empresa.
+      if (!invoice) setFceTransfer(client?.fce_transfer_option || opts.company_fce_transfer_option || 'SCA');
     }).catch(() => { if (!cancelled) setArcaOptions(null); });
     return () => { cancelled = true; };
     // Solo al abrir.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, detail?.budget.id, invoice]);
+
+  // FCE: cuenta bancaria sugerida = la predeterminada que sirva para la moneda de la factura (una cuenta sin moneda sirve para cualquiera).
+  // Solo en un borrador nuevo; al editar se respeta la que tenía.
+  useEffect(() => {
+    if (!isFce || invoice || !arcaOptions) return;
+    const usable = arcaOptions.bank_accounts.filter((a) => !a.currency || a.currency === currency);
+    setBankAccountId((current) => (usable.some((a) => a.id === current) ? current : (usable[0]?.id ?? '')));
+  }, [isFce, invoice, arcaOptions, currency]);
 
   // Concepto sugerido según lo que se factura (solo materiales = productos, solo mano de obra = servicios, los dos = ambos),
   // mientras la persona no lo haya tocado.
@@ -332,6 +353,12 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
         if (!dueDate) return 'Con servicios hay que indicar el vencimiento de pago.';
       }
       if (currency === 'USD' && !(Number(exchangeRate.replace(',', '.')) > 0)) return 'En dólares hace falta la cotización.';
+      if (isFce) {
+        if (!bankAccountId) return 'Elegí la cuenta bancaria del emisor (CBU) para la FCE.';
+        if (!dueDate) return 'La FCE necesita el vencimiento de pago.';
+        if (dueDate < issueDate) return 'El vencimiento de pago no puede ser anterior a la fecha de emisión.';
+        if (commercialRef.length > 50) return 'La referencia comercial de una FCE admite hasta 50 caracteres.';
+      }
     } else if (!isUnofficial) {
       const pos = Number(posNumber);
       const num = Number(number);
@@ -363,6 +390,9 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
 
     const arcaFields: Partial<InvoiceInput> = isArca ? {
       source: 'arca',
+      cbte_tipo: arcaCbte,
+      bank_account_id: isFce && bankAccountId !== '' ? Number(bankAccountId) : null,
+      fce_transfer_option: isFce ? fceTransfer : null,
       point_of_sale_id: Number(posId),
       arca_concept: concept,
       service_from: concept === 1 ? null : serviceFrom,
@@ -376,7 +406,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
 
     const input: InvoiceInput = {
       voucher_type: isArca ? 'A' : voucherType,
-      cbte_tipo: isArca || isUnofficial ? null : cbteTipo,
+      cbte_tipo: isArca ? arcaCbte : isUnofficial ? null : cbteTipo,
       ...arcaFields,
       pos_number: isArca || isUnofficial ? null : Number(posNumber),
       number: isArca || isUnofficial ? null : Number(number),
@@ -557,6 +587,12 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
 
           {/* Encabezado */}
           {isArca ? (
+            <Stack spacing={2}>
+            <TextField select label="Tipo de comprobante *" value={arcaCbte} fullWidth onChange={(e) => setArcaCbte(Number(e.target.value) as 1 | 201)}
+              helperText="Se elige a mano. La Factura de Crédito Electrónica (FCE) es para clientes que ARCA obliga a recibirla (grandes empresas): con ellos, una Factura A común puede ser rechazada.">
+              <MenuItem value={1}>Factura A</MenuItem>
+              <MenuItem value={FCE_CBTE_TIPO}>Factura de Crédito Electrónica MiPyMEs (FCE) A</MenuItem>
+            </TextField>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField select label="Punto de venta *" value={posId} fullWidth onChange={(e) => setPosId(Number(e.target.value))}
                 helperText="Solo los de tipo web service, de Datos de mi empresa.">
@@ -569,6 +605,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
                 helperText="Con servicios, ARCA pide el período facturado y el vencimiento de pago.">
                 {([1, 2, 3] as const).map((c) => <MenuItem key={c} value={c}>{ARCA_CONCEPT_LABELS[c]}</MenuItem>)}
               </TextField>
+            </Stack>
             </Stack>
           ) : (
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -609,7 +646,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <DateField label="Fecha de emisión *" value={issueDate} onChange={setIssueDate} fullWidth />
-            <DateField label={isArca && concept !== 1 ? 'Vencimiento de pago *' : 'Vencimiento de pago'} value={dueDate} onChange={setDueDate} fullWidth />
+            <DateField label={isArca && (concept !== 1 || isFce) ? 'Vencimiento de pago *' : 'Vencimiento de pago'} value={dueDate} onChange={setDueDate} fullWidth />
             {isEditing && invoice?.status === 'paid' && (
               <DateField label="Fecha de cobro" value={paidAt} onChange={setPaidAt} fullWidth />
             )}
@@ -696,6 +733,41 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
           {/* Receptor y datos opcionales del comprobante (solo emisión por ARCA) */}
           {isArca && arcaOptions && (
             <>
+              {isFce && (
+                <>
+                  <Divider />
+                  <Typography variant="subtitle1" fontWeight={700}>Factura de Crédito Electrónica</Typography>
+                  {arcaOptions.bank_accounts.length === 0 && (
+                    <Alert severity="warning">
+                      No hay cuentas bancarias cargadas. La FCE informa el CBU del emisor: cargá una en Configuración → Datos de mi empresa.
+                    </Alert>
+                  )}
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                    <TextField
+                      select label="Cuenta bancaria del emisor (CBU) *" value={bankAccountId} fullWidth
+                      onChange={(e) => setBankAccountId(e.target.value === '' ? '' : Number(e.target.value))}
+                      helperText="Se informa a ARCA y se imprime en la factura."
+                    >
+                      {arcaOptions.bank_accounts.map((a) => {
+                        const usable = !a.currency || a.currency === currency;
+                        return (
+                          <MenuItem key={a.id} value={a.id} disabled={!usable}>
+                            {a.bank_name}{a.alias ? ` · ${a.alias}` : ''} · {a.cbu}{a.currency ? ` (${a.currency})` : ''}{!usable ? ' — otra moneda' : ''}
+                          </MenuItem>
+                        );
+                      })}
+                    </TextField>
+                    <TextField
+                      select label="Opción de transferencia *" value={fceTransfer} fullWidth
+                      onChange={(e) => setFceTransfer(e.target.value as 'SCA' | 'ADC')}
+                      helperText="Se precarga con la del cliente o, si no tiene, la de la empresa."
+                    >
+                      {(['SCA', 'ADC'] as const).map((o) => <MenuItem key={o} value={o}>{FCE_TRANSFER_LABELS[o]}</MenuItem>)}
+                    </TextField>
+                  </Stack>
+                </>
+              )}
+
               <Divider />
               <Typography variant="subtitle1" fontWeight={700}>Receptor</Typography>
               {budgetClient && (!budgetClient.cuit || !budgetClient.tax_condition) && (
@@ -723,8 +795,8 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
               </Stack>
               <TextField
                 label="Referencia comercial (por ejemplo, el número de OC)" value={commercialRef} fullWidth
-                onChange={(e) => setCommercialRef(e.target.value)} inputProps={{ maxLength: 255 }}
-                helperText="Se imprime en la factura."
+                onChange={(e) => setCommercialRef(e.target.value)} inputProps={{ maxLength: isFce ? 50 : 255 }}
+                helperText={isFce ? 'Se informa a ARCA y se imprime (hasta 50 caracteres). Bunge exige el número de OC.' : 'Se imprime en la factura.'}
               />
             </>
           )}

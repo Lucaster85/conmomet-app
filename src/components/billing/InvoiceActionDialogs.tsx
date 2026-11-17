@@ -1,11 +1,11 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Alert, Box, Button, Chip, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, DialogActions, DialogContent, DialogTitle, FormControlLabel, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
 import { UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import DateField from '../DateField';
 import { Invoice, InvoiceArcaOptions, InvoiceService } from '../../utils/api';
-import { ARCA_CONCEPT_LABELS, formatDate, formatMoney, formatVoucher, todayISO } from '../../utils/billing';
+import { ARCA_CONCEPT_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatDate, formatMoney, formatVoucher, todayISO } from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 
 interface ActionDialogProps {
@@ -181,11 +181,19 @@ export function EmitInvoiceDialog({ invoice, onClose, onDone, onRefresh }: ArcaA
                   label={isProduction ? 'PRODUCCIÓN' : 'HOMOLOGACIÓN (pruebas)'} />
               ) : <Typography variant="body2">…</Typography>}
             </Box>
-            {row('Tipo de comprobante', 'Factura A')}
+            {row('Tipo de comprobante', invoice.cbte_tipo === FCE_CBTE_TIPO ? 'Factura de Crédito Electrónica (FCE) A' : 'Factura A')}
             {row('Punto de venta', pos ? `${String(pos.number).padStart(4, '0')}${pos.usage_description ? ` — ${pos.usage_description}` : ''}` : String(invoice.pos_number ?? '—').padStart(4, '0'))}
             {row('Cliente', `${invoice.client?.razonSocial || '—'}${invoice.recipient_doc_number ? ` · CUIT ${formatCuit(invoice.recipient_doc_number)}` : ''}`)}
             {invoice.arca_concept && row('Concepto', ARCA_CONCEPT_LABELS[invoice.arca_concept])}
             {row('Fecha de emisión', formatDate(invoice.issue_date))}
+            {invoice.cbte_tipo === FCE_CBTE_TIPO && (
+              <>
+                {row('Vencimiento de pago', formatDate(invoice.due_date))}
+                {row('Cuenta del emisor', invoice.bankAccount ? `${invoice.bankAccount.bank_name} · CBU ${invoice.bankAccount.cbu}${invoice.bankAccount.alias ? ` · ${invoice.bankAccount.alias}` : ''}` : '—')}
+                {row('Opción de transferencia', invoice.fce_transfer_option ? FCE_TRANSFER_LABELS[invoice.fce_transfer_option] : '—')}
+                {invoice.commercial_reference && row('Referencia comercial', invoice.commercial_reference)}
+              </>
+            )}
             {row('Neto', formatMoney(invoice.net_amount, invoice.currency))}
             {row(`IVA ${invoice.iva_rate}%`, formatMoney(invoice.iva_amount, invoice.currency))}
             {row('Total', <strong>{formatMoney(invoice.total_amount, invoice.currency)}</strong>)}
@@ -307,6 +315,58 @@ export function DiscardInvoiceDialog({ invoice, onClose, onDone }: ActionDialogP
       <DialogActions>
         <Button onClick={onClose} disabled={saving}>Volver</Button>
         <Button variant="contained" color="error" onClick={handleConfirm} disabled={saving}>{saving ? 'Descartando…' : 'Descartar'}</Button>
+      </DialogActions>
+    </AppDialog>
+  );
+}
+
+// Aceptación de una FCE por el cliente. Se carga A MANO: el cliente la acepta o rechaza en ARCA y acá solo se deja registrado
+// (consultarlo automáticamente es una etapa futura). Una FCE "aceptada" o "rechazada" no cambia nada más en la factura.
+export function FceAcceptanceDialog({ invoice, onClose, onDone }: ActionDialogProps) {
+  const [status, setStatus] = useState<'pending' | 'accepted' | 'rejected'>('pending');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (invoice) { setStatus(invoice.fce_acceptance || 'pending'); setError(''); }
+  }, [invoice]);
+
+  const handleConfirm = async () => {
+    if (!invoice) return;
+    setSaving(true);
+    setError('');
+    try {
+      onDone(await InvoiceService.setFceAcceptance(invoice.id, status));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al registrar la aceptación');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <AppDialog open={!!invoice} onClose={saving ? undefined : onClose} fullWidth maxWidth="xs">
+      <DialogTitle>Aceptación de la FCE</DialogTitle>
+      <DialogContent>
+        {invoice && (
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            <strong>{formatVoucher(invoice)}</strong> · {formatMoney(invoice.total_amount, invoice.currency)}
+          </Typography>
+        )}
+        <Alert severity="info" sx={{ mb: 2 }}>
+          El cliente acepta o rechaza la FCE en ARCA (si no responde en 21 días corridos se considera aceptada). Acá se deja registrado
+          lo que pasó, a mano.
+        </Alert>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <RadioGroup value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+          {(Object.keys(FCE_ACCEPTANCE_LABELS) as Array<keyof typeof FCE_ACCEPTANCE_LABELS>).map((key) => (
+            <FormControlLabel key={key} value={key} control={<Radio />} label={FCE_ACCEPTANCE_LABELS[key].label} />
+          ))}
+        </RadioGroup>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={saving}>Cancelar</Button>
+        <Button variant="contained" onClick={handleConfirm} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</Button>
       </DialogActions>
     </AppDialog>
   );

@@ -82,6 +82,15 @@ export const ARCA_STATUS_LABELS: Record<Exclude<InvoiceArcaStatus, 'manual'>, { 
   rejected: { label: 'Rechazada por ARCA', color: 'error' },
 };
 
+// Factura de Crédito Electrónica MiPyMEs (código 201): opción de transferencia y aceptación del cliente.
+export const FCE_CBTE_TIPO = 201;
+export const FCE_TRANSFER_LABELS = { SCA: 'SCA — Sistema de circulación abierta', ADC: 'ADC — Agente de depósito colectivo' } as const;
+export const FCE_ACCEPTANCE_LABELS = {
+  pending: { label: 'Aceptación pendiente', color: 'warning' },
+  accepted: { label: 'Aceptada por el cliente', color: 'success' },
+  rejected: { label: 'Rechazada por el cliente', color: 'error' },
+} as const;
+
 export const ARCA_CONCEPT_LABELS = { 1: 'Productos', 2: 'Servicios', 3: 'Productos y servicios' } as const;
 
 export const BILLING_STATUS_LABELS: Record<BillingStatus, { label: string; color: 'default' | 'warning' | 'info' | 'success' }> = {

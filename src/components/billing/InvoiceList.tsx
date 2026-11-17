@@ -11,12 +11,13 @@ import {
   DeleteOutline as DiscardIcon,
   EditOutlined as EditIcon,
   PictureAsPdfOutlined as PdfIcon,
+  HandshakeOutlined as AcceptanceIcon,
   SendOutlined as EmitIcon,
   SyncOutlined as VerifyIcon,
   VisibilityOutlined as ViewIcon,
 } from '@mui/icons-material';
 import { Invoice } from '../../utils/api';
-import { ARCA_STATUS_LABELS, formatDate, formatMoney, formatVoucher, INVOICE_STATUS_LABELS } from '../../utils/billing';
+import { ARCA_STATUS_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, formatDate, formatMoney, formatVoucher, INVOICE_STATUS_LABELS } from '../../utils/billing';
 
 interface InvoiceListProps {
   invoices: Invoice[];
@@ -39,11 +40,13 @@ interface InvoiceListProps {
   onVerify?: (invoice: Invoice) => void;
   onDiscard?: (invoice: Invoice) => void;
   onGeneratePdf?: (invoice: Invoice) => void;
+  // Registrar a mano la aceptación del cliente de una FCE emitida.
+  onFceAcceptance?: (invoice: Invoice) => void;
 }
 
 export default function InvoiceList({
   invoices, emptyText = 'No hay facturas registradas', hideBudgetColumns = false,
-  canUpdate, canCorrect, canEmit = false, canWrite = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard, onGeneratePdf,
+  canUpdate, canCorrect, canEmit = false, canWrite = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard, onGeneratePdf, onFceAcceptance,
 }: InvoiceListProps) {
   const { fileLinkProps } = useFileViewer();
   // Una factura de ARCA (source 'arca') tiene su propio ciclo: borrador -> emitida (o rechazada / autorizando). Una emitida
@@ -66,6 +69,9 @@ export default function InvoiceList({
         )}
         {open && isArca && arcaStatus === 'authorized' && !invoice.file_url && canWrite && onGeneratePdf && (
           <Tooltip title="Generar PDF"><IconButton size="small" color="primary" onClick={() => onGeneratePdf(invoice)}><PdfIcon fontSize="small" /></IconButton></Tooltip>
+        )}
+        {open && isArca && arcaStatus === 'authorized' && invoice.cbte_tipo === FCE_CBTE_TIPO && canUpdate && onFceAcceptance && (
+          <Tooltip title="Aceptación del cliente"><IconButton size="small" onClick={() => onFceAcceptance(invoice)}><AcceptanceIcon fontSize="small" /></IconButton></Tooltip>
         )}
         {editable && (
           <Tooltip title={isArca ? 'Editar borrador' : 'Corregir datos'}><IconButton size="small" color="primary" onClick={() => onEdit(invoice)}><EditIcon fontSize="small" /></IconButton></Tooltip>
@@ -116,6 +122,9 @@ export default function InvoiceList({
               <Tooltip title="Emitida en el ambiente de pruebas de ARCA: no tiene validez fiscal.">
                 <Chip size="small" color="warning" label="PRUEBA" />
               </Tooltip>
+            )}
+            {invoice.cbte_tipo === FCE_CBTE_TIPO && (
+              <Chip size="small" variant="outlined" color={FCE_ACCEPTANCE_LABELS[invoice.fce_acceptance || 'pending'].color} label={FCE_ACCEPTANCE_LABELS[invoice.fce_acceptance || 'pending'].label} />
             )}
             {observations.length > 0 && (
               <Tooltip title={observations.map((o) => `(${o.code}) ${o.msg}`).join(' · ')}>

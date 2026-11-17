@@ -4,8 +4,8 @@ Es el módulo donde administración ve **qué presupuestos aprobados se pueden f
 materiales y de mano de obra **queda por facturar**, y donde **registra las facturas** (parciales o
 totales) y sigue si se cobraron. Se ubica en **Facturación → Facturación**.
 
-Una **Factura A** se puede **emitir directamente desde la app contra ARCA** (ver "Emitir una factura por
-ARCA"). También se puede seguir **cargando a mano** una factura que ya se hizo en la web de ARCA, con
+Una **Factura A** o una **Factura de Crédito Electrónica (FCE)** se pueden **emitir directamente desde la app contra
+ARCA** (ver "Emitir una factura por ARCA" y "Factura de Crédito Electrónica (FCE)"). También se puede seguir **cargando a mano** una factura que ya se hizo en la web de ARCA, con
 su número y, si se quiere, el PDF. Las dos formas conviven.
 
 ## Cuándo aparece un presupuesto
@@ -127,6 +127,47 @@ La factura guarda también el **total en pesos** (total × cotización).
 ARCA**, porque es una acción irreversible. Cada emisión queda registrada con quién la hizo y en qué
 ambiente.
 
+## Factura de Crédito Electrónica (FCE)
+
+La **FCE MiPyMEs** es un tipo de factura que ARCA obliga a usar con ciertos clientes (en general, grandes empresas): con
+ellos, una Factura A común puede ser **rechazada**. **Lo elige a mano quien factura**, en el selector **"Tipo de
+comprobante"** del diálogo (Factura A o FCE): la app no decide por el cliente. Se emite igual que una Factura A (borrador y
+después "Emitir en ARCA"), con tres datos más:
+
+- **Cuenta bancaria del emisor (CBU)**: se elige entre las cargadas en **Datos de mi empresa** (viene la predeterminada que
+  sirva para la moneda de la factura). El **CBU y el alias** se informan a ARCA y salen impresos. Quedan **guardados en la
+  factura al emitir**: si después se cambia la cuenta, la factura ya emitida no cambia. La app comprueba que el CBU sea válido
+  (los dos dígitos verificadores) antes de mandarlo, porque ARCA no lo controla.
+- **Opción de transferencia**: **SCA** (sistema de circulación abierta) o **ADC** (agente de depósito colectivo). Viene
+  precargada con la **del cliente** (se configura en la ficha del cliente; hay clientes que piden una en particular, por ejemplo
+  ADC) o, si no tiene, la **de la empresa**.
+- **Vencimiento de pago**: **siempre obligatorio** en una FCE, aunque se facturen solo materiales.
+
+Además, en **Referencia comercial** conviene poner el **número de orden de compra**: algunos clientes lo exigen (por ejemplo,
+Bunge). En una FCE admite **hasta 50 caracteres**.
+
+El **PDF** de una FCE lleva, además de lo habitual, el **CBU y alias del emisor**, la **opción de transferencia con su leyenda** y el
+**aviso legal de aceptación** (21 días corridos), como el de ARCA. La numeración de la FCE es **independiente** de la de las
+Facturas A: cada punto de venta tiene su propia secuencia por tipo de comprobante.
+
+**Aceptación del cliente.** El cliente acepta o rechaza la FCE en ARCA (si no responde en 21 días corridos se considera
+aceptada). Por ahora **se registra a mano**: en el listado, el ícono de **"Aceptación del cliente"** (solo en una FCE ya emitida)
+abre un diálogo para marcarla **pendiente**, **aceptada** o **rechazada**. Es solo un registro: no cambia nada más de la factura.
+Consultarlo automáticamente en ARCA queda para más adelante.
+
+**Rechazos más comunes de ARCA**, explicados en pantalla:
+- *El cliente no figura en el padrón o está inactivo*: se revisa el CUIT en **Clientes**. Una FCE solo se puede emitir a un
+  cliente registrado.
+- *El CUIT del cliente es el mismo que el de la empresa*: no se le puede facturar a uno mismo.
+- *Faltan datos de la FCE* (CBU, opción de transferencia o vencimiento): la app los pide antes de mandar nada.
+
+**En el ambiente de pruebas (homologación)**, ARCA solo reconoce como cliente de una FCE a algunos **CUIT de prueba**; los CUIT reales de
+los clientes pueden ser rechazados ("no se encuentra registrado en los padrones"). Para probar, usá un cliente con el CUIT de prueba
+**33693450239**. En producción se usa el CUIT real.
+
+Una FCE emitida, como cualquier factura de ARCA, **no se edita ni se anula** desde la app: se corrige con una nota de crédito
+(próxima etapa).
+
 ## Registrar una factura ya emitida (carga manual)
 
 Se entra al presupuesto (tocando su fila) y se usa **"Nueva factura"** (o **"Cargar una ya emitida"**).
@@ -231,10 +272,10 @@ En el listado de **Presupuestos**, los presupuestos aprobados muestran además u
 
 ## Qué viene después
 
-Por ahora la app emite **Factura A**. Las próximas etapas suman la **Factura de Crédito Electrónica (FCE)** y las
+Por ahora la app emite **Factura A** y **Factura de Crédito Electrónica (FCE)**. La próxima etapa suma las
 **notas de crédito y débito** (que van a reemplazar a "anular" en los
 comprobantes de ARCA). Para emitir hacen falta el **CUIT** y la **condición de IVA** del cliente (ver el
 tema **Clientes**) y los datos de quien factura en **Configuración → Datos de mi empresa** (ver el tema
 **Datos de mi empresa y conexión con ARCA**, donde también se **prueba la conexión**).
 
-<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
+<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

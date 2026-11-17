@@ -37,7 +37,9 @@ Banco, **CBU** (22 dígitos; la app comprueba que sea válido y avisa si hay un 
 
 ## Opción de transferencia de la FCE
 
-La FCE exige indicar cómo se transfiere: **SCA** (sistema de circulación abierta) o **ADC** (agente de depósito colectivo). Acá se define la opción **por defecto de la empresa**. Algunos clientes piden una en particular (por ejemplo, ADC): cada cliente podrá tener la suya.
+La FCE exige indicar cómo se transfiere: **SCA** (sistema de circulación abierta) o **ADC** (agente de depósito colectivo). Acá se define la opción **por defecto de la empresa**. Algunos clientes piden una en particular (por ejemplo, ADC): cada cliente puede tener la suya, en su ficha de **Clientes**. Al emitir una FCE se usa la del cliente y, si no tiene, la de la empresa.
+
+Una **cuenta bancaria** que ya se usó en una factura no se puede eliminar: se **desactiva**. El CBU y el alias de la factura quedan guardados al emitirla, así que editar la cuenta después no cambia las facturas ya emitidas.
 
 ## Conexión con ARCA
 

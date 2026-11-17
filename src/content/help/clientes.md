@@ -16,6 +16,9 @@ Con el botón **"Nuevo Cliente"**:
   que coincidir: si no, el sistema avisa y no deja guardar. Se guarda sin guiones.
 - **Condición frente al IVA** (opcional): Responsable Inscripto, Monotributo, IVA Exento,
   Consumidor Final o IVA No Responsable.
+- **Opción de transferencia de la FCE** (opcional): **SCA** o **ADC**. Es la que se usa al emitirle una **Factura de Crédito
+  Electrónica** a este cliente. Algunos clientes piden una en particular (por ejemplo, ADC). Sin elegir, se usa la de la empresa
+  (Datos de mi empresa).
 - **Domicilio comercial fiscal** (opcional): calle y número, localidad y provincia. Es el que figura en
   el padrón de ARCA, que puede **no coincidir** con el de la obra o el de la orden de compra. Sale en el
   bloque del cliente de la factura.

@@ -32,6 +32,7 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
     email: client?.email || '',
     phone: client?.phone || '',
     tax_condition: client?.tax_condition || null,
+    fce_transfer_option: client?.fce_transfer_option || null,
     fiscal_street: client?.fiscal_street || '',
     fiscal_locality: client?.fiscal_locality || '',
     fiscal_province: client?.fiscal_province || '',
@@ -197,6 +198,20 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
             ))}
           </TextField>
         </Box>
+
+        <TextField
+          select
+          fullWidth
+          label="Opción de transferencia de la FCE"
+          value={formData.fce_transfer_option || ''}
+          onChange={(e) => setFormData(prev => ({ ...prev, fce_transfer_option: (e.target.value || null) as 'SCA' | 'ADC' | null }))}
+          helperText="Para la Factura de Crédito Electrónica. Sin elegir, se usa la de la empresa. Algunos clientes piden una en particular (por ejemplo, ADC)."
+          sx={{ mt: 2 }}
+        >
+          <MenuItem value=""><em>La de la empresa</em></MenuItem>
+          <MenuItem value="SCA">SCA — Sistema de circulación abierta</MenuItem>
+          <MenuItem value="ADC">ADC — Agente de depósito colectivo</MenuItem>
+        </TextField>
 
         {/* Domicilio comercial fiscal: el del padrón de ARCA (puede no coincidir con el de la obra o la OC). Sale en la factura. */}
         <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>

@@ -15,7 +15,7 @@ import BillablesList from '../../../components/billing/BillablesList';
 import InvoiceList from '../../../components/billing/InvoiceList';
 import InvoiceDialog from '../../../components/billing/InvoiceDialog';
 import InvoiceViewDialog from '../../../components/billing/InvoiceViewDialog';
-import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../components/billing/InvoiceActionDialogs';
+import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, FceAcceptanceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../components/billing/InvoiceActionDialogs';
 import {
   BillableBudget, BillingStatus, BudgetBillingDetail, Invoice, InvoiceClientOption, InvoiceService, InvoiceStatus,
   IvaInfo, SystemSettingService, VoucherType,
@@ -65,6 +65,7 @@ function BillingContent() {
   const [emitTarget, setEmitTarget] = useState<Invoice | null>(null);
   const [verifyTarget, setVerifyTarget] = useState<Invoice | null>(null);
   const [discardTarget, setDiscardTarget] = useState<Invoice | null>(null);
+  const [acceptanceTarget, setAcceptanceTarget] = useState<Invoice | null>(null);
   const [freeDialogOpen, setFreeDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<{ invoice: Invoice; detail: BudgetBillingDetail | null } | null>(null);
 
@@ -135,6 +136,7 @@ function BillingContent() {
     setEmitTarget(null);
     setVerifyTarget(null);
     setDiscardTarget(null);
+    setAcceptanceTarget(null);
     refreshAll();
   };
 
@@ -247,7 +249,7 @@ function BillingContent() {
               invoices={invoices} canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit} canWrite={canWrite}
               onView={setViewInvoice} onEdit={handleEdit} onPay={setPayTarget} onCancel={setCancelTarget}
               onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget}
-              onGeneratePdf={handleGeneratePdf}
+              onGeneratePdf={handleGeneratePdf} onFceAcceptance={setAcceptanceTarget}
             />
           )}
         </>
@@ -259,6 +261,7 @@ function BillingContent() {
       <EmitInvoiceDialog invoice={emitTarget} onClose={() => setEmitTarget(null)} onRefresh={refreshAll} onDone={(inv) => handleSaved(`Factura emitida en ARCA${inv.number ? `: N° ${String(inv.number).padStart(8, '0')}` : ''}`)} />
       <VerifyInvoiceDialog invoice={verifyTarget} onClose={() => setVerifyTarget(null)} onRefresh={refreshAll} onDone={() => handleSaved('Factura confirmada en ARCA')} />
       <DiscardInvoiceDialog invoice={discardTarget} onClose={() => setDiscardTarget(null)} onDone={() => handleSaved('Factura descartada')} />
+      <FceAcceptanceDialog invoice={acceptanceTarget} onClose={() => setAcceptanceTarget(null)} onDone={() => handleSaved('Aceptación de la FCE registrada')} />
 
       <InvoiceDialog
         open={freeDialogOpen} onClose={() => setFreeDialogOpen(false)} ivaInfo={iva} canUnofficial={canUnofficial}

@@ -78,6 +78,8 @@ export interface Client {
   fiscal_street?: string | null;
   fiscal_locality?: string | null;
   fiscal_province?: string | null;
+  // Opción de transferencia de la FCE propia del cliente (null = usa la de la empresa).
+  fce_transfer_option?: 'SCA' | 'ADC' | null;
   is_active: boolean;
   createdAt: string;
   updatedAt?: string;
@@ -92,6 +94,7 @@ export interface CreateClientData {
   fiscal_street?: string | null;
   fiscal_locality?: string | null;
   fiscal_province?: string | null;
+  fce_transfer_option?: 'SCA' | 'ADC' | null;
   is_active?: boolean;
 }
 
@@ -5318,6 +5321,13 @@ export interface Invoice {
   recipient_doc_number?: string | null;
   recipient_vat_condition_id?: number | null;
   point_of_sale_id?: number | null;
+  // FCE: cuenta del emisor (CBU y alias), opción de transferencia y aceptación del cliente (esta última se carga a mano).
+  bank_account_id?: number | null;
+  fce_transfer_option?: 'SCA' | 'ADC' | null;
+  fce_acceptance?: 'pending' | 'accepted' | 'rejected' | null;
+  fce_acceptance_at?: string | null;
+  bankAccount?: { id: number; bank_name: string; cbu: string; alias: string | null } | null;
+  issuer_snapshot?: { bank?: { bank_name: string; cbu: string; alias: string | null } } | null;
   same_currency_payment?: boolean | null;
   total_amount_ars?: number | null;
   sale_condition?: string | null;
@@ -5333,7 +5343,7 @@ export interface Invoice {
   payment_file_name?: string | null;
   notes: string | null;
   createdAt?: string;
-  client?: { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null };
+  client?: { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; fce_transfer_option?: 'SCA' | 'ADC' | null };
   budget?: { id: number; number: string; title: string; status: string } | null;
   project?: { id: number; code: string; name: string; is_additional?: boolean } | null;
   createdBy?: { id: number; name: string; lastname: string };
@@ -5376,7 +5386,7 @@ export interface BillableBudget {
   labor_discount_percent: number | null;
   material_discount_percent: number | null;
   project_id: number | null;
-  client?: { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null };
+  client?: { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; fce_transfer_option?: 'SCA' | 'ADC' | null };
   project?: { id: number; code: string; name: string; is_additional?: boolean; parent?: { id: number; code: string; name: string } | null } | null;
   quoteRequest?: { id: number; number: string; client_quote_number?: string | null; title: string } | null;
   billing: BudgetBillingSummary;
@@ -5410,6 +5420,8 @@ export interface InvoiceInput {
   // 'arca' = borrador para emitir por ARCA (el número lo asigna ARCA); omitido = factura ya hecha que se carga a mano.
   source?: InvoiceSource;
   point_of_sale_id?: number | null;
+  bank_account_id?: number | null;
+  fce_transfer_option?: 'SCA' | 'ADC' | null;
   arca_concept?: 1 | 2 | 3 | null;
   service_from?: string | null;
   service_to?: string | null;
@@ -5444,6 +5456,9 @@ export interface InvoiceArcaOptions {
   points_of_sale: Array<{ id: number; number: number; usage_description: string | null; is_default: boolean }>;
   receiver_vat_conditions: Array<{ id: number; label: string }>;
   client_tax_condition_map: Partial<Record<TaxCondition, number>>;
+  // Cuentas del emisor para elegir en una FCE y la opción de transferencia por defecto de la empresa.
+  bank_accounts: Array<{ id: number; bank_name: string; cbu: string; alias: string | null; currency: 'ARS' | 'USD' | null; is_default: boolean }>;
+  company_fce_transfer_option: 'SCA' | 'ADC';
 }
 
 export interface InvoiceFilters {
@@ -5621,6 +5636,16 @@ export class InvoiceService {
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al verificar la factura en ARCA');
     const body = await response.json();
     return { invoice: body.data, outcome: body.outcome };
+  }
+
+  // Aceptación de una FCE por el cliente: se carga a mano (consultarla en ARCA es una etapa futura).
+  static async setFceAcceptance(id: number, status: 'pending' | 'accepted' | 'rejected'): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/fce-acceptance`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    return this.parse(response, 'Error al registrar la aceptación de la FCE');
   }
 
   // Genera (o regenera) el PDF de una factura ya emitida por ARCA. Se arma solo al emitir; esto es por si no se pudo en el momento.
