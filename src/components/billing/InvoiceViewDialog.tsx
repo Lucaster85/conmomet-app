@@ -1,13 +1,13 @@
 'use client';
 import React from 'react';
 import {
-  Box, Button, Chip, DialogActions, DialogContent, DialogTitle, Divider, Link as MuiLink, Stack, Typography,
+  Alert, Box, Button, Chip, DialogActions, DialogContent, DialogTitle, Divider, Link as MuiLink, Stack, Typography,
 } from '@mui/material';
 import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import { Invoice } from '../../utils/api';
 import {
-  CONCEPT_LABELS, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS,
+  ARCA_CONCEPT_LABELS, ARCA_STATUS_LABELS, CONCEPT_LABELS, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS,
 } from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 
@@ -37,7 +37,19 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
               {row('Fecha de emisión', formatDate(invoice.issue_date))}
               {invoice.due_date && row('Vencimiento de pago', formatDate(invoice.due_date))}
               {invoice.status === 'paid' && row('Cobrada el', formatDate(invoice.paid_at))}
-              {invoice.exchange_rate && row('Cotización', invoice.exchange_rate.toLocaleString('es-AR', { maximumFractionDigits: 4 }))}
+              {invoice.exchange_rate && row('Cotización', invoice.exchange_rate.toLocaleString('es-AR', { maximumFractionDigits: 6 }))}
+              {invoice.currency === 'USD' && invoice.total_amount_ars != null && row('Total en pesos', formatMoney(invoice.total_amount_ars, 'ARS'))}
+              {invoice.source === 'arca' && invoice.arca_status && invoice.arca_status !== 'manual' && row('Estado en ARCA', (
+                <Chip size="small" color={ARCA_STATUS_LABELS[invoice.arca_status].color} label={ARCA_STATUS_LABELS[invoice.arca_status].label} />
+              ))}
+              {invoice.source === 'arca' && invoice.pointOfSale && row('Punto de venta', `${String(invoice.pointOfSale.number).padStart(4, '0')}${invoice.pointOfSale.usage_description ? ` — ${invoice.pointOfSale.usage_description}` : ''}`)}
+              {invoice.source === 'arca' && invoice.arca_concept && row('Concepto', ARCA_CONCEPT_LABELS[invoice.arca_concept])}
+              {invoice.service_from && invoice.service_to && row('Período facturado', `${formatDate(invoice.service_from)} al ${formatDate(invoice.service_to)}`)}
+              {invoice.cae && row('CAE', `${invoice.cae}${invoice.cae_expiration ? ` (vence ${formatDate(invoice.cae_expiration)})` : ''}`)}
+              {invoice.arca_env && row('Ambiente', invoice.arca_env === 'homologacion' ? 'Homologación (pruebas, sin validez fiscal)' : 'Producción')}
+              {invoice.sale_condition && row('Condición de venta', invoice.sale_condition)}
+              {invoice.remito_number && row('Remito', invoice.remito_number)}
+              {invoice.commercial_reference && row('Referencia comercial', invoice.commercial_reference)}
               {invoice.createdBy && row('Cargada por', `${invoice.createdBy.name} ${invoice.createdBy.lastname}`)}
               {invoice.payment_file_url && row('Comprobante de pago', (
                 <MuiLink {...fileLinkProps(invoice.payment_file_url, invoice.payment_file_name || undefined)}>{invoice.payment_file_name || 'Ver comprobante'}</MuiLink>
@@ -71,6 +83,14 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
               {row('Total', <strong>{formatMoney(invoice.total_amount, invoice.currency)}</strong>)}
             </Stack>
 
+            {invoice.arca_status === 'rejected' && invoice.arca_result?.reason && (
+              <Alert severity="error" sx={{ mt: 1.5 }}>{invoice.arca_result.reason}</Alert>
+            )}
+            {(invoice.arca_result?.observations || []).length > 0 && (
+              <Alert severity="warning" sx={{ mt: 1.5 }}>
+                ARCA emitió la factura con observaciones: {(invoice.arca_result?.observations || []).map((o) => `(${o.code}) ${o.msg}`).join(' · ')}
+              </Alert>
+            )}
             {invoice.notes && (
               <>
                 <Divider sx={{ my: 1.5 }} />

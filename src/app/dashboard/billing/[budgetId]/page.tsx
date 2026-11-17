@@ -11,7 +11,7 @@ import GearSpinner from '../../../../components/GearSpinner';
 import InvoiceList from '../../../../components/billing/InvoiceList';
 import InvoiceDialog from '../../../../components/billing/InvoiceDialog';
 import InvoiceViewDialog from '../../../../components/billing/InvoiceViewDialog';
-import { CancelInvoiceDialog, PayInvoiceDialog } from '../../../../components/billing/InvoiceActionDialogs';
+import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../../components/billing/InvoiceActionDialogs';
 import ProjectCodeLabel from '../../../../components/projects/ProjectCodeLabel';
 import { BudgetBillingDetail, BudgetCurrency, Invoice, InvoiceService } from '../../../../utils/api';
 import { userHasPermission, useAuth } from '../../../../utils/auth';
@@ -31,6 +31,8 @@ export default function BillingDetailPage() {
   const canUpdate = userHasPermission(user, 'invoices_update');
   const canCorrect = userHasPermission(user, 'invoices_correct');
   const canUnofficial = userHasPermission(user, 'invoices_unofficial');
+  // Emitir es irreversible: además de poder cargar facturas hace falta invoices_emit.
+  const canEmit = canWrite && userHasPermission(user, 'invoices_emit');
   const canSeeBudgets = userHasPermission(user, 'budgets_read');
   const canSeeProjects = userHasPermission(user, 'projects_read');
 
@@ -44,6 +46,9 @@ export default function BillingDetailPage() {
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [payTarget, setPayTarget] = useState<Invoice | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
+  const [emitTarget, setEmitTarget] = useState<Invoice | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<Invoice | null>(null);
+  const [discardTarget, setDiscardTarget] = useState<Invoice | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -63,6 +68,9 @@ export default function BillingDetailPage() {
     setEditInvoice(null);
     setPayTarget(null);
     setCancelTarget(null);
+    setEmitTarget(null);
+    setVerifyTarget(null);
+    setDiscardTarget(null);
     load();
   };
 
@@ -248,21 +256,25 @@ export default function BillingDetailPage() {
         <Typography variant="h6" fontWeight={700}>Facturas del presupuesto</Typography>
       </Stack>
       <InvoiceList
-        invoices={invoices} hideBudgetColumns canUpdate={canUpdate} canCorrect={canCorrect}
+        invoices={invoices} hideBudgetColumns canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit}
         emptyText="Todavía no se registró ninguna factura de este presupuesto"
         onView={setViewInvoice} onEdit={setEditInvoice} onPay={setPayTarget} onCancel={setCancelTarget}
+        onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget}
       />
 
       <InvoiceViewDialog invoice={viewInvoice} onClose={() => setViewInvoice(null)} />
       <PayInvoiceDialog invoice={payTarget} onClose={() => setPayTarget(null)} onDone={() => handleSaved('Factura marcada como cobrada')} />
       <CancelInvoiceDialog invoice={cancelTarget} onClose={() => setCancelTarget(null)} onDone={() => handleSaved('Factura anulada')} />
+      <EmitInvoiceDialog invoice={emitTarget} onClose={() => setEmitTarget(null)} onRefresh={load} onDone={(inv) => handleSaved(`Factura emitida en ARCA${inv.number ? `: N° ${String(inv.number).padStart(8, '0')}` : ''}`)} />
+      <VerifyInvoiceDialog invoice={verifyTarget} onClose={() => setVerifyTarget(null)} onRefresh={load} onDone={() => handleSaved('Factura confirmada en ARCA')} />
+      <DiscardInvoiceDialog invoice={discardTarget} onClose={() => setDiscardTarget(null)} onDone={() => handleSaved('Factura descartada')} />
       <InvoiceDialog
         open={newOpen} onClose={() => setNewOpen(false)} detail={detail} ivaInfo={iva} canUnofficial={canUnofficial}
-        onSaved={() => handleSaved('Factura registrada')}
+        onSaved={(saved) => handleSaved(saved.source === 'arca' ? 'Borrador guardado: emitilo desde el listado de facturas' : 'Factura registrada')}
       />
       <InvoiceDialog
         open={!!editInvoice} onClose={() => setEditInvoice(null)} detail={detail} invoice={editInvoice} ivaInfo={iva} canUnofficial={canUnofficial}
-        onSaved={() => handleSaved('Factura corregida')}
+        onSaved={(saved) => handleSaved(saved.source === 'arca' ? 'Borrador actualizado' : 'Factura corregida')}
       />
     </Box>
   );

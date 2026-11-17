@@ -4,9 +4,9 @@ Es el módulo donde administración ve **qué presupuestos aprobados se pueden f
 materiales y de mano de obra **queda por facturar**, y donde **registra las facturas** (parciales o
 totales) y sigue si se cobraron. Se ubica en **Facturación → Facturación**.
 
-Por ahora el sistema **no emite** las facturas: la factura se hace en ARCA como siempre y después se
-**carga acá** con sus datos y, si se quiere, el PDF. Más adelante (ver el último punto) la emisión
-se va a poder hacer directamente desde la app.
+Una **Factura A** se puede **emitir directamente desde la app contra ARCA** (ver "Emitir una factura por
+ARCA"). También se puede seguir **cargando a mano** una factura que ya se hizo en la web de ARCA, con
+su número y, si se quiere, el PDF. Las dos formas conviven.
 
 ## Cuándo aparece un presupuesto
 
@@ -50,15 +50,85 @@ La lista viene ordenada para que lo más urgente quede arriba:
 Se puede filtrar por **cliente**, por **estado de facturación**, por **"con facturas pendientes de
 cobro"**, y buscar por presupuesto, pedido, proyecto, cliente o CUIT.
 
-## Registrar una factura
+## Emitir una factura por ARCA
 
-Se entra al presupuesto (tocando su fila) y se usa **"Nueva factura"**. Una factura tiene un
+Se entra al presupuesto y se usa **"Nueva factura"**. Si la conexión con ARCA está activa y hay puntos
+de venta de tipo web service (ver el tema **Datos de mi empresa y conexión con ARCA**), el diálogo arranca
+en **"Emitir por ARCA"**; con el selector de arriba se puede pasar a **"Cargar una ya emitida"**.
+
+Emitir es un proceso **en dos pasos**:
+
+1. **Guardar el borrador.** Se completan los mismos datos de siempre (conceptos y porcentajes, fecha,
+   moneda, IVA) y, además:
+   - **Punto de venta**: solo aparecen los de tipo web service, con su descripción de uso.
+   - **Concepto**: *productos*, *servicios* o *ambos*. Se sugiere solo según lo que se factura (solo
+     materiales = productos, solo mano de obra = servicios). Con servicios, ARCA exige el **período
+     facturado** (desde y hasta) y el **vencimiento de pago**.
+   - **Condición frente al IVA del receptor**: ARCA la exige desde el 1/12/2026. Se toma de la ficha del
+     cliente (Responsable Inscripto o Monotributo; una Factura A no se le puede hacer a un cliente exento
+     o consumidor final).
+   - Opcionales: **condición de venta**, **remito** y **referencia comercial** (por ejemplo, el número de
+     OC), que se imprimen en la factura.
+   El borrador **no tiene número** todavía y **ocupa saldo** del presupuesto, como cualquier factura.
+   Se puede editar o descartar.
+2. **Emitir en ARCA.** Desde el listado, el ícono de **enviar**. Antes de emitir se muestra una
+   confirmación con el **ambiente**, el punto de venta, el tipo, el cliente y el total. ARCA asigna el
+   **número** y el **CAE**, y la factura queda **"Emitida en ARCA"**.
+
+**Una factura emitida ya no se edita ni se anula** desde la app: ARCA ya la conoce. Si hay un error, se
+corrige con una **nota de crédito** (próxima etapa). Hasta que exista, la nota de crédito se emite desde la
+web de ARCA.
+
+**Estados de la emisión:**
+
+- **Borrador**: todavía no se mandó a ARCA. Se puede editar, emitir o descartar.
+- **Emitida en ARCA**: tiene número y CAE. Desde acá es una factura normal: se puede marcar cobrada.
+- **Rechazada por ARCA**: ARCA no la aceptó y explica el motivo en lenguaje claro (por ejemplo, una fecha
+  fuera de rango). **No consumió ningún número.** Se corrige (vuelve a borrador) y se emite de nuevo, o
+  se descarta.
+- **Autorizando…**: se mandó a ARCA pero **no llegó la respuesta** (por ejemplo, se cortó la conexión).
+  **No la emitas otra vez.** Usá **"Verificar en ARCA"** (ícono de sincronizar): la app consulta ARCA y, si
+  el comprobante existe, completa la factura con su CAE; si no existe, vuelve a borrador. Mientras haya una
+  "autorizando" en un punto de venta, no se pueden emitir otras en ese mismo punto de venta y tipo.
+
+**Descartar** un borrador o una factura rechazada la deja anulada y **libera el saldo** del presupuesto,
+sin necesidad de una nota de crédito (nunca existió para ARCA).
+
+**Fechas.** ARCA no acepta una fecha de emisión muy lejana a hoy: hasta **5 días** antes o después con
+productos, y hasta **10 días** con servicios. Tampoco puede ser anterior a la del último comprobante de
+ese punto de venta. La app lo avisa antes de mandar nada. "Hoy" es siempre el de Argentina.
+
+**Observaciones de ARCA.** A veces ARCA acepta la factura pero agrega una **observación** (por ejemplo,
+que no encuentra el CUIT del receptor en su padrón). La factura sale con la etiqueta **"Con observaciones
+de ARCA"**: pasá el mouse para leerla y revisala.
+
+**Ambiente de pruebas.** Cuando el servidor está en **homologación**, las facturas salen con la etiqueta
+**PRUEBA**: tienen CAE, pero **no tienen validez fiscal**.
+
+**Si ARCA no funciona**, la facturación no se frena: se hace la factura en la web de ARCA, con un punto
+de venta de "Comprobantes en línea", y se **carga a mano** con "Cargar una ya emitida".
+
+**Dólares.** En una factura en dólares la **cotización** se precarga con la de ARCA (botón **"Traer de
+ARCA"**) y se puede editar. Se indica si la factura **se cobra en dólares** (la misma moneda) o en pesos.
+La factura guarda también el **total en pesos** (total × cotización).
+
+**Quién puede emitir.** Además de poder cargar facturas hace falta un permiso propio, **emitir facturas por
+ARCA**, porque es una acción irreversible. Cada emisión queda registrada con quién la hizo y en qué
+ambiente.
+
+## Registrar una factura ya emitida (carga manual)
+
+Se entra al presupuesto (tocando su fila) y se usa **"Nueva factura"** (o **"Cargar una ya emitida"**).
+Una factura tiene un
 encabezado (tipo, punto de venta, número, fechas, moneda, IVA) y **una o más líneas**, una por
 concepto. Nada obliga a separar los conceptos: se puede hacer cualquier combinación.
 
-- **Tipo de comprobante**: arranca en **A**, pero se puede cambiar (A, B, C, E).
-- **Punto de venta y número**: obligatorios. No puede repetirse el mismo número para el mismo tipo y
-  punto de venta.
+- **Tipo de comprobante**: arranca en **A**, pero se puede cambiar (A, B, C, E). Junto a la letra se
+  elige la **clase**: factura, **factura de crédito electrónica (FCE)**, nota de débito o nota de
+  crédito.
+- **Punto de venta y número**: obligatorios. ARCA numera **por punto de venta y por clase**: una Factura A
+  y una FCE A pueden tener el mismo número. Lo que no puede repetirse es el mismo número para la misma
+  clase y punto de venta.
 - Con **"+ Agregar materiales"** o **"+ Agregar mano de obra"** se suma cada concepto. Para cada uno
   se muestra el **saldo disponible** y se carga **el porcentaje o el monto, lo que prefieras**: el
   otro valor se calcula solo. En mano de obra, además, se ve el **equivalente en horas** (por
@@ -141,18 +211,19 @@ En el listado de **Presupuestos**, los presupuestos aprobados muestran además u
 
 - **Ver Facturación**: ver los montos del presupuesto **dentro de este módulo**, aunque no se tenga
   permiso para ver los precios en Presupuestos.
-- **Registrar facturas**: cargar facturas nuevas y facturas libres.
+- **Registrar facturas**: cargar facturas nuevas y facturas libres, y guardar borradores de ARCA.
+- **Emitir facturas por ARCA**: permiso especial. Emite el borrador en ARCA y verifica las que quedaron
+  "autorizando".
 - **Marcar cobrada y anular**: permiso de modificar facturas.
 - **Corregir**: permiso especial, para un único responsable.
 - **Cobros sin factura**: permiso especial para cargarlos y verlos.
 
 ## Qué viene después
 
-La idea es integrar el módulo con **ARCA** para **emitir las facturas directamente desde la app**,
-sin cargarlas a mano. Para eso ya se guardan el **CUIT** y la **condición de IVA** de cada cliente
-(ver el tema **Clientes**), y los datos de quien factura, sus puntos de venta y sus cuentas bancarias
-se cargan en **Configuración → Datos de mi empresa** (ver el tema **Datos de mi empresa y conexión
-con ARCA**, donde también se **prueba la conexión** con ARCA). Cuando exista la emisión, las notas de
-crédito van a reemplazar a "anular" en los comprobantes oficiales.
+Por ahora la app emite **Factura A**. Las próximas etapas suman el **PDF con código QR**, la **Factura de
+Crédito Electrónica (FCE)** y las **notas de crédito y débito** (que van a reemplazar a "anular" en los
+comprobantes de ARCA). Para emitir hacen falta el **CUIT** y la **condición de IVA** del cliente (ver el
+tema **Clientes**) y los datos de quien factura en **Configuración → Datos de mi empresa** (ver el tema
+**Datos de mi empresa y conexión con ARCA**, donde también se **prueba la conexión**).
 
-<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
+<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

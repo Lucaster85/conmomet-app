@@ -32,6 +32,9 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
     email: client?.email || '',
     phone: client?.phone || '',
     tax_condition: client?.tax_condition || null,
+    fiscal_street: client?.fiscal_street || '',
+    fiscal_locality: client?.fiscal_locality || '',
+    fiscal_province: client?.fiscal_province || '',
   });
   // El CUIT se edita con la máscara XX-XXXXXXXX-X y se envía solo con dígitos.
   const [cuit, setCuit] = useState(formatCuit(client?.cuit));
@@ -193,6 +196,16 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
               <MenuItem key={key} value={key}>{TAX_CONDITION_LABELS[key]}</MenuItem>
             ))}
           </TextField>
+        </Box>
+
+        {/* Domicilio comercial fiscal: el del padrón de ARCA (puede no coincidir con el de la obra o la OC). Sale en la factura. */}
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
+          Domicilio comercial fiscal (opcional, sale en la factura)
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+          <TextField fullWidth label="Calle y número" name="fiscal_street" value={formData.fiscal_street || ''} onChange={handleInputChange} inputProps={{ maxLength: 150 }} />
+          <TextField fullWidth label="Localidad" name="fiscal_locality" value={formData.fiscal_locality || ''} onChange={handleInputChange} inputProps={{ maxLength: 100 }} />
+          <TextField fullWidth label="Provincia" name="fiscal_province" value={formData.fiscal_province || ''} onChange={handleInputChange} inputProps={{ maxLength: 100 }} />
         </Box>
 
         {/* Información de Contacto */}

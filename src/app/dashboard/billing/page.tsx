@@ -15,7 +15,7 @@ import BillablesList from '../../../components/billing/BillablesList';
 import InvoiceList from '../../../components/billing/InvoiceList';
 import InvoiceDialog from '../../../components/billing/InvoiceDialog';
 import InvoiceViewDialog from '../../../components/billing/InvoiceViewDialog';
-import { CancelInvoiceDialog, PayInvoiceDialog } from '../../../components/billing/InvoiceActionDialogs';
+import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../components/billing/InvoiceActionDialogs';
 import {
   BillableBudget, BillingStatus, BudgetBillingDetail, Invoice, InvoiceClientOption, InvoiceService, InvoiceStatus,
   IvaInfo, SystemSettingService, VoucherType,
@@ -31,6 +31,8 @@ function BillingContent() {
   const canUpdate = userHasPermission(user, 'invoices_update');
   const canCorrect = userHasPermission(user, 'invoices_correct');
   const canUnofficial = userHasPermission(user, 'invoices_unofficial');
+  // Emitir es irreversible: además de poder cargar facturas hace falta invoices_emit.
+  const canEmit = canWrite && userHasPermission(user, 'invoices_emit');
 
   const [tab, setTab] = useState(searchParams.get('tab') === 'invoices' ? 1 : 0);
   const [clients, setClients] = useState<InvoiceClientOption[]>([]);
@@ -60,6 +62,9 @@ function BillingContent() {
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [payTarget, setPayTarget] = useState<Invoice | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
+  const [emitTarget, setEmitTarget] = useState<Invoice | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<Invoice | null>(null);
+  const [discardTarget, setDiscardTarget] = useState<Invoice | null>(null);
   const [freeDialogOpen, setFreeDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<{ invoice: Invoice; detail: BudgetBillingDetail | null } | null>(null);
 
@@ -127,6 +132,9 @@ function BillingContent() {
     setEditTarget(null);
     setPayTarget(null);
     setCancelTarget(null);
+    setEmitTarget(null);
+    setVerifyTarget(null);
+    setDiscardTarget(null);
     refreshAll();
   };
 
@@ -227,8 +235,9 @@ function BillingContent() {
             <Box display="flex" justifyContent="center" py={6}><GearSpinner /></Box>
           ) : (
             <InvoiceList
-              invoices={invoices} canUpdate={canUpdate} canCorrect={canCorrect}
+              invoices={invoices} canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit}
               onView={setViewInvoice} onEdit={handleEdit} onPay={setPayTarget} onCancel={setCancelTarget}
+              onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget}
             />
           )}
         </>
@@ -237,6 +246,9 @@ function BillingContent() {
       <InvoiceViewDialog invoice={viewInvoice} onClose={() => setViewInvoice(null)} />
       <PayInvoiceDialog invoice={payTarget} onClose={() => setPayTarget(null)} onDone={() => handleSaved('Factura marcada como cobrada')} />
       <CancelInvoiceDialog invoice={cancelTarget} onClose={() => setCancelTarget(null)} onDone={() => handleSaved('Factura anulada')} />
+      <EmitInvoiceDialog invoice={emitTarget} onClose={() => setEmitTarget(null)} onRefresh={refreshAll} onDone={(inv) => handleSaved(`Factura emitida en ARCA${inv.number ? `: N° ${String(inv.number).padStart(8, '0')}` : ''}`)} />
+      <VerifyInvoiceDialog invoice={verifyTarget} onClose={() => setVerifyTarget(null)} onRefresh={refreshAll} onDone={() => handleSaved('Factura confirmada en ARCA')} />
+      <DiscardInvoiceDialog invoice={discardTarget} onClose={() => setDiscardTarget(null)} onDone={() => handleSaved('Factura descartada')} />
 
       <InvoiceDialog
         open={freeDialogOpen} onClose={() => setFreeDialogOpen(false)} ivaInfo={iva} canUnofficial={canUnofficial}
@@ -245,7 +257,7 @@ function BillingContent() {
       <InvoiceDialog
         open={!!editTarget} onClose={() => setEditTarget(null)} ivaInfo={iva} canUnofficial={canUnofficial}
         invoice={editTarget?.invoice} detail={editTarget?.detail}
-        onSaved={() => handleSaved('Factura corregida')}
+        onSaved={(saved) => handleSaved(saved.source === 'arca' ? 'Borrador actualizado' : 'Factura corregida')}
       />
     </Box>
   );

@@ -1,20 +1,20 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert, Autocomplete, Box, Button, DialogActions, DialogContent, DialogTitle, Divider, IconButton,
-  InputAdornment, MenuItem, Stack, TextField, Typography, useMediaQuery, useTheme,
+  Alert, Autocomplete, Box, Button, DialogActions, DialogContent, DialogTitle, Divider, FormControlLabel, IconButton,
+  InputAdornment, MenuItem, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
 import { DeleteOutline as DeleteIcon, UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
 import {
-  BudgetBillingDetail, BudgetCurrency, Invoice, InvoiceClientOption, InvoiceConcept, InvoiceInput,
+  BudgetBillingDetail, BudgetCurrency, Invoice, InvoiceArcaOptions, InvoiceClientOption, InvoiceConcept, InvoiceInput,
   InvoiceLineInput, InvoiceProjectOption, InvoiceService, IvaInfo, VoucherType,
 } from '../../utils/api';
 import {
-  CONCEPT_LABELS, formatHours, formatMoney, formatPercent, ivaOf, roundMoney, roundPercent, todayISO,
-  VOUCHER_TYPE_OPTIONS,
+  ARCA_CONCEPT_LABELS, CBTE_OPTIONS_BY_LETTER, CONCEPT_LABELS, DEFAULT_CBTE_BY_LETTER, formatHours, formatMoney, formatPercent,
+  ivaOf, roundMoney, roundPercent, todayISO, VOUCHER_TYPE_OPTIONS,
 } from '../../utils/billing';
 import { formatCuit, TAX_CONDITION_LABELS } from '../../utils/cuit';
 
@@ -80,6 +80,25 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // --- Emisión por ARCA ---
+  // mode 'arca': se guarda un BORRADOR que después se emite desde el listado (el número lo asigna ARCA). mode 'manual':
+  // la factura que ya se hizo en la web de ARCA y se carga con su número.
+  const [arcaOptions, setArcaOptions] = useState<InvoiceArcaOptions | null>(null);
+  const [mode, setMode] = useState<'manual' | 'arca'>('manual');
+  const [cbteTipo, setCbteTipo] = useState<number>(1);
+  const [posId, setPosId] = useState<number | ''>('');
+  const [concept, setConcept] = useState<1 | 2 | 3>(2);
+  const [conceptTouched, setConceptTouched] = useState(false);
+  const [serviceFrom, setServiceFrom] = useState('');
+  const [serviceTo, setServiceTo] = useState('');
+  const [recipientVatId, setRecipientVatId] = useState<number | ''>('');
+  const [sameCurrency, setSameCurrency] = useState(false);
+  const [saleCondition, setSaleCondition] = useState('');
+  const [remito, setRemito] = useState('');
+  const [commercialRef, setCommercialRef] = useState('');
+  const [rateLoading, setRateLoading] = useState(false);
+  const isArca = mode === 'arca';
+
   // Saldo disponible de un concepto en la moneda elegida. Al corregir, el monto de la propia
   // factura vuelve a estar disponible (el servidor lo excluye del cálculo igual).
   const availableFor = (cur: BudgetCurrency, concept: 'materials' | 'labor'): number => {
@@ -115,6 +134,18 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
       setExchangeRate(invoice.exchange_rate ? String(invoice.exchange_rate) : '');
       setIvaRate(invoice.iva_rate);
       setNotes(invoice.notes || '');
+      setMode(invoice.source === 'arca' ? 'arca' : 'manual');
+      setCbteTipo(invoice.cbte_tipo || DEFAULT_CBTE_BY_LETTER[invoice.voucher_type === 'sin_factura' ? 'A' : invoice.voucher_type]);
+      setPosId(invoice.point_of_sale_id || '');
+      setConcept((invoice.arca_concept as 1 | 2 | 3) || 2);
+      setConceptTouched(true);
+      setServiceFrom(invoice.service_from || '');
+      setServiceTo(invoice.service_to || '');
+      setRecipientVatId(invoice.recipient_vat_condition_id || '');
+      setSameCurrency(!!invoice.same_currency_payment);
+      setSaleCondition(invoice.sale_condition || '');
+      setRemito(invoice.remito_number || '');
+      setCommercialRef(invoice.commercial_reference || '');
       setLines(invoice.lines.map((l) => ({
         key: newKey(),
         concept: l.concept,
@@ -133,6 +164,18 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
       setExchangeRate('');
       setIvaRate(ivaInfo.default_rate);
       setNotes('');
+      setMode('manual');
+      setCbteTipo(1);
+      setPosId('');
+      setConcept(2);
+      setConceptTouched(false);
+      setServiceFrom('');
+      setServiceTo('');
+      setRecipientVatId('');
+      setSameCurrency(false);
+      setSaleCondition('');
+      setRemito('');
+      setCommercialRef('');
       setLines(detail ? [] : [{ key: newKey(), concept: 'other', percentText: '', amount: null, description: '', source: 'amount' }]);
       // Con presupuesto, la moneda por defecto es la primera que todavía tenga saldo.
       setCurrency(detail && currencyOptions.length > 0 ? currencyOptions[0] : 'ARS');
@@ -142,6 +185,58 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
     // Solo al abrir: no queremos pisar lo que el usuario esté escribiendo si cambia el padre.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, invoice, detail?.budget.id]);
+
+  // Opciones de ARCA: solo para facturas de un presupuesto (la factura libre se sigue cargando a mano). Si la integración
+  // está prendida y hay puntos de venta de web service, una factura nueva arranca como "Emitir por ARCA".
+  useEffect(() => {
+    if (!open || !detail) { setArcaOptions(null); return; }
+    let cancelled = false;
+    InvoiceService.getArcaOptions().then((opts) => {
+      if (cancelled) return;
+      setArcaOptions(opts);
+      if (!invoice && opts.enabled && opts.points_of_sale.length > 0) {
+        setMode('arca');
+        const def = opts.points_of_sale.find((p) => p.is_default) || opts.points_of_sale[0];
+        setPosId(def.id);
+      }
+      const client = detail.budget.client;
+      const mapped = client?.tax_condition ? opts.client_tax_condition_map[client.tax_condition] : undefined;
+      if (!invoice && mapped) setRecipientVatId(mapped);
+    }).catch(() => { if (!cancelled) setArcaOptions(null); });
+    return () => { cancelled = true; };
+    // Solo al abrir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, detail?.budget.id, invoice]);
+
+  // Concepto sugerido según lo que se factura (solo materiales = productos, solo mano de obra = servicios, los dos = ambos),
+  // mientras la persona no lo haya tocado.
+  useEffect(() => {
+    if (!isArca || conceptTouched) return;
+    const hasMaterials = lines.some((l) => l.concept === 'materials');
+    const hasLabor = lines.some((l) => l.concept === 'labor');
+    if (hasMaterials && hasLabor) setConcept(3);
+    else if (hasMaterials) setConcept(1);
+    else if (hasLabor) setConcept(2);
+  }, [isArca, conceptTouched, lines]);
+
+  // En dólares, la cotización se precarga con la de ARCA (la que usa la web de ARCA), editable.
+  const loadArcaRate = async () => {
+    setRateLoading(true);
+    setError('');
+    try {
+      const quote = await InvoiceService.getArcaExchangeRate();
+      setExchangeRate(String(quote.rate));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo traer la cotización de ARCA');
+    } finally {
+      setRateLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (open && isArca && currency === 'USD' && !exchangeRate && !invoice) loadArcaRate();
+    // Solo cuando cambia la moneda o el modo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isArca, currency]);
 
   // Factura libre: clientes y proyectos del cliente elegido.
   useEffect(() => {
@@ -229,7 +324,15 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
 
   const validate = (): string | null => {
     if (!issueDate) return 'La fecha de emisión es obligatoria.';
-    if (!isUnofficial) {
+    if (isArca) {
+      if (!posId) return 'Elegí el punto de venta.';
+      if (concept !== 1) {
+        if (!serviceFrom || !serviceTo) return 'Con servicios hay que indicar el período facturado (desde y hasta).';
+        if (serviceFrom > serviceTo) return 'El período facturado es inválido: la fecha desde es posterior a la fecha hasta.';
+        if (!dueDate) return 'Con servicios hay que indicar el vencimiento de pago.';
+      }
+      if (currency === 'USD' && !(Number(exchangeRate.replace(',', '.')) > 0)) return 'En dólares hace falta la cotización.';
+    } else if (!isUnofficial) {
       const pos = Number(posNumber);
       const num = Number(number);
       if (!Number.isInteger(pos) || pos < 1 || pos > 99999) return 'Ingresá el punto de venta (1 a 99999).';
@@ -258,10 +361,25 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
         : { concept: l.concept, net_amount: l.amount || 0 };
     });
 
+    const arcaFields: Partial<InvoiceInput> = isArca ? {
+      source: 'arca',
+      point_of_sale_id: Number(posId),
+      arca_concept: concept,
+      service_from: concept === 1 ? null : serviceFrom,
+      service_to: concept === 1 ? null : serviceTo,
+      recipient_vat_condition_id: recipientVatId === '' ? null : Number(recipientVatId),
+      same_currency_payment: currency === 'USD' ? sameCurrency : null,
+      sale_condition: saleCondition.trim() || null,
+      remito_number: remito.trim() || null,
+      commercial_reference: commercialRef.trim() || null,
+    } : {};
+
     const input: InvoiceInput = {
-      voucher_type: voucherType,
-      pos_number: isUnofficial ? null : Number(posNumber),
-      number: isUnofficial ? null : Number(number),
+      voucher_type: isArca ? 'A' : voucherType,
+      cbte_tipo: isArca || isUnofficial ? null : cbteTipo,
+      ...arcaFields,
+      pos_number: isArca || isUnofficial ? null : Number(posNumber),
+      number: isArca || isUnofficial ? null : Number(number),
       issue_date: issueDate,
       due_date: dueDate || null,
       currency,
@@ -273,7 +391,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
       notes: notes.trim() || null,
       paid_at: invoice?.status === 'paid' ? paidAt || null : undefined,
       lines: lineInputs,
-      file,
+      file: isArca ? null : file,
     };
 
     setSaving(true);
@@ -362,7 +480,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
   return (
     <AppDialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="md" fullScreen={isMobile}>
       <DialogTitle>
-        {isEditing ? 'Corregir factura' : isFree ? 'Factura libre' : 'Nueva factura'}
+        {isEditing ? (isArca ? 'Editar borrador' : 'Corregir factura') : isFree ? 'Factura libre' : isArca ? 'Nueva factura (emitir por ARCA)' : 'Nueva factura'}
         {detail && (
           <Typography variant="body2" color="text.secondary">
             {detail.budget.number} · {detail.budget.title}
@@ -373,7 +491,33 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
         <Stack spacing={2.5}>
           {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
 
-          {isEditing && (
+          {!isEditing && detail && arcaOptions?.enabled && arcaOptions.points_of_sale.length > 0 && (
+            <ToggleButtonGroup
+              exclusive fullWidth size="small" color="primary" value={mode}
+              onChange={(_, value) => { if (value) setMode(value); }}
+            >
+              <ToggleButton value="arca">Emitir por ARCA</ToggleButton>
+              <ToggleButton value="manual">Cargar una ya emitida</ToggleButton>
+            </ToggleButtonGroup>
+          )}
+
+          {isArca && arcaOptions && (
+            <>
+              <Alert severity={arcaOptions.env === 'produccion' ? 'warning' : 'info'}>
+                {arcaOptions.env === 'homologacion'
+                  ? 'Ambiente de PRUEBAS de ARCA: la factura que se emita no tiene validez fiscal. '
+                  : ''}
+                Se guarda como <strong>borrador</strong>: después la emitís en ARCA desde el listado de facturas, y ARCA le asigna el número.
+              </Alert>
+              {arcaOptions.issuer_missing.length > 0 && (
+                <Alert severity="warning">
+                  Faltan datos de la empresa para emitir ({arcaOptions.issuer_missing.join(', ')}). Completalos en Configuración → Datos de mi empresa.
+                </Alert>
+              )}
+            </>
+          )}
+
+          {isEditing && !isArca && (
             <Alert severity="info">
               Estás corrigiendo una factura ya cargada. Usalo para arreglar un dato mal cargado
               (por ejemplo el número); si la factura real se anuló, usá “Anular”. Cada corrección
@@ -412,10 +556,35 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
           )}
 
           {/* Encabezado */}
+          {isArca ? (
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField select label="Punto de venta *" value={posId} fullWidth onChange={(e) => setPosId(Number(e.target.value))}
+                helperText="Solo los de tipo web service, de Datos de mi empresa.">
+                {(arcaOptions?.points_of_sale || []).map((p) => (
+                  <MenuItem key={p.id} value={p.id}>{String(p.number).padStart(4, '0')}{p.usage_description ? ` — ${p.usage_description}` : ''}</MenuItem>
+                ))}
+              </TextField>
+              <TextField select label="Concepto *" value={concept} fullWidth
+                onChange={(e) => { setConcept(Number(e.target.value) as 1 | 2 | 3); setConceptTouched(true); }}
+                helperText="Con servicios, ARCA pide el período facturado y el vencimiento de pago.">
+                {([1, 2, 3] as const).map((c) => <MenuItem key={c} value={c}>{ARCA_CONCEPT_LABELS[c]}</MenuItem>)}
+              </TextField>
+            </Stack>
+          ) : (
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField select label="Tipo de comprobante *" value={voucherType} fullWidth onChange={(e) => setVoucherType(e.target.value as VoucherType)}>
+            <TextField select label="Tipo de comprobante *" value={voucherType} fullWidth onChange={(e) => {
+              const next = e.target.value as VoucherType;
+              setVoucherType(next);
+              if (next !== 'sin_factura') setCbteTipo(DEFAULT_CBTE_BY_LETTER[next]);
+            }}>
               {voucherOptions.map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
             </TextField>
+            {!isUnofficial && (
+              <TextField select label="Clase *" value={cbteTipo} fullWidth onChange={(e) => setCbteTipo(Number(e.target.value))}
+                sx={{ minWidth: { sm: 220 } }}>
+                {CBTE_OPTIONS_BY_LETTER[voucherType as 'A' | 'B' | 'C' | 'E'].map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+              </TextField>
+            )}
             {!isUnofficial && (
               <>
                 <TextField
@@ -431,7 +600,8 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
               </>
             )}
           </Stack>
-          {isUnofficial && (
+          )}
+          {isUnofficial && !isArca && (
             <Alert severity="warning">
               Cobro sin comprobante fiscal: no lleva número ni IVA. Igual descuenta del saldo del presupuesto.
             </Alert>
@@ -439,11 +609,18 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <DateField label="Fecha de emisión *" value={issueDate} onChange={setIssueDate} fullWidth />
-            <DateField label="Vencimiento de pago" value={dueDate} onChange={setDueDate} fullWidth />
+            <DateField label={isArca && concept !== 1 ? 'Vencimiento de pago *' : 'Vencimiento de pago'} value={dueDate} onChange={setDueDate} fullWidth />
             {isEditing && invoice?.status === 'paid' && (
               <DateField label="Fecha de cobro" value={paidAt} onChange={setPaidAt} fullWidth />
             )}
           </Stack>
+
+          {isArca && concept !== 1 && (
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <DateField label="Período facturado: desde *" value={serviceFrom} onChange={setServiceFrom} fullWidth />
+              <DateField label="Período facturado: hasta *" value={serviceTo} onChange={setServiceTo} fullWidth />
+            </Stack>
+          )}
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
@@ -457,9 +634,15 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
             </TextField>
             {currency === 'USD' && (
               <TextField
-                label="Cotización (opcional)" value={exchangeRate} fullWidth
+                label={isArca ? 'Cotización *' : 'Cotización (opcional)'} value={exchangeRate} fullWidth
                 onChange={(e) => setExchangeRate(e.target.value.replace(/[^\d.,]/g, ''))}
-                inputProps={{ inputMode: 'decimal' }} helperText="Solo informativa."
+                inputProps={{ inputMode: 'decimal' }}
+                helperText={isArca ? 'Se precarga con la de ARCA. Si se cobra en dólares, ARCA usa la suya.' : 'Solo informativa.'}
+                InputProps={isArca ? { endAdornment: (
+                  <InputAdornment position="end">
+                    <Button size="small" onClick={loadArcaRate} disabled={rateLoading}>{rateLoading ? '…' : 'Traer de ARCA'}</Button>
+                  </InputAdornment>
+                ) } : undefined}
               />
             )}
             {!isUnofficial && (
@@ -510,6 +693,42 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
             </>
           )}
 
+          {/* Receptor y datos opcionales del comprobante (solo emisión por ARCA) */}
+          {isArca && arcaOptions && (
+            <>
+              <Divider />
+              <Typography variant="subtitle1" fontWeight={700}>Receptor</Typography>
+              {budgetClient && (!budgetClient.cuit || !budgetClient.tax_condition) && (
+                <Alert severity="warning">
+                  {budgetClient.razonSocial} no tiene {!budgetClient.cuit ? 'CUIT' : 'condición frente al IVA'} cargado: ARCA lo exige para una Factura A.
+                  Completalo en Clientes antes de emitir (el borrador se puede guardar igual).
+                </Alert>
+              )}
+              <TextField
+                select label="Condición frente al IVA del receptor *" value={recipientVatId} fullWidth
+                onChange={(e) => setRecipientVatId(e.target.value === '' ? '' : Number(e.target.value))}
+                helperText="ARCA lo exige desde el 1/12/2026. Para una Factura A: Responsable Inscripto o Monotributo."
+              >
+                {arcaOptions.receiver_vat_conditions.map((c) => <MenuItem key={c.id} value={c.id}>{c.label}</MenuItem>)}
+              </TextField>
+              {currency === 'USD' && (
+                <FormControlLabel
+                  control={<Switch checked={sameCurrency} onChange={(e) => setSameCurrency(e.target.checked)} />}
+                  label="Se cobra en dólares (la misma moneda de la factura)"
+                />
+              )}
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField label="Condición de venta" value={saleCondition} fullWidth onChange={(e) => setSaleCondition(e.target.value)} inputProps={{ maxLength: 60 }} />
+                <TextField label="Remito" value={remito} fullWidth onChange={(e) => setRemito(e.target.value)} inputProps={{ maxLength: 30 }} />
+              </Stack>
+              <TextField
+                label="Referencia comercial (por ejemplo, el número de OC)" value={commercialRef} fullWidth
+                onChange={(e) => setCommercialRef(e.target.value)} inputProps={{ maxLength: 255 }}
+                helperText="Se imprime en la factura."
+              />
+            </>
+          )}
+
           {/* Totales en vivo */}
           <Box sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 2 }}>
             <Box display="flex" justifyContent="space-between"><Typography variant="body2">Neto</Typography><Typography variant="body2">{formatMoney(net, currency)}</Typography></Box>
@@ -521,9 +740,18 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
               <Typography variant="subtitle1" fontWeight={700}>Total</Typography>
               <Typography variant="subtitle1" fontWeight={700}>{formatMoney(total, currency)}</Typography>
             </Box>
+            {currency === 'USD' && Number(exchangeRate.replace(',', '.')) > 0 && (
+              <Box display="flex" justifyContent="space-between">
+                <Typography variant="caption" color="text.secondary">Total en pesos (cotización {exchangeRate})</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {formatMoney(roundMoney(total * Number(exchangeRate.replace(',', '.'))), 'ARS')}
+                </Typography>
+              </Box>
+            )}
           </Box>
 
-          {/* PDF y notas */}
+          {/* PDF y notas. En una factura por ARCA el PDF lo genera el sistema (no se adjunta uno a mano). */}
+          {!isArca && (
           <Box>
             <Button component="label" variant="outlined" startIcon={<UploadIcon />}>
               {file ? file.name : invoice?.file_name ? 'Reemplazar PDF' : 'Adjuntar PDF'}
@@ -533,13 +761,14 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
               <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>Actual: {invoice.file_name}</Typography>
             )}
           </Box>
+          )}
           <TextField label="Notas" multiline minRows={2} fullWidth value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={saving}>Cancelar</Button>
         <Button variant="contained" onClick={handleSubmit} disabled={saving}>
-          {saving ? 'Guardando…' : isEditing ? 'Guardar corrección' : 'Registrar factura'}
+          {saving ? 'Guardando…' : isArca ? 'Guardar borrador' : isEditing ? 'Guardar corrección' : 'Registrar factura'}
         </Button>
       </DialogActions>
     </AppDialog>

@@ -74,6 +74,10 @@ export interface Client {
   // Datos fiscales opcionales (Facturación / ARCA). El CUIT viene sin guiones.
   cuit?: string | null;
   tax_condition?: TaxCondition | null;
+  // Domicilio comercial fiscal (el del padrón de ARCA), opcional: sale en el bloque del receptor de la factura.
+  fiscal_street?: string | null;
+  fiscal_locality?: string | null;
+  fiscal_province?: string | null;
   is_active: boolean;
   createdAt: string;
   updatedAt?: string;
@@ -85,6 +89,9 @@ export interface CreateClientData {
   phone?: string;
   cuit?: string | null;
   tax_condition?: TaxCondition | null;
+  fiscal_street?: string | null;
+  fiscal_locality?: string | null;
+  fiscal_province?: string | null;
   is_active?: boolean;
 }
 
@@ -5260,6 +5267,10 @@ export class CompanySettingsService {
 // --- FACTURACIÓN ---
 export type VoucherType = 'A' | 'B' | 'C' | 'E' | 'sin_factura';
 export type InvoiceStatus = 'pending' | 'paid' | 'cancelled';
+// Estado de la emisión por ARCA (distinto del de cobro): manual = cargada a mano, draft = borrador para emitir,
+// authorizing = se mandó a ARCA y falta confirmar, authorized = emitida con CAE, rejected = ARCA la rechazó.
+export type InvoiceArcaStatus = 'manual' | 'draft' | 'authorizing' | 'authorized' | 'rejected';
+export type InvoiceSource = 'manual' | 'arca';
 export type InvoiceConcept = 'materials' | 'labor' | 'other';
 export type BillingStatus = 'unbilled' | 'partial' | 'billed' | 'billed_and_paid';
 
@@ -5296,6 +5307,27 @@ export interface Invoice {
   cancellation_reason: string | null;
   file_url: string | null;
   file_name: string | null;
+  // --- Emisión por ARCA (PLAN_ARCA.md, etapa 2) ---
+  cbte_tipo?: number | null;
+  source?: InvoiceSource;
+  arca_status?: InvoiceArcaStatus;
+  arca_env?: 'homologacion' | 'produccion' | null;
+  arca_concept?: 1 | 2 | 3 | null;
+  service_from?: string | null;
+  service_to?: string | null;
+  recipient_doc_number?: string | null;
+  recipient_vat_condition_id?: number | null;
+  point_of_sale_id?: number | null;
+  same_currency_payment?: boolean | null;
+  total_amount_ars?: number | null;
+  sale_condition?: string | null;
+  remito_number?: string | null;
+  commercial_reference?: string | null;
+  cae?: string | null;
+  cae_expiration?: string | null;
+  authorized_at?: string | null;
+  arca_result?: { resultado?: string; reason?: string; observations?: Array<{ code: number; msg: string }>; env?: string; via?: string } | null;
+  pointOfSale?: { id: number; number: number; usage_description: string | null; type: string } | null;
   // Comprobante de pago, opcional, adjuntado al marcar la factura como cobrada.
   payment_file_url?: string | null;
   payment_file_name?: string | null;
@@ -5373,6 +5405,19 @@ export interface InvoiceLineInput {
 
 export interface InvoiceInput {
   voucher_type: VoucherType;
+  // Código de ARCA del comprobante (1 Factura A, 201 FCE A, 3 NC A…). La clave única es (cbte_tipo, punto de venta, número).
+  cbte_tipo?: number | null;
+  // 'arca' = borrador para emitir por ARCA (el número lo asigna ARCA); omitido = factura ya hecha que se carga a mano.
+  source?: InvoiceSource;
+  point_of_sale_id?: number | null;
+  arca_concept?: 1 | 2 | 3 | null;
+  service_from?: string | null;
+  service_to?: string | null;
+  recipient_vat_condition_id?: number | null;
+  same_currency_payment?: boolean | null;
+  sale_condition?: string | null;
+  remito_number?: string | null;
+  commercial_reference?: string | null;
   pos_number?: number | null;
   number?: number | null;
   issue_date: string;
@@ -5389,7 +5434,20 @@ export interface InvoiceInput {
   file?: File | null;
 }
 
+// Lo que el diálogo necesita para ofrecer "Emitir por ARCA" (GET /invoices/arca/options).
+export interface InvoiceArcaOptions {
+  enabled: boolean;
+  env: 'homologacion' | 'produccion' | null;
+  config_error: string | null;
+  cuit_mismatch_blocks: boolean;
+  issuer_missing: string[];
+  points_of_sale: Array<{ id: number; number: number; usage_description: string | null; is_default: boolean }>;
+  receiver_vat_conditions: Array<{ id: number; label: string }>;
+  client_tax_condition_map: Partial<Record<TaxCondition, number>>;
+}
+
 export interface InvoiceFilters {
+  arca_status?: InvoiceArcaStatus;
   status?: InvoiceStatus;
   client_id?: number;
   voucher_type?: VoucherType;
@@ -5418,6 +5476,18 @@ export class InvoiceService {
       if (value !== undefined && value !== null && value !== '') formData.append(key, String(value));
     };
     append('voucher_type', input.voucher_type);
+    append('cbte_tipo', input.cbte_tipo);
+    append('source', input.source);
+    append('point_of_sale_id', input.point_of_sale_id);
+    append('arca_concept', input.arca_concept);
+    append('service_from', input.service_from);
+    append('service_to', input.service_to);
+    append('recipient_vat_condition_id', input.recipient_vat_condition_id);
+    // false también se manda (en USD "no se cobra en la misma moneda" es un valor, no un campo vacío).
+    if (input.same_currency_payment !== undefined && input.same_currency_payment !== null) formData.append('same_currency_payment', String(input.same_currency_payment));
+    append('sale_condition', input.sale_condition);
+    append('remito_number', input.remito_number);
+    append('commercial_reference', input.commercial_reference);
     append('pos_number', input.pos_number);
     append('number', input.number);
     append('issue_date', input.issue_date);
@@ -5524,6 +5594,39 @@ export class InvoiceService {
       body: JSON.stringify({ reason }),
     });
     return this.parse(response, 'Error al anular la factura');
+  }
+
+  // --- Emisión por ARCA ---
+  // Cuelga de /invoices (no de /company-settings): quien factura no necesariamente tiene company_settings_update.
+  static async getArcaOptions(): Promise<InvoiceArcaOptions> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/arca/options`);
+    return this.parse(response, 'Error al consultar la configuración de ARCA');
+  }
+
+  // Cotización del dólar según ARCA (la misma que usa la web de ARCA), para precargar el borrador.
+  static async getArcaExchangeRate(): Promise<{ rate: number; date: string | null }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/arca/exchange-rate`);
+    return this.parse(response, 'No se pudo traer la cotización de ARCA');
+  }
+
+  // Emite el borrador en ARCA. Es irreversible: el backend exige invoices_emit.
+  static async emit(id: number): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/emit`, { method: 'POST' });
+    return this.parse(response, 'Error al emitir la factura en ARCA');
+  }
+
+  // Resuelve una factura que quedó "autorizando" consultando el comprobante en ARCA.
+  static async verify(id: number): Promise<{ invoice: Invoice; outcome: 'authorized' | 'back_to_draft' }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/verify`, { method: 'POST' });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al verificar la factura en ARCA');
+    const body = await response.json();
+    return { invoice: body.data, outcome: body.outcome };
+  }
+
+  // Descarta un borrador o una factura rechazada por ARCA (nunca tuvieron CAE) y libera el saldo.
+  static async discard(id: number): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/discard`, { method: 'PUT' });
+    return this.parse(response, 'Error al descartar la factura');
   }
 }
 

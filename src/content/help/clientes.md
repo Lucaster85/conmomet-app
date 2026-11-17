@@ -16,10 +16,14 @@ Con el botón **"Nuevo Cliente"**:
   que coincidir: si no, el sistema avisa y no deja guardar. Se guarda sin guiones.
 - **Condición frente al IVA** (opcional): Responsable Inscripto, Monotributo, IVA Exento,
   Consumidor Final o IVA No Responsable.
+- **Domicilio comercial fiscal** (opcional): calle y número, localidad y provincia. Es el que figura en
+  el padrón de ARCA, que puede **no coincidir** con el de la obra o el de la orden de compra. Sale en el
+  bloque del cliente de la factura.
 
 El CUIT y la condición de IVA son los **datos fiscales** del cliente. No son obligatorios, pero
-conviene cargarlos: es lo que usa **Facturación** para identificar a quién se le factura, y lo
-que deja preparado el sistema para la integración con ARCA. Se ven en el listado de clientes y
+conviene cargarlos: es lo que usa **Facturación** para identificar a quién se le factura. Para
+**emitir una Factura A por ARCA** son **obligatorios**: el CUIT tiene que ser válido y la condición de
+IVA tiene que ser Responsable Inscripto o Monotributo. Se ven en el listado de clientes y
 se puede **buscar un cliente por su CUIT**, con o sin guiones. El CUIT no es único: si un mismo
 cliente está cargado dos veces (por ejemplo, una por planta), puede repetirse.
 
