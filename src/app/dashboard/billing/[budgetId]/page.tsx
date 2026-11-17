@@ -74,6 +74,15 @@ export default function BillingDetailPage() {
     load();
   };
 
+  const handleGeneratePdf = async (invoice: Invoice) => {
+    try {
+      await InvoiceService.generatePdf(invoice.id);
+      handleSaved('PDF generado');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al generar el PDF de la factura');
+    }
+  };
+
   if (loading) return <Box display="flex" justifyContent="center" py={8}><GearSpinner /></Box>;
 
   if (!detail) {
@@ -256,10 +265,10 @@ export default function BillingDetailPage() {
         <Typography variant="h6" fontWeight={700}>Facturas del presupuesto</Typography>
       </Stack>
       <InvoiceList
-        invoices={invoices} hideBudgetColumns canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit}
+        invoices={invoices} hideBudgetColumns canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit} canWrite={canWrite}
         emptyText="Todavía no se registró ninguna factura de este presupuesto"
         onView={setViewInvoice} onEdit={setEditInvoice} onPay={setPayTarget} onCancel={setCancelTarget}
-        onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget}
+        onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget} onGeneratePdf={handleGeneratePdf}
       />
 
       <InvoiceViewDialog invoice={viewInvoice} onClose={() => setViewInvoice(null)} />

@@ -138,6 +138,15 @@ function BillingContent() {
     refreshAll();
   };
 
+  const handleGeneratePdf = async (invoice: Invoice) => {
+    try {
+      await InvoiceService.generatePdf(invoice.id);
+      handleSaved('PDF generado');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al generar el PDF de la factura');
+    }
+  };
+
   // Corregir una factura de un presupuesto necesita el detalle de saldos de ese presupuesto.
   const handleEdit = async (invoice: Invoice) => {
     try {
@@ -235,9 +244,10 @@ function BillingContent() {
             <Box display="flex" justifyContent="center" py={6}><GearSpinner /></Box>
           ) : (
             <InvoiceList
-              invoices={invoices} canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit}
+              invoices={invoices} canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit} canWrite={canWrite}
               onView={setViewInvoice} onEdit={handleEdit} onPay={setPayTarget} onCancel={setCancelTarget}
               onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget}
+              onGeneratePdf={handleGeneratePdf}
             />
           )}
         </>

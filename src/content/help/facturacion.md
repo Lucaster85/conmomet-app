@@ -91,6 +91,17 @@ web de ARCA.
   el comprobante existe, completa la factura con su CAE; si no existe, vuelve a borrador. Mientras haya una
   "autorizando" en un punto de venta, no se pueden emitir otras en ese mismo punto de venta y tipo.
 
+**El PDF de la factura.** Al emitirse, la app genera sola el **PDF de la factura** con el formato de ARCA: datos del
+emisor y del cliente, el detalle, los totales, el **CAE** con su vencimiento y el **código QR**, en **tres copias**
+(original, duplicado y triplicado). Aparece como **PDF** en el listado de facturas y en "Ver". El PDF se arma con los
+datos **que quedaron guardados al emitir**: si después se cambia el domicilio de la empresa o el nombre del cliente, la
+factura ya emitida **no cambia**. En el ambiente de pruebas, el PDF lleva la marca **"HOMOLOGACIÓN – SIN VALIDEZ
+FISCAL"**. Si por algún motivo no se pudo generar (la factura igual quedó emitida), aparece el ícono **"Generar PDF"**
+en las acciones.
+
+**El código QR** es el que exige ARCA: al escanearlo se abre el verificador de ARCA con los datos del comprobante, para
+comprobar que el CAE corresponde a esa factura.
+
 **Descartar** un borrador o una factura rechazada la deja anulada y **libera el saldo** del presupuesto,
 sin necesidad de una nota de crédito (nunca existió para ARCA).
 
@@ -220,10 +231,10 @@ En el listado de **Presupuestos**, los presupuestos aprobados muestran además u
 
 ## Qué viene después
 
-Por ahora la app emite **Factura A**. Las próximas etapas suman el **PDF con código QR**, la **Factura de
-Crédito Electrónica (FCE)** y las **notas de crédito y débito** (que van a reemplazar a "anular" en los
+Por ahora la app emite **Factura A**. Las próximas etapas suman la **Factura de Crédito Electrónica (FCE)** y las
+**notas de crédito y débito** (que van a reemplazar a "anular" en los
 comprobantes de ARCA). Para emitir hacen falta el **CUIT** y la **condición de IVA** del cliente (ver el
 tema **Clientes**) y los datos de quien factura en **Configuración → Datos de mi empresa** (ver el tema
 **Datos de mi empresa y conexión con ARCA**, donde también se **prueba la conexión**).
 
-<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
+<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

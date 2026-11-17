@@ -29,6 +29,8 @@ interface InvoiceListProps {
   canCorrect: boolean;
   // invoices_write + invoices_emit: emitir un borrador en ARCA y verificar una que quedó "autorizando".
   canEmit?: boolean;
+  // invoices_write: generar el PDF de una factura emitida que todavía no lo tiene.
+  canWrite?: boolean;
   onView: (invoice: Invoice) => void;
   onEdit: (invoice: Invoice) => void;
   onPay: (invoice: Invoice) => void;
@@ -36,11 +38,12 @@ interface InvoiceListProps {
   onEmit?: (invoice: Invoice) => void;
   onVerify?: (invoice: Invoice) => void;
   onDiscard?: (invoice: Invoice) => void;
+  onGeneratePdf?: (invoice: Invoice) => void;
 }
 
 export default function InvoiceList({
   invoices, emptyText = 'No hay facturas registradas', hideBudgetColumns = false,
-  canUpdate, canCorrect, canEmit = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard,
+  canUpdate, canCorrect, canEmit = false, canWrite = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard, onGeneratePdf,
 }: InvoiceListProps) {
   const { fileLinkProps } = useFileViewer();
   // Una factura de ARCA (source 'arca') tiene su propio ciclo: borrador -> emitida (o rechazada / autorizando). Una emitida
@@ -60,6 +63,9 @@ export default function InvoiceList({
         )}
         {open && isArca && arcaStatus === 'authorizing' && canEmit && onVerify && (
           <Tooltip title="Verificar en ARCA"><IconButton size="small" color="warning" onClick={() => onVerify(invoice)}><VerifyIcon fontSize="small" /></IconButton></Tooltip>
+        )}
+        {open && isArca && arcaStatus === 'authorized' && !invoice.file_url && canWrite && onGeneratePdf && (
+          <Tooltip title="Generar PDF"><IconButton size="small" color="primary" onClick={() => onGeneratePdf(invoice)}><PdfIcon fontSize="small" /></IconButton></Tooltip>
         )}
         {editable && (
           <Tooltip title={isArca ? 'Editar borrador' : 'Corregir datos'}><IconButton size="small" color="primary" onClick={() => onEdit(invoice)}><EditIcon fontSize="small" /></IconButton></Tooltip>

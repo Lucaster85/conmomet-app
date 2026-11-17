@@ -5623,6 +5623,12 @@ export class InvoiceService {
     return { invoice: body.data, outcome: body.outcome };
   }
 
+  // Genera (o regenera) el PDF de una factura ya emitida por ARCA. Se arma solo al emitir; esto es por si no se pudo en el momento.
+  static async generatePdf(id: number): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/pdf`, { method: 'POST' });
+    return this.parse(response, 'Error al generar el PDF de la factura');
+  }
+
   // Descarta un borrador o una factura rechazada por ARCA (nunca tuvieron CAE) y libera el saldo.
   static async discard(id: number): Promise<Invoice> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/discard`, { method: 'PUT' });
