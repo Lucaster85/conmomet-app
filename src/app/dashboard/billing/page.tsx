@@ -14,6 +14,7 @@ import DateField from '../../../components/DateField';
 import BillablesList from '../../../components/billing/BillablesList';
 import InvoiceList from '../../../components/billing/InvoiceList';
 import InvoiceDialog from '../../../components/billing/InvoiceDialog';
+import InvoiceNoteDialog from '../../../components/billing/InvoiceNoteDialog';
 import InvoiceViewDialog from '../../../components/billing/InvoiceViewDialog';
 import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, FceAcceptanceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../components/billing/InvoiceActionDialogs';
 import {
@@ -66,6 +67,8 @@ function BillingContent() {
   const [verifyTarget, setVerifyTarget] = useState<Invoice | null>(null);
   const [discardTarget, setDiscardTarget] = useState<Invoice | null>(null);
   const [acceptanceTarget, setAcceptanceTarget] = useState<Invoice | null>(null);
+  // Nota de crédito o de débito sobre una factura emitida (o edición de su borrador).
+  const [noteDialog, setNoteDialog] = useState<{ original: Invoice; type: 'credit_note' | 'debit_note'; editing?: Invoice } | null>(null);
   const [freeDialogOpen, setFreeDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<{ invoice: Invoice; detail: BudgetBillingDetail | null } | null>(null);
 
@@ -149,8 +152,36 @@ function BillingContent() {
     }
   };
 
+  // Abre el diálogo de una nota sobre una factura emitida. Se vuelve a pedir la factura: trae lo que ya se acreditó de cada línea.
+  const openNote = async (invoice: Invoice, type: 'credit_note' | 'debit_note') => {
+    try {
+      setNoteDialog({ original: await InvoiceService.get(invoice.id), type });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al abrir la factura');
+    }
+  };
+
+  // Un borrador de nota se edita en su propio diálogo (necesita la factura original).
+  const editNote = async (note: Invoice) => {
+    try {
+      setNoteDialog({ original: await InvoiceService.get(note.associated_invoice_id as number), type: note.kind as 'credit_note' | 'debit_note', editing: note });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al abrir la nota');
+    }
+  };
+
+  // Al guardar una nota nueva se pasa directo a la confirmación de emisión (si se puede emitir).
+  const handleNoteSaved = (saved: Invoice) => {
+    const wasEditing = !!noteDialog?.editing;
+    setNoteDialog(null);
+    refreshAll();
+    setSuccess(wasEditing ? 'Borrador de nota actualizado' : 'Borrador de nota guardado');
+    if (!wasEditing && canEmit) setEmitTarget(saved);
+  };
+
   // Corregir una factura de un presupuesto necesita el detalle de saldos de ese presupuesto.
   const handleEdit = async (invoice: Invoice) => {
+    if (invoice.kind && invoice.kind !== 'invoice') { await editNote(invoice); return; }
     try {
       const detail = invoice.budget_id ? await InvoiceService.getBillable(invoice.budget_id) : null;
       setEditTarget({ invoice, detail });
@@ -249,7 +280,7 @@ function BillingContent() {
               invoices={invoices} canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit} canWrite={canWrite}
               onView={setViewInvoice} onEdit={handleEdit} onPay={setPayTarget} onCancel={setCancelTarget}
               onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget}
-              onGeneratePdf={handleGeneratePdf} onFceAcceptance={setAcceptanceTarget}
+              onGeneratePdf={handleGeneratePdf} onFceAcceptance={setAcceptanceTarget} onCreateNote={openNote}
             />
           )}
         </>
@@ -263,6 +294,10 @@ function BillingContent() {
       <DiscardInvoiceDialog invoice={discardTarget} onClose={() => setDiscardTarget(null)} onDone={() => handleSaved('Factura descartada')} />
       <FceAcceptanceDialog invoice={acceptanceTarget} onClose={() => setAcceptanceTarget(null)} onDone={() => handleSaved('Aceptación de la FCE registrada')} />
 
+      <InvoiceNoteDialog
+        open={!!noteDialog} onClose={() => setNoteDialog(null)} onSaved={handleNoteSaved}
+        original={noteDialog?.original || null} type={noteDialog?.type || 'credit_note'} editing={noteDialog?.editing}
+      />
       <InvoiceDialog
         open={freeDialogOpen} onClose={() => setFreeDialogOpen(false)} ivaInfo={iva} canUnofficial={canUnofficial}
         onSaved={() => handleSaved('Factura registrada')}

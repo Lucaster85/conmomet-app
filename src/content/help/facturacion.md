@@ -75,9 +75,9 @@ Emitir es un proceso **en dos pasos**:
    confirmación con el **ambiente**, el punto de venta, el tipo, el cliente y el total. ARCA asigna el
    **número** y el **CAE**, y la factura queda **"Emitida en ARCA"**.
 
-**Una factura emitida ya no se edita ni se anula** desde la app: ARCA ya la conoce. Si hay un error, se
-corrige con una **nota de crédito** (próxima etapa). Hasta que exista, la nota de crédito se emite desde la
-web de ARCA.
+**Una factura emitida ya no se edita ni se anula** desde la app: ARCA ya la conoce. Si hay un error, o si hay
+que devolver parte de lo facturado, se corrige con una **nota de crédito** (ver "Anular una factura de
+ARCA: notas de crédito y de débito").
 
 **Estados de la emisión:**
 
@@ -165,8 +165,47 @@ Consultarlo automáticamente en ARCA queda para más adelante.
 los clientes pueden ser rechazados ("no se encuentra registrado en los padrones"). Para probar, usá un cliente con el CUIT de prueba
 **33693450239**. En producción se usa el CUIT real.
 
-Una FCE emitida, como cualquier factura de ARCA, **no se edita ni se anula** desde la app: se corrige con una nota de crédito
-(próxima etapa).
+Una FCE emitida, como cualquier factura de ARCA, **no se edita ni se anula** desde la app: se corrige con una nota de crédito (ver
+la sección siguiente). Las notas de una FCE tienen **reglas propias de ARCA**, que la app ya cumple: no llevan CBU, alias ni opción de
+transferencia, ni vencimiento de pago, y llevan una marca de **anulación**.
+
+## Anular una factura de ARCA: notas de crédito y de débito
+
+ARCA **no permite anular** una factura emitida: se **corrige con una nota**. En la lista de facturas, las facturas emitidas tienen dos
+acciones nuevas: **"Nota de crédito (anular o acreditar)"** y **"Nota de débito"**. Los dos tipos nacen como **borrador**, igual que las
+facturas, y se emiten con el mismo botón de **enviar**: al guardar el borrador la app abre directamente la confirmación de emisión.
+
+**Nota de crédito.** Acredita (resta) lo que elijas de la factura:
+- Para cada línea de la factura (materiales, mano de obra…) se carga el **porcentaje** o el **monto** a acreditar: es un porcentaje **de esa
+  línea de la factura**, no del presupuesto. Se ve cuánto de la línea **queda por acreditar**, y no se puede acreditar más que eso.
+- **"Anulación total (todo lo que queda)"** completa todas las líneas con lo que falta acreditar.
+- El **motivo es obligatorio**. Además se puede escribir una descripción por línea; si queda vacía, la nota dice qué se acredita y sobre qué factura.
+- La nota **hereda de la factura** el cliente, la moneda, la cotización, el IVA, el concepto y el período. Solo se elige la fecha y el punto
+  de venta (viene el de la factura).
+- **Qué pasa con el saldo del presupuesto:** un **borrador no libera saldo** (si lo liberara, se podría facturar de nuevo sobre ese saldo y después
+  descartar la nota). Recién cuando la nota **se emite en ARCA**, lo acreditado vuelve a estar disponible para facturar.
+- Los borradores **sí cuentan** para el límite: dos borradores no pueden acreditar entre los dos más que la factura. Un borrador descartado devuelve
+  lo que reservaba.
+- **Si las notas emitidas acreditan todas las líneas de la factura, la factura queda anulada** y libera su saldo: es la forma de "anular" una
+  factura de ARCA. Si ya se había cobrado, **lo cobrado hay que devolverlo por fuera de la app**.
+- Una factura **acreditada en parte** sigue viva y muestra cuánto se acreditó; lo que **falta cobrar** baja en lo que se acreditó.
+- Una nota de crédito **no se cobra** (no tiene "Marcar cobrada") y, una vez emitida, **no se edita ni se anula**.
+
+**Nota de débito.** Suma un **cargo adicional** a la factura (intereses, una diferencia de cambio…): se cargan **conceptos libres**, cada uno con descripción y
+monto. Lleva el mismo IVA que la factura. **No cambia el saldo del presupuesto** (no es avance facturado) y sí se **cobra** como una factura.
+
+**Facturas de ARCA solamente.** Las notas se hacen sobre facturas **emitidas desde la app**. Las notas de crédito y de débito **ya no se cargan a mano**: una nota
+necesita estar atada a su factura para ajustar el saldo. Las facturas cargadas a mano se siguen anulando con **"Anular"**, como siempre.
+
+**Notas de una FCE.** Si la factura es una FCE, la nota es de FCE (de crédito o de débito) y ARCA aplica sus reglas:
+- Una nota normal se emite siempre sin marca de anulación.
+- La **marca de anulación** ("Es una anulación: el cliente rechazó la FCE") solo la admite ARCA si el **cliente rechazó la FCE**. Por eso la casilla se habilita recién
+  cuando registrás ese rechazo con el ícono **"Aceptación del cliente"** de la factura.
+- El monto de una nota de crédito de una FCE **no puede superar el saldo actual de su cuenta corriente** en ARCA (la factura, más las notas de débito, menos las
+  de crédito ya emitidas).
+
+**Cómo se ve.** Las notas aparecen en la lista junto a la factura, con **"sobre Factura A 0003-00000001"** debajo de su número y los importes de las notas de crédito en
+**negativo**. La factura original muestra **"Acreditada en parte: $…"**. Cada nota emitida tiene su **PDF**, que indica el **comprobante asociado**.
 
 ## Registrar una factura ya emitida (carga manual)
 
@@ -176,8 +215,8 @@ encabezado (tipo, punto de venta, número, fechas, moneda, IVA) y **una o más l
 concepto. Nada obliga a separar los conceptos: se puede hacer cualquier combinación.
 
 - **Tipo de comprobante**: arranca en **A**, pero se puede cambiar (A, B, C, E). Junto a la letra se
-  elige la **clase**: factura, **factura de crédito electrónica (FCE)**, nota de débito o nota de
-  crédito.
+  elige la **clase**: factura o **factura de crédito electrónica (FCE)**. Las notas de crédito y de
+  débito no se cargan a mano: se hacen desde la factura emitida.
 - **Punto de venta y número**: obligatorios. ARCA numera **por punto de venta y por clase**: una Factura A
   y una FCE A pueden tener el mismo número. Lo que no puede repetirse es el mismo número para la misma
   clase y punto de venta.
@@ -272,10 +311,8 @@ En el listado de **Presupuestos**, los presupuestos aprobados muestran además u
 
 ## Qué viene después
 
-Por ahora la app emite **Factura A** y **Factura de Crédito Electrónica (FCE)**. La próxima etapa suma las
-**notas de crédito y débito** (que van a reemplazar a "anular" en los
-comprobantes de ARCA). Para emitir hacen falta el **CUIT** y la **condición de IVA** del cliente (ver el
+Por ahora la app emite **Factura A**, **Factura de Crédito Electrónica (FCE)** y sus **notas de crédito y de débito**. Para emitir hacen falta el **CUIT** y la **condición de IVA** del cliente (ver el
 tema **Clientes**) y los datos de quien factura en **Configuración → Datos de mi empresa** (ver el tema
 **Datos de mi empresa y conexión con ARCA**, donde también se **prueba la conexión**).
 
-<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
+<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/services/billingMath.js, api_conmomet/services/creditNoteService.js, conmomet-app/src/components/billing/InvoiceNoteDialog.tsx, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

@@ -5274,11 +5274,17 @@ export type InvoiceStatus = 'pending' | 'paid' | 'cancelled';
 // authorizing = se mandó a ARCA y falta confirmar, authorized = emitida con CAE, rejected = ARCA la rechazó.
 export type InvoiceArcaStatus = 'manual' | 'draft' | 'authorizing' | 'authorized' | 'rejected';
 export type InvoiceSource = 'manual' | 'arca';
+// Factura o sus notas: una nota de crédito acredita (anula total o parcialmente) una factura emitida y una de débito suma un cargo.
+export type InvoiceKind = 'invoice' | 'credit_note' | 'debit_note';
 export type InvoiceConcept = 'materials' | 'labor' | 'other';
 export type BillingStatus = 'unbilled' | 'partial' | 'billed' | 'billed_and_paid';
 
 export interface InvoiceLine {
   id?: number;
+  // Solo en una nota de crédito: la línea de la factura original que acredita.
+  credits_line_id?: number | null;
+  // Solo en las líneas de una factura emitida: neto ya acreditado por notas (los borradores también cuentan: reservan lo que acreditan).
+  credited_net?: number;
   concept: InvoiceConcept;
   description?: string | null;
   percent?: number | null;
@@ -5313,6 +5319,13 @@ export interface Invoice {
   // --- Emisión por ARCA (PLAN_ARCA.md, etapa 2) ---
   cbte_tipo?: number | null;
   source?: InvoiceSource;
+  kind?: InvoiceKind;
+  associated_invoice_id?: number | null;
+  associatedInvoice?: { id: number; voucher_type: VoucherType; cbte_tipo: number | null; pos_number: number | null; number: number | null; issue_date: string } | null;
+  // En una nota de FCE: si lleva la marca de anulación (el cliente la rechazó en ARCA).
+  fce_annulment?: boolean | null;
+  // En una factura emitida: total de las notas de crédito ya emitidas.
+  credited_total?: number;
   arca_status?: InvoiceArcaStatus;
   arca_env?: 'homologacion' | 'produccion' | null;
   arca_concept?: 1 | 2 | 3 | null;
@@ -5406,7 +5419,9 @@ export interface BudgetBillingDetail {
 }
 
 export interface InvoiceLineInput {
-  concept: InvoiceConcept;
+  // Nota de crédito: la línea de la factura original que se acredita (el monto o el porcentaje es sobre esa línea).
+  credits_line_id?: number;
+  concept?: InvoiceConcept;
   description?: string;
   // El usuario carga el porcentaje O el monto; el servidor recalcula el otro contra la base real.
   percent?: number;
@@ -5414,6 +5429,10 @@ export interface InvoiceLineInput {
 }
 
 export interface InvoiceInput {
+  // Nota de crédito o de débito (siempre por ARCA, source 'arca'): sobre qué factura y, en una nota de FCE, si es una anulación.
+  kind?: InvoiceKind;
+  associated_invoice_id?: number;
+  fce_annulment?: boolean;
   voucher_type: VoucherType;
   // Código de ARCA del comprobante (1 Factura A, 201 FCE A, 3 NC A…). La clave única es (cbte_tipo, punto de venta, número).
   cbte_tipo?: number | null;
@@ -5462,6 +5481,7 @@ export interface InvoiceArcaOptions {
 }
 
 export interface InvoiceFilters {
+  kind?: InvoiceKind;
   arca_status?: InvoiceArcaStatus;
   status?: InvoiceStatus;
   client_id?: number;
@@ -5491,6 +5511,9 @@ export class InvoiceService {
       if (value !== undefined && value !== null && value !== '') formData.append(key, String(value));
     };
     append('voucher_type', input.voucher_type);
+    append('kind', input.kind);
+    append('associated_invoice_id', input.associated_invoice_id);
+    if (input.fce_annulment !== undefined) formData.append('fce_annulment', String(input.fce_annulment));
     append('cbte_tipo', input.cbte_tipo);
     append('source', input.source);
     append('point_of_sale_id', input.point_of_sale_id);

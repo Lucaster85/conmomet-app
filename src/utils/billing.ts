@@ -44,18 +44,15 @@ export const VOUCHER_TYPE_OPTIONS: { value: VoucherType; label: string }[] = [
 
 // Códigos de comprobante de ARCA que se pueden cargar a mano, por letra. ARCA numera por punto de venta Y tipo de
 // comprobante, así que una Factura A y una FCE A pueden tener el mismo número (por eso se elige cuál es).
+// Las notas de crédito y de débito ya no se cargan a mano: se hacen desde la factura emitida en la app (necesitan la factura original asociada).
 export const CBTE_OPTIONS_BY_LETTER: Record<'A' | 'B' | 'C' | 'E', { value: number; label: string }[]> = {
   A: [
     { value: 1, label: 'Factura' },
     { value: 201, label: 'Factura de Crédito Electrónica (FCE)' },
-    { value: 2, label: 'Nota de Débito' },
-    { value: 3, label: 'Nota de Crédito' },
-    { value: 202, label: 'Nota de Débito FCE' },
-    { value: 203, label: 'Nota de Crédito FCE' },
   ],
-  B: [{ value: 6, label: 'Factura' }, { value: 7, label: 'Nota de Débito' }, { value: 8, label: 'Nota de Crédito' }],
-  C: [{ value: 11, label: 'Factura' }, { value: 12, label: 'Nota de Débito' }, { value: 13, label: 'Nota de Crédito' }],
-  E: [{ value: 19, label: 'Factura' }, { value: 20, label: 'Nota de Débito' }, { value: 21, label: 'Nota de Crédito' }],
+  B: [{ value: 6, label: 'Factura' }],
+  C: [{ value: 11, label: 'Factura' }],
+  E: [{ value: 19, label: 'Factura' }],
 };
 export const DEFAULT_CBTE_BY_LETTER = { A: 1, B: 6, C: 11, E: 19 } as const;
 
@@ -73,6 +70,22 @@ export const formatVoucher = (invoice: Pick<Invoice, 'voucher_type' | 'pos_numbe
   if (!invoice.number) return `${name} ${pos}-sin número`;
   return `${name} ${pos}-${String(invoice.number).padStart(8, '0')}`;
 };
+
+// Nombre largo de un tipo de comprobante de ARCA, para diálogos y avisos.
+const CBTE_LONG_NAMES: Record<number, string> = {
+  1: 'Factura A', 2: 'Nota de Débito A', 3: 'Nota de Crédito A',
+  201: 'Factura de Crédito Electrónica (FCE) A', 202: 'Nota de Débito de FCE A', 203: 'Nota de Crédito de FCE A',
+};
+export const cbteLongName = (cbteTipo?: number | null): string => (cbteTipo && CBTE_LONG_NAMES[cbteTipo]) || 'Comprobante';
+
+// ¿Es una nota (de crédito o de débito) y no una factura? Las facturas viejas no traen `kind`.
+export const isNote = (invoice: Pick<Invoice, 'kind'>): boolean => !!invoice.kind && invoice.kind !== 'invoice';
+
+export const NOTE_KIND_LABELS = { credit_note: 'Nota de crédito', debit_note: 'Nota de débito' } as const;
+
+// "Factura A 0003-00000001" de la factura a la que está asociada una nota.
+export const formatAssociated = (invoice: Pick<Invoice, 'associatedInvoice'>): string =>
+  invoice.associatedInvoice ? formatVoucher({ ...invoice.associatedInvoice }) : '';
 
 // Estado de la emisión por ARCA (las facturas cargadas a mano no tienen: 'manual').
 export const ARCA_STATUS_LABELS: Record<Exclude<InvoiceArcaStatus, 'manual'>, { label: string; color: 'default' | 'warning' | 'info' | 'success' | 'error' }> = {

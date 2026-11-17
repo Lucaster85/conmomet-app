@@ -5,7 +5,9 @@ import AppDialog from '@/components/common/AppDialog';
 import { UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import DateField from '../DateField';
 import { Invoice, InvoiceArcaOptions, InvoiceService } from '../../utils/api';
-import { ARCA_CONCEPT_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatDate, formatMoney, formatVoucher, todayISO } from '../../utils/billing';
+import {
+  ARCA_CONCEPT_LABELS, cbteLongName, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, formatDate, formatMoney, formatVoucher, isNote, todayISO,
+} from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 
 interface ActionDialogProps {
@@ -181,7 +183,9 @@ export function EmitInvoiceDialog({ invoice, onClose, onDone, onRefresh }: ArcaA
                   label={isProduction ? 'PRODUCCIÓN' : 'HOMOLOGACIÓN (pruebas)'} />
               ) : <Typography variant="body2">…</Typography>}
             </Box>
-            {row('Tipo de comprobante', invoice.cbte_tipo === FCE_CBTE_TIPO ? 'Factura de Crédito Electrónica (FCE) A' : 'Factura A')}
+            {row('Tipo de comprobante', cbteLongName(invoice.cbte_tipo))}
+            {isNote(invoice) && row('Sobre la factura', formatAssociated(invoice))}
+            {invoice.kind === 'credit_note' && invoice.notes && row('Motivo', invoice.notes)}
             {row('Punto de venta', pos ? `${String(pos.number).padStart(4, '0')}${pos.usage_description ? ` — ${pos.usage_description}` : ''}` : String(invoice.pos_number ?? '—').padStart(4, '0'))}
             {row('Cliente', `${invoice.client?.razonSocial || '—'}${invoice.recipient_doc_number ? ` · CUIT ${formatCuit(invoice.recipient_doc_number)}` : ''}`)}
             {invoice.arca_concept && row('Concepto', ARCA_CONCEPT_LABELS[invoice.arca_concept])}

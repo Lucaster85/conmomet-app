@@ -11,13 +11,17 @@ import {
   DeleteOutline as DiscardIcon,
   EditOutlined as EditIcon,
   PictureAsPdfOutlined as PdfIcon,
+  AddCircleOutline as DebitNoteIcon,
   HandshakeOutlined as AcceptanceIcon,
   SendOutlined as EmitIcon,
+  UndoOutlined as CreditNoteIcon,
   SyncOutlined as VerifyIcon,
   VisibilityOutlined as ViewIcon,
 } from '@mui/icons-material';
 import { Invoice } from '../../utils/api';
-import { ARCA_STATUS_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, formatDate, formatMoney, formatVoucher, INVOICE_STATUS_LABELS } from '../../utils/billing';
+import {
+  ARCA_STATUS_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, formatAssociated, formatDate, formatMoney, formatVoucher, INVOICE_STATUS_LABELS, isNote,
+} from '../../utils/billing';
 
 interface InvoiceListProps {
   invoices: Invoice[];
@@ -42,11 +46,16 @@ interface InvoiceListProps {
   onGeneratePdf?: (invoice: Invoice) => void;
   // Registrar a mano la aceptación del cliente de una FCE emitida.
   onFceAcceptance?: (invoice: Invoice) => void;
+  // Hacer una nota de crédito (anular o acreditar parte) o de débito sobre una factura emitida.
+  onCreateNote?: (invoice: Invoice, type: 'credit_note' | 'debit_note') => void;
 }
+
+// Importe de una fila: una nota de crédito resta, así que se muestra en negativo.
+const money = (invoice: Invoice, value: number) => (invoice.kind === 'credit_note' ? `−${formatMoney(value, invoice.currency)}` : formatMoney(value, invoice.currency));
 
 export default function InvoiceList({
   invoices, emptyText = 'No hay facturas registradas', hideBudgetColumns = false,
-  canUpdate, canCorrect, canEmit = false, canWrite = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard, onGeneratePdf, onFceAcceptance,
+  canUpdate, canCorrect, canEmit = false, canWrite = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard, onGeneratePdf, onFceAcceptance, onCreateNote,
 }: InvoiceListProps) {
   const { fileLinkProps } = useFileViewer();
   // Una factura de ARCA (source 'arca') tiene su propio ciclo: borrador -> emitida (o rechazada / autorizando). Una emitida
@@ -57,7 +66,9 @@ export default function InvoiceList({
     const arcaStatus = invoice.arca_status;
     const open = invoice.status !== 'cancelled';
     const editable = open && (isArca ? canUpdate && (arcaStatus === 'draft' || arcaStatus === 'rejected') : canUpdate && canCorrect);
-    const payable = canUpdate && invoice.status === 'pending' && (!isArca || arcaStatus === 'authorized');
+    const payable = canUpdate && invoice.status === 'pending' && (!isArca || arcaStatus === 'authorized') && invoice.kind !== 'credit_note';
+    // Notas sobre una factura ya emitida en ARCA y todavía no anulada (una nota no tiene notas).
+    const canNote = open && isArca && arcaStatus === 'authorized' && !isNote(invoice) && canWrite && !!onCreateNote;
     return (
       <Box display="flex" gap={0.5} flexWrap="wrap">
         <Tooltip title="Ver"><IconButton size="small" onClick={() => onView(invoice)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
@@ -75,6 +86,12 @@ export default function InvoiceList({
         )}
         {editable && (
           <Tooltip title={isArca ? 'Editar borrador' : 'Corregir datos'}><IconButton size="small" color="primary" onClick={() => onEdit(invoice)}><EditIcon fontSize="small" /></IconButton></Tooltip>
+        )}
+        {canNote && (
+          <Tooltip title="Nota de crédito (anular o acreditar)"><IconButton size="small" color="warning" onClick={() => onCreateNote!(invoice, 'credit_note')}><CreditNoteIcon fontSize="small" /></IconButton></Tooltip>
+        )}
+        {canNote && (
+          <Tooltip title="Nota de débito"><IconButton size="small" onClick={() => onCreateNote!(invoice, 'debit_note')}><DebitNoteIcon fontSize="small" /></IconButton></Tooltip>
         )}
         {payable && (
           <Tooltip title="Marcar cobrada"><IconButton size="small" color="success" onClick={() => onPay(invoice)}><PayIcon fontSize="small" /></IconButton></Tooltip>
@@ -114,7 +131,13 @@ export default function InvoiceList({
     const observations = invoice.arca_result?.observations || [];
     return (
       <Stack spacing={0.25} alignItems="flex-start">
-        <Chip size="small" color={status.color} label={`${status.label}${detail}`} />
+        {/* Una nota de crédito no se cobra: solo está emitida. Una factura acreditada en parte muestra cuánto. */}
+        {invoice.kind === 'credit_note' && invoice.status !== 'cancelled'
+          ? <Chip size="small" color="success" label="Emitida" />
+          : <Chip size="small" color={status.color} label={`${status.label}${detail}`} />}
+        {(invoice.credited_total || 0) > 0 && invoice.status !== 'cancelled' && (
+          <Chip size="small" color="warning" variant="outlined" label={`Acreditada en parte: ${formatMoney(invoice.credited_total, invoice.currency)}`} />
+        )}
         {isArca && invoice.arca_status === 'authorized' && invoice.status !== 'cancelled' && (
           <Box display="flex" gap={0.5} flexWrap="wrap">
             <Chip size="small" color="success" variant="outlined" label={invoice.cae ? `CAE ${invoice.cae}` : 'Emitida en ARCA'} />
@@ -168,6 +191,7 @@ export default function InvoiceList({
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1} mb={1}>
                   <Box>
                     <Typography variant="subtitle2" fontWeight="bold">{formatVoucher(invoice)}</Typography>
+                    {isNote(invoice) && <Typography variant="caption" color="text.secondary" display="block">sobre {formatAssociated(invoice)}</Typography>}
                     <Typography variant="caption" color="text.secondary">
                       Emitida {formatDate(invoice.issue_date)}{invoice.due_date ? ` · Vence ${formatDate(invoice.due_date)}` : ''}
                     </Typography>
@@ -181,9 +205,9 @@ export default function InvoiceList({
                   </>
                 )}
                 <Typography variant="body2" sx={{ mt: 1 }}>
-                  Neto {formatMoney(invoice.net_amount, invoice.currency)} · IVA {formatMoney(invoice.iva_amount, invoice.currency)}
+                  Neto {money(invoice, invoice.net_amount)} · IVA {money(invoice, invoice.iva_amount)}
                 </Typography>
-                <Typography variant="subtitle2">Total {formatMoney(invoice.total_amount, invoice.currency)}</Typography>
+                <Typography variant="subtitle2">Total {money(invoice, invoice.total_amount)}</Typography>
                 {invoice.status === 'cancelled' && invoice.cancellation_reason && (
                   <Typography variant="caption" color="text.secondary" display="block">Motivo: {invoice.cancellation_reason}</Typography>
                 )}
@@ -220,16 +244,19 @@ export default function InvoiceList({
                 <TableRow><TableCell colSpan={hideBudgetColumns ? 8 : 10} align="center">{emptyText}</TableCell></TableRow>
               ) : invoices.map((invoice) => (
                 <TableRow key={invoice.id} hover sx={{ opacity: invoice.status === 'cancelled' ? 0.65 : 1 }}>
-                  <TableCell><Typography variant="body2" fontWeight={600}>{formatVoucher(invoice)}</Typography></TableCell>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight={600}>{formatVoucher(invoice)}</Typography>
+                    {isNote(invoice) && <Typography variant="caption" color="text.secondary" display="block">sobre {formatAssociated(invoice)}</Typography>}
+                  </TableCell>
                   <TableCell>
                     {formatDate(invoice.issue_date)}
                     {invoice.due_date && <Typography variant="caption" color="text.secondary" display="block">Vence {formatDate(invoice.due_date)}</Typography>}
                   </TableCell>
                   {!hideBudgetColumns && <TableCell>{invoice.client?.razonSocial}</TableCell>}
                   {!hideBudgetColumns && <TableCell>{reference(invoice)}</TableCell>}
-                  <TableCell align="right">{formatMoney(invoice.net_amount, invoice.currency)}</TableCell>
-                  <TableCell align="right">{formatMoney(invoice.iva_amount, invoice.currency)}</TableCell>
-                  <TableCell align="right"><strong>{formatMoney(invoice.total_amount, invoice.currency)}</strong></TableCell>
+                  <TableCell align="right">{money(invoice, invoice.net_amount)}</TableCell>
+                  <TableCell align="right">{money(invoice, invoice.iva_amount)}</TableCell>
+                  <TableCell align="right"><strong>{money(invoice, invoice.total_amount)}</strong></TableCell>
                   <TableCell>
                     {statusChip(invoice)}
                     {invoice.status === 'cancelled' && invoice.cancellation_reason && (

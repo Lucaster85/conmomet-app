@@ -347,6 +347,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'rechazada', 'descartar', 'homologacion', 'homologación', 'prueba', 'factura a', 'fce', 'cotizacion',
       'cotización', 'dolares', 'dólares', 'concepto', 'periodo facturado', 'período facturado', 'observaciones',
       'condicion de iva', 'condición de iva', 'nota de credito', 'nota de crédito', 'cargar una ya emitida',
+      'nota de debito', 'nota de débito', 'nc', 'nd', 'acreditar', 'acreditada', 'anulacion total', 'anulación total', 'devolucion', 'devolución',
+      'comprobante asociado', 'diferencia de cambio', 'intereses',
     ],
     file: 'facturacion.md',
   },

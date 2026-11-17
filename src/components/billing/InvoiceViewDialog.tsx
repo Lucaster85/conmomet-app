@@ -7,7 +7,7 @@ import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
 import { Invoice } from '../../utils/api';
 import {
-  ARCA_CONCEPT_LABELS, ARCA_STATUS_LABELS, CONCEPT_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS,
+  ARCA_CONCEPT_LABELS, ARCA_STATUS_LABELS, CONCEPT_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, isNote, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS,
 } from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 
@@ -53,6 +53,9 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
               {invoice.cbte_tipo === FCE_CBTE_TIPO && invoice.arca_status === 'authorized' && row('Aceptación del cliente', (
                 <Chip size="small" color={FCE_ACCEPTANCE_LABELS[invoice.fce_acceptance || 'pending'].color} label={FCE_ACCEPTANCE_LABELS[invoice.fce_acceptance || 'pending'].label} />
               ))}
+              {isNote(invoice) && row('Sobre la factura', formatAssociated(invoice))}
+              {invoice.kind === 'credit_note' && invoice.fce_annulment && row('Anulación', 'Con marca de anulación (el cliente rechazó la FCE)')}
+              {(invoice.credited_total || 0) > 0 && row('Acreditado con notas de crédito', formatMoney(invoice.credited_total, invoice.currency))}
               {invoice.cae && row('CAE', `${invoice.cae}${invoice.cae_expiration ? ` (vence ${formatDate(invoice.cae_expiration)})` : ''}`)}
               {invoice.arca_env && row('Ambiente', invoice.arca_env === 'homologacion' ? 'Homologación (pruebas, sin validez fiscal)' : 'Producción')}
               {invoice.sale_condition && row('Condición de venta', invoice.sale_condition)}
