@@ -23,6 +23,8 @@ import LoanChangeAlert from '../../components/common/LoanChangeAlert';
 import TerminationAgreementAlert from '../../components/common/TerminationAgreementAlert';
 import AdditionalPendingBudgetAlert from '../../components/common/AdditionalPendingBudgetAlert';
 import BudgetAwaitingResponseAlert from '../../components/common/BudgetAwaitingResponseAlert';
+import PurchaseOrderMissingAlert from '../../components/common/PurchaseOrderMissingAlert';
+import SuretyBondAlert from '../../components/common/SuretyBondAlert';
 import QuoteRequestAlert from '../../components/common/QuoteRequestAlert';
 import ContactInquiryAlert from '../../components/common/ContactInquiryAlert';
 import PostulacionesNuevasAlert from '../../components/common/PostulacionesNuevasAlert';
@@ -124,6 +126,8 @@ export default function DashboardPage() {
         <OcaBudgetAlert />
         <AdditionalPendingBudgetAlert />
         <BudgetAwaitingResponseAlert />
+        <PurchaseOrderMissingAlert />
+        <SuretyBondAlert />
         <EppExpiringAlert />
         <RepairToolsAlert />
         <SalaryAdvanceDeletionAlert />

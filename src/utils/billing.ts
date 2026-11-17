@@ -127,3 +127,39 @@ export const ivaInfoFromRates = (rates?: number[] | null): { rates: number[]; de
   const list = rates && rates.length > 0 ? [...rates].sort((a, b) => a - b) : [21];
   return { rates: list, default_rate: list.includes(21) ? 21 : list[0] };
 };
+
+// OC del cliente, cauciones y documentos extra (FLOWS.md §69).
+export const PO_CONCEPT_LABELS = { materials: 'Materiales', labor: 'Mano de obra', all: 'Materiales y mano de obra' } as const;
+export const PO_ADJUSTMENT_LABELS = { ipc_indec: 'IPC (INDEC)', uocra: 'UOCRA', other: 'Otro índice' } as const;
+export const PO_STATUS_LABELS = {
+  active: { label: 'Vigente', color: 'success' },
+  rejected: { label: 'Rechazada', color: 'error' },
+  replaced: { label: 'Reemplazada', color: 'default' },
+} as const;
+export const BOND_PURPOSE_LABELS = { advance_payment: 'Anticipo', other: 'Otro' } as const;
+export const BOND_STATUS_LABELS = {
+  released: { label: 'Liberada', color: 'default' },
+  no_expiration: { label: 'Sin vencimiento', color: 'default' },
+  expired: { label: 'Vencida', color: 'error' },
+  expiring_soon: { label: 'Por vencer', color: 'warning' },
+  active: { label: 'Vigente', color: 'success' },
+} as const;
+export const BILLING_FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx';
+export const BILLING_FILE_MAX_BYTES = 20 * 1024 * 1024;
+export const BILLING_FILE_MAX_COUNT = 10;
+
+/** Valida los archivos elegidos antes de subirlos (el backend vuelve a validar). Devuelve el mensaje de error o ''. */
+export const validateBillingFiles = (files: File[]): string => {
+  if (files.length > BILLING_FILE_MAX_COUNT) return `Podés adjuntar hasta ${BILLING_FILE_MAX_COUNT} archivos.`;
+  const tooBig = files.find((f) => f.size > BILLING_FILE_MAX_BYTES);
+  return tooBig ? `"${tooBig.name}" pesa más de 20 MB.` : '';
+};
+
+/** "3 días" / "mañana" / "vence hoy" / "vencida hace 2 días" para una caución. */
+export const bondDaysLabel = (daysLeft: number | null): string => {
+  if (daysLeft === null) return 'sin vencimiento';
+  if (daysLeft < 0) return `vencida hace ${-daysLeft} ${daysLeft === -1 ? 'día' : 'días'}`;
+  if (daysLeft === 0) return 'vence hoy';
+  if (daysLeft === 1) return 'vence mañana';
+  return `vence en ${daysLeft} días`;
+};

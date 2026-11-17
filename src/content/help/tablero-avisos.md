@@ -45,6 +45,11 @@ entrevistador** (ver el tema **Postulantes**). A diferencia de las consultas y l
 Incluye las de hoy que ya pasaron y siguen sin resultado, marcadas como *Sin resultado*. Si se reprograma una, reaparece;
 desaparece sola al cargar el resultado, cancelarla o marcar que no vino.
 
+Dos avisos más son de **Facturación** (ver el tema **Órdenes de compra y cauciones**): **Presupuestos aprobados sin OC**, con los presupuestos aprobados que no
+tienen una OC del cliente vigente ni la marca "No lleva OC" (con botones **Cargar OC** y **No lleva OC**), y **Seguros de caución por vencer**, con las pólizas
+vencidas o dentro de su plazo de aviso. Los ve **quien tenga acceso a Facturación**. El primero desaparece solo al cargar la OC o marcar que no lleva; el segundo,
+al liberar la caución o renovar su vencimiento.
+
 Solo ves los contadores y los avisos de los temas a los que tenés acceso. Si tu rol no maneja
 documentación, por ejemplo, ese aviso no existe para vos.
 
@@ -162,4 +167,4 @@ Marcar un aviso del inicio como visto **no** marca leída ninguna notificación 
 revés. Son dos preguntas distintas, y está bien que una misma novedad aparezca en los dos lugares:
 en la campanita como "esto pasó el martes", en el inicio como "esto todavía te falta hacer".
 
-<!-- ref: conmomet-app/src/components/common/EntrevistasProximasAlert.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, conmomet-app/src/components/common/ContactInquiryAlert.tsx, conmomet-app/src/components/common/TerminationAgreementAlert.tsx, conmomet-app/src/components/common/AdditionalPendingBudgetAlert.tsx, conmomet-app/src/components/common/BudgetAwaitingResponseAlert.tsx, conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->
+<!-- ref: conmomet-app/src/components/common/PurchaseOrderMissingAlert.tsx, conmomet-app/src/components/common/SuretyBondAlert.tsx, conmomet-app/src/components/common/EntrevistasProximasAlert.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, conmomet-app/src/components/common/ContactInquiryAlert.tsx, conmomet-app/src/components/common/TerminationAgreementAlert.tsx, conmomet-app/src/components/common/AdditionalPendingBudgetAlert.tsx, conmomet-app/src/components/common/BudgetAwaitingResponseAlert.tsx, conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->

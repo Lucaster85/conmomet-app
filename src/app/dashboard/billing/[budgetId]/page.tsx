@@ -12,6 +12,7 @@ import InvoiceList from '../../../../components/billing/InvoiceList';
 import InvoiceDialog from '../../../../components/billing/InvoiceDialog';
 import InvoiceNoteDialog from '../../../../components/billing/InvoiceNoteDialog';
 import InvoiceViewDialog from '../../../../components/billing/InvoiceViewDialog';
+import BillingDocsSection from '../../../../components/billing/BillingDocsSection';
 import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, FceAcceptanceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../../components/billing/InvoiceActionDialogs';
 import ProjectCodeLabel from '../../../../components/projects/ProjectCodeLabel';
 import { BudgetBillingDetail, BudgetCurrency, Invoice, InvoiceService } from '../../../../utils/api';
@@ -30,6 +31,7 @@ export default function BillingDetailPage() {
   const { user } = useAuth();
   const canWrite = userHasPermission(user, 'invoices_write');
   const canUpdate = userHasPermission(user, 'invoices_update');
+  const canDelete = userHasPermission(user, 'invoices_delete');
   const canCorrect = userHasPermission(user, 'invoices_correct');
   const canUnofficial = userHasPermission(user, 'invoices_unofficial');
   // Emitir es irreversible: además de poder cargar facturas hace falta invoices_emit.
@@ -253,6 +255,16 @@ export default function BillingDetailPage() {
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {currencies.flatMap((c) => [conceptCard(c, 'materials'), conceptCard(c, 'labor')])}
       </Grid>
+
+      {/* OC del cliente, cauciones y documentos extra */}
+      <BillingDocsSection
+        detail={detail} canWrite={canWrite} canUpdate={canUpdate} canDelete={canDelete}
+        onChanged={(message, warnings) => {
+          setSuccess(warnings && warnings.length ? `${message}. ${warnings.join(' ')}` : message);
+          load();
+        }}
+        onError={setError}
+      />
 
       {/* Avance de horas */}
       <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>Avance de horas del proyecto</Typography>

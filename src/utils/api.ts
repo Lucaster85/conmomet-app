@@ -3390,7 +3390,10 @@ export type NotificationType =
   // Llegó una postulación por "Trabajá con nosotros", o alguien volvió a mandar su CV (FLOWS.md §60).
   | 'job_application_received'
   // Te asignaron o reprogramaron una entrevista a un postulante (FLOWS.md §61).
-  | 'candidate_interview_assigned';
+  | 'candidate_interview_assigned'
+  // Una caución del presupuesto está por vencer o venció (FLOWS.md §69). Se avisa por permiso (invoices_read).
+  | 'surety_bond_expiring'
+  | 'surety_bond_expired';
 
 export interface AppNotification {
   id: number;
@@ -5403,11 +5406,126 @@ export interface BillableBudget {
   project?: { id: number; code: string; name: string; is_additional?: boolean; parent?: { id: number; code: string; name: string } | null } | null;
   quoteRequest?: { id: number; number: string; client_quote_number?: string | null; title: string } | null;
   billing: BudgetBillingSummary;
+  // Solo en el listado de facturación (GET /invoices/billables).
+  purchase_order?: BudgetPurchaseOrderSummary;
 }
 
 export interface IvaInfo { rates: number[]; default_rate: number }
 
 export interface HourBucket { budget_item_type_id: number | null; item_type_name: string; budgeted_hours: number; consumed_hours: number }
+
+// OC del cliente, cauciones y documentos extra del presupuesto (FLOWS.md §69).
+export type PurchaseOrderConcept = 'materials' | 'labor' | 'all';
+export type PurchaseOrderAdjustmentType = 'ipc_indec' | 'uocra' | 'other';
+export type PurchaseOrderStatus = 'active' | 'rejected' | 'replaced';
+export type SuretyBondPurpose = 'advance_payment' | 'other';
+export type SuretyBondStatus = 'released' | 'no_expiration' | 'expired' | 'expiring_soon' | 'active';
+
+export interface BillingUploader { id: number; name: string; lastname: string }
+
+export interface BillingStoredFile {
+  id: number;
+  file_url: string;
+  file_name: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  uploader?: BillingUploader | null;
+  createdAt?: string;
+  created_at?: string;
+}
+
+export interface PurchaseOrderItem { id?: number; position: string | null; description: string; amount: number | null }
+
+export interface PurchaseOrder {
+  id: number;
+  budget_id: number;
+  number: string;
+  date: string;
+  concept: PurchaseOrderConcept;
+  currency: BudgetCurrency;
+  amount: number | null;
+  payment_terms: string | null;
+  allows_adjustment: boolean;
+  adjustment_type: PurchaseOrderAdjustmentType;
+  adjustment_notes: string | null;
+  status: PurchaseOrderStatus;
+  rejection_reason: string | null;
+  replaces_id: number | null;
+  replaces?: { id: number; number: string } | null;
+  items: PurchaseOrderItem[];
+  files: BillingStoredFile[];
+  createdBy?: BillingUploader | null;
+}
+
+export interface PurchaseOrderInput {
+  budget_id?: number;
+  number: string;
+  date: string;
+  concept: PurchaseOrderConcept;
+  currency: BudgetCurrency;
+  amount?: number | null;
+  payment_terms?: string;
+  allows_adjustment: boolean;
+  adjustment_type: PurchaseOrderAdjustmentType;
+  adjustment_notes?: string;
+  items: PurchaseOrderItem[];
+  // Motivo: obligatorio al reemplazar una OC.
+  reason?: string;
+  files?: File[];
+}
+
+export interface SuretyBond {
+  id: number;
+  budget_id: number;
+  purchase_order_id: number | null;
+  purchaseOrder?: { id: number; number: string } | null;
+  insurer: string;
+  policy_number: string;
+  amount: number;
+  currency: BudgetCurrency;
+  issue_date: string | null;
+  purpose: SuretyBondPurpose;
+  expiration_date: string | null;
+  notify_days_before: number;
+  released_at: string | null;
+  notes: string | null;
+  file_url: string | null;
+  file_name: string | null;
+  status: SuretyBondStatus;
+  days_left: number | null;
+}
+
+export interface SuretyBondInput {
+  budget_id?: number;
+  purchase_order_id?: number | null;
+  insurer: string;
+  policy_number: string;
+  amount: number;
+  currency: BudgetCurrency;
+  issue_date?: string | null;
+  purpose: SuretyBondPurpose;
+  expiration_date?: string | null;
+  notify_days_before: number;
+  notes?: string;
+  file?: File | null;
+}
+
+export interface SuretyBondAlert extends Omit<SuretyBond, 'purchaseOrder'> {
+  budget: { id: number; number: string; title: string; client?: { id: number; razonSocial: string } | null };
+}
+
+export interface BudgetBillingFile extends BillingStoredFile { budget_id: number; description: string | null }
+
+export interface MissingPurchaseOrderBudget {
+  id: number;
+  number: string;
+  title: string;
+  currency: BudgetCurrency;
+  approved_at: string | null;
+  client?: { id: number; razonSocial: string } | null;
+}
+
+export interface BudgetPurchaseOrderSummary { active_count: number; numbers: string[]; not_required: boolean }
 
 export interface BudgetBillingDetail {
   budget: Omit<BillableBudget, 'billing'>;
@@ -5416,6 +5534,10 @@ export interface BudgetBillingDetail {
   invoices: Invoice[];
   has_reserved_records: boolean;
   iva: IvaInfo;
+  purchase_order_not_required: boolean;
+  purchase_orders: PurchaseOrder[];
+  surety_bonds: SuretyBond[];
+  billing_files: BudgetBillingFile[];
 }
 
 export interface InvoiceLineInput {
@@ -5503,6 +5625,168 @@ export interface BillableFilters {
 export interface InvoiceProjectOption { id: number; code: string; name: string; is_additional?: boolean; parent?: { id: number; code: string; name: string } | null }
 
 export interface InvoiceClientOption { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; is_active: boolean }
+
+// OC del cliente, cauciones y documentos extra: cuelgan de /invoices (permisos invoices_*). FLOWS.md §69.
+export class BillingDocsService {
+  private static async parse<T>(response: Response, fallback: string): Promise<T> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallback);
+    }
+    return (await response.json()).data;
+  }
+
+  // Devuelve además los avisos de archivos que no se pudieron subir (la entidad ya quedó guardada).
+  private static async parseWithWarnings<T>(response: Response, fallback: string): Promise<{ data: T; warnings: string[] }> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallback);
+    }
+    const body = await response.json();
+    return { data: body.data, warnings: body.warnings || [] };
+  }
+
+  private static orderForm(input: PurchaseOrderInput): FormData {
+    const formData = new FormData();
+    if (input.budget_id !== undefined) formData.append('budget_id', String(input.budget_id));
+    formData.append('number', input.number);
+    formData.append('date', input.date);
+    formData.append('concept', input.concept);
+    formData.append('currency', input.currency);
+    if (input.amount !== undefined && input.amount !== null) formData.append('amount', String(input.amount));
+    if (input.payment_terms) formData.append('payment_terms', input.payment_terms);
+    formData.append('allows_adjustment', String(input.allows_adjustment));
+    formData.append('adjustment_type', input.adjustment_type);
+    if (input.adjustment_notes) formData.append('adjustment_notes', input.adjustment_notes);
+    if (input.reason) formData.append('reason', input.reason);
+    formData.append('items', JSON.stringify(input.items));
+    (input.files || []).forEach((file) => formData.append('files', file));
+    return formData;
+  }
+
+  private static bondForm(input: SuretyBondInput): FormData {
+    const formData = new FormData();
+    if (input.budget_id !== undefined) formData.append('budget_id', String(input.budget_id));
+    if (input.purchase_order_id) formData.append('purchase_order_id', String(input.purchase_order_id));
+    formData.append('insurer', input.insurer);
+    formData.append('policy_number', input.policy_number);
+    formData.append('amount', String(input.amount));
+    formData.append('currency', input.currency);
+    if (input.issue_date) formData.append('issue_date', input.issue_date);
+    formData.append('purpose', input.purpose);
+    if (input.expiration_date) formData.append('expiration_date', input.expiration_date);
+    formData.append('notify_days_before', String(input.notify_days_before));
+    if (input.notes) formData.append('notes', input.notes);
+    if (input.file) formData.append('files', input.file);
+    return formData;
+  }
+
+  private static multipart(method: string, body: FormData): RequestInit {
+    return { method, headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' }, body };
+  }
+
+  static async createOrder(input: PurchaseOrderInput) {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders`, this.multipart('POST', this.orderForm(input)));
+    return this.parseWithWarnings<PurchaseOrder>(response, 'Error al cargar la OC');
+  }
+
+  static async updateOrder(id: number, input: PurchaseOrderInput): Promise<PurchaseOrder> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input, (key, value) => (key === 'files' ? undefined : value)),
+    });
+    return this.parse(response, 'Error al guardar la OC');
+  }
+
+  static async rejectOrder(id: number, reason: string): Promise<PurchaseOrder> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${id}/reject`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    return this.parse(response, 'Error al rechazar la OC');
+  }
+
+  static async replaceOrder(id: number, input: PurchaseOrderInput) {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${id}/replace`, this.multipart('POST', this.orderForm(input)));
+    return this.parseWithWarnings<PurchaseOrder>(response, 'Error al reemplazar la OC');
+  }
+
+  static async deleteOrder(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${id}`, { method: 'DELETE' });
+    await this.parse(response, 'Error al eliminar la OC');
+  }
+
+  static async addOrderFiles(id: number, files: File[]) {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${id}/files`, this.multipart('POST', formData));
+    return this.parseWithWarnings<PurchaseOrder>(response, 'Error al adjuntar los archivos');
+  }
+
+  static async removeOrderFile(orderId: number, fileId: number): Promise<PurchaseOrder> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${orderId}/files/${fileId}`, { method: 'DELETE' });
+    return this.parse(response, 'Error al quitar el archivo');
+  }
+
+  static async setNotRequired(budgetId: number, value: boolean): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/budgets/${budgetId}/purchase-order-not-required`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    await this.parse(response, 'Error al actualizar el presupuesto');
+  }
+
+  static async getMissingOrders(): Promise<MissingPurchaseOrderBudget[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/missing`);
+    return this.parse(response, 'Error al obtener los presupuestos sin OC');
+  }
+
+  static async createBond(input: SuretyBondInput) {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/surety-bonds`, this.multipart('POST', this.bondForm(input)));
+    return this.parseWithWarnings<SuretyBond>(response, 'Error al cargar la caución');
+  }
+
+  static async updateBond(id: number, input: SuretyBondInput) {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/surety-bonds/${id}`, this.multipart('PUT', this.bondForm(input)));
+    return this.parseWithWarnings<SuretyBond>(response, 'Error al guardar la caución');
+  }
+
+  static async releaseBond(id: number, released: boolean): Promise<SuretyBond> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/surety-bonds/${id}/release`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ released }),
+    });
+    return this.parse(response, 'Error al actualizar la caución');
+  }
+
+  static async deleteBond(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/surety-bonds/${id}`, { method: 'DELETE' });
+    await this.parse(response, 'Error al eliminar la caución');
+  }
+
+  static async getBondAlerts(): Promise<SuretyBondAlert[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/surety-bonds/alerts`);
+    return this.parse(response, 'Error al obtener las cauciones');
+  }
+
+  static async addBillingFiles(budgetId: number, files: File[], description?: string) {
+    const formData = new FormData();
+    formData.append('budget_id', String(budgetId));
+    if (description) formData.append('description', description);
+    files.forEach((file) => formData.append('files', file));
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/billing-files`, this.multipart('POST', formData));
+    return this.parseWithWarnings<BudgetBillingFile[]>(response, 'Error al adjuntar los documentos');
+  }
+
+  static async deleteBillingFile(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/billing-files/${id}`, { method: 'DELETE' });
+    await this.parse(response, 'Error al quitar el documento');
+  }
+}
 
 export class InvoiceService {
   private static buildFormData(input: InvoiceInput): FormData {

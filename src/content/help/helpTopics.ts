@@ -353,6 +353,20 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'facturacion.md',
   },
   {
+    // Cuelga de "Facturación": OC del cliente, cauciones y documentos del presupuesto (ver FLOWS.md §69).
+    id: 'ordenes-de-compra',
+    category: 'Facturación',
+    title: 'Órdenes de compra y cauciones',
+    keywords: [
+      'oc', 'orden de compra', 'ordenes de compra', 'órdenes de compra', 'oc del cliente', 'sin oc', 'no lleva oc',
+      'presupuesto sin oc', 'posiciones', 'reemplazar oc', 'rechazar oc', 'ajuste de precios', 'ipc', 'uocra',
+      'caucion', 'caución', 'seguro de caucion', 'seguro de caución', 'poliza', 'póliza', 'aseguradora',
+      'vencimiento de caucion', 'vencimiento de caución', 'anticipo', 'liberada', 'documentos para facturar',
+      'adjuntar', 'contrato',
+    ],
+    file: 'ordenes-de-compra.md',
+  },
+  {
     // Cuelga de "Facturación": es el emisor de las facturas y la conexión con ARCA (ver FLOWS.md §64).
     id: 'datos-de-mi-empresa',
     category: 'Facturación',
