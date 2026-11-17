@@ -347,6 +347,22 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'facturacion.md',
   },
   {
+    // Cuelga de "Facturación": es el emisor de las facturas y la conexión con ARCA (ver FLOWS.md §64).
+    id: 'datos-de-mi-empresa',
+    category: 'Facturación',
+    title: 'Datos de mi empresa y conexión con ARCA',
+    keywords: [
+      'datos de mi empresa', 'empresa', 'emisor', 'razon social', 'razón social', 'cuit', 'iibb',
+      'ingresos brutos', 'inicio de actividades', 'domicilio', 'punto de venta', 'puntos de venta',
+      'web service', 'web services', 'comprobantes en linea', 'comprobantes en línea', 'cuenta bancaria',
+      'cuentas bancarias', 'cbu', 'alias', 'fce', 'sca', 'adc', 'arca', 'afip', 'homologacion',
+      'homologación', 'produccion', 'producción', 'certificado', 'vencimiento del certificado',
+      'probar conexion', 'probar conexión', 'validar con arca', 'ticket', 'wsaa', 'configuracion',
+      'configuración',
+    ],
+    file: 'datos-de-mi-empresa.md',
+  },
+  {
     id: 'materiales',
     category: 'Pañol',
     title: 'Materiales y Proveedores',

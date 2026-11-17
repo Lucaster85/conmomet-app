@@ -5120,6 +5120,143 @@ export class SystemSettingService {
   }
 }
 
+// --- DATOS DE MI EMPRESA + ARCA (PLAN_ARCA.md §3.0, FLOWS.md §64) ---
+export type CompanyVatCondition = 'responsable_inscripto' | 'monotributo' | 'exento';
+export type FceTransferOption = 'SCA' | 'ADC';
+
+export interface CompanyProfile {
+  id: number;
+  legal_name: string | null;
+  display_name: string | null;
+  cuit: string | null;
+  address_street: string | null;
+  address_number: string | null;
+  address_locality: string | null;
+  address_province: string | null;
+  vat_condition: CompanyVatCondition;
+  iibb_number: string | null;
+  activity_start_date: string | null;
+  email: string | null;
+  phone: string | null;
+  fce_transfer_option: FceTransferOption;
+}
+
+export type CompanyProfileInput = Partial<Omit<CompanyProfile, 'id'>>;
+
+export interface CompanyPointOfSale {
+  id: number;
+  number: number;
+  usage_description: string | null;
+  type: 'web_service' | 'manual';
+  address: string | null;
+  is_default: boolean;
+  is_active: boolean;
+}
+
+export type CompanyPointOfSaleInput = Partial<Omit<CompanyPointOfSale, 'id'>> & { number: number };
+
+export interface CompanyBankAccount {
+  id: number;
+  bank_name: string;
+  cbu: string;
+  alias: string | null;
+  currency: 'ARS' | 'USD' | null;
+  is_default: boolean;
+  is_active: boolean;
+}
+
+export type CompanyBankAccountInput = Partial<Omit<CompanyBankAccount, 'id'>> & { bank_name: string; cbu: string };
+
+export interface ArcaCertificateInfo {
+  ok: boolean;
+  subject?: string | null;
+  expires_at?: string;
+  days_left?: number;
+  expiring_soon?: boolean;
+  error?: string;
+}
+
+// Estado de la integración, sin llamar a ARCA.
+export interface ArcaStatus {
+  enabled: boolean;
+  env: 'homologacion' | 'produccion' | null;
+  cuit: string | null;
+  config_error: string | null;
+  certificate: ArcaCertificateInfo | null;
+  cuit_matches_profile: boolean | null;
+  cuit_mismatch_blocks: boolean;
+}
+
+export interface CompanySettings {
+  profile: CompanyProfile;
+  points_of_sale: CompanyPointOfSale[];
+  bank_accounts: CompanyBankAccount[];
+  arca: ArcaStatus;
+}
+
+type ArcaStep<T> = ({ ok: true } & T) | { ok: false; error: string };
+
+export interface ArcaTestResult extends ArcaStatus {
+  dummy: ArcaStep<{ servers: { app_server?: string; db_server?: string; auth_server?: string } }>;
+  login: ArcaStep<{ expires_at: string; source: 'cache' | 'login' }>;
+  points_of_sale?: ArcaStep<{ items: Array<{ number: number; emission_type: string | null; blocked: boolean; deactivated_at: string | null }> }>;
+  last_authorized?: {
+    ok: boolean;
+    items: Array<{ pos_number: number; cbte_tipo: number; label: string; ok: boolean; number?: number; error?: string }>;
+  };
+  usd_rate?: ArcaStep<{ currency: string; rate: number; date: string | null }>;
+}
+
+export interface ArcaPointValidation {
+  env: 'homologacion' | 'produccion';
+  enforced: boolean;
+  has_problems: boolean;
+  results: Array<{ id: number; number: number; state: 'ok' | 'not_found' | 'blocked'; emission_type: string | null }>;
+  arca_points: Array<{ number: number; emission_type: string | null; blocked: boolean; deactivated_at: string | null }>;
+}
+
+async function companyRequest<T>(path: string, method: string, body?: unknown, fallback = 'Error al comunicarse con el servidor'): Promise<T> {
+  const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/company-settings${path}`, {
+    method,
+    ...(body !== undefined ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+  });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || fallback);
+  return (await response.json()).data as T;
+}
+
+export class CompanySettingsService {
+  static get(): Promise<CompanySettings> {
+    return companyRequest('', 'GET', undefined, 'Error al cargar los datos de la empresa');
+  }
+  static updateProfile(data: CompanyProfileInput): Promise<CompanyProfile> {
+    return companyRequest('/profile', 'PUT', data, 'Error al guardar los datos de la empresa');
+  }
+  static createPointOfSale(data: CompanyPointOfSaleInput): Promise<CompanyPointOfSale> {
+    return companyRequest('/points-of-sale', 'POST', data, 'Error al crear el punto de venta');
+  }
+  static updatePointOfSale(id: number, data: Partial<CompanyPointOfSaleInput>): Promise<CompanyPointOfSale> {
+    return companyRequest(`/points-of-sale/${id}`, 'PUT', data, 'Error al guardar el punto de venta');
+  }
+  static deletePointOfSale(id: number): Promise<{ id: number }> {
+    return companyRequest(`/points-of-sale/${id}`, 'DELETE', undefined, 'Error al eliminar el punto de venta');
+  }
+  static createBankAccount(data: CompanyBankAccountInput): Promise<CompanyBankAccount> {
+    return companyRequest('/bank-accounts', 'POST', data, 'Error al crear la cuenta bancaria');
+  }
+  static updateBankAccount(id: number, data: Partial<CompanyBankAccountInput>): Promise<CompanyBankAccount> {
+    return companyRequest(`/bank-accounts/${id}`, 'PUT', data, 'Error al guardar la cuenta bancaria');
+  }
+  static deleteBankAccount(id: number): Promise<{ id: number }> {
+    return companyRequest(`/bank-accounts/${id}`, 'DELETE', undefined, 'Error al eliminar la cuenta bancaria');
+  }
+  static testArcaConnection(): Promise<ArcaTestResult> {
+    return companyRequest('/arca/test', 'POST', {}, 'Error al probar la conexión con ARCA');
+  }
+  static validateArcaPointsOfSale(): Promise<ArcaPointValidation> {
+    return companyRequest('/arca/validate-points-of-sale', 'POST', {}, 'Error al validar los puntos de venta con ARCA');
+  }
+}
+
 // --- FACTURACIÓN ---
 export type VoucherType = 'A' | 'B' | 'C' | 'E' | 'sin_factura';
 export type InvoiceStatus = 'pending' | 'paid' | 'cancelled';

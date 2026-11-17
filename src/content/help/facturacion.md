@@ -150,7 +150,9 @@ En el listado de **Presupuestos**, los presupuestos aprobados muestran además u
 
 La idea es integrar el módulo con **ARCA** para **emitir las facturas directamente desde la app**,
 sin cargarlas a mano. Para eso ya se guardan el **CUIT** y la **condición de IVA** de cada cliente
-(ver el tema **Clientes**). Cuando exista la emisión, las notas de crédito van a reemplazar a "anular"
-en los comprobantes oficiales.
+(ver el tema **Clientes**), y los datos de quien factura, sus puntos de venta y sus cuentas bancarias
+se cargan en **Configuración → Datos de mi empresa** (ver el tema **Datos de mi empresa y conexión
+con ARCA**, donde también se **prueba la conexión** con ARCA). Cuando exista la emisión, las notas de
+crédito van a reemplazar a "anular" en los comprobantes oficiales.
 
 <!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
