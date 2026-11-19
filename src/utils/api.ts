@@ -5303,10 +5303,10 @@ export type InvoiceArcaStatus = 'manual' | 'draft' | 'authorizing' | 'authorized
 export type InvoiceSource = 'manual' | 'arca';
 // Factura o sus notas: una nota de crédito acredita (anula total o parcialmente) una factura emitida y una de débito suma un cargo.
 export type InvoiceKind = 'invoice' | 'credit_note' | 'debit_note';
-export type InvoiceConcept = 'materials' | 'labor' | 'other' | 'adjustment';
+export type InvoiceConcept = 'materials' | 'labor' | 'other' | 'adjustment' | 'oca';
 export type AdjustmentType = 'ipc_indec' | 'uocra' | 'other';
 // Los conceptos que se cargan en el armado de una factura (el de ajuste solo existe en las facturas de ajuste).
-export type EditableInvoiceConcept = Exclude<InvoiceConcept, 'adjustment'>;
+export type EditableInvoiceConcept = Exclude<InvoiceConcept, 'adjustment' | 'oca'>;
 export type BillingStatus = 'unbilled' | 'partial' | 'billed' | 'billed_and_paid';
 
 export interface InvoiceLine {
@@ -5315,6 +5315,9 @@ export interface InvoiceLine {
   budget_id?: number | null;
   purchase_order_id?: number | null;
   budget?: { id: number; number: string; title: string } | null;
+  // Línea que cobra una OCA entera (FLOWS.md §74).
+  oca_id?: number | null;
+  oca?: { id: number; number: string; type: 'man_hours' | 'crane_hours' } | null;
   // El avance real que factura la línea (opcional).
   progress_entry_id?: number | null;
   progressEntry?: { id: number; percent: number; date: string; source: ProgressSource; certificate_number: string | null; status: ProgressCertificateStatus | null } | null;
@@ -5653,6 +5656,8 @@ export interface BudgetBillingDetail {
 }
 
 export interface InvoiceLineInput {
+  // Línea que cobra una OCA entera: el importe sale de las horas, no se manda.
+  oca_id?: number;
   progress_entry_id?: number | null;
   // Línea de ajuste: la línea de la factura original que se ajusta y el índice.
   adjusts_line_id?: number;
@@ -5748,6 +5753,26 @@ export interface BillableFilters {
 }
 
 export interface InvoiceProjectOption { id: number; code: string; name: string; is_additional?: boolean; parent?: { id: number; code: string; name: string } | null }
+
+// Una OCA aprobada de un cliente, con su importe y si se puede facturar (FLOWS.md §74).
+export interface BillableOca {
+  id: number;
+  number: string;
+  type: 'man_hours' | 'crane_hours';
+  date: string;
+  client_id: number;
+  project: { id: number; code: string; name: string } | null;
+  requires_budget: boolean;
+  budget_status: string | null;
+  hourly_rate: number | null;
+  hours: { regular: number; ot50: number; ot100: number; total: number };
+  net_amount: number;
+  // Motivos por los que todavía no se puede facturar (vacío = se puede).
+  problems: string[];
+  // La factura vigente que ya la cobra, si la hay.
+  invoice: { id: number; voucher_type: VoucherType; cbte_tipo: number | null; pos_number: number | null; number: number | null; arca_status?: InvoiceArcaStatus } | null;
+  billable: boolean;
+}
 
 export interface InvoiceClientOption { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; is_active: boolean }
 
@@ -6042,6 +6067,12 @@ export class InvoiceService {
   }
 
   // Clientes para el filtro y la factura libre: cuelga de /invoices, no requiere clients_read.
+  // OCA aprobadas de un cliente con su importe y si se pueden facturar. Cuelga de /invoices: no requiere ocas_read.
+  static async getBillableOcas(clientId: number): Promise<BillableOca[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/billable-ocas?client_id=${clientId}`);
+    return this.parse(response, 'Error al obtener las OCA para facturar');
+  }
+
   static async getClientOptions(): Promise<InvoiceClientOption[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/client-options`);
     return this.parse(response, 'Error al obtener los clientes');
@@ -6456,6 +6487,8 @@ export interface Oca {
   hourly_rate?: number | null;
   requires_budget: boolean;
   budget_status?: 'pendiente' | 'presentado' | 'aprobado' | null;
+  // La factura vigente que cobra esta OCA (FLOWS.md §74): mientras exista, la OCA no se modifica ni se vuelve a facturar.
+  billed_invoice?: { id: number; cbte_tipo: number | null; pos_number: number | null; number: number | null; arca_status?: string } | null;
   budget_approved_at?: string | null;
   budget_approved_by?: number | null;
   budget_approved_by_supervisor_id?: number | null;

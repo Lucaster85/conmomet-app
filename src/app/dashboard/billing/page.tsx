@@ -21,7 +21,7 @@ import InvoiceNoteDialog from '../../../components/billing/InvoiceNoteDialog';
 import InvoiceViewDialog from '../../../components/billing/InvoiceViewDialog';
 import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, FceAcceptanceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../components/billing/InvoiceActionDialogs';
 import {
-  BillableBudget, BillingStatus, BudgetBillingDetail, Invoice, InvoiceClientOption, InvoiceService, InvoiceStatus,
+  BillableBudget, BillableOca, BillingStatus, BudgetBillingDetail, Invoice, InvoiceClientOption, InvoiceService, InvoiceStatus,
   IvaInfo, SystemSettingService, VoucherType,
 } from '../../../utils/api';
 import { userHasPermission, useAuth } from '../../../utils/auth';
@@ -80,7 +80,7 @@ function BillingContent() {
   const [editTarget, setEditTarget] = useState<{ invoice: Invoice; detail: BudgetBillingDetail | null } | null>(null);
   // "Nueva factura": se elige el cliente y los presupuestos (una factura puede cobrar varios) y después se abre el diálogo de la factura.
   const [startOpen, setStartOpen] = useState(false);
-  const [newTarget, setNewTarget] = useState<{ detail: BudgetBillingDetail; extra: BudgetBillingDetail[] } | null>(null);
+  const [newTarget, setNewTarget] = useState<{ detail: BudgetBillingDetail | null; extra: BudgetBillingDetail[]; ocas: BillableOca[]; client: InvoiceClientOption } | null>(null);
 
   useEffect(() => {
     InvoiceService.getClientOptions().then(setClients).catch(() => setClients([]));
@@ -363,11 +363,11 @@ function BillingContent() {
       />
       <NewInvoiceStartDialog
         open={startOpen} onClose={() => setStartOpen(false)} clients={clients}
-        onStart={(detail, extra) => { setStartOpen(false); setNewTarget({ detail, extra }); }}
+        onStart={(detail, extra, ocas, client) => { setStartOpen(false); setNewTarget({ detail, extra, ocas, client }); }}
       />
       <InvoiceDialog
         open={!!newTarget} onClose={() => setNewTarget(null)} ivaInfo={iva} canUnofficial={canUnofficial}
-        detail={newTarget?.detail} extraDetails={newTarget?.extra}
+        detail={newTarget?.detail} extraDetails={newTarget?.extra} ocas={newTarget?.ocas} ocaClient={newTarget?.client}
         onSaved={(saved) => handleSaved(saved.source === 'arca' ? 'Borrador guardado: emitilo desde el listado de facturas' : 'Factura registrada')}
       />
       <InvoiceDialog

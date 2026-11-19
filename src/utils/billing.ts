@@ -119,7 +119,7 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, { label: string; color
   cancelled: { label: 'Anulada', color: 'default' },
 };
 
-export const CONCEPT_LABELS = { materials: 'Materiales', labor: 'Mano de obra', other: 'Otro', adjustment: 'Ajuste' } as const;
+export const CONCEPT_LABELS = { materials: 'Materiales', labor: 'Mano de obra', other: 'Otro', adjustment: 'Ajuste', oca: 'OCA' } as const;
 export const ADJUSTMENT_TYPE_LABELS = { ipc_indec: 'IPC (INDEC)', uocra: 'UOCRA', other: 'Otro índice' } as const;
 
 // Alícuotas de IVA configuradas (Configuración General). El 21% es el valor por defecto si está en

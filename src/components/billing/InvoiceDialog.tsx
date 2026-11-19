@@ -9,14 +9,14 @@ import { DeleteOutline as DeleteIcon, UploadFileOutlined as UploadIcon } from '@
 import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
 import {
-  BillableBudget, BillablePurchaseOrder, BudgetBillingDetail, EditableInvoiceConcept, BudgetCurrency, Invoice, InvoiceArcaOptions, InvoiceClientOption, InvoiceInput,
+  BillableBudget, BillableOca, BillablePurchaseOrder, BudgetBillingDetail, EditableInvoiceConcept, BudgetCurrency, Invoice, InvoiceArcaOptions, InvoiceClientOption, InvoiceInput,
   InvoiceLineInput, InvoiceProjectOption, InvoiceService, IvaInfo, VoucherType,
 } from '../../utils/api';
 import {
   ARCA_CONCEPT_LABELS, CBTE_OPTIONS_BY_LETTER, CONCEPT_LABELS, DEFAULT_CBTE_BY_LETTER, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatHours, formatMoney, formatPercent,
   ivaOf, roundMoney, roundPercent, todayISO, VOUCHER_TYPE_OPTIONS,
 } from '../../utils/billing';
-import { formatCuit, TAX_CONDITION_LABELS } from '../../utils/cuit';
+import { formatCuit, TAX_CONDITION_LABELS, TaxCondition } from '../../utils/cuit';
 
 interface InvoiceDialogProps {
   open: boolean;
@@ -26,6 +26,9 @@ interface InvoiceDialogProps {
   detail?: BudgetBillingDetail | null;
   // Otros presupuestos del mismo cliente que arrancan incluidos en la factura (FLOWS.md §70). También se pueden sumar desde el diálogo.
   extraDetails?: BudgetBillingDetail[];
+  // OCA que arrancan incluidas en la factura y el cliente al que se le factura cuando no hay presupuesto (FLOWS.md §74).
+  ocas?: BillableOca[];
+  ocaClient?: InvoiceClientOption | null;
   // Si viene, se está CORRIGIENDO esa factura (requiere invoices_correct).
   invoice?: Invoice | null;
   ivaInfo: IvaInfo;
@@ -60,11 +63,19 @@ const parsePercent = (text: string): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
-export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDetails, invoice, ivaInfo, canUnofficial }: InvoiceDialogProps) {
+// Una OCA incluida en la factura: se cobra entera, con el importe que salió de sus horas (no se edita); la descripción sí.
+interface OcaItem { id: number; number: string; type: 'man_hours' | 'crane_hours'; netAmount: number; description: string }
+
+export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDetails, ocas, ocaClient, invoice, ivaInfo, canUnofficial }: InvoiceDialogProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isEditing = !!invoice;
-  const isFree = !detail;
+  const [ocaItems, setOcaItems] = useState<OcaItem[]>([]);
+  const [pickableOcas, setPickableOcas] = useState<BillableOca[]>([]);
+  // Con OCA (o una factura que ya las cobra) no es una factura libre aunque no haya presupuesto.
+  const ocaMode = ocaItems.length > 0 || (ocas?.length ?? 0) > 0 || !!invoice?.lines.some((l) => l.concept === 'oca');
+  const isFree = !detail && !ocaMode;
+  const contextClient = (detail?.budget.client ?? ocaClient ?? (invoice?.client as { id: number; razonSocial: string } | undefined) ?? null) as { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; fce_transfer_option?: 'SCA' | 'ADC' | null } | null;
   // Presupuestos que cobra la factura. El primero es el ancla (de ahí salen el cliente y las opciones de ARCA); el resto se suma desde el diálogo.
   const [blocks, setBlocks] = useState<BudgetBillingDetail[]>([]);
   const [pickable, setPickable] = useState<BillableBudget[]>([]);
@@ -160,11 +171,13 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
   };
 
   const currencyOptions = useMemo(() => {
+    // Las OCA se facturan en pesos.
+    if (ocaItems.length > 0) return ['ARS'] as BudgetCurrency[];
     if (blocks.length === 0) return CURRENCIES;
     return CURRENCIES.filter((cur) => blocks.some((b) => (['materials', 'labor'] as const).some((c) => budgetBalance(b.budget.id, cur, c) > TOLERANCE)));
     // budgetBalance depende de blocks, invoice y ownActive
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, invoice, ownActive]);
+  }, [blocks, invoice, ownActive, ocaItems.length]);
 
   // Carga inicial cada vez que se abre.
   useEffect(() => {
@@ -198,7 +211,10 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       setRemito(invoice.remito_number || '');
       setCommercialRef(invoice.commercial_reference || '');
       setCommercialTouched(true);
-      setLines(invoice.lines.map((l) => ({
+      setOcaItems(invoice.lines.filter((l) => l.concept === 'oca' && l.oca_id).map((l) => ({
+        id: l.oca_id as number, number: l.oca?.number || String(l.oca_id), type: l.oca?.type || 'man_hours', netAmount: l.net_amount, description: l.description || '',
+      })));
+      setLines(invoice.lines.filter((l) => l.concept !== 'oca').map((l) => ({
         key: newKey(),
         budgetId: l.budget_id ?? invoice.budget_id ?? null,
         orderId: l.purchase_order_id ?? null,
@@ -235,7 +251,9 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       setRemito('');
       setCommercialRef('');
       setCommercialTouched(false);
-      setLines(detail ? [] : [{ key: newKey(), budgetId: null, orderId: null, concept: 'other', percentText: '', amount: null, description: '', source: 'amount' }]);
+      setOcaItems((ocas || []).map((o) => ({ id: o.id, number: o.number, type: o.type, netAmount: o.net_amount, description: '' })));
+      setLines(detail || (ocas || []).length > 0 ? [] : [{ key: newKey(), budgetId: null, orderId: null, concept: 'other', percentText: '', amount: null, description: '', source: 'amount' }]);
+      if ((ocas || []).length > 0) setCurrency('ARS');
     }
     setClient(null);
     setProject(null);
@@ -272,7 +290,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
   // Opciones de ARCA: solo para facturas de un presupuesto (la factura libre se sigue cargando a mano). Si la integración
   // está prendida y hay puntos de venta de web service, una factura nueva arranca como "Emitir por ARCA".
   useEffect(() => {
-    if (!open || !detail) { setArcaOptions(null); return; }
+    if (!open || (!detail && !ocaMode)) { setArcaOptions(null); return; }
     let cancelled = false;
     InvoiceService.getArcaOptions().then((opts) => {
       if (cancelled) return;
@@ -282,7 +300,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
         const def = opts.points_of_sale.find((p) => p.is_default) || opts.points_of_sale[0];
         setPosId(def.id);
       }
-      const client = detail.budget.client;
+      const client = contextClient;
       const mapped = client?.tax_condition ? opts.client_tax_condition_map[client.tax_condition] : undefined;
       if (!invoice && mapped) setRecipientVatId(mapped);
       // Opción de transferencia de la FCE: la del cliente (Bunge pide ADC) o, si no tiene, la de la empresa.
@@ -291,7 +309,16 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
     return () => { cancelled = true; };
     // Solo al abrir.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, detail?.budget.id, invoice]);
+  }, [open, detail?.budget.id, ocaClient?.id, invoice]);
+
+  // OCA del cliente que todavía se pueden sumar a la factura (aprobadas, con precio y sin facturar).
+  useEffect(() => {
+    if (!open || !contextClient) { setPickableOcas([]); return; }
+    let cancelled = false;
+    InvoiceService.getBillableOcas(contextClient.id).then((list) => { if (!cancelled) setPickableOcas(list.filter((o) => o.billable)); }).catch(() => { if (!cancelled) setPickableOcas([]); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, contextClient?.id]);
 
   // FCE: cuenta bancaria sugerida = la predeterminada que sirva para la moneda de la factura (una cuenta sin moneda sirve para cualquiera).
   // Solo en un borrador nuevo; al editar se respeta la que tenía.
@@ -363,7 +390,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
   const rateOptions = ivaInfo.rates.includes(ivaRate) ? ivaInfo.rates : [...ivaInfo.rates, ivaRate].sort((a, b) => a - b);
   const effectiveIvaRate = isUnofficial ? 0 : ivaRate;
 
-  const net = roundMoney(lines.reduce((acc, l) => acc + (l.amount || 0), 0));
+  const net = roundMoney(lines.reduce((acc, l) => acc + (l.amount || 0), 0) + ocaItems.reduce((acc, o) => acc + o.netAmount, 0));
   const iva = ivaOf(net, effectiveIvaRate);
   const total = roundMoney(net + iva);
 
@@ -449,7 +476,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
     if (cur === currency) return;
     setCurrency(cur);
     // Los saldos y las OC son por moneda: las líneas cargadas dejan de tener sentido.
-    if (detail) setLines([]);
+    if (detail || ocaMode) setLines([]);
   };
 
   const validate = (): string | null => {
@@ -475,7 +502,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       if (!Number.isInteger(num) || num < 1 || num > 99999999) return 'Ingresá el número de comprobante.';
     }
     if (isFree && !client) return 'Elegí el cliente.';
-    if (lines.length === 0) return 'Agregá al menos un concepto a facturar.';
+    if (lines.length === 0 && ocaItems.length === 0) return 'Agregá al menos un concepto a facturar.';
     for (const line of lines) {
       const where = isMulti && line.budgetId ? ` (${detailOf(line.budgetId)?.budget.number})` : '';
       if (!(line.amount && line.amount > 0)) return `Indicá el monto o el porcentaje de ${CONCEPT_LABELS[line.concept].toLowerCase()}${where}.`;
@@ -504,6 +531,9 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
         ? { ...target, percent: parsePercent(l.percentText) }
         : { ...target, net_amount: l.amount || 0 };
     });
+
+    // Las OCA van enteras: solo se manda cuál y, si se escribió, la descripción (el importe sale de las horas en el servidor).
+    lineInputs.push(...ocaItems.map((o): InvoiceLineInput => ({ oca_id: o.id, ...(o.description.trim() ? { description: o.description.trim() } : {}) })));
 
     const arcaFields: Partial<InvoiceInput> = isArca ? {
       source: 'arca',
@@ -714,12 +744,12 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
     </Box>
   );
 
-  const budgetClient = detail?.budget.client;
+  const budgetClient = contextClient;
 
   return (
     <AppDialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="md" fullScreen={isMobile}>
       <DialogTitle>
-        {isEditing ? (isArca ? 'Editar borrador' : 'Corregir factura') : isFree ? 'Factura libre' : isArca ? 'Nueva factura (emitir por ARCA)' : 'Nueva factura'}
+        {isEditing ? (isArca ? 'Editar borrador' : 'Corregir factura') : isFree ? 'Factura libre' : !detail ? 'Nueva factura (OCA)' : isArca ? 'Nueva factura (emitir por ARCA)' : 'Nueva factura'}
         {detail && (
           <Typography variant="body2" color="text.secondary">
             {isMulti ? `${blocks.length} presupuestos: ${blocks.map((b) => b.budget.number).join(', ')}` : `${detail.budget.number} · ${detail.budget.title}`}
@@ -730,7 +760,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
         <Stack spacing={2.5}>
           {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
 
-          {!isEditing && detail && arcaOptions?.enabled && arcaOptions.points_of_sale.length > 0 && (
+          {!isEditing && (detail || ocaMode) && arcaOptions?.enabled && arcaOptions.points_of_sale.length > 0 && (
             <ToggleButtonGroup
               exclusive fullWidth size="small" color="primary" value={mode}
               onChange={(_, value) => { if (value) setMode(value); }}
@@ -872,9 +902,9 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
             <TextField
               select label="Moneda *" value={currency} fullWidth
               onChange={(e) => handleCurrencyChange(e.target.value as BudgetCurrency)}
-              helperText={detail ? 'Una moneda por factura. Si el presupuesto tiene las dos, se hacen facturas separadas.' : undefined}
+              helperText={ocaItems.length > 0 ? 'Las OCA se facturan en pesos.' : detail ? 'Una moneda por factura. Si el presupuesto tiene las dos, se hacen facturas separadas.' : undefined}
             >
-              {(detail ? [...new Set([...currencyOptions, currency])] : CURRENCIES).map((cur) => (
+              {(ocaItems.length > 0 ? (['ARS'] as BudgetCurrency[]) : detail ? [...new Set([...currencyOptions, currency])] : CURRENCIES).map((cur) => (
                 <MenuItem key={cur} value={cur}>{cur === 'ARS' ? 'Pesos (ARS)' : 'Dólares (USD)'}</MenuItem>
               ))}
             </TextField>
@@ -918,7 +948,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
                 renderInput={(params) => <TextField {...params} size="small" label="Agregar otro presupuesto del mismo cliente" helperText="Una sola factura puede cobrar varios presupuestos: cada línea descuenta del saldo del suyo." />}
               />
             </>
-          ) : (
+          ) : isFree ? (
             <>
               <Typography variant="subtitle1" fontWeight={700}>Conceptos</Typography>
               {lines.map(renderFreeLine)}
@@ -927,6 +957,45 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
                   + Agregar línea
                 </Button>
               </Box>
+            </>
+          ) : null}
+
+          {/* OCA: se cobran enteras, con el importe que sale de sus horas (FLOWS.md §74) */}
+          {!isFree && (ocaItems.length > 0 || pickableOcas.length > 0) && (
+            <>
+              {ocaItems.length > 0 && <Typography variant="subtitle1" fontWeight={700}>OCA que se facturan</Typography>}
+              {ocaItems.map((item) => (
+                <Box key={item.id} sx={{ border: 1, borderColor: 'primary.light', borderRadius: 2, p: 2 }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={700}>OCA {item.number} · {item.type === 'man_hours' ? 'Horas hombre' : 'Servicio de grúa'}</Typography>
+                      <Typography variant="body2">Neto: <strong>{formatMoney(item.netAmount, 'ARS')}</strong></Typography>
+                      <Typography variant="caption" color="text.secondary" display="block">Se factura entera; el importe sale de las horas y del valor hora de la OCA.</Typography>
+                    </Box>
+                    <IconButton size="small" aria-label={`Quitar la OCA ${item.number}`} onClick={() => setOcaItems((prev) => prev.filter((o) => o.id !== item.id))}><DeleteIcon fontSize="small" /></IconButton>
+                  </Box>
+                  <TextField
+                    size="small" fullWidth label="Descripción en la factura (opcional)" value={item.description} sx={{ mt: 1.5 }} inputProps={{ maxLength: 255 }}
+                    onChange={(e) => setOcaItems((prev) => prev.map((o) => (o.id === item.id ? { ...o, description: e.target.value } : o)))}
+                    placeholder={`${item.type === 'man_hours' ? 'Hora hombre' : 'Servicio de grúa'} OCA ${item.number}`}
+                    helperText="Por ejemplo: Hora hombre, construcción 4773 OC 117242-104."
+                  />
+                </Box>
+              ))}
+              <Autocomplete
+                key={`oca-${ocaItems.length}`}
+                options={pickableOcas.filter((o) => !ocaItems.some((i) => i.id === o.id))}
+                getOptionLabel={(o) => `OCA ${o.number} · ${formatMoney(o.net_amount, 'ARS')}${o.project ? ` · ${o.project.code}` : ''}`}
+                noOptionsText="El cliente no tiene OCA aprobadas para facturar"
+                onChange={(_, o) => {
+                  if (!o) return;
+                  setOcaItems((prev) => [...prev, { id: o.id, number: o.number, type: o.type, netAmount: o.net_amount, description: '' }]);
+                  setCurrency('ARS');
+                  // Los saldos y la moneda cambian: las líneas de presupuesto cargadas en otra moneda dejan de servir.
+                  if (currency !== 'ARS') setLines([]);
+                }}
+                renderInput={(params) => <TextField {...params} size="small" label="Agregar una OCA del cliente" helperText="OCA aprobadas, con su valor hora cargado y todavía sin facturar. Se facturan en pesos." />}
+              />
             </>
           )}
 

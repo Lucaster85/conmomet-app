@@ -1849,6 +1849,14 @@ export default function OcasPage() {
                             color={STATUS_COLORS[oca.status]}
                             size="small"
                           />
+                          {oca.billed_invoice && (
+                            <Tooltip title="Esta OCA ya está facturada: no se modifica. Para tocarla, hay que anular esa factura en Facturación.">
+                              <Chip
+                                label={oca.billed_invoice.number ? `Facturada ${String(oca.billed_invoice.pos_number || 0).padStart(4, '0')}-${String(oca.billed_invoice.number).padStart(8, '0')}` : 'Facturada (borrador)'}
+                                color="info" variant="outlined" size="small"
+                              />
+                            </Tooltip>
+                          )}
                           {oca.sourceOca && (
                             <Chip
                               label={`Corrige a ${oca.sourceOca.number}`}
