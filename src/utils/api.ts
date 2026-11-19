@@ -6132,6 +6132,13 @@ export class InvoiceService {
     return this.parse(response, 'Error al emitir la factura en ARCA');
   }
 
+  // Vista previa del borrador con el formato de la factura final (sin número, CAE ni QR). Devuelve el PDF como Blob.
+  static async previewPdf(id: number): Promise<Blob> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/preview-pdf`);
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al generar la vista previa');
+    return response.blob();
+  }
+
   // Resuelve una factura que quedó "autorizando" consultando el comprobante en ARCA.
   static async verify(id: number): Promise<{ invoice: Invoice; outcome: 'authorized' | 'back_to_draft' }> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/verify`, { method: 'POST' });

@@ -71,9 +71,11 @@ Emitir es un proceso **en dos pasos**:
      OC), que se imprimen en la factura.
    El borrador **no tiene número** todavía y **ocupa saldo** del presupuesto, como cualquier factura.
    Se puede editar o descartar.
-2. **Emitir en ARCA.** Desde el listado, el ícono de **enviar**. Antes de emitir se muestra una
-   confirmación con el **ambiente**, el punto de venta, el tipo, el cliente y el total. ARCA asigna el
-   **número** y el **CAE**, y la factura queda **"Emitida en ARCA"**.
+2. **Emitir en ARCA.** Desde el listado, el ícono de **enviar**. Antes de emitir se abre la **vista previa de
+   la factura**: se ve **tal cual saldrá la factura final** (emisor, cliente, líneas, totales y leyendas), con
+   asteriscos en lo que todavía no existe: el **número**, el **CAE**, su vencimiento y el **QR** los asigna ARCA al
+   emitir. Arriba se indica el **ambiente** (pruebas o producción). Si todo está bien, **"Emitir en ARCA"**; si no,
+   **Cancelar** y se corrige el borrador. Al emitir, la factura queda **"Emitida en ARCA"**.
 
 **Una factura emitida ya no se edita ni se anula** desde la app: ARCA ya la conoce. Si hay un error, o si hay
 que devolver parte de lo facturado, se corrige con una **nota de crédito** (ver "Anular una factura de
@@ -173,7 +175,7 @@ transferencia, ni vencimiento de pago, y llevan una marca de **anulación**.
 
 ARCA **no permite anular** una factura emitida: se **corrige con una nota**. En la lista de facturas, las facturas emitidas tienen dos
 acciones nuevas: **"Nota de crédito (anular o acreditar)"** y **"Nota de débito"**. Los dos tipos nacen como **borrador**, igual que las
-facturas, y se emiten con el mismo botón de **enviar**: al guardar el borrador la app abre directamente la confirmación de emisión.
+facturas, y se emiten con el mismo botón de **enviar**: al guardar el borrador la app abre directamente la vista previa de la nota, lista para emitir.
 
 **Nota de crédito.** Acredita (resta) lo que elijas de la factura:
 - Para cada línea de la factura (materiales, mano de obra…) se carga el **porcentaje** o el **monto** a acreditar: es un porcentaje **de esa

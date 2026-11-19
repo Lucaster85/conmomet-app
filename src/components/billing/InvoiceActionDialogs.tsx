@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Alert, Box, Button, Chip, DialogActions, DialogContent, DialogTitle, FormControlLabel, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, CircularProgress, DialogActions, DialogContent, DialogTitle, FormControlLabel, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
 import { UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import DateField from '../DateField';
@@ -135,12 +135,37 @@ export function EmitInvoiceDialog({ invoice, onClose, onDone, onRefresh }: ArcaA
   const [options, setOptions] = useState<InvoiceArcaOptions | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  // Vista previa: el PDF del borrador con el formato de la factura final (sin número, CAE ni QR). Si no se puede generar, se cae al resumen de datos.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
 
   useEffect(() => {
     if (!invoice) return;
     setError('');
     setOptions(null);
     InvoiceService.getArcaOptions().then(setOptions).catch((err) => setError(err instanceof Error ? err.message : 'Error al consultar ARCA'));
+  }, [invoice]);
+
+  useEffect(() => {
+    if (!invoice) return;
+    let cancelled = false;
+    let url: string | null = null;
+    setPreviewUrl(null);
+    setPreviewError('');
+    setPreviewLoading(true);
+    InvoiceService.previewPdf(invoice.id)
+      .then((blob) => {
+        if (cancelled) return;
+        url = URL.createObjectURL(blob);
+        setPreviewUrl(url);
+      })
+      .catch((err) => { if (!cancelled) setPreviewError(err instanceof Error ? err.message : 'Error al generar la vista previa'); })
+      .finally(() => { if (!cancelled) setPreviewLoading(false); });
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
   }, [invoice]);
 
   const handleConfirm = async () => {
@@ -167,8 +192,8 @@ export function EmitInvoiceDialog({ invoice, onClose, onDone, onRefresh }: ArcaA
   const pos = invoice?.pointOfSale;
 
   return (
-    <AppDialog open={!!invoice} onClose={sending ? undefined : onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Emitir en ARCA</DialogTitle>
+    <AppDialog open={!!invoice} onClose={sending ? undefined : onClose} fullWidth maxWidth="md">
+      <DialogTitle>Vista previa de la factura</DialogTitle>
       <DialogContent>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {options && !options.enabled && (
@@ -182,27 +207,53 @@ export function EmitInvoiceDialog({ invoice, onClose, onDone, onRefresh }: ArcaA
                 <Chip size="small" color={isProduction ? 'error' : 'warning'} sx={{ fontWeight: 700 }}
                   label={isProduction ? 'PRODUCCIÓN' : 'HOMOLOGACIÓN (pruebas)'} />
               ) : <Typography variant="body2">…</Typography>}
+              <Typography variant="caption" color="text.secondary">
+                Así se verá la factura. El número, el CAE y el QR (con asteriscos) los asigna ARCA al emitir.
+              </Typography>
             </Box>
-            {row('Tipo de comprobante', cbteLongName(invoice.cbte_tipo))}
-            {isNote(invoice) && row('Sobre la factura', formatAssociated(invoice))}
-            {invoice.kind === 'credit_note' && invoice.notes && row('Motivo', invoice.notes)}
-            {row('Punto de venta', pos ? `${String(pos.number).padStart(4, '0')}${pos.usage_description ? ` — ${pos.usage_description}` : ''}` : String(invoice.pos_number ?? '—').padStart(4, '0'))}
-            {row('Cliente', `${invoice.client?.razonSocial || '—'}${invoice.recipient_doc_number ? ` · CUIT ${formatCuit(invoice.recipient_doc_number)}` : ''}`)}
-            {invoice.arca_concept && row('Concepto', ARCA_CONCEPT_LABELS[invoice.arca_concept])}
-            {row('Fecha de emisión', formatDate(invoice.issue_date))}
-            {invoice.cbte_tipo === FCE_CBTE_TIPO && (
-              <>
-                {row('Vencimiento de pago', formatDate(invoice.due_date))}
-                {row('Cuenta del emisor', invoice.bankAccount ? `${invoice.bankAccount.bank_name} · CBU ${invoice.bankAccount.cbu}${invoice.bankAccount.alias ? ` · ${invoice.bankAccount.alias}` : ''}` : '—')}
-                {row('Opción de transferencia', invoice.fce_transfer_option ? FCE_TRANSFER_LABELS[invoice.fce_transfer_option] : '—')}
-                {invoice.commercial_reference && row('Referencia comercial', invoice.commercial_reference)}
-              </>
+
+            {previewLoading && (
+              <Box display="flex" alignItems="center" justifyContent="center" gap={1.5} sx={{ height: '60vh' }}>
+                <CircularProgress size={24} />
+                <Typography variant="body2" color="text.secondary">Armando la vista previa…</Typography>
+              </Box>
             )}
-            {row('Neto', formatMoney(invoice.net_amount, invoice.currency))}
-            {row(`IVA ${invoice.iva_rate}%`, formatMoney(invoice.iva_amount, invoice.currency))}
-            {row('Total', <strong>{formatMoney(invoice.total_amount, invoice.currency)}</strong>)}
-            {invoice.currency === 'USD' && invoice.total_amount_ars != null && row(
-              `Total en pesos (cotización ${invoice.exchange_rate})`, formatMoney(invoice.total_amount_ars, 'ARS')
+
+            {previewUrl && (
+              <Box
+                component="iframe"
+                title="Vista previa de la factura"
+                src={`${previewUrl}#toolbar=0&navpanes=0&view=FitH`}
+                sx={{ width: '100%', height: '65vh', minHeight: 420, border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: '#f5f5f5' }}
+              />
+            )}
+
+            {/* Respaldo: si la vista previa no se pudo generar, el resumen de datos de siempre (se puede emitir igual). */}
+            {previewError && !previewLoading && (
+              <>
+                <Alert severity="warning">No se pudo generar la vista previa ({previewError}). Revisá este resumen antes de emitir.</Alert>
+                {row('Tipo de comprobante', cbteLongName(invoice.cbte_tipo))}
+                {isNote(invoice) && row('Sobre la factura', formatAssociated(invoice))}
+                {invoice.kind === 'credit_note' && invoice.notes && row('Motivo', invoice.notes)}
+                {row('Punto de venta', pos ? `${String(pos.number).padStart(4, '0')}${pos.usage_description ? ` — ${pos.usage_description}` : ''}` : String(invoice.pos_number ?? '—').padStart(4, '0'))}
+                {row('Cliente', `${invoice.client?.razonSocial || '—'}${invoice.recipient_doc_number ? ` · CUIT ${formatCuit(invoice.recipient_doc_number)}` : ''}`)}
+                {invoice.arca_concept && row('Concepto', ARCA_CONCEPT_LABELS[invoice.arca_concept])}
+                {row('Fecha de emisión', formatDate(invoice.issue_date))}
+                {invoice.cbte_tipo === FCE_CBTE_TIPO && (
+                  <>
+                    {row('Vencimiento de pago', formatDate(invoice.due_date))}
+                    {row('Cuenta del emisor', invoice.bankAccount ? `${invoice.bankAccount.bank_name} · CBU ${invoice.bankAccount.cbu}${invoice.bankAccount.alias ? ` · ${invoice.bankAccount.alias}` : ''}` : '—')}
+                    {row('Opción de transferencia', invoice.fce_transfer_option ? FCE_TRANSFER_LABELS[invoice.fce_transfer_option] : '—')}
+                    {invoice.commercial_reference && row('Referencia comercial', invoice.commercial_reference)}
+                  </>
+                )}
+                {row('Neto', formatMoney(invoice.net_amount, invoice.currency))}
+                {row(`IVA ${invoice.iva_rate}%`, formatMoney(invoice.iva_amount, invoice.currency))}
+                {row('Total', <strong>{formatMoney(invoice.total_amount, invoice.currency)}</strong>)}
+                {invoice.currency === 'USD' && invoice.total_amount_ars != null && row(
+                  `Total en pesos (cotización ${invoice.exchange_rate})`, formatMoney(invoice.total_amount_ars, 'ARS')
+                )}
+              </>
             )}
           </Stack>
         )}

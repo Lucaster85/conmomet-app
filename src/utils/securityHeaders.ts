@@ -28,6 +28,8 @@ export function buildCsp(env: SecurityHeadersEnv): string {
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
     'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com'],
     'connect-src': ["'self'", ...(apiOrigin ? [apiOrigin] : []), 'https://*.clarity.ms', 'https://maps.googleapis.com', 'https://places.googleapis.com', 'https://*.r2.cloudflarestorage.com'],
+    // La vista previa de factura muestra un PDF (blob:) en un iframe.
+    'frame-src': ["'self'", 'blob:'],
     'worker-src': ["'self'", 'blob:'],
     'media-src': ["'self'", 'blob:', 'mediastream:'],
     'frame-ancestors': ["'none'"],
