@@ -10,8 +10,10 @@ import FeedbackModal from '../../../../components/FeedbackModal';
 import GearSpinner from '../../../../components/GearSpinner';
 import InvoiceList from '../../../../components/billing/InvoiceList';
 import InvoiceDialog from '../../../../components/billing/InvoiceDialog';
+import InvoiceAdjustmentDialog from '../../../../components/billing/InvoiceAdjustmentDialog';
 import InvoiceNoteDialog from '../../../../components/billing/InvoiceNoteDialog';
 import InvoiceViewDialog from '../../../../components/billing/InvoiceViewDialog';
+import ProgressEntriesSection from '../../../../components/billing/ProgressEntriesSection';
 import BillingDocsSection from '../../../../components/billing/BillingDocsSection';
 import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, FceAcceptanceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../../components/billing/InvoiceActionDialogs';
 import ProjectCodeLabel from '../../../../components/projects/ProjectCodeLabel';
@@ -53,6 +55,8 @@ export default function BillingDetailPage() {
   const [verifyTarget, setVerifyTarget] = useState<Invoice | null>(null);
   const [discardTarget, setDiscardTarget] = useState<Invoice | null>(null);
   const [acceptanceTarget, setAcceptanceTarget] = useState<Invoice | null>(null);
+  // Ajuste de precio de una factura emitida (o edición del borrador del ajuste): una factura nueva vinculada a la original.
+  const [adjustDialog, setAdjustDialog] = useState<{ original: Invoice; editing?: Invoice } | null>(null);
   // Nota de crédito o de débito sobre una factura emitida (o edición de su borrador).
   const [noteDialog, setNoteDialog] = useState<{ original: Invoice; type: 'credit_note' | 'debit_note'; editing?: Invoice } | null>(null);
 
@@ -90,8 +94,25 @@ export default function BillingDetailPage() {
     }
   };
 
+  // Se vuelve a pedir la factura: trae lo ya acreditado de cada línea (la base del ajuste) y la OC de cada una.
+  const openAdjustment = async (invoice: Invoice) => {
+    try {
+      setAdjustDialog({ original: await InvoiceService.get(invoice.id) });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al abrir la factura');
+    }
+  };
+
   // Editar un borrador de nota abre su propio diálogo; el resto de las facturas, el de siempre.
   const handleEdit = async (invoice: Invoice) => {
+    if (invoice.adjusts_invoice_id) {
+      try {
+        setAdjustDialog({ original: await InvoiceService.get(invoice.adjusts_invoice_id), editing: invoice });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al abrir el ajuste');
+      }
+      return;
+    }
     if (invoice.kind && invoice.kind !== 'invoice') {
       try {
         setNoteDialog({ original: await InvoiceService.get(invoice.associated_invoice_id as number), type: invoice.kind, editing: invoice });
@@ -256,6 +277,13 @@ export default function BillingDetailPage() {
         {currencies.flatMap((c) => [conceptCard(c, 'materials'), conceptCard(c, 'labor')])}
       </Grid>
 
+      {(billing.adjustments.ARS > 0 || billing.adjustments.USD > 0) && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Ajustes de precio facturados (aparte, no descuentan saldo):{' '}
+          <strong>{(['ARS', 'USD'] as const).filter((c) => billing.adjustments[c] > 0).map((c) => formatMoney(billing.adjustments[c], c)).join(' + ')}</strong> + IVA.
+        </Alert>
+      )}
+
       {/* OC del cliente, cauciones y documentos extra */}
       <BillingDocsSection
         detail={detail} canWrite={canWrite} canUpdate={canUpdate} canDelete={canDelete}
@@ -308,6 +336,16 @@ export default function BillingDetailPage() {
         </Typography>
       )}
 
+      {/* Avance real de obra: medición paralela a la de horas */}
+      <ProgressEntriesSection
+        detail={detail} canWrite={canWrite} canUpdate={canUpdate} canDelete={canDelete}
+        onChanged={(message, warnings) => {
+          setSuccess(warnings && warnings.length ? `${message}. ${warnings.join(' ')}` : message);
+          load();
+        }}
+        onError={setError}
+      />
+
       {/* Facturas del presupuesto */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
         <Typography variant="h6" fontWeight={700}>Facturas del presupuesto</Typography>
@@ -316,7 +354,7 @@ export default function BillingDetailPage() {
         invoices={invoices} hideBudgetColumns canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit} canWrite={canWrite}
         emptyText="Todavía no se registró ninguna factura de este presupuesto"
         onView={setViewInvoice} onEdit={handleEdit} onPay={setPayTarget} onCancel={setCancelTarget}
-        onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget} onGeneratePdf={handleGeneratePdf} onFceAcceptance={setAcceptanceTarget} onCreateNote={openNote}
+        onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget} onGeneratePdf={handleGeneratePdf} onFceAcceptance={setAcceptanceTarget} onCreateNote={openNote} onCreateAdjustment={openAdjustment}
       />
 
       <InvoiceViewDialog invoice={viewInvoice} onClose={() => setViewInvoice(null)} />
@@ -326,6 +364,10 @@ export default function BillingDetailPage() {
       <VerifyInvoiceDialog invoice={verifyTarget} onClose={() => setVerifyTarget(null)} onRefresh={load} onDone={() => handleSaved('Factura confirmada en ARCA')} />
       <DiscardInvoiceDialog invoice={discardTarget} onClose={() => setDiscardTarget(null)} onDone={() => handleSaved('Factura descartada')} />
       <FceAcceptanceDialog invoice={acceptanceTarget} onClose={() => setAcceptanceTarget(null)} onDone={() => handleSaved('Aceptación de la FCE registrada')} />
+      <InvoiceAdjustmentDialog
+        open={!!adjustDialog} onClose={() => setAdjustDialog(null)} original={adjustDialog?.original || null} editing={adjustDialog?.editing}
+        onSaved={() => { const editing = !!adjustDialog?.editing; setAdjustDialog(null); handleSaved(editing ? 'Borrador de ajuste actualizado' : 'Borrador de ajuste guardado: emitilo desde el listado de facturas'); }}
+      />
       <InvoiceNoteDialog
         open={!!noteDialog} onClose={() => setNoteDialog(null)} onSaved={handleNoteSaved}
         original={noteDialog?.original || null} type={noteDialog?.type || 'credit_note'} editing={noteDialog?.editing}

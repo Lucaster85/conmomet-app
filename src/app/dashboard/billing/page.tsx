@@ -14,6 +14,8 @@ import DateField from '../../../components/DateField';
 import BillablesList from '../../../components/billing/BillablesList';
 import InvoiceList from '../../../components/billing/InvoiceList';
 import InvoiceDialog from '../../../components/billing/InvoiceDialog';
+import NewInvoiceStartDialog from '../../../components/billing/NewInvoiceStartDialog';
+import InvoiceAdjustmentDialog from '../../../components/billing/InvoiceAdjustmentDialog';
 import InvoiceNoteDialog from '../../../components/billing/InvoiceNoteDialog';
 import InvoiceViewDialog from '../../../components/billing/InvoiceViewDialog';
 import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, FceAcceptanceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../components/billing/InvoiceActionDialogs';
@@ -69,8 +71,13 @@ function BillingContent() {
   const [acceptanceTarget, setAcceptanceTarget] = useState<Invoice | null>(null);
   // Nota de crédito o de débito sobre una factura emitida (o edición de su borrador).
   const [noteDialog, setNoteDialog] = useState<{ original: Invoice; type: 'credit_note' | 'debit_note'; editing?: Invoice } | null>(null);
+  // Ajuste de precio de una factura emitida (o edición del borrador del ajuste): una factura nueva vinculada a la original.
+  const [adjustDialog, setAdjustDialog] = useState<{ original: Invoice; editing?: Invoice } | null>(null);
   const [freeDialogOpen, setFreeDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<{ invoice: Invoice; detail: BudgetBillingDetail | null } | null>(null);
+  // "Nueva factura": se elige el cliente y los presupuestos (una factura puede cobrar varios) y después se abre el diálogo de la factura.
+  const [startOpen, setStartOpen] = useState(false);
+  const [newTarget, setNewTarget] = useState<{ detail: BudgetBillingDetail; extra: BudgetBillingDetail[] } | null>(null);
 
   useEffect(() => {
     InvoiceService.getClientOptions().then(setClients).catch(() => setClients([]));
@@ -134,6 +141,8 @@ function BillingContent() {
     setSuccess(message);
     setFreeDialogOpen(false);
     setEditTarget(null);
+    setNewTarget(null);
+    setAdjustDialog(null);
     setPayTarget(null);
     setCancelTarget(null);
     setEmitTarget(null);
@@ -161,6 +170,23 @@ function BillingContent() {
     }
   };
 
+  // Se vuelve a pedir la factura: trae lo ya acreditado de cada línea (la base del ajuste) y la OC de cada una.
+  const openAdjustment = async (invoice: Invoice) => {
+    try {
+      setAdjustDialog({ original: await InvoiceService.get(invoice.id) });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al abrir la factura');
+    }
+  };
+
+  const editAdjustment = async (draft: Invoice) => {
+    try {
+      setAdjustDialog({ original: await InvoiceService.get(draft.adjusts_invoice_id as number), editing: draft });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al abrir el ajuste');
+    }
+  };
+
   // Un borrador de nota se edita en su propio diálogo (necesita la factura original).
   const editNote = async (note: Invoice) => {
     try {
@@ -182,8 +208,11 @@ function BillingContent() {
   // Corregir una factura de un presupuesto necesita el detalle de saldos de ese presupuesto.
   const handleEdit = async (invoice: Invoice) => {
     if (invoice.kind && invoice.kind !== 'invoice') { await editNote(invoice); return; }
+    if (invoice.adjusts_invoice_id) { await editAdjustment(invoice); return; }
     try {
-      const detail = invoice.budget_id ? await InvoiceService.getBillable(invoice.budget_id) : null;
+      // Una factura de varios presupuestos no tiene uno solo en la cabecera: el primero de sus líneas es el ancla y el diálogo trae el resto.
+      const anchorId = invoice.budget_id ?? invoice.budgets?.[0]?.id ?? null;
+      const detail = anchorId ? await InvoiceService.getBillable(anchorId) : null;
       setEditTarget({ invoice, detail });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al abrir la factura');
@@ -204,8 +233,11 @@ function BillingContent() {
         </Box>
         <Stack direction="row" spacing={1}>
           <Button startIcon={<RefreshIcon />} onClick={refreshAll}>Actualizar</Button>
+          {canWrite && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setStartOpen(true)}>Nueva factura</Button>
+          )}
           {canWrite && tab === 1 && (
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFreeDialogOpen(true)}>Factura libre</Button>
+            <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setFreeDialogOpen(true)}>Factura libre</Button>
           )}
         </Stack>
       </Box>
@@ -280,7 +312,7 @@ function BillingContent() {
               invoices={invoices} canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit} canWrite={canWrite}
               onView={setViewInvoice} onEdit={handleEdit} onPay={setPayTarget} onCancel={setCancelTarget}
               onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget}
-              onGeneratePdf={handleGeneratePdf} onFceAcceptance={setAcceptanceTarget} onCreateNote={openNote}
+              onGeneratePdf={handleGeneratePdf} onFceAcceptance={setAcceptanceTarget} onCreateNote={openNote} onCreateAdjustment={openAdjustment}
             />
           )}
         </>
@@ -294,6 +326,10 @@ function BillingContent() {
       <DiscardInvoiceDialog invoice={discardTarget} onClose={() => setDiscardTarget(null)} onDone={() => handleSaved('Factura descartada')} />
       <FceAcceptanceDialog invoice={acceptanceTarget} onClose={() => setAcceptanceTarget(null)} onDone={() => handleSaved('Aceptación de la FCE registrada')} />
 
+      <InvoiceAdjustmentDialog
+        open={!!adjustDialog} onClose={() => setAdjustDialog(null)} original={adjustDialog?.original || null} editing={adjustDialog?.editing}
+        onSaved={() => { const editing = !!adjustDialog?.editing; setAdjustDialog(null); handleSaved(editing ? 'Borrador de ajuste actualizado' : 'Borrador de ajuste guardado: emitilo desde el listado de facturas'); }}
+      />
       <InvoiceNoteDialog
         open={!!noteDialog} onClose={() => setNoteDialog(null)} onSaved={handleNoteSaved}
         original={noteDialog?.original || null} type={noteDialog?.type || 'credit_note'} editing={noteDialog?.editing}
@@ -301,6 +337,15 @@ function BillingContent() {
       <InvoiceDialog
         open={freeDialogOpen} onClose={() => setFreeDialogOpen(false)} ivaInfo={iva} canUnofficial={canUnofficial}
         onSaved={() => handleSaved('Factura registrada')}
+      />
+      <NewInvoiceStartDialog
+        open={startOpen} onClose={() => setStartOpen(false)} clients={clients}
+        onStart={(detail, extra) => { setStartOpen(false); setNewTarget({ detail, extra }); }}
+      />
+      <InvoiceDialog
+        open={!!newTarget} onClose={() => setNewTarget(null)} ivaInfo={iva} canUnofficial={canUnofficial}
+        detail={newTarget?.detail} extraDetails={newTarget?.extra}
+        onSaved={(saved) => handleSaved(saved.source === 'arca' ? 'Borrador guardado: emitilo desde el listado de facturas' : 'Factura registrada')}
       />
       <InvoiceDialog
         open={!!editTarget} onClose={() => setEditTarget(null)} ivaInfo={iva} canUnofficial={canUnofficial}

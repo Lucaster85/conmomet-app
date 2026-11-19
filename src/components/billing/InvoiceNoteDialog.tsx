@@ -8,7 +8,7 @@ import { DeleteOutline as DeleteIcon } from '@mui/icons-material';
 import AppDialog from '@/components/common/AppDialog';
 import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
-import { Invoice, InvoiceArcaOptions, InvoiceInput, InvoiceKind, InvoiceLineInput, InvoiceService } from '../../utils/api';
+import { Invoice, InvoiceArcaOptions, InvoiceConcept, InvoiceInput, InvoiceKind, InvoiceLineInput, InvoiceService } from '../../utils/api';
 import {
   CONCEPT_LABELS, FCE_CBTE_TIPO, formatMoney, formatPercent, formatVoucher, ivaOf, NOTE_KIND_LABELS, roundMoney, roundPercent, todayISO,
 } from '../../utils/billing';
@@ -26,7 +26,7 @@ interface InvoiceNoteDialogProps {
 
 interface CreditLine {
   lineId: number;
-  concept: 'materials' | 'labor' | 'other';
+  concept: InvoiceConcept;
   originalNet: number;
   // Lo que todavía se puede acreditar de la línea (si se edita un borrador, incluye lo que ese borrador ya reservaba).
   remaining: number;

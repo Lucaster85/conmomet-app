@@ -5279,11 +5279,27 @@ export type InvoiceArcaStatus = 'manual' | 'draft' | 'authorizing' | 'authorized
 export type InvoiceSource = 'manual' | 'arca';
 // Factura o sus notas: una nota de crédito acredita (anula total o parcialmente) una factura emitida y una de débito suma un cargo.
 export type InvoiceKind = 'invoice' | 'credit_note' | 'debit_note';
-export type InvoiceConcept = 'materials' | 'labor' | 'other';
+export type InvoiceConcept = 'materials' | 'labor' | 'other' | 'adjustment';
+export type AdjustmentType = 'ipc_indec' | 'uocra' | 'other';
+// Los conceptos que se cargan en el armado de una factura (el de ajuste solo existe en las facturas de ajuste).
+export type EditableInvoiceConcept = Exclude<InvoiceConcept, 'adjustment'>;
 export type BillingStatus = 'unbilled' | 'partial' | 'billed' | 'billed_and_paid';
 
 export interface InvoiceLine {
   id?: number;
+  // Presupuesto de la línea y OC contra la que se factura (FLOWS.md §70). Una factura puede cobrar varios presupuestos.
+  budget_id?: number | null;
+  purchase_order_id?: number | null;
+  budget?: { id: number; number: string; title: string } | null;
+  // El avance real que factura la línea (opcional).
+  progress_entry_id?: number | null;
+  progressEntry?: { id: number; percent: number; date: string; source: ProgressSource; certificate_number: string | null; status: ProgressCertificateStatus | null } | null;
+  purchaseOrder?: { id: number; number: string; allows_adjustment?: boolean; adjustment_type?: AdjustmentType; adjustment_notes?: string | null } | null;
+  // Solo en líneas de ajuste (FLOWS.md §71): la línea de la original que ajustan, el índice, el % y la base sobre la que se calculó.
+  adjusts_line_id?: number | null;
+  adjustment_type?: AdjustmentType | null;
+  adjustment_percent?: number | null;
+  adjustment_base_amount?: number | null;
   // Solo en una nota de crédito: la línea de la factura original que acredita.
   credits_line_id?: number | null;
   // Solo en las líneas de una factura emitida: neto ya acreditado por notas (los borradores también cuentan: reservan lo que acreditan).
@@ -5306,6 +5322,10 @@ export interface Invoice {
   due_date: string | null;
   client_id: number;
   budget_id: number | null;
+  // Presupuestos que cobra la factura, sacados de sus líneas (`budget_id` de la cabecera solo está cuando es uno). FLOWS.md §70.
+  budgets?: { id: number; number?: string; title?: string }[];
+  // Solo en el detalle de un presupuesto: la parte de una factura compartida que le toca a ese presupuesto.
+  budget_share?: { net_amount: number; total_amount: number };
   project_id: number | null;
   currency: BudgetCurrency;
   exchange_rate: number | null;
@@ -5329,6 +5349,10 @@ export interface Invoice {
   fce_annulment?: boolean | null;
   // En una factura emitida: total de las notas de crédito ya emitidas.
   credited_total?: number;
+  // Ajustes de precio (etapa 8): una factura de ajuste apunta a la que ajusta, y la original trae su ajuste vigente (null si no tiene).
+  adjusts_invoice_id?: number | null;
+  adjustedInvoice?: { id: number; voucher_type: VoucherType; cbte_tipo: number | null; pos_number: number | null; number: number | null; issue_date: string } | null;
+  adjustment?: { id: number; cbte_tipo: number | null; pos_number: number | null; number: number | null; total_amount: number; arca_status: InvoiceArcaStatus; status: InvoiceStatus; issue_date: string } | null;
   arca_status?: InvoiceArcaStatus;
   arca_env?: 'homologacion' | 'produccion' | null;
   arca_concept?: 1 | 2 | 3 | null;
@@ -5374,6 +5398,11 @@ export interface BudgetBillingSummary {
   budget_id: number;
   bases: BillingByCurrency<BillingBase>;
   billed: BillingByCurrency<number>;
+  // Ajustes de precio facturados (neto, por moneda): van aparte y no descuentan saldo.
+  adjustments: { ARS: number; USD: number };
+  // Avance real de obra vigente (null si no hay) y si lo facturado de mano de obra lo supera. Solo informativo (FLOWS.md §72).
+  real_progress: RealProgress | null;
+  overbilled_vs_real: boolean;
   balances: BillingByCurrency<number>;
   billed_percent: BillingByCurrency<number>;
   covered_by_reserved: BillingByCurrency<boolean>;
@@ -5449,6 +5478,9 @@ export interface PurchaseOrder {
   adjustment_type: PurchaseOrderAdjustmentType;
   adjustment_notes: string | null;
   status: PurchaseOrderStatus;
+  // Lo facturado contra la OC y su saldo (null si no tiene monto).
+  billed?: number;
+  balance?: number | null;
   rejection_reason: string | null;
   replaces_id: number | null;
   replaces?: { id: number; number: string } | null;
@@ -5514,6 +5546,44 @@ export interface SuretyBondAlert extends Omit<SuretyBond, 'purchaseOrder'> {
   budget: { id: number; number: string; title: string; client?: { id: number; razonSocial: string } | null };
 }
 
+// Avance real de obra (FLOWS.md §72): medición paralela a la de horas. `percent` es acumulado.
+export type ProgressSource = 'certificate' | 'manual';
+export type ProgressCertificateStatus = 'presented' | 'approved' | 'rejected';
+
+export interface BudgetProgressEntry {
+  id: number;
+  budget_id: number;
+  date: string;
+  percent: number;
+  source: ProgressSource;
+  certificate_number: string | null;
+  status: ProgressCertificateStatus | null;
+  notes: string | null;
+  // Si cuenta como avance real: manual, o certificado aprobado.
+  counts: boolean;
+  files: BillingStoredFile[];
+  createdBy?: BillingUploader | null;
+}
+
+export interface ProgressEntryInput {
+  budget_id?: number;
+  date: string;
+  percent: number;
+  source: ProgressSource;
+  certificate_number?: string;
+  status?: ProgressCertificateStatus;
+  notes?: string;
+  files?: File[];
+}
+
+export interface RealProgress {
+  entry_id: number;
+  percent: number;
+  date: string;
+  source: ProgressSource;
+  certificate_number: string | null;
+}
+
 export interface BudgetBillingFile extends BillingStoredFile { budget_id: number; description: string | null }
 
 export interface MissingPurchaseOrderBudget {
@@ -5525,7 +5595,18 @@ export interface MissingPurchaseOrderBudget {
   client?: { id: number; razonSocial: string } | null;
 }
 
-export interface BudgetPurchaseOrderSummary { active_count: number; numbers: string[]; not_required: boolean }
+export interface BillablePurchaseOrder {
+  id: number;
+  number: string;
+  concept: PurchaseOrderConcept;
+  currency: BudgetCurrency;
+  amount: number | null;
+  billed: number;
+  // Null si la OC no tiene monto (solo de referencia): no limita.
+  balance: number | null;
+}
+
+export interface BudgetPurchaseOrderSummary { active_count: number; numbers: string[]; orders: BillablePurchaseOrder[]; not_required: boolean }
 
 export interface BudgetBillingDetail {
   budget: Omit<BillableBudget, 'billing'>;
@@ -5538,9 +5619,16 @@ export interface BudgetBillingDetail {
   purchase_orders: PurchaseOrder[];
   surety_bonds: SuretyBond[];
   billing_files: BudgetBillingFile[];
+  progress_entries: BudgetProgressEntry[];
 }
 
 export interface InvoiceLineInput {
+  progress_entry_id?: number | null;
+  // Línea de ajuste: la línea de la factura original que se ajusta y el índice.
+  adjusts_line_id?: number;
+  adjustment_type?: AdjustmentType;
+  budget_id?: number;
+  purchase_order_id?: number | null;
   // Nota de crédito: la línea de la factura original que se acredita (el monto o el porcentaje es sobre esa línea).
   credits_line_id?: number;
   concept?: InvoiceConcept;
@@ -5555,6 +5643,9 @@ export interface InvoiceInput {
   kind?: InvoiceKind;
   associated_invoice_id?: number;
   fce_annulment?: boolean;
+  // Factura de ajuste (etapa 8): la factura emitida que ajusta y, opcional, el período que aparece en la descripción.
+  adjusts_invoice_id?: number;
+  adjustment_period?: string | null;
   voucher_type: VoucherType;
   // Código de ARCA del comprobante (1 Factura A, 201 FCE A, 3 NC A…). La clave única es (cbte_tipo, punto de venta, número).
   cbte_tipo?: number | null;
@@ -5780,6 +5871,50 @@ export class BillingDocsService {
     files.forEach((file) => formData.append('files', file));
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/billing-files`, this.multipart('POST', formData));
     return this.parseWithWarnings<BudgetBillingFile[]>(response, 'Error al adjuntar los documentos');
+  }
+
+  private static progressForm(input: ProgressEntryInput): FormData {
+    const formData = new FormData();
+    if (input.budget_id !== undefined) formData.append('budget_id', String(input.budget_id));
+    formData.append('date', input.date);
+    formData.append('percent', String(input.percent));
+    formData.append('source', input.source);
+    if (input.certificate_number) formData.append('certificate_number', input.certificate_number);
+    if (input.status) formData.append('status', input.status);
+    if (input.notes) formData.append('notes', input.notes);
+    (input.files || []).forEach((file) => formData.append('files', file));
+    return formData;
+  }
+
+  static async createProgress(input: ProgressEntryInput) {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/progress-entries`, this.multipart('POST', this.progressForm(input)));
+    return this.parseWithWarnings<BudgetProgressEntry>(response, 'Error al cargar el avance');
+  }
+
+  static async updateProgress(id: number, input: ProgressEntryInput): Promise<BudgetProgressEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/progress-entries/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input, (key, value) => (key === 'files' ? undefined : value)),
+    });
+    return this.parse(response, 'Error al guardar el avance');
+  }
+
+  static async deleteProgress(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/progress-entries/${id}`, { method: 'DELETE' });
+    await this.parse(response, 'Error al eliminar el avance');
+  }
+
+  static async addProgressFiles(id: number, files: File[]) {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/progress-entries/${id}/files`, this.multipart('POST', formData));
+    return this.parseWithWarnings<BudgetProgressEntry>(response, 'Error al adjuntar los archivos');
+  }
+
+  static async removeProgressFile(entryId: number, fileId: number): Promise<BudgetProgressEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/progress-entries/${entryId}/files/${fileId}`, { method: 'DELETE' });
+    return this.parse(response, 'Error al quitar el archivo');
   }
 
   static async deleteBillingFile(id: number): Promise<void> {

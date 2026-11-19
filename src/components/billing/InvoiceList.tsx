@@ -16,6 +16,7 @@ import {
   SendOutlined as EmitIcon,
   UndoOutlined as CreditNoteIcon,
   SyncOutlined as VerifyIcon,
+  TrendingUpOutlined as AdjustmentIcon,
   VisibilityOutlined as ViewIcon,
 } from '@mui/icons-material';
 import { Invoice } from '../../utils/api';
@@ -48,6 +49,8 @@ interface InvoiceListProps {
   onFceAcceptance?: (invoice: Invoice) => void;
   // Hacer una nota de crédito (anular o acreditar parte) o de débito sobre una factura emitida.
   onCreateNote?: (invoice: Invoice, type: 'credit_note' | 'debit_note') => void;
+  // Crear el ajuste de precio de una factura emitida: una factura nueva vinculada a ella (FLOWS.md §71).
+  onCreateAdjustment?: (invoice: Invoice) => void;
 }
 
 // Importe de una fila: una nota de crédito resta, así que se muestra en negativo.
@@ -55,7 +58,7 @@ const money = (invoice: Invoice, value: number) => (invoice.kind === 'credit_not
 
 export default function InvoiceList({
   invoices, emptyText = 'No hay facturas registradas', hideBudgetColumns = false,
-  canUpdate, canCorrect, canEmit = false, canWrite = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard, onGeneratePdf, onFceAcceptance, onCreateNote,
+  canUpdate, canCorrect, canEmit = false, canWrite = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard, onGeneratePdf, onFceAcceptance, onCreateNote, onCreateAdjustment,
 }: InvoiceListProps) {
   const { fileLinkProps } = useFileViewer();
   // Una factura de ARCA (source 'arca') tiene su propio ciclo: borrador -> emitida (o rechazada / autorizando). Una emitida
@@ -69,6 +72,8 @@ export default function InvoiceList({
     const payable = canUpdate && invoice.status === 'pending' && (!isArca || arcaStatus === 'authorized') && invoice.kind !== 'credit_note';
     // Notas sobre una factura ya emitida en ARCA y todavía no anulada (una nota no tiene notas).
     const canNote = open && isArca && arcaStatus === 'authorized' && !isNote(invoice) && canWrite && !!onCreateNote;
+    // Ajuste de precio: sobre una factura emitida que no sea ya un ajuste ni tenga uno vigente (se vuelve a poder si el ajuste se anula).
+    const canAdjust = canNote && !!onCreateAdjustment && !invoice.adjusts_invoice_id && !invoice.adjustment;
     return (
       <Box display="flex" gap={0.5} flexWrap="wrap">
         <Tooltip title="Ver"><IconButton size="small" onClick={() => onView(invoice)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
@@ -89,6 +94,9 @@ export default function InvoiceList({
         )}
         {canNote && (
           <Tooltip title="Nota de crédito (anular o acreditar)"><IconButton size="small" color="warning" onClick={() => onCreateNote!(invoice, 'credit_note')}><CreditNoteIcon fontSize="small" /></IconButton></Tooltip>
+        )}
+        {canAdjust && (
+          <Tooltip title="Crear ajuste (IPC, UOCRA…): una factura nueva por la diferencia"><IconButton size="small" color="primary" onClick={() => onCreateAdjustment!(invoice)}><AdjustmentIcon fontSize="small" /></IconButton></Tooltip>
         )}
         {canNote && (
           <Tooltip title="Nota de débito"><IconButton size="small" onClick={() => onCreateNote!(invoice, 'debit_note')}><DebitNoteIcon fontSize="small" /></IconButton></Tooltip>
@@ -135,6 +143,18 @@ export default function InvoiceList({
         {invoice.kind === 'credit_note' && invoice.status !== 'cancelled'
           ? <Chip size="small" color="success" label="Emitida" />
           : <Chip size="small" color={status.color} label={`${status.label}${detail}`} />}
+        {invoice.adjustedInvoice && (
+          <Chip size="small" color="info" variant="outlined" label={`Ajuste s/ ${formatVoucher({ ...invoice.adjustedInvoice, kind: 'invoice' } as Invoice)}`} />
+        )}
+        {invoice.adjustment && invoice.status !== 'cancelled' && (
+          <Chip size="small" color="info" variant="outlined" label={`Ajustada: ${formatMoney(invoice.adjustment.total_amount, invoice.currency)}`} title="Esta factura ya tiene su ajuste de precio." />
+        )}
+        {invoice.budget_share && (
+          <Chip
+            size="small" variant="outlined" label={`Parte de este presupuesto: ${formatMoney(invoice.budget_share.total_amount, invoice.currency)}`}
+            title="La factura cobra más de un presupuesto: acá se ve lo que le toca a este."
+          />
+        )}
         {(invoice.credited_total || 0) > 0 && invoice.status !== 'cancelled' && (
           <Chip size="small" color="warning" variant="outlined" label={`Acreditada en parte: ${formatMoney(invoice.credited_total, invoice.currency)}`} />
         )}
@@ -176,7 +196,10 @@ export default function InvoiceList({
     </Stack>
   ) : '—');
 
-  const reference = (invoice: Invoice) => [invoice.budget?.number, invoice.project?.code].filter(Boolean).join(' · ') || 'Factura libre';
+  // Una factura de varios presupuestos los lista a todos (la cabecera no tiene uno solo). FLOWS.md §70.
+  const budgetNumbers = (invoice: Invoice) =>
+    (invoice.budgets && invoice.budgets.length > 0 ? invoice.budgets.map((b) => b.number).filter(Boolean) : [invoice.budget?.number].filter(Boolean)).join(', ');
+  const reference = (invoice: Invoice) => [budgetNumbers(invoice), invoice.project?.code].filter(Boolean).join(' · ') || 'Factura libre';
 
   return (
     <>

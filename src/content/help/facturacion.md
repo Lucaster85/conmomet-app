@@ -309,6 +309,51 @@ En el listado de **Presupuestos**, los presupuestos aprobados muestran además u
 - **Corregir**: permiso especial, para un único responsable.
 - **Cobros sin factura**: permiso especial para cargarlos y verlos.
 
+## Facturar varios presupuestos y OC en una sola factura
+
+Una factura puede cobrar **más de un presupuesto del mismo cliente**, y cada línea puede ir contra una **OC** del cliente.
+
+- **Desde el listado:** tocá **Nueva factura**, elegí el cliente y tildá los presupuestos que cobra la factura. Se abre el armado de la factura con un bloque por presupuesto.
+- **Desde un presupuesto:** en el armado de la factura, abajo de los conceptos, **Agregar otro presupuesto del mismo cliente** suma otro bloque.
+- Cada bloque tiene sus conceptos (materiales, mano de obra), su **Facturar todo el saldo** y la **✕** para sacarlo de la factura.
+- Cada línea **descuenta del saldo de su presupuesto**: ese es el límite. Si además elegís una **OC** en la línea, también se respeta el **saldo de la OC** (cuando tiene monto). La OC tiene que ser de ese presupuesto, estar vigente, ser de la misma moneda y admitir ese concepto.
+- Una línea puede repetir el concepto si va contra OC distintas; la misma OC y concepto no se repiten.
+- **Todos los presupuestos tienen que ser del mismo cliente** y estar aprobados, y la factura es de una sola moneda.
+- La **referencia comercial** se completa sola con los números de las OC de las líneas (se puede cambiar). En la FCE admite hasta 50 caracteres.
+- La **descripción** de cada línea es opcional: si la dejás vacía sale "Se factura el X% de … — OC … · PRES-… título"; podés escribir la tuya (por ejemplo, con la posición de la OC).
+
+La factura aparece en el detalle de **cada** presupuesto, con la parte que le toca a ese presupuesto, y descuenta de cada saldo. En el listado figuran todos sus presupuestos. Si se anula o se acredita con una nota de crédito, el saldo vuelve a cada presupuesto y a cada OC.
+
+Un presupuesto con una sola factura sigue funcionando igual que siempre.
+
+## Avance real de obra (aparte del avance por horas)
+
+En el detalle de cada presupuesto, **Avance real de obra** registra cuánto avanzó la obra según el cliente, **al lado del avance por horas y sin modificarlo**. Sirve para comparar lo que se facturó contra lo que el cliente reconoce como avance.
+
+- **Cargar avance:** fecha, porcentaje **acumulado** (por ejemplo, 40% de la obra hasta esa fecha) y el origen: **cargado a mano** o **certificado del cliente** (con su número y estado: presentado, aprobado o rechazado), con el certificado adjunto si lo tenés.
+- **El avance vigente** es la última medición que **cuenta**: las cargadas a mano y los certificados **aprobados**. Un certificado presentado todavía no cuenta y uno rechazado nunca.
+- **Es acumulado:** no puede ser menor que el de una medición anterior (ni mayor que el de una posterior).
+- **"Facturado > avance real"** es un aviso informativo: aparece cuando lo facturado de mano de obra supera el avance real vigente (también en el listado de Por facturar). No bloquea nada.
+- Al armar una factura, cada línea puede **asociarse al avance** que se factura (por ejemplo, el del certificado). Es solo informativo: no cambia el saldo. Un avance asociado a una factura no se puede eliminar.
+
+## Ajustes de precio (IPC, UOCRA…)
+
+Cuando el precio de lo facturado se ajusta por un índice, el ajuste **se factura aparte, como una factura nueva**, vinculada a la original. No es una nota de débito: sale por ARCA como cualquier factura.
+
+1. En el listado, en una factura **ya emitida por ARCA**, tocá **Crear ajuste** (el ícono de la flecha hacia arriba).
+2. Tildá las **líneas que se ajustan**. Solo se ajustan materiales y mano de obra; si la línea es de una OC, la OC tiene que **admitir ajuste de precios** (se marca al cargar la OC). Sin OC, se puede.
+3. Para cada línea elegí el **índice** (IPC INDEC, UOCRA u otro) y cargá el **porcentaje** o el **monto**. La base es lo que queda de la línea después de las notas de crédito. Por ejemplo, 20% de $1.000.000 es una factura de $200.000.
+4. Indicá la fecha, el punto de venta, el vencimiento y, si querés, el **período** (sale en la descripción: "Ajuste IPC INDEC (Octubre 2026) s/ Factura A 0003-00000123 – OC … – PRES-…"). La descripción de cada línea se puede reemplazar por otra.
+5. Se guarda como **borrador** y se emite desde el listado, igual que cualquier factura.
+
+Cosas para saber:
+- El ajuste **no cambia el saldo** del presupuesto ni de la OC. En el detalle del presupuesto aparece aparte, en "Ajustes de precio facturados", y la factura se identifica con "Ajuste s/ Factura …" (y la original, con "Ajustada: $…").
+- Cada factura admite **un solo ajuste vigente**. Si el borrador se descarta o el ajuste se anula, se puede crear otro.
+- **Una factura de ajuste no se ajusta de nuevo.**
+- Para **anular** un ajuste ya emitido se hace una nota de crédito sobre él.
+- **No se puede anular del todo una factura que tiene un ajuste vigente:** primero se anula el ajuste.
+- Los ajustes solo se crean sobre facturas emitidas por ARCA.
+
 ## OC del cliente, cauciones y documentos
 
 Dentro del detalle de cada presupuesto aprobado también se cargan las **órdenes de compra del cliente**, los **seguros de caución** (con aviso de vencimiento) y los **documentos para facturar**. Cuando un presupuesto aprobado no tiene OC, aparece un aviso en el inicio. Está explicado en el tema **Órdenes de compra y cauciones**.
@@ -319,4 +364,4 @@ Por ahora la app emite **Factura A**, **Factura de Crédito Electrónica (FCE)**
 tema **Clientes**) y los datos de quien factura en **Configuración → Datos de mi empresa** (ver el tema
 **Datos de mi empresa y conexión con ARCA**, donde también se **prueba la conexión**).
 
-<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/services/billingMath.js, api_conmomet/services/creditNoteService.js, conmomet-app/src/components/billing/InvoiceNoteDialog.tsx, conmomet-app/src/components/billing/BillingDocsSection.tsx, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
+<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/services/billingMath.js, api_conmomet/services/creditNoteService.js, conmomet-app/src/components/billing/InvoiceNoteDialog.tsx, conmomet-app/src/components/billing/BillingDocsSection.tsx, conmomet-app/src/components/billing/NewInvoiceStartDialog.tsx, conmomet-app/src/components/billing/InvoiceAdjustmentDialog.tsx, conmomet-app/src/components/billing/ProgressEntriesSection.tsx, api_conmomet/controllers/budgetProgressController.js, api_conmomet/services/budgetProgressService.js, api_conmomet/services/adjustmentService.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

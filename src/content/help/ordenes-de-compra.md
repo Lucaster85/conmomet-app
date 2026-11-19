@@ -18,6 +18,8 @@ La OC es **opcional**: hay clientes que no la emiten, y se puede facturar igual.
 
 Un presupuesto puede tener **más de una OC vigente**. No puede haber dos vigentes con el mismo número en el mismo presupuesto.
 
+**Ajuste de precios:** si la OC lo admite (con su índice), las facturas contra esa OC se pueden ajustar después (ver el tema **Facturación**, "Ajustes de precio"). Una OC que no lo admite bloquea el ajuste de sus líneas.
+
 **Sin monto:** si dejás el monto vacío, la OC queda **solo de referencia**: sirve para tenerla a mano y nombrarla en las facturas, pero no se compara contra nada.
 
 Solo se cargan OC en presupuestos **aprobados**.
@@ -31,7 +33,14 @@ Solo se cargan OC en presupuestos **aprobados**.
 
 Las OC rechazadas o reemplazadas se ven con el botón **Ver OC rechazadas o reemplazadas**.
 
-> Más adelante, al facturar sobre una OC, la app va a impedir rechazar o reemplazar una OC que tenga facturas vigentes sin pasarlas antes a la nueva. Todavía no está activo: llega con el soporte de facturas sobre varias OC.
+**Si la OC ya tiene facturas:**
+
+- **Reemplazar** pasa las facturas vigentes a la OC nueva. La OC nueva tiene que ser en la misma moneda, cubrir el concepto de lo ya facturado y, si tiene monto, alcanzar para lo facturado.
+- **Rechazar** no se puede mientras haya facturas vigentes: reemplazala por la nueva o anulá primero las facturas.
+- **Eliminar** no se puede nunca si tiene facturas.
+- Al **editarla** no se puede bajar el monto por debajo de lo ya facturado ni cambiar su moneda o concepto.
+
+La OC muestra cuánto se facturó contra ella y su saldo.
 
 ## "No lleva OC"
 

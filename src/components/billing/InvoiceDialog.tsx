@@ -9,7 +9,7 @@ import { DeleteOutline as DeleteIcon, UploadFileOutlined as UploadIcon } from '@
 import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
 import {
-  BudgetBillingDetail, BudgetCurrency, Invoice, InvoiceArcaOptions, InvoiceClientOption, InvoiceConcept, InvoiceInput,
+  BillableBudget, BillablePurchaseOrder, BudgetBillingDetail, EditableInvoiceConcept, BudgetCurrency, Invoice, InvoiceArcaOptions, InvoiceClientOption, InvoiceInput,
   InvoiceLineInput, InvoiceProjectOption, InvoiceService, IvaInfo, VoucherType,
 } from '../../utils/api';
 import {
@@ -24,6 +24,8 @@ interface InvoiceDialogProps {
   onSaved: (invoice: Invoice) => void;
   // Detalle de facturación del presupuesto a facturar. Sin él, es una factura libre.
   detail?: BudgetBillingDetail | null;
+  // Otros presupuestos del mismo cliente que arrancan incluidos en la factura (FLOWS.md §70). También se pueden sumar desde el diálogo.
+  extraDetails?: BudgetBillingDetail[];
   // Si viene, se está CORRIGIENDO esa factura (requiere invoices_correct).
   invoice?: Invoice | null;
   ivaInfo: IvaInfo;
@@ -36,7 +38,12 @@ interface InvoiceDialogProps {
 // recalcula el otro contra la base real del presupuesto).
 interface LineState {
   key: string;
-  concept: InvoiceConcept;
+  // Presupuesto de la línea (null en la factura libre) y OC contra la que se factura (opcional).
+  budgetId: number | null;
+  orderId: number | null;
+  // Avance real de obra que factura la línea (opcional, FLOWS.md §72).
+  progressId?: number | null;
+  concept: EditableInvoiceConcept;
   percentText: string;
   amount: number | null;
   description: string;
@@ -53,13 +60,18 @@ const parsePercent = (text: string): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
-export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice, ivaInfo, canUnofficial }: InvoiceDialogProps) {
+export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDetails, invoice, ivaInfo, canUnofficial }: InvoiceDialogProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isEditing = !!invoice;
   const isFree = !detail;
-  const billing = detail?.billing;
-  const ownBudgetInvoice = isEditing && !!detail && invoice?.budget_id === detail.budget.id && invoice?.status !== 'cancelled';
+  // Presupuestos que cobra la factura. El primero es el ancla (de ahí salen el cliente y las opciones de ARCA); el resto se suma desde el diálogo.
+  const [blocks, setBlocks] = useState<BudgetBillingDetail[]>([]);
+  const [pickable, setPickable] = useState<BillableBudget[]>([]);
+  const [loadingBlock, setLoadingBlock] = useState(false);
+  const [commercialTouched, setCommercialTouched] = useState(false);
+  const ownActive = isEditing && invoice?.status !== 'cancelled';
+  const isMulti = blocks.length > 1;
 
   const [voucherType, setVoucherType] = useState<VoucherType>('A');
   const [posNumber, setPosNumber] = useState('');
@@ -104,24 +116,55 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
   const isArca = mode === 'arca';
   const isFce = isArca && arcaCbte === FCE_CBTE_TIPO;
 
-  // Saldo disponible de un concepto en la moneda elegida. Al corregir, el monto de la propia
-  // factura vuelve a estar disponible (el servidor lo excluye del cálculo igual).
-  const availableFor = (cur: BudgetCurrency, concept: 'materials' | 'labor'): number => {
-    if (!billing) return 0;
-    let available = billing.balances[cur][concept];
-    if (ownBudgetInvoice && invoice && invoice.currency === cur) {
-      const own = invoice.lines.find((l) => l.concept === concept);
-      if (own) available = roundMoney(available + own.net_amount);
+  const detailOf = (budgetId: number | null) => blocks.find((b) => b.budget.id === budgetId) || null;
+  const billingOf = (budgetId: number | null) => detailOf(budgetId)?.billing;
+  const sumOf = (list: { amount: number | null }[]) => roundMoney(list.reduce((acc, l) => acc + (l.amount || 0), 0));
+
+  // Lo que la propia factura ya tenía cargado (al corregir, ese monto vuelve a estar disponible: el servidor lo excluye del cálculo igual).
+  const ownLines = (cur: BudgetCurrency) => (ownActive && invoice && invoice.currency === cur ? invoice.lines : []);
+  const ownSum = (cur: BudgetCurrency, pick: (l: Invoice['lines'][number]) => boolean) =>
+    roundMoney(ownLines(cur).filter(pick).reduce((acc, l) => acc + l.net_amount, 0));
+
+  // OC vigentes de un presupuesto que sirven para facturar un concepto en la moneda elegida.
+  const ordersFor = (budgetId: number | null, concept: EditableInvoiceConcept, cur: BudgetCurrency = currency): BillablePurchaseOrder[] =>
+    (detailOf(budgetId)?.purchase_orders || [])
+      .filter((o) => o.status === 'active' && o.currency === cur && (o.concept === 'all' || o.concept === concept))
+      .map((o) => ({ id: o.id, number: o.number, concept: o.concept, currency: o.currency, amount: o.amount, billed: o.billed ?? 0, balance: o.balance ?? null }));
+
+  // Saldo disponible para UNA línea: el del concepto de su presupuesto menos lo que ya piden las otras líneas del mismo concepto y, si tiene OC con
+  // monto, también el saldo de la OC. Es el límite que después valida el servidor.
+  const availableFor = (line: LineState, cur: BudgetCurrency = currency): number => {
+    const billing = billingOf(line.budgetId);
+    if (!billing || line.concept === 'other') return 0;
+    const concept = line.concept;
+    let available = billing.balances[cur][concept]
+      + ownSum(cur, (l) => l.budget_id === line.budgetId && l.concept === concept)
+      - sumOf(lines.filter((o) => o.key !== line.key && o.budgetId === line.budgetId && o.concept === concept));
+    if (line.orderId) {
+      const order = ordersFor(line.budgetId, concept, cur).find((o) => o.id === line.orderId);
+      if (order && order.balance !== null) {
+        const orderAvailable = order.balance
+          + ownSum(cur, (l) => l.purchase_order_id === order.id)
+          - sumOf(lines.filter((o) => o.key !== line.key && o.orderId === order.id));
+        available = Math.min(available, orderAvailable);
+      }
     }
-    return available;
+    return roundMoney(Math.max(available, 0));
+  };
+
+  // Saldo del concepto de un presupuesto, sin mirar OC ni otras líneas (para decidir si tiene algo para ofrecer).
+  const budgetBalance = (budgetId: number | null, cur: BudgetCurrency, concept: 'materials' | 'labor'): number => {
+    const billing = billingOf(budgetId);
+    if (!billing || billing.bases[cur][concept].net <= TOLERANCE) return 0;
+    return roundMoney(billing.balances[cur][concept] + ownSum(cur, (l) => l.budget_id === budgetId && l.concept === concept));
   };
 
   const currencyOptions = useMemo(() => {
-    if (!billing) return CURRENCIES;
-    return CURRENCIES.filter((cur) => (['materials', 'labor'] as const).some((c) => billing.bases[cur][c].net > TOLERANCE && availableFor(cur, c) > TOLERANCE));
-    // availableFor depende de billing, invoice y ownBudgetInvoice
+    if (blocks.length === 0) return CURRENCIES;
+    return CURRENCIES.filter((cur) => blocks.some((b) => (['materials', 'labor'] as const).some((c) => budgetBalance(b.budget.id, cur, c) > TOLERANCE)));
+    // budgetBalance depende de blocks, invoice y ownActive
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [billing, invoice, ownBudgetInvoice]);
+  }, [blocks, invoice, ownActive]);
 
   // Carga inicial cada vez que se abre.
   useEffect(() => {
@@ -154,9 +197,13 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
       setSaleCondition(invoice.sale_condition || '');
       setRemito(invoice.remito_number || '');
       setCommercialRef(invoice.commercial_reference || '');
+      setCommercialTouched(true);
       setLines(invoice.lines.map((l) => ({
         key: newKey(),
-        concept: l.concept,
+        budgetId: l.budget_id ?? invoice.budget_id ?? null,
+        orderId: l.purchase_order_id ?? null,
+        progressId: l.progress_entry_id ?? null,
+        concept: l.concept as EditableInvoiceConcept,
         percentText: l.percent != null ? String(l.percent) : '',
         amount: l.net_amount,
         description: l.description || '',
@@ -187,15 +234,40 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
       setSaleCondition('');
       setRemito('');
       setCommercialRef('');
-      setLines(detail ? [] : [{ key: newKey(), concept: 'other', percentText: '', amount: null, description: '', source: 'amount' }]);
-      // Con presupuesto, la moneda por defecto es la primera que todavía tenga saldo.
-      setCurrency(detail && currencyOptions.length > 0 ? currencyOptions[0] : 'ARS');
+      setCommercialTouched(false);
+      setLines(detail ? [] : [{ key: newKey(), budgetId: null, orderId: null, concept: 'other', percentText: '', amount: null, description: '', source: 'amount' }]);
     }
     setClient(null);
     setProject(null);
     // Solo al abrir: no queremos pisar lo que el usuario esté escribiendo si cambia el padre.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, invoice, detail?.budget.id]);
+
+  // Presupuestos de la factura: el ancla, los que vienen de afuera y, al corregir, los demás presupuestos de la factura (se piden al abrir).
+  useEffect(() => {
+    if (!open || !detail) { setBlocks([]); setPickable([]); return; }
+    let cancelled = false;
+    const initial = [detail, ...(extraDetails || []).filter((d) => d.budget.id !== detail.budget.id)];
+    setBlocks(initial);
+    const missing = invoice
+      ? [...new Set(invoice.lines.map((l) => l.budget_id).filter((id): id is number => !!id))].filter((id) => !initial.some((d) => d.budget.id === id))
+      : [];
+    Promise.all(missing.map((id) => InvoiceService.getBillable(id)))
+      .then((loaded) => { if (!cancelled && loaded.length > 0) setBlocks([...initial, ...loaded]); })
+      .catch(() => { if (!cancelled) setError('No se pudieron cargar todos los presupuestos de la factura.'); });
+    // Con la lista de los presupuestos del cliente se arma el "Agregar otro presupuesto".
+    InvoiceService.getBillables({ client_id: detail.budget.client?.id }).then((res) => { if (!cancelled) setPickable(res.data); }).catch(() => { if (!cancelled) setPickable([]); });
+    return () => { cancelled = true; };
+    // Solo al abrir (o al cambiar de factura).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, invoice, detail?.budget.id]);
+
+  // Moneda inicial de una factura nueva: la primera que todavía tenga saldo en alguno de los presupuestos.
+  useEffect(() => {
+    if (!open || invoice || blocks.length === 0) return;
+    setCurrency((current) => (currencyOptions.includes(current) ? current : currencyOptions[0] || current));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, blocks]);
 
   // Opciones de ARCA: solo para facturas de un presupuesto (la factura libre se sigue cargando a mano). Si la integración
   // está prendida y hay puntos de venta de web service, una factura nueva arranca como "Emitir por ARCA".
@@ -239,6 +311,15 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
     else if (hasMaterials) setConcept(1);
     else if (hasLabor) setConcept(2);
   }, [isArca, conceptTouched, lines]);
+
+  // Referencia comercial: se precarga con los números de las OC de las líneas (Bunge exige el de la OC en la FCE), mientras nadie la toque.
+  useEffect(() => {
+    if (!isArca || commercialTouched || invoice) return;
+    const numbers = [...new Set(lines.map((l) => (l.orderId ? ordersFor(l.budgetId, l.concept).find((o) => o.id === l.orderId)?.number : null)).filter((n): n is string => !!n))];
+    setCommercialRef(numbers.join(', '));
+    // ordersFor depende de blocks y de la moneda
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isArca, commercialTouched, invoice, lines, blocks, currency]);
 
   // En dólares, la cotización se precarga con la de ARCA (la que usa la web de ARCA), editable.
   const loadArcaRate = async () => {
@@ -286,13 +367,16 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
   const iva = ivaOf(net, effectiveIvaRate);
   const total = roundMoney(net + iva);
 
-  const baseFor = (concept: InvoiceConcept) => (billing && concept !== 'other' ? billing.bases[currency][concept] : null);
+  const baseFor = (line: LineState) => {
+    const billing = billingOf(line.budgetId);
+    return billing && line.concept !== 'other' ? billing.bases[currency][line.concept] : null;
+  };
 
   const updateLine = (key: string, patch: Partial<LineState>) =>
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
   const handlePercent = (line: LineState, text: string) => {
-    const base = baseFor(line.concept);
+    const base = baseFor(line);
     const pct = parsePercent(text);
     updateLine(line.key, {
       percentText: text,
@@ -302,7 +386,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
   };
 
   const handleAmount = (line: LineState, value: number | null) => {
-    const base = baseFor(line.concept);
+    const base = baseFor(line);
     updateLine(line.key, {
       amount: value,
       source: 'amount',
@@ -310,36 +394,61 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
     });
   };
 
-  const addConceptLine = (concept: 'materials' | 'labor') =>
-    setLines((prev) => (prev.some((l) => l.concept === concept)
-      ? prev
-      : [...prev, { key: newKey(), concept, percentText: '', amount: null, description: '', source: 'amount' }]));
+  // OC por defecto para una línea nueva: la primera vigente que sirva y que todavía no esté usada en ese concepto del presupuesto.
+  const defaultOrderFor = (budgetId: number, concept: 'materials' | 'labor', current: LineState[]): number | null => {
+    const usable = ordersFor(budgetId, concept);
+    const free = usable.find((o) => !current.some((l) => l.budgetId === budgetId && l.concept === concept && l.orderId === o.id));
+    return free ? free.id : null;
+  };
 
-  // "Facturar todo el saldo": cada concepto con saldo en esta moneda, al 100% de lo que queda.
-  const fillAllBalance = () => {
+  const addConceptLine = (budgetId: number, concept: 'materials' | 'labor') =>
+    setLines((prev) => {
+      const orderId = defaultOrderFor(budgetId, concept, prev);
+      // Sin OC libre, solo se admite una línea "sin OC" por concepto.
+      if (orderId === null && prev.some((l) => l.budgetId === budgetId && l.concept === concept && l.orderId === null)) return prev;
+      return [...prev, { key: newKey(), budgetId, orderId, concept, percentText: '', amount: null, description: '', source: 'amount' }];
+    });
+
+  // "Facturar todo el saldo" de un presupuesto: cada concepto con saldo en esta moneda, al 100% de lo que queda (y contra la OC que lo permita).
+  const fillAllBalance = (budgetId: number) => {
+    const billing = billingOf(budgetId);
     if (!billing) return;
-    const next: LineState[] = [];
+    const next: LineState[] = lines.filter((l) => l.budgetId !== budgetId);
     (['materials', 'labor'] as const).forEach((concept) => {
-      const available = availableFor(currency, concept);
+      const available = budgetBalance(budgetId, currency, concept);
       const base = billing.bases[currency][concept];
-      if (base.net > TOLERANCE && available > TOLERANCE) {
-        next.push({
-          key: lines.find((l) => l.concept === concept)?.key || newKey(),
-          concept,
-          percentText: String(roundPercent((available / base.net) * 100)),
-          amount: available,
-          description: '',
-          source: 'amount',
-        });
-      }
+      if (base.net <= TOLERANCE || available <= TOLERANCE) return;
+      const order = ordersFor(budgetId, concept).find((o) => o.balance === null || o.balance + ownSum(currency, (l) => l.purchase_order_id === o.id) >= available - TOLERANCE);
+      next.push({
+        key: newKey(), budgetId, orderId: order ? order.id : null, concept,
+        percentText: String(roundPercent((available / base.net) * 100)), amount: available, description: '', source: 'amount',
+      });
     });
     setLines(next);
+  };
+
+  const addBlock = async (row: BillableBudget | null) => {
+    if (!row) return;
+    setLoadingBlock(true);
+    try {
+      const loaded = await InvoiceService.getBillable(row.id);
+      setBlocks((prev) => (prev.some((b) => b.budget.id === loaded.budget.id) ? prev : [...prev, loaded]));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cargar el presupuesto');
+    } finally {
+      setLoadingBlock(false);
+    }
+  };
+
+  const removeBlock = (budgetId: number) => {
+    setBlocks((prev) => prev.filter((b) => b.budget.id !== budgetId));
+    setLines((prev) => prev.filter((l) => l.budgetId !== budgetId));
   };
 
   const handleCurrencyChange = (cur: BudgetCurrency) => {
     if (cur === currency) return;
     setCurrency(cur);
-    // Los saldos son por moneda: las líneas cargadas dejan de tener sentido.
+    // Los saldos y las OC son por moneda: las líneas cargadas dejan de tener sentido.
     if (detail) setLines([]);
   };
 
@@ -368,10 +477,11 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
     if (isFree && !client) return 'Elegí el cliente.';
     if (lines.length === 0) return 'Agregá al menos un concepto a facturar.';
     for (const line of lines) {
-      if (!(line.amount && line.amount > 0)) return `Indicá el monto o el porcentaje de ${CONCEPT_LABELS[line.concept].toLowerCase()}.`;
+      const where = isMulti && line.budgetId ? ` (${detailOf(line.budgetId)?.budget.number})` : '';
+      if (!(line.amount && line.amount > 0)) return `Indicá el monto o el porcentaje de ${CONCEPT_LABELS[line.concept].toLowerCase()}${where}.`;
       if (line.concept === 'other' && !line.description.trim()) return 'Cada línea necesita una descripción.';
-      if (line.concept !== 'other' && line.amount > availableFor(currency, line.concept) + TOLERANCE) {
-        return `El monto de ${CONCEPT_LABELS[line.concept].toLowerCase()} supera el saldo disponible.`;
+      if (line.concept !== 'other' && line.amount > availableFor(line) + TOLERANCE) {
+        return `El monto de ${CONCEPT_LABELS[line.concept].toLowerCase()}${where} supera el saldo disponible${line.orderId ? ' (o el de la OC elegida)' : ''}.`;
       }
     }
     return null;
@@ -383,9 +493,16 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
 
     const lineInputs: InvoiceLineInput[] = lines.map((l) => {
       if (l.concept === 'other') return { concept: 'other', description: l.description.trim(), net_amount: l.amount || 0 };
+      const target = {
+        budget_id: l.budgetId ?? undefined,
+        purchase_order_id: l.orderId,
+        progress_entry_id: l.progressId ?? null,
+        concept: l.concept,
+        description: l.description.trim() || undefined,
+      };
       return l.source === 'percent' && parsePercent(l.percentText) > 0
-        ? { concept: l.concept, percent: parsePercent(l.percentText) }
-        : { concept: l.concept, net_amount: l.amount || 0 };
+        ? { ...target, percent: parsePercent(l.percentText) }
+        : { ...target, net_amount: l.amount || 0 };
     });
 
     const arcaFields: Partial<InvoiceInput> = isArca ? {
@@ -415,7 +532,8 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
       currency,
       exchange_rate: currency === 'USD' && exchangeRate ? Number(exchangeRate.replace(',', '.')) : null,
       iva_rate: effectiveIvaRate,
-      budget_id: detail ? detail.budget.id : null,
+      // La cabecera solo lleva el presupuesto cuando es uno; con varios, cada línea trae el suyo.
+      budget_id: detail && !isMulti ? blocks[0]?.budget.id ?? detail.budget.id : null,
       client_id: isFree ? client?.id : undefined,
       project_id: isFree ? project?.id ?? null : undefined,
       notes: notes.trim() || null,
@@ -436,13 +554,28 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
     }
   };
 
+  // Texto con el que sale la línea si no se escribe otro (el mismo que arma el PDF en el servidor).
+  const defaultDescription = (line: LineState): string => {
+    if (line.concept === 'other') return '';
+    const pct = parsePercent(line.percentText);
+    const head = pct > 0 ? `Se factura el ${formatPercent(pct)} de ${CONCEPT_LABELS[line.concept].toLowerCase()}` : `Se factura ${CONCEPT_LABELS[line.concept].toLowerCase()}`;
+    const budget = detailOf(line.budgetId)?.budget;
+    const order = ordersFor(line.budgetId, line.concept).find((o) => o.id === line.orderId);
+    const detailText = [order ? `OC ${order.number}` : '', budget ? [budget.number, budget.title].filter(Boolean).join(' ') : ''].filter(Boolean).join(' · ');
+    return detailText ? `${head} — ${detailText}` : head;
+  };
+
   const renderBudgetLine = (line: LineState) => {
     if (line.concept === 'other') return null;
     const concept = line.concept;
-    const base = billing!.bases[currency][concept];
-    const available = availableFor(currency, concept);
-    const progress = billing!.project_progress;
+    const billing = billingOf(line.budgetId);
+    if (!billing) return null;
+    const base = billing.bases[currency][concept];
+    const available = availableFor(line);
+    const progress = billing.project_progress;
     const pct = parsePercent(line.percentText);
+    const orders = ordersFor(line.budgetId, concept);
+    const usedElsewhere = (orderId: number) => lines.some((o) => o.key !== line.key && o.budgetId === line.budgetId && o.concept === concept && o.orderId === orderId);
     return (
       <Box key={line.key} sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 2 }}>
         <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
@@ -460,6 +593,34 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
             <DeleteIcon fontSize="small" />
           </IconButton>
         </Box>
+        {orders.length > 0 && (
+          <TextField
+            select size="small" fullWidth label="OC del cliente (opcional)" value={line.orderId ?? ''} sx={{ mt: 1.5 }}
+            onChange={(e) => updateLine(line.key, { orderId: e.target.value === '' ? null : Number(e.target.value) })}
+            helperText="Si la línea se factura contra una OC, también respeta el saldo de la OC y su número sale en la referencia comercial."
+          >
+            <MenuItem value="">Sin OC</MenuItem>
+            {orders.map((o) => (
+              <MenuItem key={o.id} value={o.id} disabled={usedElsewhere(o.id)}>
+                OC {o.number}{o.balance !== null ? ` · saldo ${formatMoney(o.balance + ownSum(currency, (l) => l.purchase_order_id === o.id), currency)}` : ' · sin monto'}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
+        {(detailOf(line.budgetId)?.progress_entries || []).some((p) => p.status !== 'rejected') && (
+          <TextField
+            select size="small" fullWidth label="Avance real que se factura (opcional)" value={line.progressId ?? ''} sx={{ mt: 1.5 }}
+            onChange={(e) => updateLine(line.key, { progressId: e.target.value === '' ? null : Number(e.target.value) })}
+            helperText="Deja asociada la factura al avance (por ejemplo, el del certificado). Solo informativo: no cambia el saldo."
+          >
+            <MenuItem value="">Sin asociar</MenuItem>
+            {(detailOf(line.budgetId)?.progress_entries || []).filter((p) => p.status !== 'rejected').map((p) => (
+              <MenuItem key={p.id} value={p.id}>
+                {formatPercent(p.percent)} · {p.date.split('-').reverse().join('/')}{p.source === 'certificate' ? ` · certificado ${p.certificate_number}${p.status === 'presented' ? ' (presentado)' : ''}` : ''}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 1.5 }}>
           <TextField
             label="Porcentaje" type="number" value={line.percentText}
@@ -473,6 +634,12 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
             value={line.amount} onChange={(v) => handleAmount(line, v)}
           />
         </Stack>
+        <TextField
+          size="small" fullWidth label="Descripción en la factura (opcional)" value={line.description} sx={{ mt: 1.5 }}
+          onChange={(e) => updateLine(line.key, { description: e.target.value })}
+          placeholder={defaultDescription(line)} inputProps={{ maxLength: 255 }}
+          helperText="Si la dejás vacía sale el texto de ejemplo. Podés escribir el tuyo (por ejemplo, la posición de la OC)."
+        />
         {concept === 'labor' && (
           <Typography variant="caption" color={progress ? 'text.secondary' : 'warning.main'} display="block" sx={{ mt: 1 }}>
             {progress
@@ -480,6 +647,48 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
               : 'Sin proyecto todavía: no hay avance de horas para comparar.'}
           </Typography>
         )}
+      </Box>
+    );
+  };
+
+  // Un bloque por presupuesto: sus líneas, "Facturar todo el saldo" y los conceptos que todavía se pueden agregar.
+  const renderBudgetBlock = (block: BudgetBillingDetail) => {
+    const id = block.budget.id;
+    const blockLines = lines.filter((l) => l.budgetId === id);
+    const addable = (['materials', 'labor'] as const).filter((concept) => {
+      if (budgetBalance(id, currency, concept) <= TOLERANCE) return false;
+      const taken = lines.filter((l) => l.budgetId === id && l.concept === concept);
+      const hasFreeOrder = ordersFor(id, concept).some((o) => !taken.some((l) => l.orderId === o.id));
+      return taken.length === 0 || hasFreeOrder;
+    });
+    return (
+      <Box key={id} sx={isMulti ? { border: 1, borderColor: 'primary.light', borderRadius: 2, p: 2 } : undefined}>
+        <Stack spacing={1.5}>
+          <Box display="flex" gap={1} flexWrap="wrap" alignItems="center">
+            <Box sx={{ flex: 1, minWidth: 140 }}>
+              <Typography variant="subtitle1" fontWeight={700}>{isMulti ? `${block.budget.number} · ${block.budget.title}` : 'Qué se factura'}</Typography>
+              {isMulti && <Typography variant="caption" color="text.secondary">Qué se factura de este presupuesto</Typography>}
+            </Box>
+            <Button size="small" variant="outlined" onClick={() => fillAllBalance(id)}
+              disabled={!(['materials', 'labor'] as const).some((c) => budgetBalance(id, currency, c) > TOLERANCE)}>
+              Facturar todo el saldo
+            </Button>
+            {isMulti && (
+              <IconButton size="small" aria-label={`Quitar ${block.budget.number} de la factura`} onClick={() => removeBlock(id)}><DeleteIcon fontSize="small" /></IconButton>
+            )}
+          </Box>
+          {blockLines.map(renderBudgetLine)}
+          <Box display="flex" gap={1} flexWrap="wrap">
+            {addable.map((concept) => (
+              <Button key={concept} size="small" onClick={() => addConceptLine(id, concept)}>
+                + Agregar {CONCEPT_LABELS[concept].toLowerCase()}
+              </Button>
+            ))}
+          </Box>
+          {blockLines.length === 0 && addable.length === 0 && (
+            <Alert severity="info">Este presupuesto no tiene saldo para facturar en {currency}.</Alert>
+          )}
+        </Stack>
       </Box>
     );
   };
@@ -513,7 +722,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
         {isEditing ? (isArca ? 'Editar borrador' : 'Corregir factura') : isFree ? 'Factura libre' : isArca ? 'Nueva factura (emitir por ARCA)' : 'Nueva factura'}
         {detail && (
           <Typography variant="body2" color="text.secondary">
-            {detail.budget.number} · {detail.budget.title}
+            {isMulti ? `${blocks.length} presupuestos: ${blocks.map((b) => b.budget.number).join(', ')}` : `${detail.budget.number} · ${detail.budget.title}`}
           </Typography>
         )}
       </DialogTitle>
@@ -694,36 +903,27 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
           {/* Líneas */}
           {detail ? (
             <>
-              <Box display="flex" gap={1} flexWrap="wrap" alignItems="center">
-                <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1, minWidth: 140 }}>Qué se factura</Typography>
-                <Button size="small" variant="outlined" onClick={fillAllBalance}
-                  disabled={!(['materials', 'labor'] as const).some((c) => availableFor(currency, c) > TOLERANCE)}>
-                  Facturar todo el saldo
-                </Button>
-              </Box>
-              {lines.map(renderBudgetLine)}
-              <Box display="flex" gap={1} flexWrap="wrap">
-                {(['materials', 'labor'] as const).map((concept) => {
-                  const available = availableFor(currency, concept);
-                  const taken = lines.some((l) => l.concept === concept);
-                  if (taken || !(available > TOLERANCE)) return null;
-                  return (
-                    <Button key={concept} size="small" onClick={() => addConceptLine(concept)}>
-                      + Agregar {CONCEPT_LABELS[concept].toLowerCase()}
-                    </Button>
-                  );
-                })}
-              </Box>
+              {blocks.map(renderBudgetBlock)}
               {lines.length === 0 && currencyOptions.length === 0 && (
-                <Alert severity="info">Este presupuesto ya no tiene saldo para facturar.</Alert>
+                <Alert severity="info">{isMulti ? 'Estos presupuestos ya no tienen' : 'Este presupuesto ya no tiene'} saldo para facturar.</Alert>
               )}
+              {/* Una factura puede cobrar varios presupuestos del mismo cliente (cada uno descuenta de su saldo). */}
+              <Autocomplete
+                key={blocks.length}
+                options={pickable.filter((row) => !blocks.some((b) => b.budget.id === row.id))}
+                getOptionLabel={(row) => `${row.number} · ${row.title}`}
+                loading={loadingBlock} disabled={loadingBlock}
+                noOptionsText="El cliente no tiene otros presupuestos aprobados"
+                onChange={(_, row) => addBlock(row)}
+                renderInput={(params) => <TextField {...params} size="small" label="Agregar otro presupuesto del mismo cliente" helperText="Una sola factura puede cobrar varios presupuestos: cada línea descuenta del saldo del suyo." />}
+              />
             </>
           ) : (
             <>
               <Typography variant="subtitle1" fontWeight={700}>Conceptos</Typography>
               {lines.map(renderFreeLine)}
               <Box>
-                <Button size="small" onClick={() => setLines((prev) => [...prev, { key: newKey(), concept: 'other', percentText: '', amount: null, description: '', source: 'amount' }])}>
+                <Button size="small" onClick={() => setLines((prev) => [...prev, { key: newKey(), budgetId: null, orderId: null, concept: 'other', percentText: '', amount: null, description: '', source: 'amount' }])}>
                   + Agregar línea
                 </Button>
               </Box>
@@ -795,7 +995,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, invoice,
               </Stack>
               <TextField
                 label="Referencia comercial (por ejemplo, el número de OC)" value={commercialRef} fullWidth
-                onChange={(e) => setCommercialRef(e.target.value)} inputProps={{ maxLength: isFce ? 50 : 255 }}
+                onChange={(e) => { setCommercialRef(e.target.value); setCommercialTouched(true); }} inputProps={{ maxLength: isFce ? 50 : 255 }}
                 helperText={isFce ? 'Se informa a ARCA y se imprime (hasta 50 caracteres). Bunge exige el número de OC.' : 'Se imprime en la factura.'}
               />
             </>

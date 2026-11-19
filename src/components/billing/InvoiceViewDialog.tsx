@@ -32,7 +32,7 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
           <DialogContent>
             <Stack spacing={0.75} sx={{ mb: 2 }}>
               {row('Cliente', `${invoice.client?.razonSocial || '—'}${invoice.client?.cuit ? ` · CUIT ${formatCuit(invoice.client.cuit)}` : ''}`)}
-              {row('Presupuesto', invoice.budget ? `${invoice.budget.number} · ${invoice.budget.title}` : 'Factura libre')}
+              {row(invoice.budgets && invoice.budgets.length > 1 ? 'Presupuestos' : 'Presupuesto', invoice.budgets && invoice.budgets.length > 0 ? invoice.budgets.map((b) => `${b.number} · ${b.title}`).join(' | ') : invoice.budget ? `${invoice.budget.number} · ${invoice.budget.title}` : 'Factura libre')}
               {invoice.project && row('Proyecto', `${invoice.project.code} · ${invoice.project.name}`)}
               {row('Fecha de emisión', formatDate(invoice.issue_date))}
               {invoice.due_date && row('Vencimiento de pago', formatDate(invoice.due_date))}
@@ -78,6 +78,17 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
                   <Typography variant="body2">
                     {CONCEPT_LABELS[line.concept]}
                     {line.description ? ` — ${line.description}` : ''}
+                    {(invoice.budgets || []).length > 1 && line.budget && (
+                      <Typography component="span" variant="caption" color="text.secondary"> · {line.budget.number}</Typography>
+                    )}
+                    {line.purchaseOrder && (
+                      <Typography component="span" variant="caption" color="text.secondary"> · OC {line.purchaseOrder.number}</Typography>
+                    )}
+                    {line.progressEntry && (
+                      <Typography component="span" variant="caption" color="text.secondary">
+                        {' '}· avance real {formatPercent(line.progressEntry.percent)}{line.progressEntry.certificate_number ? ` (certificado ${line.progressEntry.certificate_number})` : ''}
+                      </Typography>
+                    )}
                     {line.percent != null && (
                       <Typography component="span" variant="caption" color="text.secondary"> ({formatPercent(line.percent)} del concepto)</Typography>
                     )}

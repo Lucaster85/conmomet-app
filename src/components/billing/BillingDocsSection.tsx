@@ -120,6 +120,12 @@ export default function BillingDocsSection({ detail, canWrite, canUpdate, canDel
             </Box>
           )}
         </Box>
+        {isActive && (order.billed ?? 0) > 0 && (
+          <Typography variant="body2" sx={{ mt: 0.5 }}>
+            <strong>Facturado contra esta OC:</strong> {formatMoney(order.billed ?? 0, order.currency)}
+            {order.balance !== null && order.balance !== undefined ? ` · Saldo: ${formatMoney(order.balance, order.currency)}` : ''}
+          </Typography>
+        )}
         {order.rejection_reason && (
           <Typography variant="body2" sx={{ mt: 1 }}><strong>{order.status === 'replaced' ? 'Motivo del reemplazo' : 'Motivo del rechazo'}:</strong> {order.rejection_reason}</Typography>
         )}

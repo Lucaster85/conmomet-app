@@ -119,7 +119,8 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, { label: string; color
   cancelled: { label: 'Anulada', color: 'default' },
 };
 
-export const CONCEPT_LABELS = { materials: 'Materiales', labor: 'Mano de obra', other: 'Otro' } as const;
+export const CONCEPT_LABELS = { materials: 'Materiales', labor: 'Mano de obra', other: 'Otro', adjustment: 'Ajuste' } as const;
+export const ADJUSTMENT_TYPE_LABELS = { ipc_indec: 'IPC (INDEC)', uocra: 'UOCRA', other: 'Otro índice' } as const;
 
 // Alícuotas de IVA configuradas (Configuración General). El 21% es el valor por defecto si está en
 // la lista; si no, la primera.
@@ -163,3 +164,11 @@ export const bondDaysLabel = (daysLeft: number | null): string => {
   if (daysLeft === 1) return 'vence mañana';
   return `vence en ${daysLeft} días`;
 };
+
+// Avance real de obra (FLOWS.md §72).
+export const PROGRESS_SOURCE_LABELS = { manual: 'Cargado a mano', certificate: 'Certificado' } as const;
+export const PROGRESS_STATUS_LABELS = {
+  presented: { label: 'Presentado', color: 'warning' },
+  approved: { label: 'Aprobado', color: 'success' },
+  rejected: { label: 'Rechazado', color: 'error' },
+} as const;
