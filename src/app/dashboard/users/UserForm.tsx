@@ -15,7 +15,6 @@ import {
   Paper,
   Divider,
   Alert,
-  Chip,
 } from '@mui/material';
 import GearSpinner from '../../../components/GearSpinner';
 import { SaveOutlined as SaveIcon, ContentCopyOutlined as ContentCopyIcon } from '@mui/icons-material';
@@ -53,11 +52,11 @@ interface UserFormProps {
 export default function UserForm({ user, onSuccessAction, onCancel }: UserFormProps) {
   const isEditing = !!user;
 
-  // Gating por permiso real del usuario logueado: PUT /users/:id/permissions requiere
-  // users_update tanto en alta como en edición (es la misma llamada en los dos flujos). El
-  // backend ya lo valida (403 si falta) — esto es para no mostrar/dejar tildar algo que
+  // Gating por permiso real del usuario logueado: los permisos particulares los ve y los
+  // asigna solo quien tiene admin_granted (PUT /users/:id/permissions, FLOWS.md §75.1). El
+  // backend ya lo valida (401/403 si falta) — esto es para no mostrar/dejar tildar algo que
   // después va a fallar.
-  const canAssignPermissions = userHasPermission(TokenManager.getUser(), 'users_update');
+  const canAssignPermissions = userHasPermission(TokenManager.getUser(), 'admin_granted');
   
   const [formData, setFormData] = useState<CreateUserData>({
     name: user?.name || '',
@@ -93,7 +92,7 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
         setLoadingData(true);
         const [rolesData, permissionsData, employeesData] = await Promise.all([
           LookupService.getRoles(),
-          PermissionService.getAll(),
+          canAssignPermissions ? PermissionService.getAll() : Promise.resolve([]),
           EmployeeService.getAll(),
         ]);
         
@@ -431,9 +430,8 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
           />
         </Box>
 
-        {/* Permisos Adicionales: solo si el usuario logueado puede realmente asignarlos
-            (users_update). Si no, a lo sumo mostramos de solo lectura los que ya tiene el
-            usuario que se está editando — nunca el catálogo completo para tildar. */}
+        {/* Permisos Adicionales: solo para admin_granted. Quien no lo es no ve los permisos
+            particulares de nadie (el backend ni siquiera los manda). */}
         {canAssignPermissions ? (
           <>
             <Divider sx={{ my: 2 }} />
@@ -465,23 +463,6 @@ export default function UserForm({ user, onSuccessAction, onCancel }: UserFormPr
                   </Typography>
                 )}
               </FormGroup>
-            </Paper>
-          </>
-        ) : isEditing && user?.permissions && user.permissions.length > 0 ? (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              Permisos Adicionales
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Permisos especiales ya asignados a este usuario. No tenés permiso para modificarlos.
-            </Typography>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {user.permissions.map((permission) => (
-                  <Chip key={permission.id} label={permission.name} size="small" />
-                ))}
-              </Box>
             </Paper>
           </>
         ) : null}

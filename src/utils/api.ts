@@ -475,17 +475,6 @@ export class PermissionService {
     }
   }
 
-  static async assignToUser(userId: number, permissionIds: number[]): Promise<void> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/permissions_assign`, {
-      method: 'POST',
-      body: JSON.stringify({ type: 'user', id: userId, permissions: permissionIds }),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al asignar permisos');
-    }
-  }
-
   static async create(names: string[]): Promise<Permission[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/permissions`, {
       method: 'POST',
