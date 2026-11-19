@@ -59,6 +59,12 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
   const [period, setPeriod] = useState('');
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<AdjustLine[]>([]);
+  // Calculadora del IPC del INDEC (FLOWS.md §73): el % entre un mes base y otro (por defecto, el último publicado).
+  const [ipcFrom, setIpcFrom] = useState('');
+  const [ipcTo, setIpcTo] = useState('');
+  const [ipcResult, setIpcResult] = useState<{ from: string; to: string; percent: number } | null>(null);
+  const [ipcLoading, setIpcLoading] = useState(false);
+  const [ipcError, setIpcError] = useState('');
   const [options, setOptions] = useState<InvoiceArcaOptions | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -72,6 +78,10 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
     setServiceTo(editing?.service_to || original.service_to || '');
     setPosId(editing?.point_of_sale_id || original.point_of_sale_id || '');
     setPeriod('');
+    setIpcFrom(original.issue_date.slice(0, 7));
+    setIpcTo('');
+    setIpcResult(null);
+    setIpcError('');
     setNotes(editing?.notes || '');
     setLines((original.lines || []).filter((l) => l.concept === 'materials' || l.concept === 'labor').map((line) => {
       const own = editing?.lines.find((l) => l.adjusts_line_id === line.id);
@@ -107,6 +117,28 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
   };
   const handleAmount = (line: AdjustLine, value: number | null) =>
     update(line.lineId, { amount: value, source: 'amount', percentText: value ? String(roundPercent((value / line.base) * 100)) : '' });
+
+  const calculateIpc = async () => {
+    setIpcLoading(true);
+    setIpcError('');
+    setIpcResult(null);
+    try {
+      setIpcResult(await InvoiceService.getIpcVariation(ipcFrom, ipcTo || undefined));
+    } catch (err) {
+      setIpcError(err instanceof Error ? err.message : 'No se pudo consultar el IPC del INDEC');
+    } finally {
+      setIpcLoading(false);
+    }
+  };
+
+  // Aplica el % del IPC a las líneas elegidas (las de índice IPC, o todas si ninguna lo es) y avisa el período en la descripción.
+  const applyIpc = () => {
+    if (!ipcResult) return;
+    setLines((prev) => prev.map((l) => (l.selected
+      ? { ...l, type: 'ipc_indec', source: 'percent', percentText: String(ipcResult.percent), amount: roundMoney((l.base * ipcResult.percent) / 100) }
+      : l)));
+    if (!period.trim()) setPeriod(`IPC ${ipcResult.from.split('-').reverse().join('/')} a ${ipcResult.to.split('-').reverse().join('/')}`);
+  };
 
   const used = lines.filter((l) => l.selected);
   const net = roundMoney(used.reduce((acc, l) => acc + (l.amount || 0), 0));
@@ -211,6 +243,25 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
                 <DateField label="Período facturado: hasta *" value={serviceTo} onChange={setServiceTo} fullWidth />
               </Stack>
             )}
+
+            <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 2 }}>
+              <Typography variant="subtitle2" fontWeight={700}>Calcular con el IPC del INDEC (opcional)</Typography>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
+                Calcula la variación acumulada entre dos meses con el índice oficial. El INDEC publica con un mes de demora. Después aplicás el porcentaje a las líneas elegidas.
+              </Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'flex-start' }}>
+                <TextField type="month" label="Mes base" value={ipcFrom} onChange={(e) => setIpcFrom(e.target.value)} InputLabelProps={{ shrink: true }} helperText="Desde cuándo se ajusta." />
+                <TextField type="month" label="Hasta (opcional)" value={ipcTo} onChange={(e) => setIpcTo(e.target.value)} InputLabelProps={{ shrink: true }} helperText="Vacío = último mes publicado." />
+                <Button variant="outlined" onClick={calculateIpc} disabled={!ipcFrom || ipcLoading} sx={{ mt: { sm: 1 } }}>{ipcLoading ? 'Consultando…' : 'Calcular'}</Button>
+              </Stack>
+              {ipcError && <Alert severity="warning" sx={{ mt: 1.5 }}>{ipcError}</Alert>}
+              {ipcResult && (
+                <Alert severity="success" sx={{ mt: 1.5 }} action={<Button color="inherit" size="small" onClick={applyIpc} disabled={used.length === 0}>Aplicar a las líneas</Button>}>
+                  Variación del IPC de {ipcResult.from.split('-').reverse().join('/')} a {ipcResult.to.split('-').reverse().join('/')}: <strong>{formatPercent(ipcResult.percent)}</strong>
+                  {used.length === 0 ? ' (elegí primero las líneas a ajustar)' : ''}
+                </Alert>
+              )}
+            </Box>
 
             <Typography variant="subtitle1" fontWeight={700}>Qué se ajusta</Typography>
             {lines.length === 0 && <Alert severity="info">Esta factura no tiene líneas de materiales o mano de obra para ajustar.</Alert>}

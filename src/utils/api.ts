@@ -509,7 +509,31 @@ export class PermissionService {
     }
   }
 }
+  // Datos de un contribuyente en el padrón A13 de ARCA, para autocompletar un cliente (FLOWS.md §73).
+  export interface PadronPerson {
+    cuit: string;
+    legal_name: string | null;
+    person_type: string | null;
+    status: string | null;
+    tax_condition: TaxCondition | null;
+    fiscal_street: string | null;
+    fiscal_locality: string | null;
+    fiscal_province: string | null;
+    postal_code: string | null;
+    // Si ya hay un cliente cargado con ese CUIT.
+    existing_client: { id: number; razonSocial: string } | null;
+  }
+
   export class ClientService {
+  static async padronLookup(cuit: string): Promise<PadronPerson> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients/padron/${cuit.replace(/\D/g, '')}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'No se pudo consultar el padrón de ARCA');
+    }
+    return (await response.json()).data;
+  }
+
   static async getAll(params?: { is_active?: boolean }): Promise<Client[]> {
     let url = `${API_BASE_URL}/clients`;
     if (params?.is_active !== undefined) url += `?is_active=${params.is_active}`;
@@ -5350,6 +5374,12 @@ export interface Invoice {
   // En una factura emitida: total de las notas de crédito ya emitidas.
   credited_total?: number;
   // Ajustes de precio (etapa 8): una factura de ajuste apunta a la que ajusta, y la original trae su ajuste vigente (null si no tiene).
+  // Nota por diferencia de cambio (FLOWS.md §73): en pesos, sobre una factura en dólares. Las originales traen su nota vigente (`exchange_note`).
+  exchange_difference?: boolean;
+  exchange_diff_base_rate?: number | null;
+  exchange_diff_new_rate?: number | null;
+  exchange_diff_base_usd?: number | null;
+  exchange_note?: { id: number; kind: InvoiceKind; cbte_tipo: number | null; pos_number: number | null; number: number | null; total_amount: number; arca_status: InvoiceArcaStatus; status: InvoiceStatus } | null;
   adjusts_invoice_id?: number | null;
   adjustedInvoice?: { id: number; voucher_type: VoucherType; cbte_tipo: number | null; pos_number: number | null; number: number | null; issue_date: string } | null;
   adjustment?: { id: number; cbte_tipo: number | null; pos_number: number | null; number: number | null; total_amount: number; arca_status: InvoiceArcaStatus; status: InvoiceStatus; issue_date: string } | null;
@@ -5646,6 +5676,10 @@ export interface InvoiceInput {
   // Factura de ajuste (etapa 8): la factura emitida que ajusta y, opcional, el período que aparece en la descripción.
   adjusts_invoice_id?: number;
   adjustment_period?: string | null;
+  // Nota por diferencia de cambio: la cotización nueva y, opcional, el neto en dólares sobre el que se calcula.
+  exchange_difference?: boolean;
+  new_exchange_rate?: number;
+  base_usd?: number;
   voucher_type: VoucherType;
   // Código de ARCA del comprobante (1 Factura A, 201 FCE A, 3 NC A…). La clave única es (cbte_tipo, punto de venta, número).
   cbte_tipo?: number | null;
@@ -5984,6 +6018,12 @@ export class InvoiceService {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/billables${this.query(filters)}`);
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al obtener los presupuestos a facturar');
     return response.json();
+  }
+
+  // Variación del IPC del INDEC entre dos meses (AAAA-MM), para sugerir el % de un ajuste. Sin `to`, hasta el último mes publicado. FLOWS.md §73.
+  static async getIpcVariation(from: string, to?: string): Promise<{ from: string; to: string; from_index: number; to_index: number; percent: number }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/adjustments/ipc${this.query({ from, to })}`);
+    return this.parse(response, 'No se pudo consultar el IPC del INDEC');
   }
 
   static async getBillable(budgetId: number): Promise<BudgetBillingDetail> {

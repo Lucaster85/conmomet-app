@@ -350,6 +350,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'nota de debito', 'nota de débito', 'nc', 'nd', 'acreditar', 'acreditada', 'anulacion total', 'anulación total', 'devolucion', 'devolución',
       'comprobante asociado', 'diferencia de cambio', 'intereses',
       'varios presupuestos', 'varias oc', 'nueva factura', 'factura compartida', 'referencia comercial',
+      'diferencia de cambio', 'nota por diferencia de cambio', 'dolar', 'dólar', 'cotizacion nueva', 'cotización nueva', 'ipc indec', 'calcular ipc',
       'avance real', 'avance real de obra', 'certificado', 'certificado de avance', 'facturado mayor al avance', 'avance de obra',
       'ajuste', 'ajustes', 'ajuste de precio', 'crear ajuste', 'ipc', 'uocra', 'factura de ajuste', 'actualizacion de precio', 'actualización de precio',
     ],

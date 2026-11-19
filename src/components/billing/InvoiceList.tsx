@@ -16,6 +16,7 @@ import {
   SendOutlined as EmitIcon,
   UndoOutlined as CreditNoteIcon,
   SyncOutlined as VerifyIcon,
+  CurrencyExchangeOutlined as ExchangeIcon,
   TrendingUpOutlined as AdjustmentIcon,
   VisibilityOutlined as ViewIcon,
 } from '@mui/icons-material';
@@ -51,6 +52,8 @@ interface InvoiceListProps {
   onCreateNote?: (invoice: Invoice, type: 'credit_note' | 'debit_note') => void;
   // Crear el ajuste de precio de una factura emitida: una factura nueva vinculada a ella (FLOWS.md §71).
   onCreateAdjustment?: (invoice: Invoice) => void;
+  // Nota por diferencia de cambio (débito o crédito en pesos) sobre una factura en dólares emitida (FLOWS.md §73).
+  onCreateExchangeDifference?: (invoice: Invoice) => void;
 }
 
 // Importe de una fila: una nota de crédito resta, así que se muestra en negativo.
@@ -58,7 +61,7 @@ const money = (invoice: Invoice, value: number) => (invoice.kind === 'credit_not
 
 export default function InvoiceList({
   invoices, emptyText = 'No hay facturas registradas', hideBudgetColumns = false,
-  canUpdate, canCorrect, canEmit = false, canWrite = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard, onGeneratePdf, onFceAcceptance, onCreateNote, onCreateAdjustment,
+  canUpdate, canCorrect, canEmit = false, canWrite = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard, onGeneratePdf, onFceAcceptance, onCreateNote, onCreateAdjustment, onCreateExchangeDifference,
 }: InvoiceListProps) {
   const { fileLinkProps } = useFileViewer();
   // Una factura de ARCA (source 'arca') tiene su propio ciclo: borrador -> emitida (o rechazada / autorizando). Una emitida
@@ -73,6 +76,8 @@ export default function InvoiceList({
     // Notas sobre una factura ya emitida en ARCA y todavía no anulada (una nota no tiene notas).
     const canNote = open && isArca && arcaStatus === 'authorized' && !isNote(invoice) && canWrite && !!onCreateNote;
     // Ajuste de precio: sobre una factura emitida que no sea ya un ajuste ni tenga uno vigente (se vuelve a poder si el ajuste se anula).
+    // Diferencia de cambio: solo facturas en dólares, y una sola nota vigente.
+    const canExchange = canNote && !!onCreateExchangeDifference && invoice.currency === 'USD' && !invoice.exchange_note;
     const canAdjust = canNote && !!onCreateAdjustment && !invoice.adjusts_invoice_id && !invoice.adjustment;
     return (
       <Box display="flex" gap={0.5} flexWrap="wrap">
@@ -94,6 +99,9 @@ export default function InvoiceList({
         )}
         {canNote && (
           <Tooltip title="Nota de crédito (anular o acreditar)"><IconButton size="small" color="warning" onClick={() => onCreateNote!(invoice, 'credit_note')}><CreditNoteIcon fontSize="small" /></IconButton></Tooltip>
+        )}
+        {canExchange && (
+          <Tooltip title="Diferencia de cambio (nota en pesos por la variación del dólar)"><IconButton size="small" onClick={() => onCreateExchangeDifference!(invoice)}><ExchangeIcon fontSize="small" /></IconButton></Tooltip>
         )}
         {canAdjust && (
           <Tooltip title="Crear ajuste (IPC, UOCRA…): una factura nueva por la diferencia"><IconButton size="small" color="primary" onClick={() => onCreateAdjustment!(invoice)}><AdjustmentIcon fontSize="small" /></IconButton></Tooltip>
@@ -143,6 +151,12 @@ export default function InvoiceList({
         {invoice.kind === 'credit_note' && invoice.status !== 'cancelled'
           ? <Chip size="small" color="success" label="Emitida" />
           : <Chip size="small" color={status.color} label={`${status.label}${detail}`} />}
+        {invoice.exchange_difference && (
+          <Chip size="small" color="info" variant="outlined" label="Diferencia de cambio" />
+        )}
+        {invoice.exchange_note && invoice.status !== 'cancelled' && (
+          <Chip size="small" color="info" variant="outlined" title="Esta factura ya tiene su nota por diferencia de cambio." label={`${invoice.exchange_note.kind === 'debit_note' ? 'ND' : 'NC'} dif. de cambio: ${formatMoney(invoice.exchange_note.total_amount, 'ARS')}`} />
+        )}
         {invoice.adjustedInvoice && (
           <Chip size="small" color="info" variant="outlined" label={`Ajuste s/ ${formatVoucher({ ...invoice.adjustedInvoice, kind: 'invoice' } as Invoice)}`} />
         )}

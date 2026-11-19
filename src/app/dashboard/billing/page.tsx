@@ -15,6 +15,7 @@ import BillablesList from '../../../components/billing/BillablesList';
 import InvoiceList from '../../../components/billing/InvoiceList';
 import InvoiceDialog from '../../../components/billing/InvoiceDialog';
 import NewInvoiceStartDialog from '../../../components/billing/NewInvoiceStartDialog';
+import ExchangeDifferenceDialog from '../../../components/billing/ExchangeDifferenceDialog';
 import InvoiceAdjustmentDialog from '../../../components/billing/InvoiceAdjustmentDialog';
 import InvoiceNoteDialog from '../../../components/billing/InvoiceNoteDialog';
 import InvoiceViewDialog from '../../../components/billing/InvoiceViewDialog';
@@ -73,6 +74,8 @@ function BillingContent() {
   const [noteDialog, setNoteDialog] = useState<{ original: Invoice; type: 'credit_note' | 'debit_note'; editing?: Invoice } | null>(null);
   // Ajuste de precio de una factura emitida (o edición del borrador del ajuste): una factura nueva vinculada a la original.
   const [adjustDialog, setAdjustDialog] = useState<{ original: Invoice; editing?: Invoice } | null>(null);
+  // Nota por diferencia de cambio sobre una factura en dólares (o edición de su borrador).
+  const [exchangeDialog, setExchangeDialog] = useState<{ original: Invoice; editing?: Invoice } | null>(null);
   const [freeDialogOpen, setFreeDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<{ invoice: Invoice; detail: BudgetBillingDetail | null } | null>(null);
   // "Nueva factura": se elige el cliente y los presupuestos (una factura puede cobrar varios) y después se abre el diálogo de la factura.
@@ -171,6 +174,14 @@ function BillingContent() {
   };
 
   // Se vuelve a pedir la factura: trae lo ya acreditado de cada línea (la base del ajuste) y la OC de cada una.
+  const openExchangeDifference = async (invoice: Invoice) => {
+    try {
+      setExchangeDialog({ original: await InvoiceService.get(invoice.id) });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al abrir la factura');
+    }
+  };
+
   const openAdjustment = async (invoice: Invoice) => {
     try {
       setAdjustDialog({ original: await InvoiceService.get(invoice.id) });
@@ -207,6 +218,14 @@ function BillingContent() {
 
   // Corregir una factura de un presupuesto necesita el detalle de saldos de ese presupuesto.
   const handleEdit = async (invoice: Invoice) => {
+    if (invoice.exchange_difference) {
+      try {
+        setExchangeDialog({ original: await InvoiceService.get(invoice.associated_invoice_id as number), editing: invoice });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al abrir la nota');
+      }
+      return;
+    }
     if (invoice.kind && invoice.kind !== 'invoice') { await editNote(invoice); return; }
     if (invoice.adjusts_invoice_id) { await editAdjustment(invoice); return; }
     try {
@@ -312,7 +331,7 @@ function BillingContent() {
               invoices={invoices} canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit} canWrite={canWrite}
               onView={setViewInvoice} onEdit={handleEdit} onPay={setPayTarget} onCancel={setCancelTarget}
               onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget}
-              onGeneratePdf={handleGeneratePdf} onFceAcceptance={setAcceptanceTarget} onCreateNote={openNote} onCreateAdjustment={openAdjustment}
+              onGeneratePdf={handleGeneratePdf} onFceAcceptance={setAcceptanceTarget} onCreateNote={openNote} onCreateAdjustment={openAdjustment} onCreateExchangeDifference={openExchangeDifference}
             />
           )}
         </>
@@ -326,6 +345,10 @@ function BillingContent() {
       <DiscardInvoiceDialog invoice={discardTarget} onClose={() => setDiscardTarget(null)} onDone={() => handleSaved('Factura descartada')} />
       <FceAcceptanceDialog invoice={acceptanceTarget} onClose={() => setAcceptanceTarget(null)} onDone={() => handleSaved('Aceptación de la FCE registrada')} />
 
+      <ExchangeDifferenceDialog
+        open={!!exchangeDialog} onClose={() => setExchangeDialog(null)} original={exchangeDialog?.original || null} editing={exchangeDialog?.editing}
+        onSaved={() => { const editing = !!exchangeDialog?.editing; setExchangeDialog(null); handleSaved(editing ? 'Borrador de la nota actualizado' : 'Borrador de la nota guardado: emitilo desde el listado de facturas'); }}
+      />
       <InvoiceAdjustmentDialog
         open={!!adjustDialog} onClose={() => setAdjustDialog(null)} original={adjustDialog?.original || null} editing={adjustDialog?.editing}
         onSaved={() => { const editing = !!adjustDialog?.editing; setAdjustDialog(null); handleSaved(editing ? 'Borrador de ajuste actualizado' : 'Borrador de ajuste guardado: emitilo desde el listado de facturas'); }}

@@ -346,6 +346,8 @@ Cuando el precio de lo facturado se ajusta por un índice, el ajuste **se factur
 4. Indicá la fecha, el punto de venta, el vencimiento y, si querés, el **período** (sale en la descripción: "Ajuste IPC INDEC (Octubre 2026) s/ Factura A 0003-00000123 – OC … – PRES-…"). La descripción de cada línea se puede reemplazar por otra.
 5. Se guarda como **borrador** y se emite desde el listado, igual que cualquier factura.
 
+**Calcular con el IPC del INDEC:** el diálogo tiene una calculadora. Elegí el **mes base** (por defecto, el de la factura) y, si querés, el mes hasta el que se ajusta (vacío = el último publicado), tocá **Calcular** y después **Aplicar a las líneas**. El porcentaje es la variación acumulada del índice entre los dos meses (cociente de índices, no la suma de los meses). El INDEC publica con **un mes de demora**; si no se puede consultar, cargá el porcentaje a mano.
+
 Cosas para saber:
 - El ajuste **no cambia el saldo** del presupuesto ni de la OC. En el detalle del presupuesto aparece aparte, en "Ajustes de precio facturados", y la factura se identifica con "Ajuste s/ Factura …" (y la original, con "Ajustada: $…").
 - Cada factura admite **un solo ajuste vigente**. Si el borrador se descarta o el ajuste se anula, se puede crear otro.
@@ -353,6 +355,20 @@ Cosas para saber:
 - Para **anular** un ajuste ya emitido se hace una nota de crédito sobre él.
 - **No se puede anular del todo una factura que tiene un ajuste vigente:** primero se anula el ajuste.
 - Los ajustes solo se crean sobre facturas emitidas por ARCA.
+
+## Diferencia de cambio en facturas en dólares
+
+Si una factura está en **dólares** y se cobra con otra cotización, se emite una **nota por diferencia de cambio**: de **débito** si el dólar **subió**, de **crédito** si **bajó**. Va **en pesos** y asociada a la factura en dólares (Bunge las pide).
+
+1. En el listado, en una factura **en dólares ya emitida por ARCA**, tocá **Diferencia de cambio** (el ícono de las flechas de moneda).
+2. Indicá la **cotización nueva** (la del día de cobro; **Traer de ARCA** la completa) y, si hace falta, el **neto en dólares** sobre el que se calcula (por defecto, lo que queda de la factura después de las notas de crédito; bajalo si se cobró solo una parte).
+3. La pantalla muestra qué nota se genera: neto = dólares × (cotización nueva − cotización de la factura), más el IVA de la factura. Se guarda como **borrador** y se emite desde el listado.
+
+Cosas para saber:
+- El tipo (débito o crédito) lo decide el signo de la diferencia; si no hay diferencia, no se puede hacer.
+- **Una sola nota por diferencia de cambio vigente por factura.** Si se descarta o se anula, se puede hacer otra.
+- **No cambia el saldo** del presupuesto, y la nota de crédito en pesos no baja lo que falta cobrar de la factura en dólares (están en monedas distintas). La nota de débito emitida se cobra como cualquier otra, en pesos.
+- Bunge pide hacerlas dentro de los 15 días: es un plazo a tener en cuenta, la app no lo bloquea.
 
 ## OC del cliente, cauciones y documentos
 
@@ -364,4 +380,4 @@ Por ahora la app emite **Factura A**, **Factura de Crédito Electrónica (FCE)**
 tema **Clientes**) y los datos de quien factura en **Configuración → Datos de mi empresa** (ver el tema
 **Datos de mi empresa y conexión con ARCA**, donde también se **prueba la conexión**).
 
-<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/services/billingMath.js, api_conmomet/services/creditNoteService.js, conmomet-app/src/components/billing/InvoiceNoteDialog.tsx, conmomet-app/src/components/billing/BillingDocsSection.tsx, conmomet-app/src/components/billing/NewInvoiceStartDialog.tsx, conmomet-app/src/components/billing/InvoiceAdjustmentDialog.tsx, conmomet-app/src/components/billing/ProgressEntriesSection.tsx, api_conmomet/controllers/budgetProgressController.js, api_conmomet/services/budgetProgressService.js, api_conmomet/services/adjustmentService.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
+<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/services/billingMath.js, api_conmomet/services/creditNoteService.js, conmomet-app/src/components/billing/InvoiceNoteDialog.tsx, conmomet-app/src/components/billing/BillingDocsSection.tsx, conmomet-app/src/components/billing/NewInvoiceStartDialog.tsx, conmomet-app/src/components/billing/InvoiceAdjustmentDialog.tsx, conmomet-app/src/components/billing/ProgressEntriesSection.tsx, conmomet-app/src/components/billing/ExchangeDifferenceDialog.tsx, api_conmomet/services/ipcService.js, api_conmomet/controllers/budgetProgressController.js, api_conmomet/services/budgetProgressService.js, api_conmomet/services/adjustmentService.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
