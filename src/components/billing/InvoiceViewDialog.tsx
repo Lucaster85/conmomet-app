@@ -8,8 +8,7 @@ import AppDialog from '@/components/common/AppDialog';
 import { Invoice, InvoiceService } from '../../utils/api';
 import { FileService } from '../../utils/fileService';
 import {
-  ARCA_CONCEPT_LABELS, ARCA_STATUS_LABELS, CONCEPT_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, isNote, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS,
-} from '../../utils/billing';
+  ARCA_CONCEPT_LABELS, ARCA_STATUS_LABELS, CONCEPT_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, isNote, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS, formatRate} from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 
 // Solo lectura. La pestaña "Factura" muestra la factura con su formato final, como un PDF: el real si ya se emitió (o se cargó a mano con su PDF) y, si todavía es
@@ -115,7 +114,7 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
               {row('Fecha de emisión', formatDate(invoice.issue_date))}
               {invoice.due_date && row('Vencimiento de pago', formatDate(invoice.due_date))}
               {invoice.status === 'paid' && row('Cobrada el', formatDate(invoice.paid_at))}
-              {invoice.exchange_rate && row('Cotización', invoice.exchange_rate.toLocaleString('es-AR', { maximumFractionDigits: 6 }))}
+              {invoice.exchange_rate && row('Cotización', formatRate(invoice.exchange_rate))}
               {invoice.currency === 'USD' && invoice.total_amount_ars != null && row('Total en pesos', formatMoney(invoice.total_amount_ars, 'ARS'))}
               {invoice.source === 'arca' && invoice.arca_status && invoice.arca_status !== 'manual' && row('Estado en ARCA', (
                 <Chip size="small" color={ARCA_STATUS_LABELS[invoice.arca_status].color} label={ARCA_STATUS_LABELS[invoice.arca_status].label} />

@@ -7,8 +7,7 @@ import { UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import DateField from '../DateField';
 import { Invoice, InvoiceArcaOptions, InvoiceService } from '../../utils/api';
 import {
-  ARCA_CONCEPT_LABELS, cbteLongName, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, formatDate, formatMoney, formatVoucher, isNote, todayISO,
-} from '../../utils/billing';
+  ARCA_CONCEPT_LABELS, cbteLongName, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, formatDate, formatMoney, formatVoucher, isNote, todayISO, formatRate} from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 
 interface ActionDialogProps {
@@ -252,7 +251,7 @@ export function EmitInvoiceDialog({ invoice, onClose, onDone, onRefresh }: ArcaA
                 {row(`IVA ${invoice.iva_rate}%`, formatMoney(invoice.iva_amount, invoice.currency))}
                 {row('Total', <strong>{formatMoney(invoice.total_amount, invoice.currency)}</strong>)}
                 {invoice.currency === 'USD' && invoice.total_amount_ars != null && row(
-                  `Total en pesos (cotización ${invoice.exchange_rate})`, formatMoney(invoice.total_amount_ars, 'ARS')
+                  `Total en pesos (cotización ${formatRate(invoice.exchange_rate)})`, formatMoney(invoice.total_amount_ars, 'ARS')
                 )}
               </>
             )}

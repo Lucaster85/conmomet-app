@@ -16,8 +16,7 @@ import {
 } from '../../utils/api';
 import {
   ARCA_CONCEPT_LABELS, CBTE_OPTIONS_BY_LETTER, CONCEPT_LABELS, DEFAULT_CBTE_BY_LETTER, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatHours, formatMoney, formatPercent,
-  ivaOf, roundMoney, roundPercent, todayISO, VOUCHER_TYPE_OPTIONS,
-} from '../../utils/billing';
+  ivaOf, roundMoney, roundPercent, todayISO, VOUCHER_TYPE_OPTIONS, rateToInput, sanitizeRateInput, roundRate} from '../../utils/billing';
 import { TAX_CONDITION_LABELS, TaxCondition } from '../../utils/cuit';
 
 interface InvoiceDialogProps {
@@ -198,7 +197,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       setDueDate(invoice.due_date || '');
       setPaidAt(invoice.paid_at || '');
       setCurrency(invoice.currency);
-      setExchangeRate(invoice.exchange_rate ? String(invoice.exchange_rate) : '');
+      setExchangeRate(invoice.exchange_rate ? rateToInput(invoice.exchange_rate) : '');
       setIvaRate(invoice.iva_rate);
       setNotes(invoice.notes || '');
       setMode(invoice.source === 'arca' ? 'arca' : 'manual');
@@ -362,7 +361,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
     setError('');
     try {
       const quote = await InvoiceService.getArcaExchangeRate();
-      setExchangeRate(String(quote.rate));
+      setExchangeRate(rateToInput(quote.rate));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo traer la cotización de ARCA');
     } finally {
@@ -421,6 +420,8 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
   };
 
   const handleAmount = (line: LineState, value: number | null) => {
+    // Un "cambio" que deja el mismo monto (el eco de haberlo calculado desde el porcentaje) no se procesa: pisaría el porcentaje que se está escribiendo.
+    if ((value ?? null) === (line.amount ?? null)) return;
     const base = baseFor(line);
     updateLine(line.key, {
       amount: value,
@@ -568,7 +569,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       issue_date: issueDate,
       due_date: dueDate || null,
       currency,
-      exchange_rate: currency === 'USD' && exchangeRate ? Number(exchangeRate.replace(',', '.')) : null,
+      exchange_rate: currency === 'USD' && exchangeRate ? roundRate(Number(exchangeRate.replace(',', '.'))) : null,
       iva_rate: effectiveIvaRate,
       // La cabecera solo lleva el presupuesto cuando es uno; con varios, cada línea trae el suyo.
       budget_id: detail && !isMulti ? blocks[0]?.budget.id ?? detail.budget.id : null,
@@ -952,7 +953,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
             {currency === 'USD' && (
               <TextField
                 label={isArca ? 'Cotización *' : 'Cotización (opcional)'} value={exchangeRate} fullWidth
-                onChange={(e) => setExchangeRate(e.target.value.replace(/[^\d.,]/g, ''))}
+                onChange={(e) => setExchangeRate(sanitizeRateInput(e.target.value))}
                 inputProps={{ inputMode: 'decimal' }}
                 helperText={isArca ? 'Se precarga con la de ARCA. Si se cobra en dólares, ARCA usa la suya.' : 'Solo informativa.'}
                 InputProps={isArca ? { endAdornment: (
@@ -1125,7 +1126,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
               <Box display="flex" justifyContent="space-between">
                 <Typography variant="caption" color="text.secondary">Total en pesos (cotización {exchangeRate})</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {formatMoney(roundMoney(total * Number(exchangeRate.replace(',', '.'))), 'ARS')}
+                  {formatMoney(roundMoney(total * roundRate(Number(exchangeRate.replace(',', '.')))), 'ARS')}
                 </Typography>
               </Box>
             )}
