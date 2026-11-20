@@ -493,8 +493,8 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
     if (isArca) {
       if (!posId) return 'Elegí el punto de venta.';
       if (concept !== 1) {
-        if (!serviceFrom || !serviceTo) return 'Con servicios hay que indicar el período facturado (desde y hasta).';
-        if (serviceFrom > serviceTo) return 'El período facturado es inválido: la fecha desde es posterior a la fecha hasta.';
+        // El período es opcional: vacío, se usa la fecha de emisión. Si se cargaron los dos, tienen que ser coherentes.
+        if (serviceFrom && serviceTo && serviceFrom > serviceTo) return 'El período facturado es inválido: la fecha desde es posterior a la fecha hasta.';
         if (!dueDate) return 'Con servicios hay que indicar el vencimiento de pago.';
       }
       if (currency === 'USD' && !(Number(exchangeRate.replace(',', '.')) > 0)) return 'En dólares hace falta la cotización.';
@@ -551,8 +551,8 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       fce_transfer_option: isFce ? fceTransfer : null,
       point_of_sale_id: Number(posId),
       arca_concept: concept,
-      service_from: concept === 1 ? null : serviceFrom,
-      service_to: concept === 1 ? null : serviceTo,
+      service_from: concept === 1 ? null : serviceFrom || null,
+      service_to: concept === 1 ? null : serviceTo || null,
       recipient_vat_condition_id: recipientVatId === '' ? null : Number(recipientVatId),
       same_currency_payment: currency === 'USD' ? sameCurrency : null,
       sale_condition: saleCondition.trim() || null,
@@ -935,8 +935,8 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
 
           {isArca && concept !== 1 && (
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <DateField label="Período facturado: desde *" value={serviceFrom} onChange={setServiceFrom} fullWidth />
-              <DateField label="Período facturado: hasta *" value={serviceTo} onChange={setServiceTo} fullWidth />
+              <DateField label="Período facturado: desde (opcional)" value={serviceFrom} onChange={setServiceFrom} fullWidth helperText="Vacío, se usa la fecha de emisión." />
+              <DateField label="Período facturado: hasta (opcional)" value={serviceTo} onChange={setServiceTo} fullWidth helperText="Vacío, se usa la fecha de emisión." />
             </Stack>
           )}
 

@@ -196,8 +196,8 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
     if (original && issueDate < original.issue_date) return 'La fecha del ajuste no puede ser anterior a la de la factura.';
     if (!posId) return 'Elegí el punto de venta.';
     if (needsPeriod || original?.cbte_tipo === 201) {
-      if (needsPeriod && (!serviceFrom || !serviceTo)) return 'Con servicios hay que indicar el período facturado (desde y hasta).';
-      if (needsPeriod && serviceFrom > serviceTo) return 'El período facturado es inválido: la fecha desde es posterior a la fecha hasta.';
+      // El período es opcional: vacío, el servidor usa el de la factura original o, si no tiene, la fecha de emisión.
+      if (needsPeriod && serviceFrom && serviceTo && serviceFrom > serviceTo) return 'El período facturado es inválido: la fecha desde es posterior a la fecha hasta.';
       if (!dueDate) return 'Indicá el vencimiento de pago.';
       if (dueDate < issueDate) return 'El vencimiento de pago no puede ser anterior a la fecha de emisión.';
     }
@@ -228,8 +228,8 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
       due_date: dueDate || null,
       currency,
       point_of_sale_id: Number(posId),
-      service_from: needsPeriod ? serviceFrom : null,
-      service_to: needsPeriod ? serviceTo : null,
+      service_from: needsPeriod ? serviceFrom || null : null,
+      service_to: needsPeriod ? serviceTo || null : null,
       notes: notes.trim() || null,
       lines: inputLines,
     };
@@ -284,8 +284,8 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
             </Stack>
             {needsPeriod && (
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <DateField label="Período facturado: desde *" value={serviceFrom} onChange={setServiceFrom} fullWidth />
-                <DateField label="Período facturado: hasta *" value={serviceTo} onChange={setServiceTo} fullWidth />
+                <DateField label="Período facturado: desde (opcional)" value={serviceFrom} onChange={setServiceFrom} fullWidth />
+                <DateField label="Período facturado: hasta (opcional)" value={serviceTo} onChange={setServiceTo} fullWidth />
               </Stack>
             )}
 

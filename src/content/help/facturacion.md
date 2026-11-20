@@ -62,8 +62,10 @@ Emitir es un proceso **en dos pasos**:
    moneda, IVA) y, además:
    - **Punto de venta**: solo aparecen los de tipo web service, con su descripción de uso.
    - **Concepto**: *productos*, *servicios* o *ambos*. Se sugiere solo según lo que se factura (solo
-     materiales = productos, solo mano de obra = servicios). Con servicios, ARCA exige el **período
-     facturado** (desde y hasta) y el **vencimiento de pago**.
+     materiales = productos, solo mano de obra = servicios). Con servicios, ARCA exige el **vencimiento de
+     pago** y un **período facturado** (desde y hasta); el período es **opcional** en la app: si lo dejás vacío
+     se usa la **fecha de emisión** para los dos extremos (y si cargás solo uno, el otro es el mismo día). Si cargás
+     los dos, "desde" no puede ser posterior a "hasta".
    - **Condición frente al IVA del receptor**: ARCA la exige desde el 1/12/2026. Se toma de la ficha del
      cliente (Responsable Inscripto o Monotributo; una Factura A no se le puede hacer a un cliente exento
      o consumidor final).
