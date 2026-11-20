@@ -3406,7 +3406,10 @@ export type NotificationType =
   | 'candidate_interview_assigned'
   // Una caución del presupuesto está por vencer o venció (FLOWS.md §69). Se avisa por permiso (invoices_read).
   | 'surety_bond_expiring'
-  | 'surety_bond_expired';
+  | 'surety_bond_expired'
+  // Una FCE pasó a Aceptada o Rechazada según ARCA (FLOWS.md §78). Se avisa por permiso (invoices_read).
+  | 'fce_accepted'
+  | 'fce_rejected';
 
 export interface AppNotification {
   id: number;

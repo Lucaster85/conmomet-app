@@ -25,6 +25,7 @@ import AdditionalPendingBudgetAlert from '../../components/common/AdditionalPend
 import BudgetAwaitingResponseAlert from '../../components/common/BudgetAwaitingResponseAlert';
 import PurchaseOrderMissingAlert from '../../components/common/PurchaseOrderMissingAlert';
 import SuretyBondAlert from '../../components/common/SuretyBondAlert';
+import { FceAdcPendingAlert, FceRejectedAlert } from '../../components/common/FceAlerts';
 import QuoteRequestAlert from '../../components/common/QuoteRequestAlert';
 import ContactInquiryAlert from '../../components/common/ContactInquiryAlert';
 import PostulacionesNuevasAlert from '../../components/common/PostulacionesNuevasAlert';
@@ -128,6 +129,8 @@ export default function DashboardPage() {
         <BudgetAwaitingResponseAlert />
         <PurchaseOrderMissingAlert />
         <SuretyBondAlert />
+        <FceRejectedAlert />
+        <FceAdcPendingAlert />
         <EppExpiringAlert />
         <RepairToolsAlert />
         <SalaryAdvanceDeletionAlert />

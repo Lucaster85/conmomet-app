@@ -208,6 +208,8 @@ por aceptada tácitamente, y eso se ve recién al sincronizar.
 dice cuántas se revisaron y cuántas cambiaron. Con el ícono **"Actualizar desde ARCA"** de una fila se actualiza solo esa factura y sus notas. Hace falta el permiso de
 **registrar facturas**. Dos sincronizaciones seguidas no se pisan: si alguien acaba de sincronizar, hay que esperar un minuto.
 
+**Sincronización automática y avisos.** Además del botón, la app **sincroniza sola**: cuando alguien entra, si pasaron más de **6 horas** desde la última sincronización, revisa las FCE en ARCA (si el servicio está disponible; si ARCA falla, no pasa nada y se reintenta pasadas otras 6 horas). Cuando una FCE pasa a **aceptada** o **rechazada**, les llega una **notificación en la campanita** a quienes tienen acceso a Facturación (una sola vez por factura), y en el **inicio** aparecen dos avisos: **FCE rechazadas por el cliente** (sin nota de anulación emitida) y **FCE para informar al ADC** (aceptadas con opción ADC; es un recordatorio, porque la app no informa al ADC). No hay aviso de "vence la aceptación": si el cliente no responde, ARCA la da por aceptada.
+
 **Historial.** El ícono **"Historial de estados"** abre la línea de tiempo del comprobante y de su cuenta corriente, que se pide a ARCA en ese momento.
 
 **Si una FCE queda rechazada.** La app **no hace nada sola**: una nota de crédito es un trámite fiscal que no se puede deshacer, y la decide una persona. En la fila aparece el botón
