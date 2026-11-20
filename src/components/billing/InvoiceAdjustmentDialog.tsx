@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert, Box, Button, Checkbox, DialogActions, DialogContent, DialogTitle, FormControlLabel, InputAdornment, MenuItem, Stack, TextField, Typography,
   useMediaQuery, useTheme,
@@ -37,7 +37,17 @@ interface AdjustLine {
   amount: number | null;
   source: 'percent' | 'amount';
   description: string;
+  // true si la persona escribió la descripción; si no, es el texto estándar y se actualiza sola al cambiar el índice o el período.
+  descriptionTouched: boolean;
+  // Para armar el texto estándar: la OC y el presupuesto de la línea.
+  orderNumber: string | null;
+  budgetNumber: string | null;
 }
+
+// Mismo criterio que el servidor (services/adjustmentService.js): "Ajuste IPC INDEC (período) s/ Factura A 0003-00000001 – OC N – PRES-…".
+const TYPE_TEXT: Record<AdjustmentType, string> = { ipc_indec: 'IPC INDEC', uocra: 'UOCRA', other: 'índice' };
+const standardDescription = (line: Pick<AdjustLine, 'type' | 'orderNumber' | 'budgetNumber'>, period: string, originalLabel: string) =>
+  [`Ajuste ${TYPE_TEXT[line.type]}${period.trim() ? ` (${period.trim()})` : ''} s/ ${originalLabel}`, line.orderNumber ? `OC ${line.orderNumber}` : null, line.budgetNumber].filter(Boolean).join(' – ');
 
 const parsePercent = (text: string): number => {
   const n = Number(text.replace(',', '.'));
@@ -101,6 +111,10 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
         amount: own ? Number(own.net_amount) : null,
         source: 'amount' as const,
         description: own?.description || '',
+        // Lo guardado cuenta como escrito a mano salvo que coincida con el texto estándar (se verifica abajo).
+        descriptionTouched: !!own?.description,
+        orderNumber: line.purchaseOrder?.number || null,
+        budgetNumber: line.budget?.number || null,
       };
     }));
     // Solo al abrir: no pisar lo que la persona esté escribiendo.
@@ -111,6 +125,36 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
     if (!open) return;
     InvoiceService.getArcaOptions().then(setOptions).catch(() => setOptions(null));
   }, [open]);
+
+  // El texto estándar de las líneas que la persona no tocó sigue al índice y al período; lo que se ve en el campo es lo que se guarda.
+  const originalLabel = original ? formatVoucher(original) : '';
+  const descriptionsKey = lines.map((l) => `${l.lineId}|${l.type}|${l.descriptionTouched ? 1 : 0}`).join(';');
+  useEffect(() => {
+    if (!original) return;
+    setLines((prev) => {
+      let changed = false;
+      const next = prev.map((l) => {
+        if (l.descriptionTouched) return l;
+        const standard = standardDescription(l, period, originalLabel);
+        if (standard === l.description) return l;
+        changed = true;
+        return { ...l, description: standard };
+      });
+      return changed ? next : prev;
+    });
+    // original/originalLabel cambian solo al abrir otra factura
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [descriptionsKey, period, originalLabel]);
+
+  // Al editar un borrador: lo guardado que coincide con el texto estándar (sin período) vuelve a ser automático.
+  const descriptionsChecked = useRef(false);
+  useEffect(() => {
+    if (!open) { descriptionsChecked.current = false; return; }
+    if (!editing || descriptionsChecked.current || lines.length === 0) return;
+    descriptionsChecked.current = true;
+    setLines((prev) => prev.map((l) => (l.description && l.description === standardDescription(l, '', originalLabel) ? { ...l, descriptionTouched: false } : l)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editing, lines.length]);
 
   const update = (lineId: number, patch: Partial<AdjustLine>) => setLines((prev) => prev.map((l) => (l.lineId === lineId ? { ...l, ...patch } : l)));
   const handlePercent = (line: AdjustLine, text: string) => {
@@ -294,10 +338,15 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
                       <CurrencyInput label="Monto del ajuste (neto)" currency={currency} fullWidth value={line.amount} onChange={(v) => handleAmount(line, v)} />
                     </Stack>
                     <TextField
-                      size="small" fullWidth label="Descripción en la factura (opcional)" value={line.description} inputProps={{ maxLength: 255 }}
-                      onChange={(e) => update(line.lineId, { description: e.target.value })}
-                      helperText="Vacía, sale el texto estándar con el índice, el período, la factura original, la OC y el presupuesto."
+                      size="small" fullWidth label="Descripción en la factura" value={line.description} inputProps={{ maxLength: 255 }}
+                      onChange={(e) => update(line.lineId, { description: e.target.value, descriptionTouched: true })}
+                      helperText={line.descriptionTouched
+                        ? 'Texto escrito por vos. Si querés volver al estándar, usá «Restaurar texto estándar».'
+                        : 'Texto estándar: podés dejarlo así o editarlo. Si cambiás el índice o el período, se actualiza solo.'}
                     />
+                    {line.descriptionTouched && (
+                      <Box><Button size="small" onClick={() => update(line.lineId, { description: standardDescription(line, period, originalLabel), descriptionTouched: false })}>Restaurar texto estándar</Button></Box>
+                    )}
                   </Stack>
                 )}
               </Box>

@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Autocomplete, Box, Button, DialogActions, DialogContent, DialogTitle, Divider, FormControlLabel, IconButton,
   InputAdornment, MenuItem, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme,
@@ -53,6 +53,8 @@ interface LineState {
   amount: number | null;
   description: string;
   source: 'percent' | 'amount';
+  // true si la persona escribió la descripción: mientras sea false, la descripción es el texto estándar y se actualiza sola al cambiar el porcentaje, la OC o el presupuesto.
+  descriptionTouched?: boolean;
 }
 
 const CURRENCIES: BudgetCurrency[] = ['ARS', 'USD'];
@@ -66,6 +68,8 @@ const parsePercent = (text: string): number => {
 };
 
 // Una OCA incluida en la factura: se cobra entera, con el importe que salió de sus horas (no se edita); la descripción sí.
+const ocaDefaultDescription = (type: 'man_hours' | 'crane_hours', number: string) => `${type === 'man_hours' ? 'Hora hombre' : 'Servicio de grúa'} OCA ${number}`;
+
 interface OcaItem { id: number; number: string; type: 'man_hours' | 'crane_hours'; netAmount: number; description: string }
 
 export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDetails, ocas, ocaClient, invoice, ivaInfo, canUnofficial }: InvoiceDialogProps) {
@@ -214,7 +218,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       setCommercialRef(invoice.commercial_reference || '');
       setCommercialTouched(true);
       setOcaItems(invoice.lines.filter((l) => l.concept === 'oca' && l.oca_id).map((l) => ({
-        id: l.oca_id as number, number: l.oca?.number || String(l.oca_id), type: l.oca?.type || 'man_hours', netAmount: l.net_amount, description: l.description || '',
+        id: l.oca_id as number, number: l.oca?.number || String(l.oca_id), type: l.oca?.type || 'man_hours', netAmount: l.net_amount, description: l.description || ocaDefaultDescription(l.oca?.type || 'man_hours', l.oca?.number || String(l.oca_id)),
       })));
       setLines(invoice.lines.filter((l) => l.concept !== 'oca').map((l) => ({
         key: newKey(),
@@ -225,6 +229,8 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
         percentText: l.percent != null ? String(l.percent) : '',
         amount: l.net_amount,
         description: l.description || '',
+        // Lo guardado cuenta como escrito a mano; si coincide con el texto estándar, se vuelve automático (ver el chequeo de abajo).
+        descriptionTouched: !!l.description,
         source: 'amount',
       })));
     } else {
@@ -253,7 +259,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       setRemito('');
       setCommercialRef('');
       setCommercialTouched(false);
-      setOcaItems((ocas || []).map((o) => ({ id: o.id, number: o.number, type: o.type, netAmount: o.net_amount, description: '' })));
+      setOcaItems((ocas || []).map((o) => ({ id: o.id, number: o.number, type: o.type, netAmount: o.net_amount, description: ocaDefaultDescription(o.type, o.number) })));
       setLines(detail || (ocas || []).length > 0 ? [] : [{ key: newKey(), budgetId: null, orderId: null, concept: 'other', percentText: '', amount: null, description: '', source: 'amount' }]);
       if ((ocas || []).length > 0) setCurrency('ARS');
     }
@@ -667,11 +673,16 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
           />
         </Stack>
         <TextField
-          size="small" fullWidth label="Descripción en la factura (opcional)" value={line.description} sx={{ mt: 1.5 }}
-          onChange={(e) => updateLine(line.key, { description: e.target.value })}
-          placeholder={defaultDescription(line)} inputProps={{ maxLength: 255 }}
-          helperText="Si la dejás vacía sale el texto de ejemplo. Podés escribir el tuyo (por ejemplo, la posición de la OC)."
+          size="small" fullWidth label="Descripción en la factura" value={line.description} sx={{ mt: 1.5 }}
+          onChange={(e) => updateLine(line.key, { description: e.target.value, descriptionTouched: true })}
+          inputProps={{ maxLength: 255 }}
+          helperText={line.descriptionTouched
+            ? 'Texto escrito por vos. Si querés volver al estándar, usá «Restaurar texto estándar».'
+            : 'Texto estándar: podés dejarlo así o editarlo (por ejemplo, con la posición de la OC). Si cambiás el porcentaje o la OC, se actualiza solo.'}
         />
+        {line.descriptionTouched && (
+          <Button size="small" sx={{ mt: 0.5 }} onClick={() => updateLine(line.key, { description: defaultDescription(line), descriptionTouched: false })}>Restaurar texto estándar</Button>
+        )}
         {concept === 'labor' && (
           <Typography variant="caption" color={progress ? 'text.secondary' : 'warning.main'} display="block" sx={{ mt: 1 }}>
             {progress
@@ -682,6 +693,35 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       </Box>
     );
   };
+
+  // El texto estándar de cada línea que la persona no tocó se mantiene al día (porcentaje, OC, presupuesto, moneda). Es lo que se ve en el campo y lo que se guarda.
+  const descriptionsKey = lines.map((l) => `${l.key}|${l.percentText}|${l.orderId}|${l.budgetId}|${l.concept}|${l.descriptionTouched ? 1 : 0}`).join(';');
+  useEffect(() => {
+    setLines((prev) => {
+      let changed = false;
+      const next = prev.map((l) => {
+        if (l.concept === 'other' || l.descriptionTouched || l.budgetId === null || !detailOf(l.budgetId)) return l;
+        const standard = defaultDescription(l);
+        if (standard === l.description) return l;
+        changed = true;
+        return { ...l, description: standard };
+      });
+      return changed ? next : prev;
+    });
+    // defaultDescription / detailOf dependen de blocks y la moneda
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [descriptionsKey, blocks, currency]);
+
+  // Al corregir una factura, lo guardado que coincide con el texto estándar vuelve a ser automático; lo distinto se respeta como escrito a mano. Una sola vez, con los presupuestos ya cargados.
+  const descriptionsChecked = useRef(false);
+  useEffect(() => {
+    if (!open) { descriptionsChecked.current = false; return; }
+    if (!invoice || descriptionsChecked.current || lines.length === 0) return;
+    if (lines.some((l) => l.budgetId !== null && !detailOf(l.budgetId))) return;
+    descriptionsChecked.current = true;
+    setLines((prev) => prev.map((l) => (l.concept !== 'other' && l.budgetId !== null && l.description && l.description === defaultDescription(l) ? { ...l, descriptionTouched: false } : l)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, invoice, blocks, lines.length]);
 
   // Un bloque por presupuesto: sus líneas, "Facturar todo el saldo" y los conceptos que todavía se pueden agregar.
   const renderBudgetBlock = (block: BudgetBillingDetail) => {
@@ -976,10 +1016,9 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
                     <IconButton size="small" aria-label={`Quitar la OCA ${item.number}`} onClick={() => setOcaItems((prev) => prev.filter((o) => o.id !== item.id))}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
                   <TextField
-                    size="small" fullWidth label="Descripción en la factura (opcional)" value={item.description} sx={{ mt: 1.5 }} inputProps={{ maxLength: 255 }}
+                    size="small" fullWidth label="Descripción en la factura" value={item.description} sx={{ mt: 1.5 }} inputProps={{ maxLength: 255 }}
                     onChange={(e) => setOcaItems((prev) => prev.map((o) => (o.id === item.id ? { ...o, description: e.target.value } : o)))}
-                    placeholder={`${item.type === 'man_hours' ? 'Hora hombre' : 'Servicio de grúa'} OCA ${item.number}`}
-                    helperText="Por ejemplo: Hora hombre, construcción 4773 OC 117242-104."
+                    helperText="Podés dejarla así o cambiarla, por ejemplo: Hora hombre, construcción 4773 OC 117242-104."
                   />
                 </Box>
               ))}
@@ -990,7 +1029,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
                 noOptionsText="El cliente no tiene OCA aprobadas para facturar"
                 onChange={(_, o) => {
                   if (!o) return;
-                  setOcaItems((prev) => [...prev, { id: o.id, number: o.number, type: o.type, netAmount: o.net_amount, description: '' }]);
+                  setOcaItems((prev) => [...prev, { id: o.id, number: o.number, type: o.type, netAmount: o.net_amount, description: ocaDefaultDescription(o.type, o.number) }]);
                   setCurrency('ARS');
                   // Los saldos y la moneda cambian: las líneas de presupuesto cargadas en otra moneda dejan de servir.
                   if (currency !== 'ARS') setLines([]);

@@ -327,7 +327,7 @@ Una factura puede cobrar **más de un presupuesto del mismo cliente**, y cada l�
 - Una línea puede repetir el concepto si va contra OC distintas; la misma OC y concepto no se repiten.
 - **Todos los presupuestos tienen que ser del mismo cliente** y estar aprobados, y la factura es de una sola moneda.
 - La **referencia comercial** se completa sola con los números de las OC de las líneas (se puede cambiar). En la FCE admite hasta 50 caracteres.
-- La **descripción** de cada línea es opcional: si la dejás vacía sale "Se factura el X% de … — OC … · PRES-… título"; podés escribir la tuya (por ejemplo, con la posición de la OC).
+- La **descripción** de cada línea **viene precargada** con el texto estándar ("Se factura el X% de … — OC … · PRES-… título") y es **editable**: podés dejarla así o escribir la tuya (por ejemplo, con la posición de la OC). Mientras no la toques, se actualiza sola si cambiás el porcentaje o la OC; si la escribís vos, se respeta, y **Restaurar texto estándar** vuelve al original.
 
 La factura aparece en el detalle de **cada** presupuesto, con la parte que le toca a ese presupuesto, y descuenta de cada saldo. En el listado figuran todos sus presupuestos. Si se anula o se acredita con una nota de crédito, el saldo vuelve a cada presupuesto y a cada OC.
 
@@ -350,7 +350,7 @@ Cuando el precio de lo facturado se ajusta por un índice, el ajuste **se factur
 1. En el listado, en una factura **ya emitida por ARCA**, tocá **Crear ajuste** (el ícono de la flecha hacia arriba).
 2. Tildá las **líneas que se ajustan**. Solo se ajustan materiales y mano de obra; si la línea es de una OC, la OC tiene que **admitir ajuste de precios** (se marca al cargar la OC). Sin OC, se puede.
 3. Para cada línea elegí el **índice** (IPC INDEC, UOCRA u otro) y cargá el **porcentaje** o el **monto**. La base es lo que queda de la línea después de las notas de crédito. Por ejemplo, 20% de $1.000.000 es una factura de $200.000.
-4. Indicá la fecha, el punto de venta, el vencimiento y, si querés, el **período** (sale en la descripción: "Ajuste IPC INDEC (Octubre 2026) s/ Factura A 0003-00000123 – OC … – PRES-…"). La descripción de cada línea se puede reemplazar por otra.
+4. Indicá la fecha, el punto de venta, el vencimiento y, si querés, el **período** (sale en la descripción: "Ajuste IPC INDEC (Octubre 2026) s/ Factura A 0003-00000123 – OC … – PRES-…"). La **descripción de cada línea viene precargada** con ese texto y es editable (se actualiza sola si cambiás el índice o el período y no la tocaste; **Restaurar texto estándar** vuelve al original).
 5. Se guarda como **borrador** y se emite desde el listado, igual que cualquier factura.
 
 **Calcular con el IPC del INDEC:** el diálogo tiene una calculadora. Elegí el **mes base** (por defecto, el de la factura) y, si querés, el mes hasta el que se ajusta (vacío = el último publicado), tocá **Calcular** y después **Aplicar a las líneas**. El porcentaje es la variación acumulada del índice entre los dos meses (cociente de índices, no la suma de los meses). El INDEC publica con **un mes de demora**; si no se puede consultar, cargá el porcentaje a mano.
@@ -370,7 +370,7 @@ Una **OCA aprobada** (horas hombre o de grúa) se puede facturar sin pasar por u
 - **Se factura entera:** una línea por OCA, sin porcentajes. El **importe sale de las horas y del valor hora de la OCA** con la misma cuenta del presupuesto de la pantalla de OCAs: horas hombre = (simples + 1,5 × al 50% + 2 × al 100%) × valor hora; grúa = horas de cada vehículo × su valor hora. No se escribe a mano.
 - **Cuándo se puede:** la OCA tiene que estar **aprobada**; si necesita presupuesto, el **presupuesto aprobado** también; y con el **valor hora cargado**. Si falta algo, el listado lo dice.
 - **En pesos:** las OCA se facturan en pesos.
-- **Descripción:** por defecto "Hora hombre OCA 0001" o "Servicio de grúa OCA 0001". Se puede reemplazar por la que pida el cliente (por ejemplo, "Hora hombre, construcción 4773 OC 117242-104").
+- **Descripción:** viene precargada como "Hora hombre OCA 0001" o "Servicio de grúa OCA 0001" y es editable: podés dejarla o reemplazarla por la que pida el cliente (por ejemplo, "Hora hombre, construcción 4773 OC 117242-104").
 - **Se factura una sola vez:** mientras la factura esté vigente, la OCA queda marcada **Facturada** (en Facturación y en el listado de OCAs) y no se puede volver a facturar. **Anular la factura libera la OCA.** Si se acredita con una nota de crédito, al quedar la factura anulada la OCA vuelve a estar disponible.
 - **Una OCA facturada no se modifica:** no se pueden anular, rechazar, cambiar sus horas ni su valor hora. Si hay que tocarla, primero se anula la factura.
 - Una factura de OCA **no toca ningún saldo de presupuesto**. Todas las OCA y presupuestos de una factura tienen que ser del mismo cliente.
