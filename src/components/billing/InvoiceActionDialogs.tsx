@@ -2,12 +2,12 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Box, Button, Chip, CircularProgress, DialogActions, DialogContent, DialogTitle, FormControlLabel, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import FeedbackModal from '../FeedbackModal';
 import { UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import DateField from '../DateField';
 import { Invoice, InvoiceArcaOptions, InvoiceService } from '../../utils/api';
 import {
-  ARCA_CONCEPT_LABELS, cbteLongName, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, formatDate, formatMoney, formatVoucher, isNote, todayISO,
-} from '../../utils/billing';
+  ARCA_CONCEPT_LABELS, cbteLongName, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, formatDate, formatMoney, formatVoucher, isNote, todayISO, formatRate} from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 
 interface ActionDialogProps {
@@ -50,7 +50,7 @@ export function PayInvoiceDialog({ invoice, onClose, onDone }: ActionDialogProps
             {formatVoucher(invoice)} · {formatMoney(invoice.total_amount, invoice.currency)}
           </Typography>
         )}
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
         <DateField label="Fecha de cobro *" value={paidAt} onChange={setPaidAt} fullWidth />
         <Box sx={{ mt: 2 }}>
           <Typography variant="body2" color="text.secondary">
@@ -109,7 +109,7 @@ export function CancelInvoiceDialog({ invoice, onClose, onDone }: ActionDialogPr
           real se anuló; si solo cargaste mal un dato (por ejemplo el número), corregila con
           “Editar” en vez de anularla.
         </Alert>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
         <TextField
           label="Motivo de la anulación *" fullWidth multiline minRows={2}
           value={reason} onChange={(e) => setReason(e.target.value)}
@@ -195,7 +195,7 @@ export function EmitInvoiceDialog({ invoice, onClose, onDone, onRefresh }: ArcaA
     <AppDialog open={!!invoice} onClose={sending ? undefined : onClose} fullWidth maxWidth="md">
       <DialogTitle>Vista previa de la factura</DialogTitle>
       <DialogContent>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
         {options && !options.enabled && (
           <Alert severity="warning" sx={{ mb: 2 }}>{options.config_error || 'La integración con ARCA está apagada en este servidor.'}</Alert>
         )}
@@ -208,7 +208,7 @@ export function EmitInvoiceDialog({ invoice, onClose, onDone, onRefresh }: ArcaA
                   label={isProduction ? 'PRODUCCIÓN' : 'HOMOLOGACIÓN (pruebas)'} />
               ) : <Typography variant="body2">…</Typography>}
               <Typography variant="caption" color="text.secondary">
-                Así se verá la factura. El número, el CAE y el QR (con asteriscos) los asigna ARCA al emitir.
+                BORRADOR de Factura
               </Typography>
             </Box>
 
@@ -251,7 +251,7 @@ export function EmitInvoiceDialog({ invoice, onClose, onDone, onRefresh }: ArcaA
                 {row(`IVA ${invoice.iva_rate}%`, formatMoney(invoice.iva_amount, invoice.currency))}
                 {row('Total', <strong>{formatMoney(invoice.total_amount, invoice.currency)}</strong>)}
                 {invoice.currency === 'USD' && invoice.total_amount_ars != null && row(
-                  `Total en pesos (cotización ${invoice.exchange_rate})`, formatMoney(invoice.total_amount_ars, 'ARS')
+                  `Total en pesos (cotización ${formatRate(invoice.exchange_rate)})`, formatMoney(invoice.total_amount_ars, 'ARS')
                 )}
               </>
             )}
@@ -320,7 +320,7 @@ export function VerifyInvoiceDialog({ invoice, onClose, onDone, onRefresh }: Arc
         {result === 'back_to_draft' && (
           <Alert severity="success" sx={{ mb: 2 }}>ARCA no tiene ese comprobante: la factura volvió a borrador. Ya podés emitirla de nuevo.</Alert>
         )}
-        {error && <Alert severity="error">{error}</Alert>}
+        <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={checking}>{result ? 'Cerrar' : 'Cancelar'}</Button>
@@ -365,7 +365,7 @@ export function DiscardInvoiceDialog({ invoice, onClose, onDone }: ActionDialogP
           Esta factura nunca se emitió en ARCA, así que se descarta sin nota de crédito y <strong>libera el saldo</strong> del presupuesto
           para volver a facturarlo.
         </Alert>
-        {error && <Alert severity="error">{error}</Alert>}
+        <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={saving}>Volver</Button>
@@ -412,7 +412,7 @@ export function FceAcceptanceDialog({ invoice, onClose, onDone }: ActionDialogPr
           El cliente acepta o rechaza la FCE en ARCA (si no responde en 21 días corridos se considera aceptada). Acá se deja registrado
           lo que pasó, a mano.
         </Alert>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
         <RadioGroup value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
           {(Object.keys(FCE_ACCEPTANCE_LABELS) as Array<keyof typeof FCE_ACCEPTANCE_LABELS>).map((key) => (
             <FormControlLabel key={key} value={key} control={<Radio />} label={FCE_ACCEPTANCE_LABELS[key].label} />

@@ -4,6 +4,7 @@ import {
   Alert, Autocomplete, Box, Button, Checkbox, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, TextField, Typography,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import FeedbackModal from '../FeedbackModal';
 import { BillableBudget, BillableOca, BudgetBillingDetail, InvoiceClientOption, InvoiceService } from '../../utils/api';
 import { BILLING_STATUS_LABELS, formatMoney } from '../../utils/billing';
 
@@ -67,7 +68,7 @@ export default function NewInvoiceStartDialog({ open, onClose, clients, onStart 
       <DialogTitle>Nueva factura</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
+          <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
           <Typography variant="body2" color="text.secondary">
             Elegí el cliente y lo que cobra la factura: presupuestos y/o OCA aprobadas. Una misma factura puede cobrar varios presupuestos del mismo cliente (y varias OC).
           </Typography>

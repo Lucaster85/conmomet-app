@@ -62,8 +62,10 @@ Emitir es un proceso **en dos pasos**:
    moneda, IVA) y, además:
    - **Punto de venta**: solo aparecen los de tipo web service, con su descripción de uso.
    - **Concepto**: *productos*, *servicios* o *ambos*. Se sugiere solo según lo que se factura (solo
-     materiales = productos, solo mano de obra = servicios). Con servicios, ARCA exige el **período
-     facturado** (desde y hasta) y el **vencimiento de pago**.
+     materiales = productos, solo mano de obra = servicios). Con servicios, ARCA exige el **vencimiento de
+     pago** y un **período facturado** (desde y hasta); el período es **opcional** en la app: si lo dejás vacío
+     se usa la **fecha de emisión** para los dos extremos (y si cargás solo uno, el otro es el mismo día). Si cargás
+     los dos, "desde" no puede ser posterior a "hasta".
    - **Condición frente al IVA del receptor**: ARCA la exige desde el 1/12/2026. Se toma de la ficha del
      cliente (Responsable Inscripto o Monotributo; una Factura A no se le puede hacer a un cliente exento
      o consumidor final).
@@ -76,6 +78,11 @@ Emitir es un proceso **en dos pasos**:
    asteriscos en lo que todavía no existe: el **número**, el **CAE**, su vencimiento y el **QR** los asigna ARCA al
    emitir. Arriba se indica el **ambiente** (pruebas o producción). Si todo está bien, **"Emitir en ARCA"**; si no,
    **Cancelar** y se corrige el borrador. Al emitir, la factura queda **"Emitida en ARCA"**.
+
+   **El ícono del ojito ("Ver")** muestra lo mismo sin tener que emitir: la pestaña **Vista previa** (o **Factura**, si ya está
+   emitida) muestra la factura en su formato final, como un PDF; en un borrador, con asteriscos en el número, el CAE y el QR. En una
+   factura emitida es el **PDF real**, con **Abrir en una pestaña** y **Descargar**. La pestaña **Datos** tiene el resumen de siempre
+   (cliente, presupuestos, líneas, totales y estado).
 
 **Una factura emitida ya no se edita ni se anula** desde la app: ARCA ya la conoce. Si hay un error, o si hay
 que devolver parte de lo facturado, se corrige con una **nota de crédito** (ver "Anular una factura de
@@ -291,6 +298,23 @@ la pestaña **Facturas** está el botón **"Factura libre"**. Se elige el **clie
 si se quiere, el **proyecto**, y se cargan líneas con una **descripción** y un **monto** libres, sin
 porcentaje de avance. Aparece en el registro de facturas como cualquier otra.
 
+### Factura libre por ARCA (cliente ocasional)
+
+La factura libre también se **emite por ARCA**, con el mismo circuito de siempre (borrador → vista previa → emitir, con su PDF y QR). Sirve, por ejemplo, para
+**vender un vehículo de la empresa** a alguien que no es cliente.
+
+1. **Nueva factura libre** (pestaña **Facturas**) y dejá **Emitir por ARCA**.
+2. Elegí **Cliente ocasional (cargar los datos)**: escribí el **CUIT** del comprador, su **razón social o nombre**, su **condición frente al IVA** (Responsable Inscripto o
+   Monotributo) y, si querés, el **domicilio**. Con **Buscar en ARCA** (con el CUIT) se completan el nombre, el domicilio y la condición desde el padrón de ARCA: revisalos antes de
+   guardar. Si el comprador ya está en Clientes, elegí **Cliente existente**.
+3. Cargá las **líneas** (descripción y monto neto, por ejemplo "Venta de camioneta Toyota Hilux, dominio AB123CD"), el **concepto** (arranca en *productos*), el **IVA**, el
+   punto de venta y la fecha. Se guarda como borrador y se emite desde el listado.
+
+- Los datos del comprador ocasional quedan **solo en esa factura**: **no se da de alta un cliente** (si más adelante querés tenerlo en Clientes, se carga aparte).
+- Es una **Factura A** (o FCE): el comprador necesita **CUIT y ser Responsable Inscripto o Monotributo**. A un consumidor final no se le puede emitir desde la app.
+- Las **notas de crédito, de débito, el ajuste y la diferencia de cambio** de esa factura funcionan igual y heredan al comprador.
+- Una factura libre con comprador ocasional no tiene presupuesto, proyecto ni OCA, y no toca ningún saldo.
+
 ## El registro de facturas
 
 La pestaña **Facturas** lista todos los comprobantes cargados, con tipo y número, fecha, cliente,
@@ -322,7 +346,7 @@ Una factura puede cobrar **más de un presupuesto del mismo cliente**, y cada l�
 - Una línea puede repetir el concepto si va contra OC distintas; la misma OC y concepto no se repiten.
 - **Todos los presupuestos tienen que ser del mismo cliente** y estar aprobados, y la factura es de una sola moneda.
 - La **referencia comercial** se completa sola con los números de las OC de las líneas (se puede cambiar). En la FCE admite hasta 50 caracteres.
-- La **descripción** de cada línea es opcional: si la dejás vacía sale "Se factura el X% de … — OC … · PRES-… título"; podés escribir la tuya (por ejemplo, con la posición de la OC).
+- La **descripción** de cada línea **viene precargada** con el texto estándar ("Se factura el X% de … — OC … · PRES-… título") y es **editable**: podés dejarla así o escribir la tuya (por ejemplo, con la posición de la OC). Mientras no la toques, se actualiza sola si cambiás el porcentaje o la OC; si la escribís vos, se respeta, y **Restaurar texto estándar** vuelve al original.
 
 La factura aparece en el detalle de **cada** presupuesto, con la parte que le toca a ese presupuesto, y descuenta de cada saldo. En el listado figuran todos sus presupuestos. Si se anula o se acredita con una nota de crédito, el saldo vuelve a cada presupuesto y a cada OC.
 
@@ -345,7 +369,7 @@ Cuando el precio de lo facturado se ajusta por un índice, el ajuste **se factur
 1. En el listado, en una factura **ya emitida por ARCA**, tocá **Crear ajuste** (el ícono de la flecha hacia arriba).
 2. Tildá las **líneas que se ajustan**. Solo se ajustan materiales y mano de obra; si la línea es de una OC, la OC tiene que **admitir ajuste de precios** (se marca al cargar la OC). Sin OC, se puede.
 3. Para cada línea elegí el **índice** (IPC INDEC, UOCRA u otro) y cargá el **porcentaje** o el **monto**. La base es lo que queda de la línea después de las notas de crédito. Por ejemplo, 20% de $1.000.000 es una factura de $200.000.
-4. Indicá la fecha, el punto de venta, el vencimiento y, si querés, el **período** (sale en la descripción: "Ajuste IPC INDEC (Octubre 2026) s/ Factura A 0003-00000123 – OC … – PRES-…"). La descripción de cada línea se puede reemplazar por otra.
+4. Indicá la fecha, el punto de venta, el vencimiento y, si querés, el **período** (sale en la descripción: "Ajuste IPC INDEC (Octubre 2026) s/ Factura A 0003-00000123 – OC … – PRES-…"). La **descripción de cada línea viene precargada** con ese texto y es editable (se actualiza sola si cambiás el índice o el período y no la tocaste; **Restaurar texto estándar** vuelve al original).
 5. Se guarda como **borrador** y se emite desde el listado, igual que cualquier factura.
 
 **Calcular con el IPC del INDEC:** el diálogo tiene una calculadora. Elegí el **mes base** (por defecto, el de la factura) y, si querés, el mes hasta el que se ajusta (vacío = el último publicado), tocá **Calcular** y después **Aplicar a las líneas**. El porcentaje es la variación acumulada del índice entre los dos meses (cociente de índices, no la suma de los meses). El INDEC publica con **un mes de demora**; si no se puede consultar, cargá el porcentaje a mano.
@@ -365,7 +389,7 @@ Una **OCA aprobada** (horas hombre o de grúa) se puede facturar sin pasar por u
 - **Se factura entera:** una línea por OCA, sin porcentajes. El **importe sale de las horas y del valor hora de la OCA** con la misma cuenta del presupuesto de la pantalla de OCAs: horas hombre = (simples + 1,5 × al 50% + 2 × al 100%) × valor hora; grúa = horas de cada vehículo × su valor hora. No se escribe a mano.
 - **Cuándo se puede:** la OCA tiene que estar **aprobada**; si necesita presupuesto, el **presupuesto aprobado** también; y con el **valor hora cargado**. Si falta algo, el listado lo dice.
 - **En pesos:** las OCA se facturan en pesos.
-- **Descripción:** por defecto "Hora hombre OCA 0001" o "Servicio de grúa OCA 0001". Se puede reemplazar por la que pida el cliente (por ejemplo, "Hora hombre, construcción 4773 OC 117242-104").
+- **Descripción:** viene precargada como "Hora hombre OCA 0001" o "Servicio de grúa OCA 0001" y es editable: podés dejarla o reemplazarla por la que pida el cliente (por ejemplo, "Hora hombre, construcción 4773 OC 117242-104").
 - **Se factura una sola vez:** mientras la factura esté vigente, la OCA queda marcada **Facturada** (en Facturación y en el listado de OCAs) y no se puede volver a facturar. **Anular la factura libera la OCA.** Si se acredita con una nota de crédito, al quedar la factura anulada la OCA vuelve a estar disponible.
 - **Una OCA facturada no se modifica:** no se pueden anular, rechazar, cambiar sus horas ni su valor hora. Si hay que tocarla, primero se anula la factura.
 - Una factura de OCA **no toca ningún saldo de presupuesto**. Todas las OCA y presupuestos de una factura tienen que ser del mismo cliente.
@@ -394,4 +418,4 @@ Por ahora la app emite **Factura A**, **Factura de Crédito Electrónica (FCE)**
 tema **Clientes**) y los datos de quien factura en **Configuración → Datos de mi empresa** (ver el tema
 **Datos de mi empresa y conexión con ARCA**, donde también se **prueba la conexión**).
 
-<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/services/billingMath.js, api_conmomet/services/creditNoteService.js, conmomet-app/src/components/billing/InvoiceNoteDialog.tsx, conmomet-app/src/components/billing/BillingDocsSection.tsx, conmomet-app/src/components/billing/NewInvoiceStartDialog.tsx, conmomet-app/src/components/billing/InvoiceAdjustmentDialog.tsx, conmomet-app/src/components/billing/ProgressEntriesSection.tsx, api_conmomet/services/ocaBillingService.js, api_conmomet/middlewares/ocaBilled.js, conmomet-app/src/components/billing/ExchangeDifferenceDialog.tsx, api_conmomet/services/ipcService.js, api_conmomet/controllers/budgetProgressController.js, api_conmomet/services/budgetProgressService.js, api_conmomet/services/adjustmentService.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
+<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/services/billingMath.js, api_conmomet/services/creditNoteService.js, conmomet-app/src/components/billing/InvoiceNoteDialog.tsx, conmomet-app/src/components/billing/BillingDocsSection.tsx, conmomet-app/src/components/billing/NewInvoiceStartDialog.tsx, conmomet-app/src/components/billing/InvoiceAdjustmentDialog.tsx, conmomet-app/src/components/billing/ProgressEntriesSection.tsx, api_conmomet/services/arca/recipient.js, api_conmomet/services/ocaBillingService.js, api_conmomet/middlewares/ocaBilled.js, conmomet-app/src/components/billing/ExchangeDifferenceDialog.tsx, api_conmomet/services/ipcService.js, api_conmomet/controllers/budgetProgressController.js, api_conmomet/services/budgetProgressService.js, api_conmomet/services/adjustmentService.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

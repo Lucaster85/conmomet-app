@@ -6,6 +6,8 @@ import {
 } from '@mui/material';
 import { DeleteOutline as DeleteIcon } from '@mui/icons-material';
 import AppDialog from '@/components/common/AppDialog';
+import ClientBanner from './ClientBanner';
+import FeedbackModal from '../FeedbackModal';
 import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
 import { Invoice, InvoiceArcaOptions, InvoiceConcept, InvoiceInput, InvoiceKind, InvoiceLineInput, InvoiceService } from '../../utils/api';
@@ -207,15 +209,14 @@ export default function InvoiceNoteDialog({ open, onClose, onSaved, original, ty
       <DialogTitle>
         {heading}
         {original && (
-          <Typography variant="body2" color="text.secondary">
-            sobre {formatVoucher(original)}{original.client ? ` · ${original.client.razonSocial}` : ''}
-          </Typography>
+          <Typography variant="body2" color="text.secondary">{formatVoucher(original)}</Typography>
         )}
       </DialogTitle>
       <DialogContent dividers>
         {original && (
           <Stack spacing={2.5}>
-            {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+            <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+            <ClientBanner name={original.client?.razonSocial} cuit={original.recipient_doc_number} detail={`Sobre ${formatVoucher(original)}`} />
 
             {isCredit ? (
               <Alert severity="info">

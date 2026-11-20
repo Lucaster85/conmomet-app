@@ -4,10 +4,12 @@ import {
   Alert, Box, Button, DialogActions, DialogContent, DialogTitle, InputAdornment, MenuItem, Stack, TextField, Typography, useMediaQuery, useTheme,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import ClientBanner from './ClientBanner';
+import FeedbackModal from '../FeedbackModal';
 import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
 import { Invoice, InvoiceArcaOptions, InvoiceInput, InvoiceService } from '../../utils/api';
-import { formatDate, formatMoney, formatPercent, formatVoucher, ivaOf, roundMoney, todayISO } from '../../utils/billing';
+import { formatDate, formatMoney, formatPercent, formatVoucher, ivaOf, roundMoney, todayISO, rateToInput, sanitizeRateInput, roundRate, formatRate} from '../../utils/billing';
 
 interface Props {
   open: boolean;
@@ -49,7 +51,7 @@ export default function ExchangeDifferenceDialog({ open, onClose, onSaved, origi
     setError('');
     setIssueDate(editing?.issue_date || todayISO());
     setPosId(editing?.point_of_sale_id || original.point_of_sale_id || '');
-    setNewRate(editing?.exchange_diff_new_rate ? String(editing.exchange_diff_new_rate) : '');
+    setNewRate(editing?.exchange_diff_new_rate ? rateToInput(editing.exchange_diff_new_rate) : '');
     setBaseUsd(editing?.exchange_diff_base_usd ?? remainingUsd);
     setNotes(editing?.notes || '');
     // Solo al abrir: no pisar lo que la persona esté escribiendo.
@@ -65,7 +67,7 @@ export default function ExchangeDifferenceDialog({ open, onClose, onSaved, origi
     setRateLoading(true);
     setError('');
     try {
-      setNewRate(String((await InvoiceService.getArcaExchangeRate()).rate));
+      setNewRate(rateToInput((await InvoiceService.getArcaExchangeRate()).rate));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo traer la cotización de ARCA');
     } finally {
@@ -73,8 +75,8 @@ export default function ExchangeDifferenceDialog({ open, onClose, onSaved, origi
     }
   };
 
-  const rate = toNumber(newRate);
-  const difference = rate > 0 ? Math.round((rate - baseRate) * 1e6) / 1e6 : 0;
+  const rate = roundRate(toNumber(newRate));
+  const difference = rate > 0 ? Math.round((rate - baseRate) * 100) / 100 : 0;
   const isDebit = difference > 0;
   const net = roundMoney((baseUsd || 0) * Math.abs(difference));
   const iva = ivaOf(net, ivaRate);
@@ -124,15 +126,14 @@ export default function ExchangeDifferenceDialog({ open, onClose, onSaved, origi
       <DialogTitle>
         {editing ? 'Editar nota por diferencia de cambio' : 'Diferencia de cambio'}
         {original && (
-          <Typography variant="body2" color="text.secondary">
-            sobre {formatVoucher(original)}{original.client ? ` · ${original.client.razonSocial}` : ''} · {formatDate(original.issue_date)}
-          </Typography>
+          <Typography variant="body2" color="text.secondary">{formatVoucher(original)}</Typography>
         )}
       </DialogTitle>
       <DialogContent dividers>
         {original && (
           <Stack spacing={2.5}>
-            {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+            <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+            <ClientBanner name={original.client?.razonSocial} cuit={original.recipient_doc_number} detail={`Sobre ${formatVoucher(original)} · ${formatDate(original.issue_date)}`} />
             <Alert severity="info">
               Si el dólar <strong>subió</strong> desde la factura, se emite una <strong>nota de débito en pesos</strong> por la diferencia; si <strong>bajó</strong>, una <strong>nota de crédito</strong>.
               Se guarda como borrador y se emite en ARCA. No cambia el saldo del presupuesto.
@@ -140,9 +141,9 @@ export default function ExchangeDifferenceDialog({ open, onClose, onSaved, origi
             {options && options.env === 'homologacion' && <Alert severity="warning">Ambiente de PRUEBAS de ARCA: la nota que se emita no tiene validez fiscal.</Alert>}
 
             <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }} gap={2}>
-              <TextField label="Cotización de la factura" value={baseRate ? String(baseRate) : '—'} disabled helperText={`Neto de la factura: ${formatMoney(Number(original.net_amount), 'USD')}`} />
+              <TextField label="Cotización de la factura" value={baseRate ? formatRate(baseRate) : '—'} disabled helperText={`Neto de la factura: ${formatMoney(Number(original.net_amount), 'USD')}`} />
               <TextField
-                label="Cotización nueva (día de cobro) *" value={newRate} onChange={(e) => setNewRate(e.target.value.replace(/[^\d.,]/g, ''))} inputProps={{ inputMode: 'decimal' }}
+                label="Cotización nueva (día de cobro) *" value={newRate} onChange={(e) => setNewRate(sanitizeRateInput(e.target.value))} inputProps={{ inputMode: 'decimal' }}
                 InputProps={{ endAdornment: <InputAdornment position="end"><Button size="small" onClick={loadArcaRate} disabled={rateLoading}>{rateLoading ? '…' : 'Traer de ARCA'}</Button></InputAdornment> }}
                 helperText="La del día en que se cobró (por ejemplo, la de ARCA o la del banco)."
               />

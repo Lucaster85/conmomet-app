@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { AddOutlined as AddIcon, DeleteOutline as DeleteIcon, EditOutlined as EditIcon, UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import AppDialog from '@/components/common/AppDialog';
+import FeedbackModal from '../FeedbackModal';
 import { useFileViewer } from '@/components/common/FileViewer';
 import DateField from '../DateField';
 import { BillingDocsService, BudgetBillingDetail, BudgetProgressEntry, ProgressCertificateStatus, ProgressSource } from '../../utils/api';
@@ -190,7 +191,7 @@ function ProgressEntryDialog({ open, entry, budgetId, onClose, onSaved }: Dialog
     <AppDialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
       <DialogTitle>{entry ? 'Editar avance real' : 'Cargar avance real'}</DialogTitle>
       <DialogContent>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
         <Stack spacing={2} sx={{ mt: 1 }}>
           <Alert severity="info">El avance es <strong>acumulado</strong> (por ejemplo, 40% de la obra hasta la fecha). No puede ser menor que el de una medición anterior.</Alert>
           <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }} gap={2}>

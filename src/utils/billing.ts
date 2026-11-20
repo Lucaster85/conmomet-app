@@ -15,6 +15,20 @@ export const formatHours = (value: number | null | undefined): string =>
   `${(Number(value) || 0).toLocaleString('es-AR', { maximumFractionDigits: 1 })} hs`;
 
 export const roundMoney = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
+// Cotización del dólar: nunca más de 2 decimales, ni al mostrarla ni al cargarla (ARCA la publica con más, acá se redondea a centavos).
+export const roundRate = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
+export const formatRate = (n: number | string | null | undefined): string =>
+  (Number(n) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Para el campo de texto: "1497.53" -> "1497,53".
+export const rateToInput = (n: number | string | null | undefined): string => roundRate(Number(n) || 0).toFixed(2).replace('.', ',');
+// Para el campo de texto: un solo formato, con COMA decimal ("1200,00"), como se muestra en toda la app. Deja solo dígitos y una coma con a lo sumo 2 decimales; un
+// punto (el del teclado numérico, o un valor pegado como "1200.00") se convierte en coma, así nunca conviven "1200.00" y "1200,00".
+export const sanitizeRateInput = (text: string): string => {
+  const clean = text.replace(/\./g, ',').replace(/[^\d,]/g, '');
+  const at = clean.indexOf(',');
+  if (at < 0) return clean;
+  return `${clean.slice(0, at)},${clean.slice(at + 1).replace(/,/g, '').slice(0, 2)}`;
+};
 export const roundPercent = (n: number): number => Math.round((n + Number.EPSILON) * 10000) / 10000;
 
 export const ivaOf = (net: number, rate: number): number => roundMoney((net * rate) / 100);
