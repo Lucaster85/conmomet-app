@@ -5980,6 +5980,15 @@ export class InvoiceService {
     append('voucher_type', input.voucher_type);
     append('kind', input.kind);
     append('associated_invoice_id', input.associated_invoice_id);
+    // Factura de ajuste y nota por diferencia de cambio: sin estos campos el servidor las toma por una factura común y pide el cliente.
+    append('adjusts_invoice_id', input.adjusts_invoice_id);
+    append('adjustment_period', input.adjustment_period);
+    if (input.exchange_difference !== undefined) formData.append('exchange_difference', String(input.exchange_difference));
+    append('new_exchange_rate', input.new_exchange_rate);
+    append('base_usd', input.base_usd);
+    // FCE: cuenta bancaria del emisor y opción de transferencia elegidas.
+    append('bank_account_id', input.bank_account_id);
+    append('fce_transfer_option', input.fce_transfer_option);
     if (input.fce_annulment !== undefined) formData.append('fce_annulment', String(input.fce_annulment));
     append('cbte_tipo', input.cbte_tipo);
     append('source', input.source);

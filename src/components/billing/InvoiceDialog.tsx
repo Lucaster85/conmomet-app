@@ -5,6 +5,8 @@ import {
   InputAdornment, MenuItem, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Typography, useMediaQuery, useTheme,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import ClientBanner from './ClientBanner';
+import FeedbackModal from '../FeedbackModal';
 import { DeleteOutline as DeleteIcon, UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
@@ -16,7 +18,7 @@ import {
   ARCA_CONCEPT_LABELS, CBTE_OPTIONS_BY_LETTER, CONCEPT_LABELS, DEFAULT_CBTE_BY_LETTER, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatHours, formatMoney, formatPercent,
   ivaOf, roundMoney, roundPercent, todayISO, VOUCHER_TYPE_OPTIONS,
 } from '../../utils/billing';
-import { formatCuit, TAX_CONDITION_LABELS, TaxCondition } from '../../utils/cuit';
+import { TAX_CONDITION_LABELS, TaxCondition } from '../../utils/cuit';
 
 interface InvoiceDialogProps {
   open: boolean;
@@ -758,7 +760,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2.5}>
-          {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+          <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
 
           {!isEditing && (detail || ocaMode) && arcaOptions?.enabled && arcaOptions.points_of_sale.length > 0 && (
             <ToggleButtonGroup
@@ -795,11 +797,10 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
           )}
 
           {budgetClient && (
-            <Typography variant="body2" color="text.secondary">
-              Cliente: <strong>{budgetClient.razonSocial}</strong>
-              {budgetClient.cuit ? ` · CUIT ${formatCuit(budgetClient.cuit)}` : ''}
-              {budgetClient.tax_condition ? ` · ${TAX_CONDITION_LABELS[budgetClient.tax_condition]}` : ''}
-            </Typography>
+            <ClientBanner
+              name={budgetClient.razonSocial} cuit={budgetClient.cuit}
+              detail={budgetClient.tax_condition ? TAX_CONDITION_LABELS[budgetClient.tax_condition] : undefined}
+            />
           )}
 
           {isFree && (

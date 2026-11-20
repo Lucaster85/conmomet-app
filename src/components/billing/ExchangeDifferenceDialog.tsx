@@ -4,6 +4,8 @@ import {
   Alert, Box, Button, DialogActions, DialogContent, DialogTitle, InputAdornment, MenuItem, Stack, TextField, Typography, useMediaQuery, useTheme,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import ClientBanner from './ClientBanner';
+import FeedbackModal from '../FeedbackModal';
 import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
 import { Invoice, InvoiceArcaOptions, InvoiceInput, InvoiceService } from '../../utils/api';
@@ -124,15 +126,14 @@ export default function ExchangeDifferenceDialog({ open, onClose, onSaved, origi
       <DialogTitle>
         {editing ? 'Editar nota por diferencia de cambio' : 'Diferencia de cambio'}
         {original && (
-          <Typography variant="body2" color="text.secondary">
-            sobre {formatVoucher(original)}{original.client ? ` · ${original.client.razonSocial}` : ''} · {formatDate(original.issue_date)}
-          </Typography>
+          <Typography variant="body2" color="text.secondary">{formatVoucher(original)}</Typography>
         )}
       </DialogTitle>
       <DialogContent dividers>
         {original && (
           <Stack spacing={2.5}>
-            {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+            <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+            <ClientBanner name={original.client?.razonSocial} cuit={original.recipient_doc_number} detail={`Sobre ${formatVoucher(original)} · ${formatDate(original.issue_date)}`} />
             <Alert severity="info">
               Si el dólar <strong>subió</strong> desde la factura, se emite una <strong>nota de débito en pesos</strong> por la diferencia; si <strong>bajó</strong>, una <strong>nota de crédito</strong>.
               Se guarda como borrador y se emite en ARCA. No cambia el saldo del presupuesto.

@@ -79,7 +79,7 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
               <Box>
                 {pdfKind === 'preview' && (
                   <Alert severity="info" sx={{ mb: 1.5 }}>
-                    Así se verá la factura. Todavía es un borrador: el número, el CAE y el QR (con asteriscos) los asigna ARCA al emitir.
+                    BORRADOR de Factura
                   </Alert>
                 )}
                 {pdfLoading && (

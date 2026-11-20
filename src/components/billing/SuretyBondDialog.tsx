@@ -1,8 +1,9 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Alert, Box, Button, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import AppDialog from '@/components/common/AppDialog';
+import FeedbackModal from '../FeedbackModal';
 import DateField from '../DateField';
 import { BillingDocsService, BudgetCurrency, PurchaseOrder, SuretyBond, SuretyBondPurpose } from '../../utils/api';
 import { BILLING_FILE_ACCEPT, BOND_PURPOSE_LABELS, validateBillingFiles } from '../../utils/billing';
@@ -91,7 +92,7 @@ export default function SuretyBondDialog({ open, onClose, budgetId, budgetCurren
     <AppDialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
       <DialogTitle>{bond ? 'Editar seguro de caución' : 'Cargar seguro de caución'}</DialogTitle>
       <DialogContent>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
         <Stack spacing={2} sx={{ mt: 1 }}>
           <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }} gap={2}>
             <TextField label="Aseguradora *" value={insurer} onChange={(e) => setInsurer(e.target.value)} inputProps={{ maxLength: 150 }} fullWidth />

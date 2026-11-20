@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { AddOutlined as AddIcon, DeleteOutline as DeleteIcon, UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import AppDialog from '@/components/common/AppDialog';
+import FeedbackModal from '../FeedbackModal';
 import DateField from '../DateField';
 import {
   BudgetCurrency, PurchaseOrder, PurchaseOrderAdjustmentType, PurchaseOrderConcept, PurchaseOrderInput, BillingDocsService,
@@ -121,7 +122,7 @@ export default function PurchaseOrderDialog({ open, onClose, budgetId, budgetCur
     <AppDialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="md">
       <DialogTitle>{TITLES[mode.kind]}</DialogTitle>
       <DialogContent>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
         {mode.kind === 'replace' && (
           <Alert severity="info" sx={{ mb: 2 }}>
             La OC {mode.order.number} queda guardada como reemplazada, con el motivo que indiques. Los datos de abajo son los de la OC nueva.

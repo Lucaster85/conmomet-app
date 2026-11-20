@@ -5,6 +5,8 @@ import {
   useMediaQuery, useTheme,
 } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
+import ClientBanner from './ClientBanner';
+import FeedbackModal from '../FeedbackModal';
 import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
 import { AdjustmentType, Invoice, InvoiceArcaOptions, InvoiceInput, InvoiceLineInput, InvoiceService } from '../../utils/api';
@@ -204,15 +206,14 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
       <DialogTitle>
         {editing ? 'Editar borrador de ajuste' : 'Crear ajuste'}
         {original && (
-          <Typography variant="body2" color="text.secondary">
-            sobre {formatVoucher(original)}{original.client ? ` · ${original.client.razonSocial}` : ''} · {formatDate(original.issue_date)}
-          </Typography>
+          <Typography variant="body2" color="text.secondary">{formatVoucher(original)}</Typography>
         )}
       </DialogTitle>
       <DialogContent dividers>
         {original && (
           <Stack spacing={2.5}>
-            {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+            <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
+            <ClientBanner name={original.client?.razonSocial} cuit={original.recipient_doc_number} detail={`Sobre ${formatVoucher(original)} · ${formatDate(original.issue_date)}`} />
             <Alert severity="info">
               El ajuste es una <strong>factura nueva</strong> por la diferencia (por ejemplo, 20% de $1.000.000 = una factura de $200.000), vinculada a esta.
               Se guarda como borrador y se emite en ARCA como cualquier factura. <strong>No cambia el saldo</strong> del presupuesto ni de la OC.
