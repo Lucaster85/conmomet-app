@@ -5235,7 +5235,7 @@ export interface ArcaTestResult extends ArcaStatus {
   };
   usd_rate?: ArcaStep<{ currency: string; rate: number; date: string | null }>;
   // Seguimiento de FCE (wsfecred): servicio aparte, con su propia autorización en ARCA.
-  fce_tracking?: ArcaStep<{ servers: { app_server?: string; db_server?: string; auth_server?: string }; expires_at: string; source: 'cache' | 'login' }>;
+  fce_tracking?: ArcaStep<{ expires_at: string; source: 'cache' | 'login' }>;
 }
 
 export interface ArcaPointValidation {
