@@ -355,6 +355,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'diferencia de cambio', 'nota por diferencia de cambio', 'dolar', 'dólar', 'cotizacion nueva', 'cotización nueva', 'ipc indec', 'calcular ipc',
       'avance real', 'avance real de obra', 'certificado', 'certificado de avance', 'facturado mayor al avance', 'avance de obra',
       'ajuste', 'ajustes', 'ajuste de precio', 'crear ajuste', 'ipc', 'uocra', 'factura de ajuste', 'actualizacion de precio', 'actualización de precio',
+      'seguimiento de fce', 'aceptación', 'aceptacion', 'aceptada', 'aceptada tácitamente', 'tácita', 'tacita', 'rechazada por el cliente', 'wsfecred', 'sincronizar', 'sincronizar con arca',
+      'adc', 'sca', 'cuenta corriente', 'saldo', 'pestaña fce', 'vence la aceptación', 'nota de crédito de anulación', 'informada al adc',
     ],
     file: 'facturacion.md',
   },

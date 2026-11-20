@@ -58,6 +58,7 @@ El certificado, la clave y el ambiente **no se cargan desde esta pantalla**: los
 3. **Puntos de venta** habilitados en ARCA.
 4. **Último comprobante autorizado** de cada punto de venta de tipo web service (para Factura A y para FCE).
 5. **Cotización del dólar** según ARCA.
+6. **Seguimiento de FCE (wsfecred)**: si el servicio que usa la pestaña **FCE** de Facturación está autorizado para el certificado. Si no lo está, el mensaje dice qué autorizar.
 
 Si un paso falla, los demás se muestran igual, con el motivo en lenguaje claro.
 

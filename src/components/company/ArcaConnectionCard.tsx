@@ -166,6 +166,15 @@ export default function ArcaConnectionCard({ arca, onError }: Props) {
                 ))
               )
             )}
+            {result.fce_tracking && (
+              <StepRow
+                ok={result.fce_tracking.ok}
+                label="Seguimiento de FCE (wsfecred)"
+                detail={result.fce_tracking.ok
+                  ? `Servicio disponible. ${result.fce_tracking.source === 'cache' ? 'Se reutilizó el ticket vigente' : 'Se pidió un ticket nuevo'} — válido hasta ${formatDateTime(result.fce_tracking.expires_at)}`
+                  : result.fce_tracking.error}
+              />
+            )}
             {result.usd_rate && (
               <StepRow
                 ok={result.usd_rate.ok}

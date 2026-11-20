@@ -8,7 +8,7 @@ import AppDialog from '@/components/common/AppDialog';
 import { Invoice, InvoiceService } from '../../utils/api';
 import { FileService } from '../../utils/fileService';
 import {
-  ARCA_CONCEPT_LABELS, ARCA_STATUS_LABELS, CONCEPT_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, isNote, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS, formatRate} from '../../utils/billing';
+  ARCA_CONCEPT_LABELS, ARCA_STATUS_LABELS, CONCEPT_LABELS, fceStateChip, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, isNote, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS, formatRate} from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 
 // Solo lectura. La pestaña "Factura" muestra la factura con su formato final, como un PDF: el real si ya se emitió (o se cargó a mano con su PDF) y, si todavía es
@@ -127,9 +127,12 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
                 return `${bank.bank_name} · CBU ${bank.cbu}${bank.alias ? ` · ${bank.alias}` : ''}`;
               })())}
               {invoice.cbte_tipo === FCE_CBTE_TIPO && invoice.fce_transfer_option && row('Opción de transferencia', FCE_TRANSFER_LABELS[invoice.fce_transfer_option])}
-              {invoice.cbte_tipo === FCE_CBTE_TIPO && invoice.arca_status === 'authorized' && row('Aceptación del cliente', (
-                <Chip size="small" color={FCE_ACCEPTANCE_LABELS[invoice.fce_acceptance || 'pending'].color} label={FCE_ACCEPTANCE_LABELS[invoice.fce_acceptance || 'pending'].label} />
+              {invoice.cbte_tipo === FCE_CBTE_TIPO && invoice.arca_status === 'authorized' && row('Estado en ARCA', (
+                <Chip size="small" color={fceStateChip(invoice).color} label={fceStateChip(invoice).label} />
               ))}
+              {invoice.cbte_tipo === FCE_CBTE_TIPO && invoice.arca_status === 'authorized' && invoice.fce_synced_at && invoice.fce_acceptance_due && invoice.fce_acceptance !== 'accepted' && row('Aceptación del cliente hasta', formatDate(invoice.fce_acceptance_due))}
+              {invoice.cbte_tipo === FCE_CBTE_TIPO && invoice.fce_balance !== null && invoice.fce_balance !== undefined && row('Saldo en ARCA', formatMoney(invoice.fce_balance, invoice.currency))}
+              {invoice.cbte_tipo === FCE_CBTE_TIPO && (invoice.fce_rejection_reasons || []).length > 0 && row('Motivos del rechazo', (invoice.fce_rejection_reasons || []).map((r) => [r.description, r.justification].filter(Boolean).join(': ')).join(' · '))}
               {isNote(invoice) && row('Sobre la factura', formatAssociated(invoice))}
               {invoice.kind === 'credit_note' && invoice.fce_annulment && row('Anulación', 'Con marca de anulación (el cliente rechazó la FCE)')}
               {(invoice.credited_total || 0) > 0 && row('Acreditado con notas de crédito', formatMoney(invoice.credited_total, invoice.currency))}

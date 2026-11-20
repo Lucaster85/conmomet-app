@@ -5231,6 +5231,8 @@ export interface ArcaTestResult extends ArcaStatus {
     items: Array<{ pos_number: number; cbte_tipo: number; label: string; ok: boolean; number?: number; error?: string }>;
   };
   usd_rate?: ArcaStep<{ currency: string; rate: number; date: string | null }>;
+  // Seguimiento de FCE (wsfecred): servicio aparte, con su propia autorización en ARCA.
+  fce_tracking?: ArcaStep<{ servers: { app_server?: string; db_server?: string; auth_server?: string }; expires_at: string; source: 'cache' | 'login' }>;
 }
 
 export interface ArcaPointValidation {
@@ -5339,6 +5341,76 @@ export interface ManualRecipient {
   fiscal_province?: string | null;
 }
 
+// Seguimiento de FCE con ARCA (wsfecred, FLOWS.md §77): estados tal cual los da ARCA.
+export type FceCmpState = 'PendienteRecepcion' | 'Recepcionado' | 'Aceptado' | 'Rechazado' | 'InformadaAgDpto';
+export type FceAccountState = 'Modificable' | 'Aceptada' | 'Rechazada' | 'CanceladaTotal' | 'InformadaAgDpto';
+export type FceGroup = 'pending' | 'accepted' | 'rejected' | 'informed' | 'cancelled';
+export interface FceRejectionReason { code: number | null; description: string | null; justification: string | null }
+
+export interface FceTrackingRow {
+  id: number;
+  cbte_tipo: number;
+  pos_number: number | null;
+  number: number | null;
+  issue_date: string;
+  due_date: string | null;
+  currency: BudgetCurrency;
+  total_amount: number;
+  status: InvoiceStatus;
+  client: { id: number | null; razonSocial: string; cuit: string | null } | null;
+  transfer_option: 'SCA' | 'ADC' | null;
+  fce_acceptance: 'pending' | 'accepted' | 'rejected' | null;
+  fce_acceptance_at: string | null;
+  fce_cmp_state: FceCmpState | null;
+  fce_account_state: FceAccountState | null;
+  fce_account_code: number | null;
+  fce_acceptance_type: 'Tacita' | 'Expresa' | null;
+  fce_available_at: string | null;
+  fce_acceptance_due: string | null;
+  // Días que le quedan al cliente para aceptar (negativo si ya venció); null si no corresponde.
+  acceptance_days_left: number | null;
+  fce_rejection_reasons: FceRejectionReason[];
+  fce_balance: number | null;
+  fce_accepted_balance: number | null;
+  fce_synced_at: string | null;
+  group: FceGroup;
+  adc_pending: boolean;
+  // La nota de crédito de anulación ya emitida, si la hay (el aviso de una rechazada se va solo con ella).
+  annulment_note: { id: number; number: number | null; arca_status: InvoiceArcaStatus } | null;
+  notes: Array<{ id: number; kind: InvoiceKind; cbte_tipo: number; pos_number: number | null; number: number | null; total_amount: number | null; fce_cmp_state: FceCmpState | null; status: InvoiceStatus; arca_status: InvoiceArcaStatus; fce_annulment: boolean }>;
+}
+
+export interface FceTrackingSummary { pending: number; accepted: number; rejected: number; informed: number; cancelled: number; adc_pending: number; total: number }
+
+export interface FceTrackingResponse {
+  data: FceTrackingRow[];
+  summary: FceTrackingSummary;
+  last_sync_at: string | null;
+  arca_enabled: boolean;
+}
+
+export interface FceTrackingFilters {
+  q?: string;
+  client_id?: number;
+  state?: FceGroup;
+  transfer_option?: 'SCA' | 'ADC';
+  date_from?: string;
+  date_to?: string;
+  include_closed?: boolean;
+}
+
+export interface FceSyncResult {
+  checked: number;
+  updated: number;
+  changes: Array<{ invoice_id: number; label: string; field: string; from: string | null; to: string | null }>;
+  not_found_in_arca: Array<{ invoice_id: number; label: string }>;
+  only_in_arca: Array<{ cbte_tipo: number; label: string; recipient_cuit: string | null; state: FceCmpState | null }>;
+  truncated: boolean;
+}
+
+type FceHistoryPart = { ok: boolean; items: Array<{ state: string | null; at: string | null }>; error?: string };
+export interface FceHistory { comprobante: FceHistoryPart; cuenta_corriente: FceHistoryPart | null }
+
 export interface Invoice {
   id: number;
   voucher_type: VoucherType;
@@ -5395,11 +5467,23 @@ export interface Invoice {
   recipient_doc_number?: string | null;
   recipient_vat_condition_id?: number | null;
   point_of_sale_id?: number | null;
-  // FCE: cuenta del emisor (CBU y alias), opción de transferencia y aceptación del cliente (esta última se carga a mano).
+  // FCE: cuenta del emisor (CBU y alias), opción de transferencia y aceptación del cliente (se deriva de lo que dice ARCA al sincronizar, FLOWS.md §77).
   bank_account_id?: number | null;
   fce_transfer_option?: 'SCA' | 'ADC' | null;
   fce_acceptance?: 'pending' | 'accepted' | 'rejected' | null;
   fce_acceptance_at?: string | null;
+  fce_cmp_state?: FceCmpState | null;
+  fce_account_state?: FceAccountState | null;
+  fce_account_code?: number | null;
+  fce_acceptance_type?: 'Tacita' | 'Expresa' | null;
+  fce_available_at?: string | null;
+  fce_acceptance_due?: string | null;
+  fce_rejection_reasons?: FceRejectionReason[] | null;
+  fce_balance?: number | null;
+  fce_accepted_balance?: number | null;
+  fce_synced_at?: string | null;
+  // Último comprobante de ARCA (saneado): solo en el detalle y para quien tiene invoices_emit.
+  fce_arca_snapshot?: Record<string, unknown> | null;
   bankAccount?: { id: number; bank_name: string; cbu: string; alias: string | null } | null;
   issuer_snapshot?: { bank?: { bank_name: string; cbu: string; alias: string | null } } | null;
   same_currency_payment?: boolean | null;
@@ -6172,14 +6256,26 @@ export class InvoiceService {
     return { invoice: body.data, outcome: body.outcome };
   }
 
-  // Aceptación de una FCE por el cliente: se carga a mano (consultarla en ARCA es una etapa futura).
-  static async setFceAcceptance(id: number, status: 'pending' | 'accepted' | 'rejected'): Promise<Invoice> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/fce-acceptance`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    return this.parse(response, 'Error al registrar la aceptación de la FCE');
+  // Seguimiento de FCE con ARCA (FLOWS.md §77). Ver = invoices_read; sincronizar = invoices_write.
+  static async getFceTracking(filters?: FceTrackingFilters): Promise<FceTrackingResponse> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/fce${this.query(filters)}`);
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al obtener el seguimiento de las FCE');
+    return response.json();
+  }
+
+  static async syncFce(): Promise<FceSyncResult> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/fce/sync`, { method: 'POST' });
+    return this.parse(response, 'Error al sincronizar las FCE con ARCA');
+  }
+
+  static async syncFceInvoice(id: number): Promise<FceSyncResult> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/fce/sync`, { method: 'POST' });
+    return this.parse(response, 'Error al sincronizar la FCE con ARCA');
+  }
+
+  static async getFceHistory(id: number): Promise<FceHistory> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/fce/history`);
+    return this.parse(response, 'Error al obtener el historial de la FCE');
   }
 
   // Genera (o regenera) el PDF de una factura ya emitida por ARCA. Se arma solo al emitir; esto es por si no se pudo en el momento.

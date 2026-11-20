@@ -1,13 +1,13 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Alert, Box, Button, Chip, CircularProgress, DialogActions, DialogContent, DialogTitle, FormControlLabel, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, CircularProgress, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material';
 import AppDialog from '@/components/common/AppDialog';
 import FeedbackModal from '../FeedbackModal';
 import { UploadFileOutlined as UploadIcon } from '@mui/icons-material';
 import DateField from '../DateField';
 import { Invoice, InvoiceArcaOptions, InvoiceService } from '../../utils/api';
 import {
-  ARCA_CONCEPT_LABELS, cbteLongName, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, formatDate, formatMoney, formatVoucher, isNote, todayISO, formatRate} from '../../utils/billing';
+  ARCA_CONCEPT_LABELS, cbteLongName, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, formatDate, formatMoney, formatVoucher, isNote, todayISO, formatRate} from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 
 interface ActionDialogProps {
@@ -370,58 +370,6 @@ export function DiscardInvoiceDialog({ invoice, onClose, onDone }: ActionDialogP
       <DialogActions>
         <Button onClick={onClose} disabled={saving}>Volver</Button>
         <Button variant="contained" color="error" onClick={handleConfirm} disabled={saving}>{saving ? 'Descartando…' : 'Descartar'}</Button>
-      </DialogActions>
-    </AppDialog>
-  );
-}
-
-// Aceptación de una FCE por el cliente. Se carga A MANO: el cliente la acepta o rechaza en ARCA y acá solo se deja registrado
-// (consultarlo automáticamente es una etapa futura). Una FCE "aceptada" o "rechazada" no cambia nada más en la factura.
-export function FceAcceptanceDialog({ invoice, onClose, onDone }: ActionDialogProps) {
-  const [status, setStatus] = useState<'pending' | 'accepted' | 'rejected'>('pending');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (invoice) { setStatus(invoice.fce_acceptance || 'pending'); setError(''); }
-  }, [invoice]);
-
-  const handleConfirm = async () => {
-    if (!invoice) return;
-    setSaving(true);
-    setError('');
-    try {
-      onDone(await InvoiceService.setFceAcceptance(invoice.id, status));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al registrar la aceptación');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <AppDialog open={!!invoice} onClose={saving ? undefined : onClose} fullWidth maxWidth="xs">
-      <DialogTitle>Aceptación de la FCE</DialogTitle>
-      <DialogContent>
-        {invoice && (
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            <strong>{formatVoucher(invoice)}</strong> · {formatMoney(invoice.total_amount, invoice.currency)}
-          </Typography>
-        )}
-        <Alert severity="info" sx={{ mb: 2 }}>
-          El cliente acepta o rechaza la FCE en ARCA (si no responde en 21 días corridos se considera aceptada). Acá se deja registrado
-          lo que pasó, a mano.
-        </Alert>
-        <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
-        <RadioGroup value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-          {(Object.keys(FCE_ACCEPTANCE_LABELS) as Array<keyof typeof FCE_ACCEPTANCE_LABELS>).map((key) => (
-            <FormControlLabel key={key} value={key} control={<Radio />} label={FCE_ACCEPTANCE_LABELS[key].label} />
-          ))}
-        </RadioGroup>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancelar</Button>
-        <Button variant="contained" onClick={handleConfirm} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</Button>
       </DialogActions>
     </AppDialog>
   );
