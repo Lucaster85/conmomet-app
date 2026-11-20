@@ -11,13 +11,13 @@ import { DeleteOutline as DeleteIcon, UploadFileOutlined as UploadIcon } from '@
 import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
 import {
-  BillableBudget, BillableOca, BillablePurchaseOrder, BudgetBillingDetail, EditableInvoiceConcept, BudgetCurrency, Invoice, InvoiceArcaOptions, InvoiceClientOption, InvoiceInput,
+  BillableBudget, BillableOca, BillablePurchaseOrder, ClientService, ManualRecipient, BudgetBillingDetail, EditableInvoiceConcept, BudgetCurrency, Invoice, InvoiceArcaOptions, InvoiceClientOption, InvoiceInput,
   InvoiceLineInput, InvoiceProjectOption, InvoiceService, IvaInfo, VoucherType,
 } from '../../utils/api';
 import {
   ARCA_CONCEPT_LABELS, CBTE_OPTIONS_BY_LETTER, CONCEPT_LABELS, DEFAULT_CBTE_BY_LETTER, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatHours, formatMoney, formatPercent,
   ivaOf, roundMoney, roundPercent, todayISO, VOUCHER_TYPE_OPTIONS, rateToInput, sanitizeRateInput, roundRate} from '../../utils/billing';
-import { TAX_CONDITION_LABELS, TaxCondition } from '../../utils/cuit';
+import { isValidCuit, maskCuit, TAX_CONDITION_LABELS, TaxCondition } from '../../utils/cuit';
 
 interface InvoiceDialogProps {
   open: boolean;
@@ -77,6 +77,17 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
   const isEditing = !!invoice;
   const [ocaItems, setOcaItems] = useState<OcaItem[]>([]);
   const [pickableOcas, setPickableOcas] = useState<BillableOca[]>([]);
+  // Factura libre por ARCA: el comprador puede ser un cliente cargado o uno ocasional (la venta de un vehículo, por ejemplo) cuyos datos se escriben acá y
+  // quedan solo en la factura (FLOWS.md §76).
+  const [recipientKind, setRecipientKind] = useState<'existing' | 'occasional'>('occasional');
+  const [occCuit, setOccCuit] = useState('');
+  const [occName, setOccName] = useState('');
+  const [occTax, setOccTax] = useState<'responsable_inscripto' | 'monotributo'>('responsable_inscripto');
+  const [occStreet, setOccStreet] = useState('');
+  const [occLocality, setOccLocality] = useState('');
+  const [occProvince, setOccProvince] = useState('');
+  const [padronLoading, setPadronLoading] = useState(false);
+  const [padronNote, setPadronNote] = useState<{ severity: 'success' | 'warning'; text: string } | null>(null);
   // Con OCA (o una factura que ya las cobra) no es una factura libre aunque no haya presupuesto.
   const ocaMode = ocaItems.length > 0 || (ocas?.length ?? 0) > 0 || !!invoice?.lines.some((l) => l.concept === 'oca');
   const isFree = !detail && !ocaMode;
@@ -216,6 +227,15 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       setRemito(invoice.remito_number || '');
       setCommercialRef(invoice.commercial_reference || '');
       setCommercialTouched(true);
+      const manual = invoice.manual_recipient;
+      setRecipientKind(manual ? 'occasional' : 'existing');
+      setOccCuit(manual ? maskCuit(manual.cuit) : '');
+      setOccName(manual?.legal_name || '');
+      setOccTax(manual?.tax_condition || 'responsable_inscripto');
+      setOccStreet(manual?.fiscal_street || '');
+      setOccLocality(manual?.fiscal_locality || '');
+      setOccProvince(manual?.fiscal_province || '');
+      setPadronNote(null);
       setOcaItems(invoice.lines.filter((l) => l.concept === 'oca' && l.oca_id).map((l) => ({
         id: l.oca_id as number, number: l.oca?.number || String(l.oca_id), type: l.oca?.type || 'man_hours', netAmount: l.net_amount, description: l.description || ocaDefaultDescription(l.oca?.type || 'man_hours', l.oca?.number || String(l.oca_id)),
       })));
@@ -258,6 +278,10 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       setRemito('');
       setCommercialRef('');
       setCommercialTouched(false);
+      setRecipientKind('occasional');
+      setOccCuit(''); setOccName(''); setOccTax('responsable_inscripto'); setOccStreet(''); setOccLocality(''); setOccProvince(''); setPadronNote(null);
+      // Una factura libre suele ser de un producto (la venta de un vehículo): el concepto arranca en "productos" (se puede cambiar).
+      if (!detail && (ocas || []).length === 0) setConcept(1);
       setOcaItems((ocas || []).map((o) => ({ id: o.id, number: o.number, type: o.type, netAmount: o.net_amount, description: ocaDefaultDescription(o.type, o.number) })));
       setLines(detail || (ocas || []).length > 0 ? [] : [{ key: newKey(), budgetId: null, orderId: null, concept: 'other', percentText: '', amount: null, description: '', source: 'amount' }]);
       if ((ocas || []).length > 0) setCurrency('ARS');
@@ -297,7 +321,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
   // Opciones de ARCA: solo para facturas de un presupuesto (la factura libre se sigue cargando a mano). Si la integración
   // está prendida y hay puntos de venta de web service, una factura nueva arranca como "Emitir por ARCA".
   useEffect(() => {
-    if (!open || (!detail && !ocaMode)) { setArcaOptions(null); return; }
+    if (!open) { setArcaOptions(null); return; }
     let cancelled = false;
     InvoiceService.getArcaOptions().then((opts) => {
       if (cancelled) return;
@@ -391,6 +415,37 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       if (invoice?.project_id) setProject(list.find((p) => p.id === invoice.project_id) || null);
     }).catch(() => setProjectOptions([]));
   }, [open, isFree, client, invoice]);
+
+  // Cliente ocasional: la condición frente al IVA del receptor sigue a la condición elegida (después se puede afinar en el bloque "Receptor").
+  const occasional = isFree && isArca && recipientKind === 'occasional';
+  useEffect(() => {
+    if (!arcaOptions || !isFree || invoice || recipientKind !== 'occasional') return;
+    const mapped = arcaOptions.client_tax_condition_map[occTax];
+    if (mapped) setRecipientVatId(mapped);
+  }, [arcaOptions, isFree, recipientKind, occTax, invoice]);
+
+  // "Buscar en ARCA" (padrón A13): completa el nombre, el domicilio fiscal y la condición de IVA con lo que informa ARCA. Es una ayuda: los datos se pueden corregir.
+  const lookupPadron = async () => {
+    setPadronLoading(true);
+    setPadronNote(null);
+    try {
+      const person = await ClientService.padronLookup(occCuit);
+      if (person.legal_name) setOccName(person.legal_name);
+      if (person.tax_condition === 'responsable_inscripto' || person.tax_condition === 'monotributo') setOccTax(person.tax_condition);
+      if (person.fiscal_street) setOccStreet(person.fiscal_street);
+      if (person.fiscal_locality) setOccLocality(person.fiscal_locality);
+      if (person.fiscal_province) setOccProvince(person.fiscal_province);
+      const inactive = person.status && person.status !== 'ACTIVO';
+      setPadronNote({
+        severity: inactive ? 'warning' : 'success',
+        text: `ARCA: ${person.legal_name || 'sin nombre'}${inactive ? ` · ATENCIÓN: la clave figura ${person.status}` : ''}.${person.tax_condition ? '' : ' ARCA no informó la condición frente al IVA: elegila vos.'} Revisá los datos antes de guardar.`,
+      });
+    } catch (err) {
+      setPadronNote({ severity: 'warning', text: err instanceof Error ? err.message : 'No se pudo consultar el padrón de ARCA' });
+    } finally {
+      setPadronLoading(false);
+    }
+  };
 
   const isUnofficial = voucherType === 'sin_factura';
   const voucherOptions = VOUCHER_TYPE_OPTIONS.filter((o) => o.value !== 'sin_factura' || canUnofficial || invoice?.voucher_type === 'sin_factura');
@@ -510,7 +565,10 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       if (!Number.isInteger(pos) || pos < 1 || pos > 99999) return 'Ingresá el punto de venta (1 a 99999).';
       if (!Number.isInteger(num) || num < 1 || num > 99999999) return 'Ingresá el número de comprobante.';
     }
-    if (isFree && !client) return 'Elegí el cliente.';
+    if (occasional) {
+      if (!occName.trim()) return 'Indicá la razón social o el nombre del cliente.';
+      if (!isValidCuit(occCuit)) return 'El CUIT del cliente no es válido: es obligatorio para una Factura A.';
+    } else if (isFree && !client) return 'Elegí el cliente.';
     if (lines.length === 0 && ocaItems.length === 0) return 'Agregá al menos un concepto a facturar.';
     for (const line of lines) {
       const where = isMulti && line.budgetId ? ` (${detailOf(line.budgetId)?.budget.number})` : '';
@@ -573,8 +631,14 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
       iva_rate: effectiveIvaRate,
       // La cabecera solo lleva el presupuesto cuando es uno; con varios, cada línea trae el suyo.
       budget_id: detail && !isMulti ? blocks[0]?.budget.id ?? detail.budget.id : null,
-      client_id: isFree ? client?.id : undefined,
-      project_id: isFree ? project?.id ?? null : undefined,
+      client_id: isFree && !occasional ? client?.id : undefined,
+      project_id: isFree ? (occasional ? null : project?.id ?? null) : undefined,
+      manual_recipient: occasional
+        ? ({
+          legal_name: occName.trim(), cuit: occCuit.replace(/\D/g, ''), tax_condition: occTax,
+          fiscal_street: occStreet.trim() || null, fiscal_locality: occLocality.trim() || null, fiscal_province: occProvince.trim() || null,
+        } as ManualRecipient)
+        : undefined,
       notes: notes.trim() || null,
       paid_at: invoice?.status === 'paid' ? paidAt || null : undefined,
       lines: lineInputs,
@@ -803,7 +867,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
         <Stack spacing={2.5}>
           <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
 
-          {!isEditing && (detail || ocaMode) && arcaOptions?.enabled && arcaOptions.points_of_sale.length > 0 && (
+          {!isEditing && arcaOptions?.enabled && arcaOptions.points_of_sale.length > 0 && (
             <ToggleButtonGroup
               exclusive fullWidth size="small" color="primary" value={mode}
               onChange={(_, value) => { if (value) setMode(value); }}
@@ -847,8 +911,48 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
           {isFree && (
             <>
               <Alert severity="info">
-                La factura libre sirve para proyectos que no tienen presupuesto en el sistema (por ejemplo, anteriores a este módulo).
+                La factura libre sirve para lo que no tiene presupuesto en el sistema: proyectos anteriores a este módulo o ventas ocasionales (por ejemplo, un vehículo de la empresa).
               </Alert>
+              {isArca && (
+                <ToggleButtonGroup
+                  exclusive fullWidth size="small" color="primary" value={recipientKind}
+                  onChange={(_, value) => { if (value) setRecipientKind(value); }}
+                >
+                  <ToggleButton value="occasional">Cliente ocasional (cargar los datos)</ToggleButton>
+                  <ToggleButton value="existing">Cliente existente</ToggleButton>
+                </ToggleButtonGroup>
+              )}
+              {occasional ? (
+                <Stack spacing={2}>
+                  <Typography variant="body2" color="text.primary">
+                    Los datos del comprador se escriben acá y quedan <strong>solo en esta factura</strong>: no se da de alta en Clientes. Una Factura A se le hace a un Responsable Inscripto o a un Monotributo, con CUIT.
+                  </Typography>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                    <TextField
+                      label="CUIT del comprador *" value={occCuit} fullWidth placeholder="30-12345678-9" inputProps={{ inputMode: 'numeric' }}
+                      onChange={(e) => setOccCuit(maskCuit(e.target.value))}
+                      error={occCuit.length === 13 && !isValidCuit(occCuit)}
+                      helperText={occCuit.length === 13 && !isValidCuit(occCuit) ? 'El dígito verificador no coincide' : 'Con el CUIT podés completar los datos desde ARCA.'}
+                      InputProps={{ endAdornment: (
+                        <Button size="small" onClick={lookupPadron} disabled={!isValidCuit(occCuit) || padronLoading} sx={{ whiteSpace: 'nowrap' }}>
+                          {padronLoading ? 'Buscando…' : 'Buscar en ARCA'}
+                        </Button>
+                      ) }}
+                    />
+                    <TextField select label="Condición frente al IVA *" value={occTax} sx={{ minWidth: { sm: 260 } }} onChange={(e) => setOccTax(e.target.value as 'responsable_inscripto' | 'monotributo')}>
+                      <MenuItem value="responsable_inscripto">Responsable Inscripto</MenuItem>
+                      <MenuItem value="monotributo">Monotributo</MenuItem>
+                    </TextField>
+                  </Stack>
+                  {padronNote && <Alert severity={padronNote.severity} onClose={() => setPadronNote(null)}>{padronNote.text}</Alert>}
+                  <TextField label="Razón social o nombre *" value={occName} fullWidth inputProps={{ maxLength: 200 }} onChange={(e) => setOccName(e.target.value)} />
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                    <TextField label="Domicilio: calle y número" value={occStreet} fullWidth inputProps={{ maxLength: 150 }} onChange={(e) => setOccStreet(e.target.value)} />
+                    <TextField label="Localidad" value={occLocality} fullWidth inputProps={{ maxLength: 100 }} onChange={(e) => setOccLocality(e.target.value)} />
+                    <TextField label="Provincia" value={occProvince} fullWidth inputProps={{ maxLength: 100 }} onChange={(e) => setOccProvince(e.target.value)} />
+                  </Stack>
+                </Stack>
+              ) : (
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                 <Autocomplete
                   fullWidth options={clients} value={client}
@@ -863,6 +967,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
                   renderInput={(params) => <TextField {...params} label="Proyecto (opcional)" />}
                 />
               </Stack>
+              )}
             </>
           )}
 

@@ -298,6 +298,23 @@ la pestaña **Facturas** está el botón **"Factura libre"**. Se elige el **clie
 si se quiere, el **proyecto**, y se cargan líneas con una **descripción** y un **monto** libres, sin
 porcentaje de avance. Aparece en el registro de facturas como cualquier otra.
 
+### Factura libre por ARCA (cliente ocasional)
+
+La factura libre también se **emite por ARCA**, con el mismo circuito de siempre (borrador → vista previa → emitir, con su PDF y QR). Sirve, por ejemplo, para
+**vender un vehículo de la empresa** a alguien que no es cliente.
+
+1. **Nueva factura libre** (pestaña **Facturas**) y dejá **Emitir por ARCA**.
+2. Elegí **Cliente ocasional (cargar los datos)**: escribí el **CUIT** del comprador, su **razón social o nombre**, su **condición frente al IVA** (Responsable Inscripto o
+   Monotributo) y, si querés, el **domicilio**. Con **Buscar en ARCA** (con el CUIT) se completan el nombre, el domicilio y la condición desde el padrón de ARCA: revisalos antes de
+   guardar. Si el comprador ya está en Clientes, elegí **Cliente existente**.
+3. Cargá las **líneas** (descripción y monto neto, por ejemplo "Venta de camioneta Toyota Hilux, dominio AB123CD"), el **concepto** (arranca en *productos*), el **IVA**, el
+   punto de venta y la fecha. Se guarda como borrador y se emite desde el listado.
+
+- Los datos del comprador ocasional quedan **solo en esa factura**: **no se da de alta un cliente** (si más adelante querés tenerlo en Clientes, se carga aparte).
+- Es una **Factura A** (o FCE): el comprador necesita **CUIT y ser Responsable Inscripto o Monotributo**. A un consumidor final no se le puede emitir desde la app.
+- Las **notas de crédito, de débito, el ajuste y la diferencia de cambio** de esa factura funcionan igual y heredan al comprador.
+- Una factura libre con comprador ocasional no tiene presupuesto, proyecto ni OCA, y no toca ningún saldo.
+
 ## El registro de facturas
 
 La pestaña **Facturas** lista todos los comprobantes cargados, con tipo y número, fecha, cliente,
@@ -401,4 +418,4 @@ Por ahora la app emite **Factura A**, **Factura de Crédito Electrónica (FCE)**
 tema **Clientes**) y los datos de quien factura en **Configuración → Datos de mi empresa** (ver el tema
 **Datos de mi empresa y conexión con ARCA**, donde también se **prueba la conexión**).
 
-<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/services/billingMath.js, api_conmomet/services/creditNoteService.js, conmomet-app/src/components/billing/InvoiceNoteDialog.tsx, conmomet-app/src/components/billing/BillingDocsSection.tsx, conmomet-app/src/components/billing/NewInvoiceStartDialog.tsx, conmomet-app/src/components/billing/InvoiceAdjustmentDialog.tsx, conmomet-app/src/components/billing/ProgressEntriesSection.tsx, api_conmomet/services/ocaBillingService.js, api_conmomet/middlewares/ocaBilled.js, conmomet-app/src/components/billing/ExchangeDifferenceDialog.tsx, api_conmomet/services/ipcService.js, api_conmomet/controllers/budgetProgressController.js, api_conmomet/services/budgetProgressService.js, api_conmomet/services/adjustmentService.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
+<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/services/billingMath.js, api_conmomet/services/creditNoteService.js, conmomet-app/src/components/billing/InvoiceNoteDialog.tsx, conmomet-app/src/components/billing/BillingDocsSection.tsx, conmomet-app/src/components/billing/NewInvoiceStartDialog.tsx, conmomet-app/src/components/billing/InvoiceAdjustmentDialog.tsx, conmomet-app/src/components/billing/ProgressEntriesSection.tsx, api_conmomet/services/arca/recipient.js, api_conmomet/services/ocaBillingService.js, api_conmomet/middlewares/ocaBilled.js, conmomet-app/src/components/billing/ExchangeDifferenceDialog.tsx, api_conmomet/services/ipcService.js, api_conmomet/controllers/budgetProgressController.js, api_conmomet/services/budgetProgressService.js, api_conmomet/services/adjustmentService.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

@@ -5329,6 +5329,16 @@ export interface InvoiceLine {
   base_net_amount?: number | null;
 }
 
+// Comprador de una factura libre por ARCA a un cliente ocasional: se escribe a mano y queda en la factura, sin darlo de alta en Clientes (FLOWS.md §76).
+export interface ManualRecipient {
+  legal_name: string;
+  cuit: string;
+  tax_condition: 'responsable_inscripto' | 'monotributo';
+  fiscal_street?: string | null;
+  fiscal_locality?: string | null;
+  fiscal_province?: string | null;
+}
+
 export interface Invoice {
   id: number;
   voucher_type: VoucherType;
@@ -5336,7 +5346,9 @@ export interface Invoice {
   number: number | null;
   issue_date: string;
   due_date: string | null;
-  client_id: number;
+  // null en una factura con cliente ocasional (`manual_recipient`).
+  client_id: number | null;
+  manual_recipient?: ManualRecipient | null;
   budget_id: number | null;
   // Presupuestos que cobra la factura, sacados de sus líneas (`budget_id` de la cabecera solo está cuando es uno). FLOWS.md §70.
   budgets?: { id: number; number?: string; title?: string }[];
@@ -5405,7 +5417,8 @@ export interface Invoice {
   payment_file_name?: string | null;
   notes: string | null;
   createdAt?: string;
-  client?: { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; fce_transfer_option?: 'SCA' | 'ADC' | null };
+  // Con cliente ocasional viene igual, con `id: null` y `manual: true`.
+  client?: { id: number | null; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; fce_transfer_option?: 'SCA' | 'ADC' | null; manual?: boolean };
   budget?: { id: number; number: string; title: string; status: string } | null;
   project?: { id: number; code: string; name: string; is_additional?: boolean } | null;
   createdBy?: { id: number; name: string; lastname: string };
@@ -5663,6 +5676,8 @@ export interface InvoiceLineInput {
 }
 
 export interface InvoiceInput {
+  // Cliente ocasional de una factura libre por ARCA (sin cliente cargado).
+  manual_recipient?: ManualRecipient | null;
   // Nota de crédito o de débito (siempre por ARCA, source 'arca'): sobre qué factura y, en una nota de FCE, si es una anulación.
   kind?: InvoiceKind;
   associated_invoice_id?: number;
@@ -6011,6 +6026,7 @@ export class InvoiceService {
     append('iva_rate', input.iva_rate);
     append('budget_id', input.budget_id);
     append('client_id', input.client_id);
+    if (input.manual_recipient) formData.append('manual_recipient', JSON.stringify(input.manual_recipient));
     append('project_id', input.project_id);
     append('notes', input.notes);
     append('paid_at', input.paid_at);
