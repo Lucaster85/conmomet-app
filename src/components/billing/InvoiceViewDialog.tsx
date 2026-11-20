@@ -1,19 +1,58 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Alert, Box, Button, Chip, DialogActions, DialogContent, DialogTitle, Divider, Link as MuiLink, Stack, Typography,
+  Alert, Box, Button, Chip, CircularProgress, DialogActions, DialogContent, DialogTitle, Divider, Link as MuiLink, Stack, Tab, Tabs, Typography, useMediaQuery, useTheme,
 } from '@mui/material';
 import { useFileViewer } from '@/components/common/FileViewer';
 import AppDialog from '@/components/common/AppDialog';
-import { Invoice } from '../../utils/api';
+import { Invoice, InvoiceService } from '../../utils/api';
+import { FileService } from '../../utils/fileService';
 import {
   ARCA_CONCEPT_LABELS, ARCA_STATUS_LABELS, CONCEPT_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatAssociated, isNote, formatDate, formatMoney, formatPercent, formatVoucher, INVOICE_STATUS_LABELS,
 } from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 
-// Solo lectura: encabezado, líneas por concepto y totales de una factura.
+// Solo lectura. La pestaña "Factura" muestra la factura con su formato final, como un PDF: el real si ya se emitió (o se cargó a mano con su PDF) y, si todavía es
+// un borrador, la VISTA PREVIA (sin número, CAE ni QR: con asteriscos). La pestaña "Datos" es el resumen de siempre: encabezado, líneas por concepto y totales.
 export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoice | null; onClose: () => void }) {
   const { fileLinkProps } = useFileViewer();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Qué PDF hay para mostrar: la vista previa de un borrador de ARCA, el PDF guardado de una factura emitida, o el que se adjuntó a una factura cargada a mano.
+  const isDraftArca = !!invoice && invoice.source === 'arca' && ['draft', 'rejected'].includes(invoice.arca_status || '') && invoice.status !== 'cancelled';
+  const hasStoredPdf = !!invoice?.file_url;
+  const pdfKind: 'preview' | 'stored' | null = isDraftArca ? 'preview' : hasStoredPdf ? 'stored' : null;
+
+  const [tab, setTab] = useState<'pdf' | 'data'>('pdf');
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState('');
+
+  useEffect(() => {
+    if (!invoice) return;
+    setTab(pdfKind ? 'pdf' : 'data');
+    setPdfUrl(null);
+    setPdfError('');
+    if (!pdfKind) return;
+    let cancelled = false;
+    let blobUrl: string | null = null;
+    setPdfLoading(true);
+    const load = pdfKind === 'preview'
+      ? InvoiceService.previewPdf(invoice.id).then((blob) => { blobUrl = URL.createObjectURL(blob); return blobUrl; })
+      : FileService.getSignedUrl(invoice.file_url as string);
+    load
+      .then((url) => { if (!cancelled) setPdfUrl(url); })
+      .catch((err) => { if (!cancelled) { setPdfError(err instanceof Error ? err.message : 'No se pudo mostrar la factura'); setTab('data'); } })
+      .finally(() => { if (!cancelled) setPdfLoading(false); });
+    return () => {
+      cancelled = true;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+    // Solo cuando se abre otra factura (o cambia su estado de emisión).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoice?.id, invoice?.arca_status, invoice?.file_url]);
+
   const row = (label: string, value: React.ReactNode) => (
     <Box display="flex" justifyContent="space-between" gap={2}>
       <Typography variant="body2" color="text.secondary">{label}</Typography>
@@ -22,14 +61,53 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
   );
 
   return (
-    <AppDialog open={!!invoice} onClose={onClose} fullWidth maxWidth="sm">
+    <AppDialog open={!!invoice} onClose={onClose} fullWidth maxWidth={pdfKind ? 'md' : 'sm'} fullScreen={isMobile && !!pdfKind}>
       {invoice && (
         <>
           <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
             {formatVoucher(invoice)}
             <Chip size="small" color={INVOICE_STATUS_LABELS[invoice.status].color} label={INVOICE_STATUS_LABELS[invoice.status].label} />
           </DialogTitle>
+          {pdfKind && (
+            <Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{ px: 3, borderBottom: 1, borderColor: 'divider' }}>
+              <Tab value="pdf" label={pdfKind === 'preview' ? 'Vista previa' : 'Factura'} />
+              <Tab value="data" label="Datos" />
+            </Tabs>
+          )}
           <DialogContent>
+            {pdfKind && tab === 'pdf' ? (
+              <Box>
+                {pdfKind === 'preview' && (
+                  <Alert severity="info" sx={{ mb: 1.5 }}>
+                    Así se verá la factura. Todavía es un borrador: el número, el CAE y el QR (con asteriscos) los asigna ARCA al emitir.
+                  </Alert>
+                )}
+                {pdfLoading && (
+                  <Box display="flex" alignItems="center" justifyContent="center" gap={1.5} sx={{ height: '60vh' }}>
+                    <CircularProgress size={24} />
+                    <Typography variant="body2" color="text.secondary">Armando la factura…</Typography>
+                  </Box>
+                )}
+                {pdfUrl && (
+                  <Box
+                    component="iframe"
+                    title="Factura"
+                    src={`${pdfUrl}#${pdfKind === 'preview' ? 'toolbar=0&navpanes=0&' : ''}view=FitH`}
+                    sx={{ width: '100%', height: isMobile ? 'calc(100vh - 260px)' : '68vh', minHeight: 420, border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: '#f5f5f5' }}
+                  />
+                )}
+                {pdfUrl && (
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                    ¿No se ve en el celular? Usá «Abrir en una pestaña».
+                  </Typography>
+                )}
+              </Box>
+            ) : (
+            <>
+            {pdfError && <Alert severity="warning" sx={{ mb: 2 }}>No se pudo mostrar la factura en formato PDF ({pdfError}). Acá están sus datos.</Alert>}
+            {invoice.source === 'arca' && invoice.arca_status === 'authorized' && !invoice.file_url && (
+              <Alert severity="info" sx={{ mb: 2 }}>El PDF de esta factura todavía no se generó: usá «Generar PDF» en las acciones del listado.</Alert>
+            )}
             <Stack spacing={0.75} sx={{ mb: 2 }}>
               {row('Cliente', `${invoice.client?.razonSocial || '—'}${invoice.client?.cuit ? ` · CUIT ${formatCuit(invoice.client.cuit)}` : ''}`)}
               {row(invoice.budgets && invoice.budgets.length > 1 ? 'Presupuestos' : 'Presupuesto', invoice.budgets && invoice.budgets.length > 0 ? invoice.budgets.map((b) => `${b.number} · ${b.title}`).join(' | ') : invoice.budget ? `${invoice.budget.number} · ${invoice.budget.title}` : 'Factura libre')}
@@ -127,8 +205,18 @@ export default function InvoiceViewDialog({ invoice, onClose }: { invoice: Invoi
                 <Typography variant="body2">{invoice.cancellation_reason}</Typography>
               </>
             )}
+            </>
+            )}
           </DialogContent>
-          <DialogActions><Button onClick={onClose}>Cerrar</Button></DialogActions>
+          <DialogActions>
+            {pdfKind && tab === 'pdf' && pdfUrl && (
+              <Button onClick={() => window.open(pdfUrl, '_blank', 'noopener')}>Abrir en una pestaña</Button>
+            )}
+            {pdfKind === 'stored' && tab === 'pdf' && invoice.file_url && (
+              <Button onClick={() => FileService.download(invoice.file_url as string, invoice.file_name || 'factura.pdf')}>Descargar</Button>
+            )}
+            <Button onClick={onClose}>Cerrar</Button>
+          </DialogActions>
         </>
       )}
     </AppDialog>

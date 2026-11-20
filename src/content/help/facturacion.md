@@ -77,6 +77,11 @@ Emitir es un proceso **en dos pasos**:
    emitir. Arriba se indica el **ambiente** (pruebas o producción). Si todo está bien, **"Emitir en ARCA"**; si no,
    **Cancelar** y se corrige el borrador. Al emitir, la factura queda **"Emitida en ARCA"**.
 
+   **El ícono del ojito ("Ver")** muestra lo mismo sin tener que emitir: la pestaña **Vista previa** (o **Factura**, si ya está
+   emitida) muestra la factura en su formato final, como un PDF; en un borrador, con asteriscos en el número, el CAE y el QR. En una
+   factura emitida es el **PDF real**, con **Abrir en una pestaña** y **Descargar**. La pestaña **Datos** tiene el resumen de siempre
+   (cliente, presupuestos, líneas, totales y estado).
+
 **Una factura emitida ya no se edita ni se anula** desde la app: ARCA ya la conoce. Si hay un error, o si hay
 que devolver parte de lo facturado, se corrige con una **nota de crédito** (ver "Anular una factura de
 ARCA: notas de crédito y de débito").
