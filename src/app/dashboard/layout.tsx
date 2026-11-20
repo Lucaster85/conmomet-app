@@ -206,6 +206,7 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Categorías de Documentos', icon: <FolderSpecialIcon />, path: '/dashboard/document-categories', requiredPermission: 'document_categories_read' },
       { text: 'Conceptos de Liquidación', icon: <CategoryIcon />, path: '/dashboard/payroll-concepts', requiredPermission: 'payroll_concepts_read' },
       { text: 'Feriados', icon: <CalendarIcon />, path: '/dashboard/holidays', requiredPermission: 'holidays_read' },
+      { text: 'Datos de mi empresa', icon: <Business />, path: '/dashboard/company-settings', requiredPermission: 'company_settings_update' },
       { text: 'Configuración General', icon: <SettingsIcon />, path: '/dashboard/system-settings', requiredPermission: 'system_settings_update' },
     ]
   },

@@ -579,6 +579,9 @@ export default function RolesPage() {
                     <Checkbox
                       checked={selectedPermIds.has(p.id)}
                       onChange={() => togglePerm(p.id)}
+                      // No se otorga lo que no se tiene: sumar un permiso propio-ajeno se
+                      // bloquea acá y el backend lo rechaza con 403 (FLOWS.md §75.1). Quitar sí.
+                      disabled={!selectedPermIds.has(p.id) && !userHasPermission(currentUser, p.name)}
                       size="small"
                     />
                   }

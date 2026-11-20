@@ -9,11 +9,12 @@ import {
   Divider,
   MenuItem,
 } from '@mui/material';
-import { SaveOutlined as SaveIcon } from '@mui/icons-material';
+import { SaveOutlined as SaveIcon, SearchOutlined as SearchIcon } from '@mui/icons-material';
 import {
   ClientService,
   CreateClientData,
-  Client
+  Client,
+  PadronPerson
 } from '../../../utils/api';
 import GearSpinner from '../../../components/GearSpinner';
 import { maskCuit, isValidCuit, formatCuit, TAX_CONDITION_LABELS, TaxCondition } from '../../../utils/cuit';
@@ -32,13 +33,51 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
     email: client?.email || '',
     phone: client?.phone || '',
     tax_condition: client?.tax_condition || null,
+    fce_transfer_option: client?.fce_transfer_option || null,
+    fiscal_street: client?.fiscal_street || '',
+    fiscal_locality: client?.fiscal_locality || '',
+    fiscal_province: client?.fiscal_province || '',
   });
   // El CUIT se edita con la máscara XX-XXXXXXXX-X y se envía solo con dígitos.
   const [cuit, setCuit] = useState(formatCuit(client?.cuit));
 
   const [loading, setLoading] = useState(false);
+  // Consulta del CUIT en el padrón de ARCA (FLOWS.md §73): completa lo que esté vacío y avisa qué se completó.
+  const [padronLoading, setPadronLoading] = useState(false);
+  const [padronMessage, setPadronMessage] = useState<{ severity: 'success' | 'warning' | 'info'; text: string } | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const handlePadronLookup = async () => {
+    setPadronLoading(true);
+    setPadronMessage(null);
+    try {
+      const person: PadronPerson = await ClientService.padronLookup(cuit);
+      const filled: string[] = [];
+      setFormData((prev) => {
+        const next = { ...prev };
+        // Solo se completa lo vacío: lo que ya cargó una persona no se pisa. La condición de IVA y el domicilio fiscal vienen de ARCA, así que esos sí se completan.
+        if (!prev.razonSocial.trim() && person.legal_name) { next.razonSocial = person.legal_name; filled.push('razón social'); }
+        if (person.tax_condition && prev.tax_condition !== person.tax_condition) { next.tax_condition = person.tax_condition; filled.push('condición frente al IVA'); }
+        for (const [key, label] of [['fiscal_street', 'calle'], ['fiscal_locality', 'localidad'], ['fiscal_province', 'provincia']] as const) {
+          const value = person[key];
+          if (value && !prev[key]) { next[key] = value; filled.push(label); }
+        }
+        return next;
+      });
+      const status = person.status && person.status !== 'ACTIVO' ? ` · ATENCIÓN: la clave figura ${person.status}` : '';
+      const name = person.legal_name ? `${person.legal_name}${status}` : 'sin nombre';
+      const duplicate = person.existing_client && person.existing_client.id !== client?.id ? ` Ya hay un cliente con este CUIT: ${person.existing_client.razonSocial}.` : '';
+      setPadronMessage({
+        severity: duplicate || status ? 'warning' : 'success',
+        text: `ARCA: ${name}.${filled.length ? ` Se completó: ${filled.join(', ')}.` : ' No había nada vacío para completar.'}${duplicate} Revisá los datos antes de guardar.`,
+      });
+    } catch (err) {
+      setPadronMessage({ severity: 'warning', text: err instanceof Error ? err.message : 'No se pudo consultar el padrón de ARCA' });
+    } finally {
+      setPadronLoading(false);
+    }
+  };
 
   // Manejar cambios en los campos del formulario
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,6 +218,13 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
             inputProps={{ inputMode: 'numeric' }}
             error={cuit.length === 13 && !isValidCuit(cuit)}
             helperText={cuit.length === 13 && !isValidCuit(cuit) ? 'El dígito verificador no coincide' : 'Opcional'}
+            InputProps={{
+              endAdornment: (
+                <Button size="small" startIcon={<SearchIcon />} onClick={handlePadronLookup} disabled={!isValidCuit(cuit) || padronLoading} sx={{ whiteSpace: 'nowrap' }}>
+                  {padronLoading ? 'Buscando…' : 'Buscar en ARCA'}
+                </Button>
+              ),
+            }}
           />
           <TextField
             select
@@ -193,6 +239,31 @@ export default function ClientForm({ client, onSuccessAction, onCancel }: Client
               <MenuItem key={key} value={key}>{TAX_CONDITION_LABELS[key]}</MenuItem>
             ))}
           </TextField>
+        </Box>
+        {padronMessage && <Alert severity={padronMessage.severity} onClose={() => setPadronMessage(null)}>{padronMessage.text}</Alert>}
+
+        <TextField
+          select
+          fullWidth
+          label="Opción de transferencia de la FCE"
+          value={formData.fce_transfer_option || ''}
+          onChange={(e) => setFormData(prev => ({ ...prev, fce_transfer_option: (e.target.value || null) as 'SCA' | 'ADC' | null }))}
+          helperText="Para la Factura de Crédito Electrónica. Sin elegir, se usa la de la empresa. Algunos clientes piden una en particular (por ejemplo, ADC)."
+          sx={{ mt: 2 }}
+        >
+          <MenuItem value=""><em>La de la empresa</em></MenuItem>
+          <MenuItem value="SCA">SCA — Sistema de circulación abierta</MenuItem>
+          <MenuItem value="ADC">ADC — Agente de depósito colectivo</MenuItem>
+        </TextField>
+
+        {/* Domicilio comercial fiscal: el del padrón de ARCA (puede no coincidir con el de la obra o la OC). Sale en la factura. */}
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
+          Domicilio comercial fiscal (opcional, sale en la factura)
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+          <TextField fullWidth label="Calle y número" name="fiscal_street" value={formData.fiscal_street || ''} onChange={handleInputChange} inputProps={{ maxLength: 150 }} />
+          <TextField fullWidth label="Localidad" name="fiscal_locality" value={formData.fiscal_locality || ''} onChange={handleInputChange} inputProps={{ maxLength: 100 }} />
+          <TextField fullWidth label="Provincia" name="fiscal_province" value={formData.fiscal_province || ''} onChange={handleInputChange} inputProps={{ maxLength: 100 }} />
         </Box>
 
         {/* Información de Contacto */}

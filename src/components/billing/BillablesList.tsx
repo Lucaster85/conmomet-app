@@ -117,6 +117,15 @@ export default function BillablesList({ rows, ivaRate, onOpen }: BillablesListPr
             label={`${row.billing.pending_invoices_count} pendiente${row.billing.pending_invoices_count === 1 ? '' : 's'} de cobro`}
           />
         )}
+        {row.billing.overbilled_vs_real && (
+          <Chip size="small" color="warning" label="Facturado > avance real" sx={{ alignSelf: 'flex-start' }} />
+        )}
+        {row.purchase_order && row.purchase_order.active_count > 0 && (
+          <Chip size="small" variant="outlined" label={`OC ${row.purchase_order.numbers.join(', ')}`} sx={{ maxWidth: 220 }} />
+        )}
+        {row.purchase_order && row.purchase_order.active_count === 0 && !row.purchase_order.not_required && (
+          <Chip size="small" variant="outlined" color="warning" label="Sin OC" />
+        )}
       </Stack>
     );
   };

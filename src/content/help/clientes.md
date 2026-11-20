@@ -16,12 +16,31 @@ Con el botón **"Nuevo Cliente"**:
   que coincidir: si no, el sistema avisa y no deja guardar. Se guarda sin guiones.
 - **Condición frente al IVA** (opcional): Responsable Inscripto, Monotributo, IVA Exento,
   Consumidor Final o IVA No Responsable.
+- **Opción de transferencia de la FCE** (opcional): **SCA** o **ADC**. Es la que se usa al emitirle una **Factura de Crédito
+  Electrónica** a este cliente. Algunos clientes piden una en particular (por ejemplo, ADC). Sin elegir, se usa la de la empresa
+  (Datos de mi empresa).
+- **Domicilio comercial fiscal** (opcional): calle y número, localidad y provincia. Es el que figura en
+  el padrón de ARCA, que puede **no coincidir** con el de la obra o el de la orden de compra. Sale en el
+  bloque del cliente de la factura.
 
 El CUIT y la condición de IVA son los **datos fiscales** del cliente. No son obligatorios, pero
-conviene cargarlos: es lo que usa **Facturación** para identificar a quién se le factura, y lo
-que deja preparado el sistema para la integración con ARCA. Se ven en el listado de clientes y
+conviene cargarlos: es lo que usa **Facturación** para identificar a quién se le factura. Para
+**emitir una Factura A por ARCA** son **obligatorios**: el CUIT tiene que ser válido y la condición de
+IVA tiene que ser Responsable Inscripto o Monotributo. Se ven en el listado de clientes y
 se puede **buscar un cliente por su CUIT**, con o sin guiones. El CUIT no es único: si un mismo
 cliente está cargado dos veces (por ejemplo, una por planta), puede repetirse.
+
+### Buscar un cliente en ARCA por su CUIT
+
+Al lado del CUIT hay un botón **Buscar en ARCA**: con un CUIT válido consulta el padrón de ARCA y completa
+lo que encuentra: la **razón social** (solo si todavía está vacía), el **domicilio fiscal** (calle, localidad y
+provincia, solo si están vacíos) y la **condición frente al IVA** cuando el padrón la informa sin ambigüedad
+(monotributo o IVA). Nunca pisa lo que ya escribió una persona, y avisa qué completó, si la clave figura inactiva y
+si **ya existe otro cliente con ese CUIT**. Después de buscar, **revisá los datos antes de guardar**.
+
+Para usarlo, quien lo usa necesita permiso de modificar clientes, y el servicio **"ws_sr_padron_a13"** tiene que estar
+autorizado para el certificado en ARCA (el mismo trámite que se hizo para facturar, ver el tema **Datos de mi empresa y
+conexión con ARCA**). Si no está autorizado, la pantalla lo dice.
 
 ## Desactivar un cliente
 
@@ -72,4 +91,4 @@ es un historial que no se puede borrar.
 Es un concepto totalmente aparte de la tarifa que se carga en una OCA de Horas Hombre — son dos
 precios independientes que no se mezclan.
 
-<!-- ref: conmomet-app/src/app/dashboard/clients/page.tsx, conmomet-app/src/app/dashboard/clients/ClientForm.tsx, conmomet-app/src/app/dashboard/clients/ClientSupervisorsDialog.tsx, conmomet-app/src/app/dashboard/clients/ClientItemRatesDialog.tsx, api_conmomet/controllers/clientController.js, api_conmomet/helpers/cuit.js, conmomet-app/src/utils/cuit.ts, api_conmomet/controllers/clientSupervisorController.js, api_conmomet/controllers/clientItemRateController.js, api_conmomet/controllers/budgetItemTypeController.js -->
+<!-- ref: api_conmomet/services/arca/padron.js, api_conmomet/controllers/clientController.js, conmomet-app/src/app/dashboard/clients/page.tsx, conmomet-app/src/app/dashboard/clients/ClientForm.tsx, conmomet-app/src/app/dashboard/clients/ClientSupervisorsDialog.tsx, conmomet-app/src/app/dashboard/clients/ClientItemRatesDialog.tsx, api_conmomet/controllers/clientController.js, api_conmomet/helpers/cuit.js, conmomet-app/src/utils/cuit.ts, api_conmomet/controllers/clientSupervisorController.js, api_conmomet/controllers/clientItemRateController.js, api_conmomet/controllers/budgetItemTypeController.js -->

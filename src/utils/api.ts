@@ -74,6 +74,12 @@ export interface Client {
   // Datos fiscales opcionales (Facturación / ARCA). El CUIT viene sin guiones.
   cuit?: string | null;
   tax_condition?: TaxCondition | null;
+  // Domicilio comercial fiscal (el del padrón de ARCA), opcional: sale en el bloque del receptor de la factura.
+  fiscal_street?: string | null;
+  fiscal_locality?: string | null;
+  fiscal_province?: string | null;
+  // Opción de transferencia de la FCE propia del cliente (null = usa la de la empresa).
+  fce_transfer_option?: 'SCA' | 'ADC' | null;
   is_active: boolean;
   createdAt: string;
   updatedAt?: string;
@@ -85,6 +91,10 @@ export interface CreateClientData {
   phone?: string;
   cuit?: string | null;
   tax_condition?: TaxCondition | null;
+  fiscal_street?: string | null;
+  fiscal_locality?: string | null;
+  fiscal_province?: string | null;
+  fce_transfer_option?: 'SCA' | 'ADC' | null;
   is_active?: boolean;
 }
 
@@ -465,17 +475,6 @@ export class PermissionService {
     }
   }
 
-  static async assignToUser(userId: number, permissionIds: number[]): Promise<void> {
-    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/permissions_assign`, {
-      method: 'POST',
-      body: JSON.stringify({ type: 'user', id: userId, permissions: permissionIds }),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al asignar permisos');
-    }
-  }
-
   static async create(names: string[]): Promise<Permission[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/permissions`, {
       method: 'POST',
@@ -499,7 +498,31 @@ export class PermissionService {
     }
   }
 }
+  // Datos de un contribuyente en el padrón A13 de ARCA, para autocompletar un cliente (FLOWS.md §73).
+  export interface PadronPerson {
+    cuit: string;
+    legal_name: string | null;
+    person_type: string | null;
+    status: string | null;
+    tax_condition: TaxCondition | null;
+    fiscal_street: string | null;
+    fiscal_locality: string | null;
+    fiscal_province: string | null;
+    postal_code: string | null;
+    // Si ya hay un cliente cargado con ese CUIT.
+    existing_client: { id: number; razonSocial: string } | null;
+  }
+
   export class ClientService {
+  static async padronLookup(cuit: string): Promise<PadronPerson> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/clients/padron/${cuit.replace(/\D/g, '')}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'No se pudo consultar el padrón de ARCA');
+    }
+    return (await response.json()).data;
+  }
+
   static async getAll(params?: { is_active?: boolean }): Promise<Client[]> {
     let url = `${API_BASE_URL}/clients`;
     if (params?.is_active !== undefined) url += `?is_active=${params.is_active}`;
@@ -3380,7 +3403,10 @@ export type NotificationType =
   // Llegó una postulación por "Trabajá con nosotros", o alguien volvió a mandar su CV (FLOWS.md §60).
   | 'job_application_received'
   // Te asignaron o reprogramaron una entrevista a un postulante (FLOWS.md §61).
-  | 'candidate_interview_assigned';
+  | 'candidate_interview_assigned'
+  // Una caución del presupuesto está por vencer o venció (FLOWS.md §69). Se avisa por permiso (invoices_read).
+  | 'surety_bond_expiring'
+  | 'surety_bond_expired';
 
 export interface AppNotification {
   id: number;
@@ -5120,14 +5146,180 @@ export class SystemSettingService {
   }
 }
 
+// --- DATOS DE MI EMPRESA + ARCA (PLAN_ARCA.md §3.0, FLOWS.md §64) ---
+export type CompanyVatCondition = 'responsable_inscripto' | 'monotributo' | 'exento';
+export type FceTransferOption = 'SCA' | 'ADC';
+
+export interface CompanyProfile {
+  id: number;
+  legal_name: string | null;
+  display_name: string | null;
+  cuit: string | null;
+  address_street: string | null;
+  address_number: string | null;
+  address_locality: string | null;
+  address_province: string | null;
+  vat_condition: CompanyVatCondition;
+  iibb_number: string | null;
+  activity_start_date: string | null;
+  email: string | null;
+  phone: string | null;
+  fce_transfer_option: FceTransferOption;
+}
+
+export type CompanyProfileInput = Partial<Omit<CompanyProfile, 'id'>>;
+
+export interface CompanyPointOfSale {
+  id: number;
+  number: number;
+  usage_description: string | null;
+  type: 'web_service' | 'manual';
+  address: string | null;
+  is_default: boolean;
+  is_active: boolean;
+}
+
+export type CompanyPointOfSaleInput = Partial<Omit<CompanyPointOfSale, 'id'>> & { number: number };
+
+export interface CompanyBankAccount {
+  id: number;
+  bank_name: string;
+  cbu: string;
+  alias: string | null;
+  currency: 'ARS' | 'USD' | null;
+  is_default: boolean;
+  is_active: boolean;
+}
+
+export type CompanyBankAccountInput = Partial<Omit<CompanyBankAccount, 'id'>> & { bank_name: string; cbu: string };
+
+export interface ArcaCertificateInfo {
+  ok: boolean;
+  subject?: string | null;
+  expires_at?: string;
+  days_left?: number;
+  expiring_soon?: boolean;
+  error?: string;
+}
+
+// Estado de la integración, sin llamar a ARCA.
+export interface ArcaStatus {
+  enabled: boolean;
+  env: 'homologacion' | 'produccion' | null;
+  cuit: string | null;
+  config_error: string | null;
+  certificate: ArcaCertificateInfo | null;
+  cuit_matches_profile: boolean | null;
+  cuit_mismatch_blocks: boolean;
+}
+
+export interface CompanySettings {
+  profile: CompanyProfile;
+  points_of_sale: CompanyPointOfSale[];
+  bank_accounts: CompanyBankAccount[];
+  arca: ArcaStatus;
+}
+
+type ArcaStep<T> = ({ ok: true } & T) | { ok: false; error: string };
+
+export interface ArcaTestResult extends ArcaStatus {
+  dummy: ArcaStep<{ servers: { app_server?: string; db_server?: string; auth_server?: string } }>;
+  login: ArcaStep<{ expires_at: string; source: 'cache' | 'login' }>;
+  points_of_sale?: ArcaStep<{ items: Array<{ number: number; emission_type: string | null; blocked: boolean; deactivated_at: string | null }> }>;
+  last_authorized?: {
+    ok: boolean;
+    items: Array<{ pos_number: number; cbte_tipo: number; label: string; ok: boolean; number?: number; error?: string }>;
+  };
+  usd_rate?: ArcaStep<{ currency: string; rate: number; date: string | null }>;
+}
+
+export interface ArcaPointValidation {
+  env: 'homologacion' | 'produccion';
+  enforced: boolean;
+  has_problems: boolean;
+  results: Array<{ id: number; number: number; state: 'ok' | 'not_found' | 'blocked'; emission_type: string | null }>;
+  arca_points: Array<{ number: number; emission_type: string | null; blocked: boolean; deactivated_at: string | null }>;
+}
+
+async function companyRequest<T>(path: string, method: string, body?: unknown, fallback = 'Error al comunicarse con el servidor'): Promise<T> {
+  const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/company-settings${path}`, {
+    method,
+    ...(body !== undefined ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+  });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || fallback);
+  return (await response.json()).data as T;
+}
+
+export class CompanySettingsService {
+  static get(): Promise<CompanySettings> {
+    return companyRequest('', 'GET', undefined, 'Error al cargar los datos de la empresa');
+  }
+  static updateProfile(data: CompanyProfileInput): Promise<CompanyProfile> {
+    return companyRequest('/profile', 'PUT', data, 'Error al guardar los datos de la empresa');
+  }
+  static createPointOfSale(data: CompanyPointOfSaleInput): Promise<CompanyPointOfSale> {
+    return companyRequest('/points-of-sale', 'POST', data, 'Error al crear el punto de venta');
+  }
+  static updatePointOfSale(id: number, data: Partial<CompanyPointOfSaleInput>): Promise<CompanyPointOfSale> {
+    return companyRequest(`/points-of-sale/${id}`, 'PUT', data, 'Error al guardar el punto de venta');
+  }
+  static deletePointOfSale(id: number): Promise<{ id: number }> {
+    return companyRequest(`/points-of-sale/${id}`, 'DELETE', undefined, 'Error al eliminar el punto de venta');
+  }
+  static createBankAccount(data: CompanyBankAccountInput): Promise<CompanyBankAccount> {
+    return companyRequest('/bank-accounts', 'POST', data, 'Error al crear la cuenta bancaria');
+  }
+  static updateBankAccount(id: number, data: Partial<CompanyBankAccountInput>): Promise<CompanyBankAccount> {
+    return companyRequest(`/bank-accounts/${id}`, 'PUT', data, 'Error al guardar la cuenta bancaria');
+  }
+  static deleteBankAccount(id: number): Promise<{ id: number }> {
+    return companyRequest(`/bank-accounts/${id}`, 'DELETE', undefined, 'Error al eliminar la cuenta bancaria');
+  }
+  static testArcaConnection(): Promise<ArcaTestResult> {
+    return companyRequest('/arca/test', 'POST', {}, 'Error al probar la conexión con ARCA');
+  }
+  static validateArcaPointsOfSale(): Promise<ArcaPointValidation> {
+    return companyRequest('/arca/validate-points-of-sale', 'POST', {}, 'Error al validar los puntos de venta con ARCA');
+  }
+}
+
 // --- FACTURACIÓN ---
 export type VoucherType = 'A' | 'B' | 'C' | 'E' | 'sin_factura';
 export type InvoiceStatus = 'pending' | 'paid' | 'cancelled';
-export type InvoiceConcept = 'materials' | 'labor' | 'other';
+// Estado de la emisión por ARCA (distinto del de cobro): manual = cargada a mano, draft = borrador para emitir,
+// authorizing = se mandó a ARCA y falta confirmar, authorized = emitida con CAE, rejected = ARCA la rechazó.
+export type InvoiceArcaStatus = 'manual' | 'draft' | 'authorizing' | 'authorized' | 'rejected';
+export type InvoiceSource = 'manual' | 'arca';
+// Factura o sus notas: una nota de crédito acredita (anula total o parcialmente) una factura emitida y una de débito suma un cargo.
+export type InvoiceKind = 'invoice' | 'credit_note' | 'debit_note';
+export type InvoiceConcept = 'materials' | 'labor' | 'other' | 'adjustment' | 'oca';
+export type AdjustmentType = 'ipc_indec' | 'uocra' | 'other';
+// Los conceptos que se cargan en el armado de una factura (el de ajuste solo existe en las facturas de ajuste).
+export type EditableInvoiceConcept = Exclude<InvoiceConcept, 'adjustment' | 'oca'>;
 export type BillingStatus = 'unbilled' | 'partial' | 'billed' | 'billed_and_paid';
 
 export interface InvoiceLine {
   id?: number;
+  // Presupuesto de la línea y OC contra la que se factura (FLOWS.md §70). Una factura puede cobrar varios presupuestos.
+  budget_id?: number | null;
+  purchase_order_id?: number | null;
+  budget?: { id: number; number: string; title: string } | null;
+  // Línea que cobra una OCA entera (FLOWS.md §74).
+  oca_id?: number | null;
+  oca?: { id: number; number: string; type: 'man_hours' | 'crane_hours' } | null;
+  // El avance real que factura la línea (opcional).
+  progress_entry_id?: number | null;
+  progressEntry?: { id: number; percent: number; date: string; source: ProgressSource; certificate_number: string | null; status: ProgressCertificateStatus | null } | null;
+  purchaseOrder?: { id: number; number: string; allows_adjustment?: boolean; adjustment_type?: AdjustmentType; adjustment_notes?: string | null } | null;
+  // Solo en líneas de ajuste (FLOWS.md §71): la línea de la original que ajustan, el índice, el % y la base sobre la que se calculó.
+  adjusts_line_id?: number | null;
+  adjustment_type?: AdjustmentType | null;
+  adjustment_percent?: number | null;
+  adjustment_base_amount?: number | null;
+  // Solo en una nota de crédito: la línea de la factura original que acredita.
+  credits_line_id?: number | null;
+  // Solo en las líneas de una factura emitida: neto ya acreditado por notas (los borradores también cuentan: reservan lo que acreditan).
+  credited_net?: number;
   concept: InvoiceConcept;
   description?: string | null;
   percent?: number | null;
@@ -5146,6 +5338,10 @@ export interface Invoice {
   due_date: string | null;
   client_id: number;
   budget_id: number | null;
+  // Presupuestos que cobra la factura, sacados de sus líneas (`budget_id` de la cabecera solo está cuando es uno). FLOWS.md §70.
+  budgets?: { id: number; number?: string; title?: string }[];
+  // Solo en el detalle de un presupuesto: la parte de una factura compartida que le toca a ese presupuesto.
+  budget_share?: { net_amount: number; total_amount: number };
   project_id: number | null;
   currency: BudgetCurrency;
   exchange_rate: number | null;
@@ -5159,12 +5355,57 @@ export interface Invoice {
   cancellation_reason: string | null;
   file_url: string | null;
   file_name: string | null;
+  // --- Emisión por ARCA (PLAN_ARCA.md, etapa 2) ---
+  cbte_tipo?: number | null;
+  source?: InvoiceSource;
+  kind?: InvoiceKind;
+  associated_invoice_id?: number | null;
+  associatedInvoice?: { id: number; voucher_type: VoucherType; cbte_tipo: number | null; pos_number: number | null; number: number | null; issue_date: string } | null;
+  // En una nota de FCE: si lleva la marca de anulación (el cliente la rechazó en ARCA).
+  fce_annulment?: boolean | null;
+  // En una factura emitida: total de las notas de crédito ya emitidas.
+  credited_total?: number;
+  // Ajustes de precio (etapa 8): una factura de ajuste apunta a la que ajusta, y la original trae su ajuste vigente (null si no tiene).
+  // Nota por diferencia de cambio (FLOWS.md §73): en pesos, sobre una factura en dólares. Las originales traen su nota vigente (`exchange_note`).
+  exchange_difference?: boolean;
+  exchange_diff_base_rate?: number | null;
+  exchange_diff_new_rate?: number | null;
+  exchange_diff_base_usd?: number | null;
+  exchange_note?: { id: number; kind: InvoiceKind; cbte_tipo: number | null; pos_number: number | null; number: number | null; total_amount: number; arca_status: InvoiceArcaStatus; status: InvoiceStatus } | null;
+  adjusts_invoice_id?: number | null;
+  adjustedInvoice?: { id: number; voucher_type: VoucherType; cbte_tipo: number | null; pos_number: number | null; number: number | null; issue_date: string } | null;
+  adjustment?: { id: number; cbte_tipo: number | null; pos_number: number | null; number: number | null; total_amount: number; arca_status: InvoiceArcaStatus; status: InvoiceStatus; issue_date: string } | null;
+  arca_status?: InvoiceArcaStatus;
+  arca_env?: 'homologacion' | 'produccion' | null;
+  arca_concept?: 1 | 2 | 3 | null;
+  service_from?: string | null;
+  service_to?: string | null;
+  recipient_doc_number?: string | null;
+  recipient_vat_condition_id?: number | null;
+  point_of_sale_id?: number | null;
+  // FCE: cuenta del emisor (CBU y alias), opción de transferencia y aceptación del cliente (esta última se carga a mano).
+  bank_account_id?: number | null;
+  fce_transfer_option?: 'SCA' | 'ADC' | null;
+  fce_acceptance?: 'pending' | 'accepted' | 'rejected' | null;
+  fce_acceptance_at?: string | null;
+  bankAccount?: { id: number; bank_name: string; cbu: string; alias: string | null } | null;
+  issuer_snapshot?: { bank?: { bank_name: string; cbu: string; alias: string | null } } | null;
+  same_currency_payment?: boolean | null;
+  total_amount_ars?: number | null;
+  sale_condition?: string | null;
+  remito_number?: string | null;
+  commercial_reference?: string | null;
+  cae?: string | null;
+  cae_expiration?: string | null;
+  authorized_at?: string | null;
+  arca_result?: { resultado?: string; reason?: string; observations?: Array<{ code: number; msg: string }>; env?: string; via?: string } | null;
+  pointOfSale?: { id: number; number: number; usage_description: string | null; type: string } | null;
   // Comprobante de pago, opcional, adjuntado al marcar la factura como cobrada.
   payment_file_url?: string | null;
   payment_file_name?: string | null;
   notes: string | null;
   createdAt?: string;
-  client?: { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null };
+  client?: { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; fce_transfer_option?: 'SCA' | 'ADC' | null };
   budget?: { id: number; number: string; title: string; status: string } | null;
   project?: { id: number; code: string; name: string; is_additional?: boolean } | null;
   createdBy?: { id: number; name: string; lastname: string };
@@ -5179,6 +5420,11 @@ export interface BudgetBillingSummary {
   budget_id: number;
   bases: BillingByCurrency<BillingBase>;
   billed: BillingByCurrency<number>;
+  // Ajustes de precio facturados (neto, por moneda): van aparte y no descuentan saldo.
+  adjustments: { ARS: number; USD: number };
+  // Avance real de obra vigente (null si no hay) y si lo facturado de mano de obra lo supera. Solo informativo (FLOWS.md §72).
+  real_progress: RealProgress | null;
+  overbilled_vs_real: boolean;
   balances: BillingByCurrency<number>;
   billed_percent: BillingByCurrency<number>;
   covered_by_reserved: BillingByCurrency<boolean>;
@@ -5207,15 +5453,182 @@ export interface BillableBudget {
   labor_discount_percent: number | null;
   material_discount_percent: number | null;
   project_id: number | null;
-  client?: { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null };
+  client?: { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; fce_transfer_option?: 'SCA' | 'ADC' | null };
   project?: { id: number; code: string; name: string; is_additional?: boolean; parent?: { id: number; code: string; name: string } | null } | null;
   quoteRequest?: { id: number; number: string; client_quote_number?: string | null; title: string } | null;
   billing: BudgetBillingSummary;
+  // Solo en el listado de facturación (GET /invoices/billables).
+  purchase_order?: BudgetPurchaseOrderSummary;
 }
 
 export interface IvaInfo { rates: number[]; default_rate: number }
 
 export interface HourBucket { budget_item_type_id: number | null; item_type_name: string; budgeted_hours: number; consumed_hours: number }
+
+// OC del cliente, cauciones y documentos extra del presupuesto (FLOWS.md §69).
+export type PurchaseOrderConcept = 'materials' | 'labor' | 'all';
+export type PurchaseOrderAdjustmentType = 'ipc_indec' | 'uocra' | 'other';
+export type PurchaseOrderStatus = 'active' | 'rejected' | 'replaced';
+export type SuretyBondPurpose = 'advance_payment' | 'other';
+export type SuretyBondStatus = 'released' | 'no_expiration' | 'expired' | 'expiring_soon' | 'active';
+
+export interface BillingUploader { id: number; name: string; lastname: string }
+
+export interface BillingStoredFile {
+  id: number;
+  file_url: string;
+  file_name: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  uploader?: BillingUploader | null;
+  createdAt?: string;
+  created_at?: string;
+}
+
+export interface PurchaseOrderItem { id?: number; position: string | null; description: string; amount: number | null }
+
+export interface PurchaseOrder {
+  id: number;
+  budget_id: number;
+  number: string;
+  date: string;
+  concept: PurchaseOrderConcept;
+  currency: BudgetCurrency;
+  amount: number | null;
+  payment_terms: string | null;
+  allows_adjustment: boolean;
+  adjustment_type: PurchaseOrderAdjustmentType;
+  adjustment_notes: string | null;
+  status: PurchaseOrderStatus;
+  // Lo facturado contra la OC y su saldo (null si no tiene monto).
+  billed?: number;
+  balance?: number | null;
+  rejection_reason: string | null;
+  replaces_id: number | null;
+  replaces?: { id: number; number: string } | null;
+  items: PurchaseOrderItem[];
+  files: BillingStoredFile[];
+  createdBy?: BillingUploader | null;
+}
+
+export interface PurchaseOrderInput {
+  budget_id?: number;
+  number: string;
+  date: string;
+  concept: PurchaseOrderConcept;
+  currency: BudgetCurrency;
+  amount?: number | null;
+  payment_terms?: string;
+  allows_adjustment: boolean;
+  adjustment_type: PurchaseOrderAdjustmentType;
+  adjustment_notes?: string;
+  items: PurchaseOrderItem[];
+  // Motivo: obligatorio al reemplazar una OC.
+  reason?: string;
+  files?: File[];
+}
+
+export interface SuretyBond {
+  id: number;
+  budget_id: number;
+  purchase_order_id: number | null;
+  purchaseOrder?: { id: number; number: string } | null;
+  insurer: string;
+  policy_number: string;
+  amount: number;
+  currency: BudgetCurrency;
+  issue_date: string | null;
+  purpose: SuretyBondPurpose;
+  expiration_date: string | null;
+  notify_days_before: number;
+  released_at: string | null;
+  notes: string | null;
+  file_url: string | null;
+  file_name: string | null;
+  status: SuretyBondStatus;
+  days_left: number | null;
+}
+
+export interface SuretyBondInput {
+  budget_id?: number;
+  purchase_order_id?: number | null;
+  insurer: string;
+  policy_number: string;
+  amount: number;
+  currency: BudgetCurrency;
+  issue_date?: string | null;
+  purpose: SuretyBondPurpose;
+  expiration_date?: string | null;
+  notify_days_before: number;
+  notes?: string;
+  file?: File | null;
+}
+
+export interface SuretyBondAlert extends Omit<SuretyBond, 'purchaseOrder'> {
+  budget: { id: number; number: string; title: string; client?: { id: number; razonSocial: string } | null };
+}
+
+// Avance real de obra (FLOWS.md §72): medición paralela a la de horas. `percent` es acumulado.
+export type ProgressSource = 'certificate' | 'manual';
+export type ProgressCertificateStatus = 'presented' | 'approved' | 'rejected';
+
+export interface BudgetProgressEntry {
+  id: number;
+  budget_id: number;
+  date: string;
+  percent: number;
+  source: ProgressSource;
+  certificate_number: string | null;
+  status: ProgressCertificateStatus | null;
+  notes: string | null;
+  // Si cuenta como avance real: manual, o certificado aprobado.
+  counts: boolean;
+  files: BillingStoredFile[];
+  createdBy?: BillingUploader | null;
+}
+
+export interface ProgressEntryInput {
+  budget_id?: number;
+  date: string;
+  percent: number;
+  source: ProgressSource;
+  certificate_number?: string;
+  status?: ProgressCertificateStatus;
+  notes?: string;
+  files?: File[];
+}
+
+export interface RealProgress {
+  entry_id: number;
+  percent: number;
+  date: string;
+  source: ProgressSource;
+  certificate_number: string | null;
+}
+
+export interface BudgetBillingFile extends BillingStoredFile { budget_id: number; description: string | null }
+
+export interface MissingPurchaseOrderBudget {
+  id: number;
+  number: string;
+  title: string;
+  currency: BudgetCurrency;
+  approved_at: string | null;
+  client?: { id: number; razonSocial: string } | null;
+}
+
+export interface BillablePurchaseOrder {
+  id: number;
+  number: string;
+  concept: PurchaseOrderConcept;
+  currency: BudgetCurrency;
+  amount: number | null;
+  billed: number;
+  // Null si la OC no tiene monto (solo de referencia): no limita.
+  balance: number | null;
+}
+
+export interface BudgetPurchaseOrderSummary { active_count: number; numbers: string[]; orders: BillablePurchaseOrder[]; not_required: boolean }
 
 export interface BudgetBillingDetail {
   budget: Omit<BillableBudget, 'billing'>;
@@ -5224,10 +5637,25 @@ export interface BudgetBillingDetail {
   invoices: Invoice[];
   has_reserved_records: boolean;
   iva: IvaInfo;
+  purchase_order_not_required: boolean;
+  purchase_orders: PurchaseOrder[];
+  surety_bonds: SuretyBond[];
+  billing_files: BudgetBillingFile[];
+  progress_entries: BudgetProgressEntry[];
 }
 
 export interface InvoiceLineInput {
-  concept: InvoiceConcept;
+  // Línea que cobra una OCA entera: el importe sale de las horas, no se manda.
+  oca_id?: number;
+  progress_entry_id?: number | null;
+  // Línea de ajuste: la línea de la factura original que se ajusta y el índice.
+  adjusts_line_id?: number;
+  adjustment_type?: AdjustmentType;
+  budget_id?: number;
+  purchase_order_id?: number | null;
+  // Nota de crédito: la línea de la factura original que se acredita (el monto o el porcentaje es sobre esa línea).
+  credits_line_id?: number;
+  concept?: InvoiceConcept;
   description?: string;
   // El usuario carga el porcentaje O el monto; el servidor recalcula el otro contra la base real.
   percent?: number;
@@ -5235,7 +5663,33 @@ export interface InvoiceLineInput {
 }
 
 export interface InvoiceInput {
+  // Nota de crédito o de débito (siempre por ARCA, source 'arca'): sobre qué factura y, en una nota de FCE, si es una anulación.
+  kind?: InvoiceKind;
+  associated_invoice_id?: number;
+  fce_annulment?: boolean;
+  // Factura de ajuste (etapa 8): la factura emitida que ajusta y, opcional, el período que aparece en la descripción.
+  adjusts_invoice_id?: number;
+  adjustment_period?: string | null;
+  // Nota por diferencia de cambio: la cotización nueva y, opcional, el neto en dólares sobre el que se calcula.
+  exchange_difference?: boolean;
+  new_exchange_rate?: number;
+  base_usd?: number;
   voucher_type: VoucherType;
+  // Código de ARCA del comprobante (1 Factura A, 201 FCE A, 3 NC A…). La clave única es (cbte_tipo, punto de venta, número).
+  cbte_tipo?: number | null;
+  // 'arca' = borrador para emitir por ARCA (el número lo asigna ARCA); omitido = factura ya hecha que se carga a mano.
+  source?: InvoiceSource;
+  point_of_sale_id?: number | null;
+  bank_account_id?: number | null;
+  fce_transfer_option?: 'SCA' | 'ADC' | null;
+  arca_concept?: 1 | 2 | 3 | null;
+  service_from?: string | null;
+  service_to?: string | null;
+  recipient_vat_condition_id?: number | null;
+  same_currency_payment?: boolean | null;
+  sale_condition?: string | null;
+  remito_number?: string | null;
+  commercial_reference?: string | null;
   pos_number?: number | null;
   number?: number | null;
   issue_date: string;
@@ -5252,7 +5706,24 @@ export interface InvoiceInput {
   file?: File | null;
 }
 
+// Lo que el diálogo necesita para ofrecer "Emitir por ARCA" (GET /invoices/arca/options).
+export interface InvoiceArcaOptions {
+  enabled: boolean;
+  env: 'homologacion' | 'produccion' | null;
+  config_error: string | null;
+  cuit_mismatch_blocks: boolean;
+  issuer_missing: string[];
+  points_of_sale: Array<{ id: number; number: number; usage_description: string | null; is_default: boolean }>;
+  receiver_vat_conditions: Array<{ id: number; label: string }>;
+  client_tax_condition_map: Partial<Record<TaxCondition, number>>;
+  // Cuentas del emisor para elegir en una FCE y la opción de transferencia por defecto de la empresa.
+  bank_accounts: Array<{ id: number; bank_name: string; cbu: string; alias: string | null; currency: 'ARS' | 'USD' | null; is_default: boolean }>;
+  company_fce_transfer_option: 'SCA' | 'ADC';
+}
+
 export interface InvoiceFilters {
+  kind?: InvoiceKind;
+  arca_status?: InvoiceArcaStatus;
   status?: InvoiceStatus;
   client_id?: number;
   voucher_type?: VoucherType;
@@ -5272,7 +5743,233 @@ export interface BillableFilters {
 
 export interface InvoiceProjectOption { id: number; code: string; name: string; is_additional?: boolean; parent?: { id: number; code: string; name: string } | null }
 
+// Una OCA aprobada de un cliente, con su importe y si se puede facturar (FLOWS.md §74).
+export interface BillableOca {
+  id: number;
+  number: string;
+  type: 'man_hours' | 'crane_hours';
+  date: string;
+  client_id: number;
+  project: { id: number; code: string; name: string } | null;
+  requires_budget: boolean;
+  budget_status: string | null;
+  hourly_rate: number | null;
+  hours: { regular: number; ot50: number; ot100: number; total: number };
+  net_amount: number;
+  // Motivos por los que todavía no se puede facturar (vacío = se puede).
+  problems: string[];
+  // La factura vigente que ya la cobra, si la hay.
+  invoice: { id: number; voucher_type: VoucherType; cbte_tipo: number | null; pos_number: number | null; number: number | null; arca_status?: InvoiceArcaStatus } | null;
+  billable: boolean;
+}
+
 export interface InvoiceClientOption { id: number; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; is_active: boolean }
+
+// OC del cliente, cauciones y documentos extra: cuelgan de /invoices (permisos invoices_*). FLOWS.md §69.
+export class BillingDocsService {
+  private static async parse<T>(response: Response, fallback: string): Promise<T> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallback);
+    }
+    return (await response.json()).data;
+  }
+
+  // Devuelve además los avisos de archivos que no se pudieron subir (la entidad ya quedó guardada).
+  private static async parseWithWarnings<T>(response: Response, fallback: string): Promise<{ data: T; warnings: string[] }> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallback);
+    }
+    const body = await response.json();
+    return { data: body.data, warnings: body.warnings || [] };
+  }
+
+  private static orderForm(input: PurchaseOrderInput): FormData {
+    const formData = new FormData();
+    if (input.budget_id !== undefined) formData.append('budget_id', String(input.budget_id));
+    formData.append('number', input.number);
+    formData.append('date', input.date);
+    formData.append('concept', input.concept);
+    formData.append('currency', input.currency);
+    if (input.amount !== undefined && input.amount !== null) formData.append('amount', String(input.amount));
+    if (input.payment_terms) formData.append('payment_terms', input.payment_terms);
+    formData.append('allows_adjustment', String(input.allows_adjustment));
+    formData.append('adjustment_type', input.adjustment_type);
+    if (input.adjustment_notes) formData.append('adjustment_notes', input.adjustment_notes);
+    if (input.reason) formData.append('reason', input.reason);
+    formData.append('items', JSON.stringify(input.items));
+    (input.files || []).forEach((file) => formData.append('files', file));
+    return formData;
+  }
+
+  private static bondForm(input: SuretyBondInput): FormData {
+    const formData = new FormData();
+    if (input.budget_id !== undefined) formData.append('budget_id', String(input.budget_id));
+    if (input.purchase_order_id) formData.append('purchase_order_id', String(input.purchase_order_id));
+    formData.append('insurer', input.insurer);
+    formData.append('policy_number', input.policy_number);
+    formData.append('amount', String(input.amount));
+    formData.append('currency', input.currency);
+    if (input.issue_date) formData.append('issue_date', input.issue_date);
+    formData.append('purpose', input.purpose);
+    if (input.expiration_date) formData.append('expiration_date', input.expiration_date);
+    formData.append('notify_days_before', String(input.notify_days_before));
+    if (input.notes) formData.append('notes', input.notes);
+    if (input.file) formData.append('files', input.file);
+    return formData;
+  }
+
+  private static multipart(method: string, body: FormData): RequestInit {
+    return { method, headers: { 'Content-Type': 'SKIP_MULTIPART_HEADER' }, body };
+  }
+
+  static async createOrder(input: PurchaseOrderInput) {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders`, this.multipart('POST', this.orderForm(input)));
+    return this.parseWithWarnings<PurchaseOrder>(response, 'Error al cargar la OC');
+  }
+
+  static async updateOrder(id: number, input: PurchaseOrderInput): Promise<PurchaseOrder> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input, (key, value) => (key === 'files' ? undefined : value)),
+    });
+    return this.parse(response, 'Error al guardar la OC');
+  }
+
+  static async rejectOrder(id: number, reason: string): Promise<PurchaseOrder> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${id}/reject`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    return this.parse(response, 'Error al rechazar la OC');
+  }
+
+  static async replaceOrder(id: number, input: PurchaseOrderInput) {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${id}/replace`, this.multipart('POST', this.orderForm(input)));
+    return this.parseWithWarnings<PurchaseOrder>(response, 'Error al reemplazar la OC');
+  }
+
+  static async deleteOrder(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${id}`, { method: 'DELETE' });
+    await this.parse(response, 'Error al eliminar la OC');
+  }
+
+  static async addOrderFiles(id: number, files: File[]) {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${id}/files`, this.multipart('POST', formData));
+    return this.parseWithWarnings<PurchaseOrder>(response, 'Error al adjuntar los archivos');
+  }
+
+  static async removeOrderFile(orderId: number, fileId: number): Promise<PurchaseOrder> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/${orderId}/files/${fileId}`, { method: 'DELETE' });
+    return this.parse(response, 'Error al quitar el archivo');
+  }
+
+  static async setNotRequired(budgetId: number, value: boolean): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/budgets/${budgetId}/purchase-order-not-required`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    await this.parse(response, 'Error al actualizar el presupuesto');
+  }
+
+  static async getMissingOrders(): Promise<MissingPurchaseOrderBudget[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/purchase-orders/missing`);
+    return this.parse(response, 'Error al obtener los presupuestos sin OC');
+  }
+
+  static async createBond(input: SuretyBondInput) {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/surety-bonds`, this.multipart('POST', this.bondForm(input)));
+    return this.parseWithWarnings<SuretyBond>(response, 'Error al cargar la caución');
+  }
+
+  static async updateBond(id: number, input: SuretyBondInput) {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/surety-bonds/${id}`, this.multipart('PUT', this.bondForm(input)));
+    return this.parseWithWarnings<SuretyBond>(response, 'Error al guardar la caución');
+  }
+
+  static async releaseBond(id: number, released: boolean): Promise<SuretyBond> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/surety-bonds/${id}/release`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ released }),
+    });
+    return this.parse(response, 'Error al actualizar la caución');
+  }
+
+  static async deleteBond(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/surety-bonds/${id}`, { method: 'DELETE' });
+    await this.parse(response, 'Error al eliminar la caución');
+  }
+
+  static async getBondAlerts(): Promise<SuretyBondAlert[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/surety-bonds/alerts`);
+    return this.parse(response, 'Error al obtener las cauciones');
+  }
+
+  static async addBillingFiles(budgetId: number, files: File[], description?: string) {
+    const formData = new FormData();
+    formData.append('budget_id', String(budgetId));
+    if (description) formData.append('description', description);
+    files.forEach((file) => formData.append('files', file));
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/billing-files`, this.multipart('POST', formData));
+    return this.parseWithWarnings<BudgetBillingFile[]>(response, 'Error al adjuntar los documentos');
+  }
+
+  private static progressForm(input: ProgressEntryInput): FormData {
+    const formData = new FormData();
+    if (input.budget_id !== undefined) formData.append('budget_id', String(input.budget_id));
+    formData.append('date', input.date);
+    formData.append('percent', String(input.percent));
+    formData.append('source', input.source);
+    if (input.certificate_number) formData.append('certificate_number', input.certificate_number);
+    if (input.status) formData.append('status', input.status);
+    if (input.notes) formData.append('notes', input.notes);
+    (input.files || []).forEach((file) => formData.append('files', file));
+    return formData;
+  }
+
+  static async createProgress(input: ProgressEntryInput) {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/progress-entries`, this.multipart('POST', this.progressForm(input)));
+    return this.parseWithWarnings<BudgetProgressEntry>(response, 'Error al cargar el avance');
+  }
+
+  static async updateProgress(id: number, input: ProgressEntryInput): Promise<BudgetProgressEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/progress-entries/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input, (key, value) => (key === 'files' ? undefined : value)),
+    });
+    return this.parse(response, 'Error al guardar el avance');
+  }
+
+  static async deleteProgress(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/progress-entries/${id}`, { method: 'DELETE' });
+    await this.parse(response, 'Error al eliminar el avance');
+  }
+
+  static async addProgressFiles(id: number, files: File[]) {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/progress-entries/${id}/files`, this.multipart('POST', formData));
+    return this.parseWithWarnings<BudgetProgressEntry>(response, 'Error al adjuntar los archivos');
+  }
+
+  static async removeProgressFile(entryId: number, fileId: number): Promise<BudgetProgressEntry> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/progress-entries/${entryId}/files/${fileId}`, { method: 'DELETE' });
+    return this.parse(response, 'Error al quitar el archivo');
+  }
+
+  static async deleteBillingFile(id: number): Promise<void> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/billing-files/${id}`, { method: 'DELETE' });
+    await this.parse(response, 'Error al quitar el documento');
+  }
+}
 
 export class InvoiceService {
   private static buildFormData(input: InvoiceInput): FormData {
@@ -5281,6 +5978,21 @@ export class InvoiceService {
       if (value !== undefined && value !== null && value !== '') formData.append(key, String(value));
     };
     append('voucher_type', input.voucher_type);
+    append('kind', input.kind);
+    append('associated_invoice_id', input.associated_invoice_id);
+    if (input.fce_annulment !== undefined) formData.append('fce_annulment', String(input.fce_annulment));
+    append('cbte_tipo', input.cbte_tipo);
+    append('source', input.source);
+    append('point_of_sale_id', input.point_of_sale_id);
+    append('arca_concept', input.arca_concept);
+    append('service_from', input.service_from);
+    append('service_to', input.service_to);
+    append('recipient_vat_condition_id', input.recipient_vat_condition_id);
+    // false también se manda (en USD "no se cobra en la misma moneda" es un valor, no un campo vacío).
+    if (input.same_currency_payment !== undefined && input.same_currency_payment !== null) formData.append('same_currency_payment', String(input.same_currency_payment));
+    append('sale_condition', input.sale_condition);
+    append('remito_number', input.remito_number);
+    append('commercial_reference', input.commercial_reference);
     append('pos_number', input.pos_number);
     append('number', input.number);
     append('issue_date', input.issue_date);
@@ -5322,6 +6034,12 @@ export class InvoiceService {
     return response.json();
   }
 
+  // Variación del IPC del INDEC entre dos meses (AAAA-MM), para sugerir el % de un ajuste. Sin `to`, hasta el último mes publicado. FLOWS.md §73.
+  static async getIpcVariation(from: string, to?: string): Promise<{ from: string; to: string; from_index: number; to_index: number; percent: number }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/adjustments/ipc${this.query({ from, to })}`);
+    return this.parse(response, 'No se pudo consultar el IPC del INDEC');
+  }
+
   static async getBillable(budgetId: number): Promise<BudgetBillingDetail> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/billables/${budgetId}`);
     return this.parse(response, 'Error al obtener el detalle de facturación');
@@ -5338,6 +6056,12 @@ export class InvoiceService {
   }
 
   // Clientes para el filtro y la factura libre: cuelga de /invoices, no requiere clients_read.
+  // OCA aprobadas de un cliente con su importe y si se pueden facturar. Cuelga de /invoices: no requiere ocas_read.
+  static async getBillableOcas(clientId: number): Promise<BillableOca[]> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/billable-ocas?client_id=${clientId}`);
+    return this.parse(response, 'Error al obtener las OCA para facturar');
+  }
+
   static async getClientOptions(): Promise<InvoiceClientOption[]> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/client-options`);
     return this.parse(response, 'Error al obtener los clientes');
@@ -5387,6 +6111,62 @@ export class InvoiceService {
       body: JSON.stringify({ reason }),
     });
     return this.parse(response, 'Error al anular la factura');
+  }
+
+  // --- Emisión por ARCA ---
+  // Cuelga de /invoices (no de /company-settings): quien factura no necesariamente tiene company_settings_update.
+  static async getArcaOptions(): Promise<InvoiceArcaOptions> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/arca/options`);
+    return this.parse(response, 'Error al consultar la configuración de ARCA');
+  }
+
+  // Cotización del dólar según ARCA (la misma que usa la web de ARCA), para precargar el borrador.
+  static async getArcaExchangeRate(): Promise<{ rate: number; date: string | null }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/arca/exchange-rate`);
+    return this.parse(response, 'No se pudo traer la cotización de ARCA');
+  }
+
+  // Emite el borrador en ARCA. Es irreversible: el backend exige invoices_emit.
+  static async emit(id: number): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/emit`, { method: 'POST' });
+    return this.parse(response, 'Error al emitir la factura en ARCA');
+  }
+
+  // Vista previa del borrador con el formato de la factura final (sin número, CAE ni QR). Devuelve el PDF como Blob.
+  static async previewPdf(id: number): Promise<Blob> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/preview-pdf`);
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al generar la vista previa');
+    return response.blob();
+  }
+
+  // Resuelve una factura que quedó "autorizando" consultando el comprobante en ARCA.
+  static async verify(id: number): Promise<{ invoice: Invoice; outcome: 'authorized' | 'back_to_draft' }> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/verify`, { method: 'POST' });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Error al verificar la factura en ARCA');
+    const body = await response.json();
+    return { invoice: body.data, outcome: body.outcome };
+  }
+
+  // Aceptación de una FCE por el cliente: se carga a mano (consultarla en ARCA es una etapa futura).
+  static async setFceAcceptance(id: number, status: 'pending' | 'accepted' | 'rejected'): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/fce-acceptance`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    return this.parse(response, 'Error al registrar la aceptación de la FCE');
+  }
+
+  // Genera (o regenera) el PDF de una factura ya emitida por ARCA. Se arma solo al emitir; esto es por si no se pudo en el momento.
+  static async generatePdf(id: number): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/pdf`, { method: 'POST' });
+    return this.parse(response, 'Error al generar el PDF de la factura');
+  }
+
+  // Descarta un borrador o una factura rechazada por ARCA (nunca tuvieron CAE) y libera el saldo.
+  static async discard(id: number): Promise<Invoice> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/invoices/${id}/discard`, { method: 'PUT' });
+    return this.parse(response, 'Error al descartar la factura');
   }
 }
 
@@ -5703,6 +6483,8 @@ export interface Oca {
   hourly_rate?: number | null;
   requires_budget: boolean;
   budget_status?: 'pendiente' | 'presentado' | 'aprobado' | null;
+  // La factura vigente que cobra esta OCA (FLOWS.md §74): mientras exista, la OCA no se modifica ni se vuelve a facturar.
+  billed_invoice?: { id: number; cbte_tipo: number | null; pos_number: number | null; number: number | null; arca_status?: string } | null;
   budget_approved_at?: string | null;
   budget_approved_by?: number | null;
   budget_approved_by_supervisor_id?: number | null;
