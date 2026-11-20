@@ -24,6 +24,8 @@ interface InvoiceNoteDialogProps {
   type: Exclude<InvoiceKind, 'invoice'>;
   // Si viene, se está EDITANDO ese borrador de nota.
   editing?: Invoice | null;
+  // Desde la pestaña FCE, "Emitir nota de crédito de anulación": arranca con la marca de anulación y acreditando todo lo que queda.
+  annulmentPreset?: boolean;
 }
 
 interface CreditLine {
@@ -48,7 +50,7 @@ const parsePercent = (text: string): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
-export default function InvoiceNoteDialog({ open, onClose, onSaved, original, type, editing }: InvoiceNoteDialogProps) {
+export default function InvoiceNoteDialog({ open, onClose, onSaved, original, type, editing, annulmentPreset = false }: InvoiceNoteDialogProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isCredit = type === 'credit_note';
@@ -72,13 +74,18 @@ export default function InvoiceNoteDialog({ open, onClose, onSaved, original, ty
     setIssueDate(editing?.issue_date || todayISO());
     setPosId(editing?.point_of_sale_id || original.point_of_sale_id || '');
     setReason(editing?.notes || '');
-    setAnnulment(!!editing?.fce_annulment);
+    setAnnulment(editing ? !!editing.fce_annulment : annulmentPreset);
 
     if (isCredit) {
       setCreditLines((original.lines || []).map((line) => {
         const own = editing?.lines.find((l) => l.credits_line_id === line.id);
         const originalNet = Number(line.net_amount);
         const remaining = roundMoney(originalNet - Number(line.credited_net || 0) + Number(own?.net_amount || 0));
+        // Una anulación acredita todo lo que queda de cada línea.
+        const fullAnnulment = annulmentPreset && !editing && remaining > TOLERANCE;
+        if (fullAnnulment) {
+          return { lineId: line.id as number, concept: line.concept, originalNet, remaining, percentText: String(roundPercent((remaining / originalNet) * 100)), amount: remaining, source: 'amount' as const, description: '' };
+        }
         return {
           lineId: line.id as number,
           concept: line.concept,
@@ -99,7 +106,7 @@ export default function InvoiceNoteDialog({ open, onClose, onSaved, original, ty
     }
     // Solo al abrir: no pisar lo que la persona esté escribiendo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, original?.id, editing?.id, type]);
+  }, [open, original?.id, editing?.id, type, annulmentPreset]);
 
   // Puntos de venta de web service y estado del ambiente.
   useEffect(() => {
@@ -257,7 +264,7 @@ export default function InvoiceNoteDialog({ open, onClose, onSaved, original, ty
                 <Typography variant="caption" color="text.secondary" display="block">
                   {canAnnul
                     ? 'ARCA solo permite la anulación de una FCE que el cliente rechazó.'
-                    : 'Esta opción está disponible cuando registrás que el cliente rechazó la FCE (ícono "Aceptación del cliente" de la factura). Sin eso, la nota se emite sin marca de anulación.'}
+                    : 'Esta opción está disponible cuando ARCA informa que el cliente rechazó la FCE (se ve al sincronizar en la pestaña FCE). Sin eso, la nota se emite sin marca de anulación.'}
                 </Typography>
               </Box>
             )}

@@ -16,7 +16,7 @@ import InvoiceNoteDialog from '../../../../components/billing/InvoiceNoteDialog'
 import InvoiceViewDialog from '../../../../components/billing/InvoiceViewDialog';
 import ProgressEntriesSection from '../../../../components/billing/ProgressEntriesSection';
 import BillingDocsSection from '../../../../components/billing/BillingDocsSection';
-import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, FceAcceptanceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../../components/billing/InvoiceActionDialogs';
+import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../../components/billing/InvoiceActionDialogs';
 import ProjectCodeLabel from '../../../../components/projects/ProjectCodeLabel';
 import { BudgetBillingDetail, BudgetCurrency, Invoice, InvoiceService } from '../../../../utils/api';
 import { userHasPermission, useAuth } from '../../../../utils/auth';
@@ -55,7 +55,6 @@ export default function BillingDetailPage() {
   const [emitTarget, setEmitTarget] = useState<Invoice | null>(null);
   const [verifyTarget, setVerifyTarget] = useState<Invoice | null>(null);
   const [discardTarget, setDiscardTarget] = useState<Invoice | null>(null);
-  const [acceptanceTarget, setAcceptanceTarget] = useState<Invoice | null>(null);
   // Ajuste de precio de una factura emitida (o edición del borrador del ajuste): una factura nueva vinculada a la original.
   const [adjustDialog, setAdjustDialog] = useState<{ original: Invoice; editing?: Invoice } | null>(null);
   // Nota por diferencia de cambio sobre una factura en dólares (o edición de su borrador).
@@ -84,7 +83,6 @@ export default function BillingDetailPage() {
     setEmitTarget(null);
     setVerifyTarget(null);
     setDiscardTarget(null);
-    setAcceptanceTarget(null);
     load();
   };
 
@@ -373,7 +371,7 @@ export default function BillingDetailPage() {
         invoices={invoices} hideBudgetColumns canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit} canWrite={canWrite}
         emptyText="Todavía no se registró ninguna factura de este presupuesto"
         onView={setViewInvoice} onEdit={handleEdit} onPay={setPayTarget} onCancel={setCancelTarget}
-        onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget} onGeneratePdf={handleGeneratePdf} onFceAcceptance={setAcceptanceTarget} onCreateNote={openNote} onCreateAdjustment={openAdjustment} onCreateExchangeDifference={openExchangeDifference}
+        onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget} onGeneratePdf={handleGeneratePdf} onCreateNote={openNote} onCreateAdjustment={openAdjustment} onCreateExchangeDifference={openExchangeDifference}
       />
 
       <InvoiceViewDialog invoice={viewInvoice} onClose={() => setViewInvoice(null)} />
@@ -382,7 +380,6 @@ export default function BillingDetailPage() {
       <EmitInvoiceDialog invoice={emitTarget} onClose={() => setEmitTarget(null)} onRefresh={load} onDone={(inv) => handleSaved(`Factura emitida en ARCA${inv.number ? `: N° ${String(inv.number).padStart(8, '0')}` : ''}`)} />
       <VerifyInvoiceDialog invoice={verifyTarget} onClose={() => setVerifyTarget(null)} onRefresh={load} onDone={() => handleSaved('Factura confirmada en ARCA')} />
       <DiscardInvoiceDialog invoice={discardTarget} onClose={() => setDiscardTarget(null)} onDone={() => handleSaved('Factura descartada')} />
-      <FceAcceptanceDialog invoice={acceptanceTarget} onClose={() => setAcceptanceTarget(null)} onDone={() => handleSaved('Aceptación de la FCE registrada')} />
       <ExchangeDifferenceDialog
         open={!!exchangeDialog} onClose={() => setExchangeDialog(null)} original={exchangeDialog?.original || null} editing={exchangeDialog?.editing}
         onSaved={() => { const editing = !!exchangeDialog?.editing; setExchangeDialog(null); handleSaved(editing ? 'Borrador de la nota actualizado' : 'Borrador de la nota guardado: emitilo desde el listado de facturas'); }}

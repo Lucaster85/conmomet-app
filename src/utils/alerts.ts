@@ -16,7 +16,9 @@ export type AlertType =
   | 'candidate_application'
   | 'candidate_interview'
   | 'budget_without_purchase_order'
-  | 'surety_bond';
+  | 'surety_bond'
+  | 'fce_rejected'
+  | 'fce_adc_pending';
 
 // Orden fijo de la barra de resumen, para que los chips no bailen de lugar según cuál termine de
 // cargar primero. De más accionable a más informativo.
@@ -36,6 +38,8 @@ export const ALERT_ORDER: AlertType[] = [
   'candidate_interview',
   'budget_without_purchase_order',
   'surety_bond',
+  'fce_rejected',
+  'fce_adc_pending',
 ];
 
 // Etiqueta corta para el chip de la barra (la tarjeta usa su propio título largo).
@@ -55,6 +59,8 @@ export const ALERT_SHORT_LABEL: Record<AlertType, string> = {
   candidate_interview: 'Entrevistas',
   budget_without_purchase_order: 'Presupuestos sin OC',
   surety_bond: 'Cauciones',
+  fce_rejected: 'FCE rechazadas',
+  fce_adc_pending: 'FCE para el ADC',
 };
 
 // Cuántos items no vistos se muestran en una tarjeta antes de resumir el resto en "y N más".

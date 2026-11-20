@@ -12,7 +12,6 @@ import {
   EditOutlined as EditIcon,
   PictureAsPdfOutlined as PdfIcon,
   AddCircleOutline as DebitNoteIcon,
-  HandshakeOutlined as AcceptanceIcon,
   SendOutlined as EmitIcon,
   UndoOutlined as CreditNoteIcon,
   SyncOutlined as VerifyIcon,
@@ -22,7 +21,7 @@ import {
 } from '@mui/icons-material';
 import { Invoice } from '../../utils/api';
 import {
-  ARCA_STATUS_LABELS, FCE_ACCEPTANCE_LABELS, FCE_CBTE_TIPO, formatAssociated, formatDate, formatMoney, formatVoucher, INVOICE_STATUS_LABELS, isNote,
+  ARCA_STATUS_LABELS, fceStateChip, FCE_CBTE_TIPO, formatAssociated, formatDate, formatMoney, formatVoucher, INVOICE_STATUS_LABELS, isNote,
 } from '../../utils/billing';
 
 interface InvoiceListProps {
@@ -46,8 +45,6 @@ interface InvoiceListProps {
   onVerify?: (invoice: Invoice) => void;
   onDiscard?: (invoice: Invoice) => void;
   onGeneratePdf?: (invoice: Invoice) => void;
-  // Registrar a mano la aceptación del cliente de una FCE emitida.
-  onFceAcceptance?: (invoice: Invoice) => void;
   // Hacer una nota de crédito (anular o acreditar parte) o de débito sobre una factura emitida.
   onCreateNote?: (invoice: Invoice, type: 'credit_note' | 'debit_note') => void;
   // Crear el ajuste de precio de una factura emitida: una factura nueva vinculada a ella (FLOWS.md §71).
@@ -61,7 +58,7 @@ const money = (invoice: Invoice, value: number) => (invoice.kind === 'credit_not
 
 export default function InvoiceList({
   invoices, emptyText = 'No hay facturas registradas', hideBudgetColumns = false,
-  canUpdate, canCorrect, canEmit = false, canWrite = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard, onGeneratePdf, onFceAcceptance, onCreateNote, onCreateAdjustment, onCreateExchangeDifference,
+  canUpdate, canCorrect, canEmit = false, canWrite = false, onView, onEdit, onPay, onCancel, onEmit, onVerify, onDiscard, onGeneratePdf, onCreateNote, onCreateAdjustment, onCreateExchangeDifference,
 }: InvoiceListProps) {
   const { fileLinkProps } = useFileViewer();
   // Una factura de ARCA (source 'arca') tiene su propio ciclo: borrador -> emitida (o rechazada / autorizando). Una emitida
@@ -90,9 +87,6 @@ export default function InvoiceList({
         )}
         {open && isArca && arcaStatus === 'authorized' && !invoice.file_url && canWrite && onGeneratePdf && (
           <Tooltip title="Generar PDF"><IconButton size="small" color="primary" onClick={() => onGeneratePdf(invoice)}><PdfIcon fontSize="small" /></IconButton></Tooltip>
-        )}
-        {open && isArca && arcaStatus === 'authorized' && invoice.cbte_tipo === FCE_CBTE_TIPO && canUpdate && onFceAcceptance && (
-          <Tooltip title="Aceptación del cliente"><IconButton size="small" onClick={() => onFceAcceptance(invoice)}><AcceptanceIcon fontSize="small" /></IconButton></Tooltip>
         )}
         {editable && (
           <Tooltip title={isArca ? 'Editar borrador' : 'Corregir datos'}><IconButton size="small" color="primary" onClick={() => onEdit(invoice)}><EditIcon fontSize="small" /></IconButton></Tooltip>
@@ -181,7 +175,7 @@ export default function InvoiceList({
               </Tooltip>
             )}
             {invoice.cbte_tipo === FCE_CBTE_TIPO && (
-              <Chip size="small" variant="outlined" color={FCE_ACCEPTANCE_LABELS[invoice.fce_acceptance || 'pending'].color} label={FCE_ACCEPTANCE_LABELS[invoice.fce_acceptance || 'pending'].label} />
+              <Chip size="small" variant="outlined" color={fceStateChip(invoice).color} label={fceStateChip(invoice).label} />
             )}
             {observations.length > 0 && (
               <Tooltip title={observations.map((o) => `(${o.code}) ${o.msg}`).join(' · ')}>

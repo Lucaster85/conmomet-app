@@ -1,4 +1,4 @@
-import type { BillingStatus, BudgetCurrency, Invoice, InvoiceArcaStatus, InvoiceStatus, VoucherType } from './api';
+import type { BillingStatus, BudgetCurrency, FceAccountState, FceCmpState, FceGroup, Invoice, InvoiceArcaStatus, InvoiceStatus, VoucherType } from './api';
 
 // Utilidades de Facturación compartidas por el listado, el detalle por presupuesto y el diálogo
 // de factura. Los importes son siempre netos (sin IVA) salvo donde se aclara.
@@ -112,11 +112,64 @@ export const ARCA_STATUS_LABELS: Record<Exclude<InvoiceArcaStatus, 'manual'>, { 
 // Factura de Crédito Electrónica MiPyMEs (código 201): opción de transferencia y aceptación del cliente.
 export const FCE_CBTE_TIPO = 201;
 export const FCE_TRANSFER_LABELS = { SCA: 'SCA — Sistema de circulación abierta', ADC: 'ADC — Agente de depósito colectivo' } as const;
-export const FCE_ACCEPTANCE_LABELS = {
-  pending: { label: 'Aceptación pendiente', color: 'warning' },
-  accepted: { label: 'Aceptada por el cliente', color: 'success' },
-  rejected: { label: 'Rechazada por el cliente', color: 'error' },
-} as const;
+type ChipColor = 'default' | 'warning' | 'info' | 'success' | 'error';
+
+// Seguimiento con ARCA (wsfecred, FLOWS.md §77): los estados tal cual los da ARCA, en lenguaje llano.
+export const FCE_CMP_STATE_LABELS: Record<FceCmpState, { label: string; color: ChipColor }> = {
+  PendienteRecepcion: { label: 'Pendiente de recepción', color: 'default' },
+  Recepcionado: { label: 'Recepcionada', color: 'info' },
+  Aceptado: { label: 'Aceptada', color: 'success' },
+  Rechazado: { label: 'Rechazada', color: 'error' },
+  InformadaAgDpto: { label: 'Informada al ADC', color: 'success' },
+};
+export const FCE_ACCOUNT_STATE_LABELS: Record<FceAccountState, { label: string; color: ChipColor }> = {
+  Modificable: { label: 'Modificable', color: 'default' },
+  Aceptada: { label: 'Aceptada', color: 'success' },
+  Rechazada: { label: 'Rechazada', color: 'error' },
+  CanceladaTotal: { label: 'Cancelada totalmente', color: 'default' },
+  InformadaAgDpto: { label: 'Informada al ADC', color: 'success' },
+};
+export const FCE_GROUP_LABELS: Record<FceGroup, { label: string; color: ChipColor }> = {
+  pending: { label: 'Pendientes', color: 'warning' },
+  accepted: { label: 'Aceptadas', color: 'success' },
+  rejected: { label: 'Rechazadas', color: 'error' },
+  informed: { label: 'Informadas al ADC', color: 'info' },
+  cancelled: { label: 'Canceladas', color: 'default' },
+};
+
+type FceStateFields = Pick<Invoice, 'fce_cmp_state' | 'fce_account_state' | 'fce_acceptance_type' | 'fce_synced_at'>;
+
+// Mismo criterio que el servidor (services/arca/fceSync.js#stateGroup).
+export const fceGroup = (inv: Pick<Invoice, 'fce_cmp_state' | 'fce_account_state'>): FceGroup => {
+  const cmp = inv.fce_cmp_state;
+  const account = inv.fce_account_state;
+  if (account === 'CanceladaTotal') return 'cancelled';
+  if (account === 'InformadaAgDpto' || cmp === 'InformadaAgDpto') return 'informed';
+  if (account === 'Rechazada' || cmp === 'Rechazado') return 'rejected';
+  if (account === 'Aceptada' || cmp === 'Aceptado') return 'accepted';
+  return 'pending';
+};
+
+// Chip con el estado de la FCE según ARCA. Sin sincronizar nunca no hay dato: se dice, no se inventa.
+export const fceStateChip = (inv: FceStateFields): { label: string; color: ChipColor } => {
+  if (!inv.fce_synced_at) return { label: 'Sin datos de ARCA', color: 'default' };
+  switch (fceGroup(inv)) {
+    case 'rejected': return { label: 'Rechazada por el cliente', color: 'error' };
+    case 'accepted': return { label: inv.fce_acceptance_type === 'Tacita' ? 'Aceptada tácitamente' : 'Aceptada por el cliente', color: 'success' };
+    case 'informed': return { label: 'Informada al ADC', color: 'info' };
+    case 'cancelled': return { label: 'Cancelada totalmente', color: 'default' };
+    default: return inv.fce_cmp_state === 'Recepcionado' ? { label: 'Recepcionada, a la espera del cliente', color: 'warning' } : { label: 'Pendiente de recepción', color: 'warning' };
+  }
+};
+
+// "Vence la aceptación en 3 días" / "hoy" / "venció hace 2 días". null si no hay fecha.
+export const acceptanceDueText = (daysLeft: number | null | undefined): string | null => {
+  if (daysLeft === null || daysLeft === undefined) return null;
+  if (daysLeft === 0) return 'La aceptación vence hoy';
+  if (daysLeft === 1) return 'La aceptación vence mañana';
+  if (daysLeft > 1) return `La aceptación vence en ${daysLeft} días`;
+  return `El plazo de aceptación venció hace ${-daysLeft} ${daysLeft === -1 ? 'día' : 'días'}`;
+};
 
 export const ARCA_CONCEPT_LABELS = { 1: 'Productos', 2: 'Servicios', 3: 'Productos y servicios' } as const;
 

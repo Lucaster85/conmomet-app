@@ -160,9 +160,8 @@ El **PDF** de una FCE lleva, además de lo habitual, el **CBU y alias del emisor
 Facturas A: cada punto de venta tiene su propia secuencia por tipo de comprobante.
 
 **Aceptación del cliente.** El cliente acepta o rechaza la FCE en ARCA (si no responde en 21 días corridos se considera
-aceptada). Por ahora **se registra a mano**: en el listado, el ícono de **"Aceptación del cliente"** (solo en una FCE ya emitida)
-abre un diálogo para marcarla **pendiente**, **aceptada** o **rechazada**. Es solo un registro: no cambia nada más de la factura.
-Consultarlo automáticamente en ARCA queda para más adelante.
+aceptada **tácitamente**). **Ya no se carga a mano**: la app se lo pregunta a ARCA con el botón **"Sincronizar con ARCA"** de la
+pestaña **FCE** (ver la sección siguiente). Mientras no se sincronice, una FCE recién emitida figura como **"Sin datos de ARCA"**.
 
 **Rechazos más comunes de ARCA**, explicados en pantalla:
 - *El cliente no figura en el padrón o está inactivo*: se revisa el CUIT en **Clientes**. Una FCE solo se puede emitir a un
@@ -177,6 +176,50 @@ los clientes pueden ser rechazados ("no se encuentra registrado en los padrones"
 Una FCE emitida, como cualquier factura de ARCA, **no se edita ni se anula** desde la app: se corrige con una nota de crédito (ver
 la sección siguiente). Las notas de una FCE tienen **reglas propias de ARCA**, que la app ya cumple: no llevan CBU, alias ni opción de
 transferencia, ni vencimiento de pago, y llevan una marca de **anulación**.
+
+## Seguimiento de FCE (pestaña FCE)
+
+La pestaña **FCE** de Facturación muestra todas las **Facturas de Crédito Electrónica emitidas desde la app** con el estado que les dio ARCA, sin tener que
+entrar a ARCA a mirar una por una. Aparece cuando ARCA está habilitado o ya hay alguna FCE emitida.
+
+**Qué se ve en cada fila:** el comprobante (con sus notas de crédito y de débito), el cliente, la fecha, el total, la opción de transferencia (SCA o ADC), el
+**estado en ARCA**, el estado de la **cuenta corriente** de la factura, hasta cuándo puede aceptarla el cliente y el **saldo** (y el saldo aceptado).
+Arriba hay un resumen que se puede tocar para filtrar: **Pendientes**, **Aceptadas**, **Rechazadas** y **ADC sin informar**, y cuándo fue la **última sincronización**.
+
+**Qué significa cada estado:**
+
+| Estado | Qué quiere decir |
+|---|---|
+| **Pendiente de recepción** | ARCA todavía no le puso la factura a disposición del cliente. |
+| **Recepcionada** | El cliente ya la tiene a disposición y puede aceptarla o rechazarla. Sigue pendiente. |
+| **Aceptada** | El cliente la aceptó en ARCA. |
+| **Aceptada tácitamente** | El cliente no respondió y ARCA la dio por aceptada al vencer el plazo. Para Conmomet es igual de buena. |
+| **Rechazada** | El cliente la rechazó. La fila muestra los **motivos** que informó. |
+| **Informada al ADC** | Con la opción ADC, la factura aceptada ya se informó al agente de depósito colectivo. |
+| **Cancelada totalmente** | El cliente informó que la canceló por completo. |
+
+**Cuenta corriente.** Cada FCE tiene una cuenta corriente en ARCA que puede estar **Modificable** (todavía puede cambiar: las notas de débito y crédito alteran el saldo),
+**Aceptada**, **Rechazada**, **Cancelada totalmente** o **Informada al ADC**. Con la opción **SCA**, una vez aceptada ya no cambia más.
+
+**"La aceptación vence en N días".** Sale de la fecha de vencimiento de aceptación que informa ARCA. Cuando faltan **5 días o menos** se resalta. Pasado ese plazo, ARCA la da
+por aceptada tácitamente, y eso se ve recién al sincronizar.
+
+**Cómo sincronizar.** Con **"Sincronizar con ARCA"** se consultan todas las FCE que todavía pueden cambiar (las que ya llegaron a un estado final no se vuelven a consultar). Al terminar
+dice cuántas se revisaron y cuántas cambiaron. Con el ícono **"Actualizar desde ARCA"** de una fila se actualiza solo esa factura y sus notas. Hace falta el permiso de
+**registrar facturas**. Dos sincronizaciones seguidas no se pisan: si alguien acaba de sincronizar, hay que esperar un minuto.
+
+**Sincronización automática y avisos.** Además del botón, la app **sincroniza sola**: cuando alguien entra, si pasaron más de **6 horas** desde la última sincronización, revisa las FCE en ARCA (si el servicio está disponible; si ARCA falla, no pasa nada y se reintenta pasadas otras 6 horas). Cuando una FCE pasa a **aceptada** o **rechazada**, les llega una **notificación en la campanita** a quienes tienen acceso a Facturación (una sola vez por factura), y en el **inicio** aparecen dos avisos: **FCE rechazadas por el cliente** (sin nota de anulación emitida) y **FCE para informar al ADC** (aceptadas con opción ADC; es un recordatorio, porque la app no informa al ADC). No hay aviso de "vence la aceptación": si el cliente no responde, ARCA la da por aceptada.
+
+**Historial.** El ícono **"Historial de estados"** abre la línea de tiempo del comprobante y de su cuenta corriente, que se pide a ARCA en ese momento.
+
+**Si una FCE queda rechazada.** La app **no hace nada sola**: una nota de crédito es un trámite fiscal que no se puede deshacer, y la decide una persona. En la fila aparece el botón
+**"Emitir nota de crédito de anulación"**, que abre el diálogo de la nota ya con la **marca de anulación** y acreditando todo lo que queda. Una vez emitida, la fila lo indica.
+
+**"No encontrada en ARCA" / "en ARCA y no en la app".** Al sincronizar, si ARCA todavía no devuelve una factura de la app, **no se toca** (suele ser una demora de ARCA) y se avisa. Y si ARCA
+devuelve facturas que no están en la app (por ejemplo, hechas desde "Comprobantes en línea" o desde otro sistema), se **listan aparte** pero **no se importan**.
+
+**Si dice que falta autorizar el servicio.** El seguimiento usa un servicio aparte de ARCA, **"Registro de Facturas de Crédito Electrónica MiPyMEs" (wsfecred)**, que hay que autorizar para
+el certificado de la app. El mensaje dice qué hacer, y en **Datos de mi empresa → Probar conexión** hay un paso que lo verifica.
 
 ## Anular una factura de ARCA: notas de crédito y de débito
 
@@ -209,7 +252,7 @@ necesita estar atada a su factura para ajustar el saldo. Las facturas cargadas a
 **Notas de una FCE.** Si la factura es una FCE, la nota es de FCE (de crédito o de débito) y ARCA aplica sus reglas:
 - Una nota normal se emite siempre sin marca de anulación.
 - La **marca de anulación** ("Es una anulación: el cliente rechazó la FCE") solo la admite ARCA si el **cliente rechazó la FCE**. Por eso la casilla se habilita recién
-  cuando registrás ese rechazo con el ícono **"Aceptación del cliente"** de la factura.
+  cuando ARCA informa ese rechazo (se ve al sincronizar en la pestaña **FCE**, que además tiene el botón **"Emitir nota de crédito de anulación"**).
 - El monto de una nota de crédito de una FCE **no puede superar el saldo actual de su cuenta corriente** en ARCA (la factura, más las notas de débito, menos las
   de crédito ya emitidas).
 
@@ -331,6 +374,7 @@ En el listado de **Presupuestos**, los presupuestos aprobados muestran además u
 - **Registrar facturas**: cargar facturas nuevas y facturas libres, y guardar borradores de ARCA.
 - **Emitir facturas por ARCA**: permiso especial. Emite el borrador en ARCA y verifica las que quedaron
   "autorizando".
+- **Ver el seguimiento de FCE**: el mismo permiso de ver Facturación. **Sincronizar con ARCA** y emitir la nota de anulación piden el de registrar facturas.
 - **Marcar cobrada y anular**: permiso de modificar facturas.
 - **Corregir**: permiso especial, para un único responsable.
 - **Cobros sin factura**: permiso especial para cargarlos y verlos.
@@ -414,8 +458,8 @@ Dentro del detalle de cada presupuesto aprobado también se cargan las **órdene
 
 ## Qué viene después
 
-Por ahora la app emite **Factura A**, **Factura de Crédito Electrónica (FCE)** y sus **notas de crédito y de débito**. Para emitir hacen falta el **CUIT** y la **condición de IVA** del cliente (ver el
+Por ahora la app emite **Factura A**, **Factura de Crédito Electrónica (FCE)** y sus **notas de crédito y de débito**, y sigue el estado de las FCE en ARCA (pestaña **FCE**). Todavía **no informa al ADC** desde la app: el aviso de "ADC sin informar" es un recordatorio para hacerlo por fuera. Para emitir hacen falta el **CUIT** y la **condición de IVA** del cliente (ver el
 tema **Clientes**) y los datos de quien factura en **Configuración → Datos de mi empresa** (ver el tema
 **Datos de mi empresa y conexión con ARCA**, donde también se **prueba la conexión**).
 
-<!-- ref: conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/services/billingMath.js, api_conmomet/services/creditNoteService.js, conmomet-app/src/components/billing/InvoiceNoteDialog.tsx, conmomet-app/src/components/billing/BillingDocsSection.tsx, conmomet-app/src/components/billing/NewInvoiceStartDialog.tsx, conmomet-app/src/components/billing/InvoiceAdjustmentDialog.tsx, conmomet-app/src/components/billing/ProgressEntriesSection.tsx, api_conmomet/services/arca/recipient.js, api_conmomet/services/ocaBillingService.js, api_conmomet/middlewares/ocaBilled.js, conmomet-app/src/components/billing/ExchangeDifferenceDialog.tsx, api_conmomet/services/ipcService.js, api_conmomet/controllers/budgetProgressController.js, api_conmomet/services/budgetProgressService.js, api_conmomet/services/adjustmentService.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
+<!-- ref: conmomet-app/src/components/billing/FceTrackingList.tsx, conmomet-app/src/components/billing/FceHistoryDialog.tsx, api_conmomet/controllers/fceController.js, api_conmomet/services/arca/fceSync.js, api_conmomet/services/arca/wsfecred.js, conmomet-app/src/app/dashboard/billing/page.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, conmomet-app/src/components/billing/BillablesList.tsx, conmomet-app/src/components/billing/InvoiceDialog.tsx, conmomet-app/src/components/billing/InvoiceList.tsx, conmomet-app/src/components/billing/InvoiceActionDialogs.tsx, conmomet-app/src/app/dashboard/system-settings/page.tsx, api_conmomet/controllers/invoiceController.js, api_conmomet/services/arca/emission.js, api_conmomet/services/arca/feRequest.js, api_conmomet/services/arca/invoicePdf.js, api_conmomet/services/arca/codes.js, api_conmomet/services/arca/pdfService.js, api_conmomet/services/arca/qr.js, api_conmomet/services/billingService.js, api_conmomet/services/billingMath.js, api_conmomet/services/creditNoteService.js, conmomet-app/src/components/billing/InvoiceNoteDialog.tsx, conmomet-app/src/components/billing/BillingDocsSection.tsx, conmomet-app/src/components/billing/NewInvoiceStartDialog.tsx, conmomet-app/src/components/billing/InvoiceAdjustmentDialog.tsx, conmomet-app/src/components/billing/ProgressEntriesSection.tsx, api_conmomet/services/arca/recipient.js, api_conmomet/services/ocaBillingService.js, api_conmomet/middlewares/ocaBilled.js, conmomet-app/src/components/billing/ExchangeDifferenceDialog.tsx, api_conmomet/services/ipcService.js, api_conmomet/controllers/budgetProgressController.js, api_conmomet/services/budgetProgressService.js, api_conmomet/services/adjustmentService.js, api_conmomet/services/billingService.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

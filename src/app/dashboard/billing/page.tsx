@@ -19,9 +19,10 @@ import ExchangeDifferenceDialog from '../../../components/billing/ExchangeDiffer
 import InvoiceAdjustmentDialog from '../../../components/billing/InvoiceAdjustmentDialog';
 import InvoiceNoteDialog from '../../../components/billing/InvoiceNoteDialog';
 import InvoiceViewDialog from '../../../components/billing/InvoiceViewDialog';
-import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, FceAcceptanceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../components/billing/InvoiceActionDialogs';
+import FceTrackingList from '../../../components/billing/FceTrackingList';
+import { CancelInvoiceDialog, DiscardInvoiceDialog, EmitInvoiceDialog, PayInvoiceDialog, VerifyInvoiceDialog } from '../../../components/billing/InvoiceActionDialogs';
 import {
-  BillableBudget, BillableOca, BillingStatus, BudgetBillingDetail, Invoice, InvoiceClientOption, InvoiceService, InvoiceStatus,
+  BillableBudget, BillableOca, BillingStatus, BudgetBillingDetail, FceTrackingRow, Invoice, InvoiceClientOption, InvoiceService, InvoiceStatus,
   IvaInfo, SystemSettingService, VoucherType,
 } from '../../../utils/api';
 import { userHasPermission, useAuth } from '../../../utils/auth';
@@ -38,7 +39,10 @@ function BillingContent() {
   // Emitir es irreversible: además de poder cargar facturas hace falta invoices_emit.
   const canEmit = canWrite && userHasPermission(user, 'invoices_emit');
 
-  const [tab, setTab] = useState(searchParams.get('tab') === 'invoices' ? 1 : 0);
+  // 0 Por facturar · 1 Facturas · 2 FCE (seguimiento con ARCA, solo si ARCA está habilitado o ya hay alguna FCE emitida).
+  const [tab, setTab] = useState(searchParams.get('tab') === 'invoices' ? 1 : searchParams.get('tab') === 'fce' ? 2 : 0);
+  const [fceAvailable, setFceAvailable] = useState(false);
+  const [fceRefresh, setFceRefresh] = useState(0);
   const [clients, setClients] = useState<InvoiceClientOption[]>([]);
   const [iva, setIva] = useState<IvaInfo>(ivaInfoFromRates(null));
   const [error, setError] = useState('');
@@ -69,9 +73,8 @@ function BillingContent() {
   const [emitTarget, setEmitTarget] = useState<Invoice | null>(null);
   const [verifyTarget, setVerifyTarget] = useState<Invoice | null>(null);
   const [discardTarget, setDiscardTarget] = useState<Invoice | null>(null);
-  const [acceptanceTarget, setAcceptanceTarget] = useState<Invoice | null>(null);
   // Nota de crédito o de débito sobre una factura emitida (o edición de su borrador).
-  const [noteDialog, setNoteDialog] = useState<{ original: Invoice; type: 'credit_note' | 'debit_note'; editing?: Invoice } | null>(null);
+  const [noteDialog, setNoteDialog] = useState<{ original: Invoice; type: 'credit_note' | 'debit_note'; editing?: Invoice; annulment?: boolean } | null>(null);
   // Ajuste de precio de una factura emitida (o edición del borrador del ajuste): una factura nueva vinculada a la original.
   const [adjustDialog, setAdjustDialog] = useState<{ original: Invoice; editing?: Invoice } | null>(null);
   // Nota por diferencia de cambio sobre una factura en dólares (o edición de su borrador).
@@ -84,6 +87,10 @@ function BillingContent() {
 
   useEffect(() => {
     InvoiceService.getClientOptions().then(setClients).catch(() => setClients([]));
+    // La pestaña FCE aparece si ARCA está habilitado o ya hay alguna FCE emitida (con cerradas incluidas).
+    InvoiceService.getFceTracking({ include_closed: true })
+      .then((r) => setFceAvailable(r.arca_enabled || r.summary.total > 0))
+      .catch(() => setFceAvailable(false));
     SystemSettingService.get().then((s) => setIva(ivaInfoFromRates(s.invoice_iva_rates))).catch(() => { /* queda el 21% */ });
   }, []);
 
@@ -138,7 +145,7 @@ function BillingContent() {
   useEffect(() => { loadRows(); }, [loadRows]);
   useEffect(() => { loadInvoices(); }, [loadInvoices]);
 
-  const refreshAll = () => { loadRows(); loadInvoices(); };
+  const refreshAll = () => { loadRows(); loadInvoices(); setFceRefresh((n) => n + 1); };
 
   const handleSaved = (message: string) => {
     setSuccess(message);
@@ -151,7 +158,6 @@ function BillingContent() {
     setEmitTarget(null);
     setVerifyTarget(null);
     setDiscardTarget(null);
-    setAcceptanceTarget(null);
     refreshAll();
   };
 
@@ -165,9 +171,9 @@ function BillingContent() {
   };
 
   // Abre el diálogo de una nota sobre una factura emitida. Se vuelve a pedir la factura: trae lo que ya se acreditó de cada línea.
-  const openNote = async (invoice: Invoice, type: 'credit_note' | 'debit_note') => {
+  const openNote = async (invoice: Invoice, type: 'credit_note' | 'debit_note', annulment = false) => {
     try {
-      setNoteDialog({ original: await InvoiceService.get(invoice.id), type });
+      setNoteDialog({ original: await InvoiceService.get(invoice.id), type, annulment });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al abrir la factura');
     }
@@ -240,6 +246,17 @@ function BillingContent() {
 
   const tabChange = (_: React.SyntheticEvent, value: number) => setTab(value);
 
+  // Desde la pestaña FCE: ver la factura completa y emitir la nota de crédito de anulación de una rechazada.
+  const viewFce = async (row: FceTrackingRow) => {
+    try {
+      setViewInvoice(await InvoiceService.get(row.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al abrir la factura');
+    }
+  };
+  // Si la pestaña no corresponde (ARCA apagado y sin FCE), se vuelve a "Por facturar".
+  const currentTab = tab === 2 && !fceAvailable ? 0 : tab;
+
   return (
     <Box>
       <FeedbackModal open={!!error} onClose={() => setError('')} message={error} type="error" />
@@ -255,18 +272,19 @@ function BillingContent() {
           {canWrite && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setStartOpen(true)}>Nueva factura</Button>
           )}
-          {canWrite && tab === 1 && (
+          {canWrite && currentTab === 1 && (
             <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setFreeDialogOpen(true)}>Factura libre</Button>
           )}
         </Stack>
       </Box>
 
-      <Tabs value={tab} onChange={tabChange} sx={{ mb: 2 }} variant="scrollable" scrollButtons="auto">
+      <Tabs value={currentTab} onChange={tabChange} sx={{ mb: 2 }} variant="scrollable" scrollButtons="auto">
         <Tab label="Por facturar" />
         <Tab label="Facturas" />
+        {fceAvailable && <Tab label="FCE" />}
       </Tabs>
 
-      {tab === 0 && (
+      {currentTab === 0 && (
         <>
           <Paper sx={{ p: 2, mb: 2 }}>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
@@ -299,7 +317,7 @@ function BillingContent() {
         </>
       )}
 
-      {tab === 1 && (
+      {currentTab === 1 && (
         <>
           <Paper sx={{ p: 2, mb: 2 }}>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
@@ -331,10 +349,17 @@ function BillingContent() {
               invoices={invoices} canUpdate={canUpdate} canCorrect={canCorrect} canEmit={canEmit} canWrite={canWrite}
               onView={setViewInvoice} onEdit={handleEdit} onPay={setPayTarget} onCancel={setCancelTarget}
               onEmit={setEmitTarget} onVerify={setVerifyTarget} onDiscard={setDiscardTarget}
-              onGeneratePdf={handleGeneratePdf} onFceAcceptance={setAcceptanceTarget} onCreateNote={openNote} onCreateAdjustment={openAdjustment} onCreateExchangeDifference={openExchangeDifference}
+              onGeneratePdf={handleGeneratePdf} onCreateNote={openNote} onCreateAdjustment={openAdjustment} onCreateExchangeDifference={openExchangeDifference}
             />
           )}
         </>
+      )}
+
+      {currentTab === 2 && fceAvailable && (
+        <FceTrackingList
+          clients={clients} canWrite={canWrite} refreshKey={fceRefresh} onView={viewFce}
+          onAnnul={(row) => openNote({ id: row.id } as Invoice, 'credit_note', true)} onError={setError}
+        />
       )}
 
       <InvoiceViewDialog invoice={viewInvoice} onClose={() => setViewInvoice(null)} />
@@ -343,7 +368,6 @@ function BillingContent() {
       <EmitInvoiceDialog invoice={emitTarget} onClose={() => setEmitTarget(null)} onRefresh={refreshAll} onDone={(inv) => handleSaved(`Factura emitida en ARCA${inv.number ? `: N° ${String(inv.number).padStart(8, '0')}` : ''}`)} />
       <VerifyInvoiceDialog invoice={verifyTarget} onClose={() => setVerifyTarget(null)} onRefresh={refreshAll} onDone={() => handleSaved('Factura confirmada en ARCA')} />
       <DiscardInvoiceDialog invoice={discardTarget} onClose={() => setDiscardTarget(null)} onDone={() => handleSaved('Factura descartada')} />
-      <FceAcceptanceDialog invoice={acceptanceTarget} onClose={() => setAcceptanceTarget(null)} onDone={() => handleSaved('Aceptación de la FCE registrada')} />
 
       <ExchangeDifferenceDialog
         open={!!exchangeDialog} onClose={() => setExchangeDialog(null)} original={exchangeDialog?.original || null} editing={exchangeDialog?.editing}
@@ -355,7 +379,7 @@ function BillingContent() {
       />
       <InvoiceNoteDialog
         open={!!noteDialog} onClose={() => setNoteDialog(null)} onSaved={handleNoteSaved}
-        original={noteDialog?.original || null} type={noteDialog?.type || 'credit_note'} editing={noteDialog?.editing}
+        original={noteDialog?.original || null} type={noteDialog?.type || 'credit_note'} editing={noteDialog?.editing} annulmentPreset={noteDialog?.annulment}
       />
       <InvoiceDialog
         open={freeDialogOpen} onClose={() => setFreeDialogOpen(false)} ivaInfo={iva} canUnofficial={canUnofficial}
