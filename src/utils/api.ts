@@ -251,6 +251,24 @@ export class RoleService {
     return data.role || data.data || data;
   }
 
+  // Crea un rol nuevo con los permisos de otro (FLOWS.md §84). Devuelve el rol creado con sus permisos.
+  static async duplicate(sourceId: number, name: string, has_dashboard_access?: boolean, level?: number): Promise<Role> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/roles/${sourceId}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        ...(has_dashboard_access !== undefined && { has_dashboard_access }),
+        ...(level !== undefined && { level }),
+      }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Error al duplicar el rol');
+    }
+    const data = await response.json();
+    return data.data || data;
+  }
+
   static async update(id: number, name: string, has_dashboard_access: boolean = true, level?: number): Promise<Role> {
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/roles/${id}`, {
       method: 'PUT',

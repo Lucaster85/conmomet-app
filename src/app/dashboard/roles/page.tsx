@@ -32,6 +32,7 @@ import {
   SecurityOutlined as SecurityIcon,
   SearchOutlined as SearchIcon,
   KeyOutlined as KeyIcon,
+  ContentCopyOutlined as DuplicateIcon,
   AdminPanelSettingsOutlined as TitleIcon,
 } from '@mui/icons-material';
 import { RoleService, PermissionService, Role, Permission } from '@/utils/api';
@@ -54,6 +55,22 @@ const SUGGESTED_PERMISSIONS = [
   'clients_read', 'clients_write', 'clients_update', 'clients_delete',
   'providers_read', 'providers_write', 'providers_update', 'providers_delete',
 ];
+
+// La tarjeta de cada rol muestra solo los primeros permisos: un rol con decenas de permisos volvía la tarjeta
+// altísima y rompía la grilla. El resto se ve en el tooltip del "+N más" y completo en el diálogo "Permisos".
+const MAX_PERMISSION_CHIPS = 6;
+
+// `admin_granted` siempre primero (es el que más importa a simple vista); el resto, en el orden recibido.
+function splitPermissionsForCard(permissions: Permission[]) {
+  const sorted = [...permissions].sort((a, b) => Number(b.name === 'admin_granted') - Number(a.name === 'admin_granted'));
+  return { shown: sorted.slice(0, MAX_PERMISSION_CHIPS), hidden: sorted.slice(MAX_PERMISSION_CHIPS) };
+}
+
+// Las tarjetas van de mayor a menor nivel de jerarquía (los roles más poderosos arriba). A igual nivel, por nombre,
+// para que el orden sea estable y no cambie entre cargas.
+function sortRolesByLevel(roles: Role[]) {
+  return [...roles].sort((a, b) => (b.level ?? 0) - (a.level ?? 0) || a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+}
 
 export default function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -81,6 +98,8 @@ export default function RolesPage() {
   // Create / Edit role dialog
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
+  // Rol que se está duplicando (el diálogo se reutiliza: pide el nombre del rol nuevo y copia permisos del original).
+  const [duplicatingRole, setDuplicatingRole] = useState<Role | null>(null);
   const [roleName, setRoleName] = useState('');
   const [roleHasDashboardAccess, setRoleHasDashboardAccess] = useState(true);
   const [roleLevel, setRoleLevel] = useState(10);
@@ -112,7 +131,7 @@ export default function RolesPage() {
         RoleService.getAll(),
         PermissionService.getAll(),
       ]);
-      setRoles(rolesData);
+      setRoles(sortRolesByLevel(rolesData));
       setPermissions(permsData);
     } catch (err: unknown) {
       setError(toErrorMsg(err));
@@ -129,6 +148,7 @@ export default function RolesPage() {
   const handleOpenCreate = () => {
     if (!canCreateRoles) return;
     setEditingRole(null);
+    setDuplicatingRole(null);
     setRoleName('');
     setRoleHasDashboardAccess(true);
     setRoleLevel(Math.min(10, maxAssignableLevel));
@@ -138,9 +158,25 @@ export default function RolesPage() {
   const handleOpenEdit = (role: Role) => {
     if (role.is_system || !canUpdateRoles) return;
     setEditingRole(role);
+    setDuplicatingRole(null);
     setRoleName(role.name);
     setRoleHasDashboardAccess(role.has_dashboard_access ?? true);
     setRoleLevel(role.level ?? 10);
+    setRoleDialogOpen(true);
+  };
+
+  // Se puede duplicar (también un rol de sistema: la copia no lo es) si se puede crear roles y asignar permisos, y el rol no es
+  // de nivel superior al propio. El backend valida todo igual; esto evita avanzar a un diálogo que va a fallar.
+  const canDuplicate = (role: Role) =>
+    canCreateRoles && canUpdateRoles && !(currentUserLevel !== undefined && (role.level ?? 0) > currentUserLevel);
+
+  const handleOpenDuplicate = (role: Role) => {
+    if (!canDuplicate(role)) return;
+    setEditingRole(null);
+    setDuplicatingRole(role);
+    setRoleName(`${role.name} (copia)`.slice(0, 50));
+    setRoleHasDashboardAccess(role.has_dashboard_access ?? true);
+    setRoleLevel(Math.min(role.level ?? 10, maxAssignableLevel));
     setRoleDialogOpen(true);
   };
 
@@ -150,6 +186,13 @@ export default function RolesPage() {
     try {
       if (editingRole) {
         await RoleService.update(editingRole.id, roleName.trim(), roleHasDashboardAccess, roleLevel);
+      } else if (duplicatingRole) {
+        const created = await RoleService.duplicate(duplicatingRole.id, roleName.trim(), roleHasDashboardAccess, roleLevel);
+        setRoleDialogOpen(false);
+        await fetchData();
+        // El caso de uso es "copiar y sumarle permisos": se abre directo la lista de permisos del rol nuevo.
+        handleOpenPerms(created);
+        return;
       } else {
         await RoleService.create(roleName.trim(), roleHasDashboardAccess, roleLevel);
       }
@@ -359,20 +402,42 @@ export default function RolesPage() {
                         Sin permisos asignados
                       </Typography>
                     ) : (
-                      (role.permissions || []).map(p => (
-                        <Chip
-                          key={p.id}
-                          label={p.name}
-                          size="small"
-                          sx={{
-                            fontSize: '0.7rem',
-                            height: 22,
-                            bgcolor: p.name === 'admin_granted' ? 'rgba(25,118,210,0.12)' : 'rgba(100,116,139,0.1)',
-                            color: p.name === 'admin_granted' ? '#1976d2' : '#475569',
-                            fontWeight: p.name === 'admin_granted' ? 700 : 400,
-                          }}
-                        />
-                      ))
+                      (() => {
+                        const { shown, hidden } = splitPermissionsForCard(role.permissions || []);
+                        return (
+                          <>
+                            {shown.map(p => (
+                              <Chip
+                                key={p.id}
+                                label={p.name}
+                                size="small"
+                                sx={{
+                                  fontSize: '0.7rem',
+                                  height: 22,
+                                  bgcolor: p.name === 'admin_granted' ? 'rgba(25,118,210,0.12)' : 'rgba(100,116,139,0.1)',
+                                  color: p.name === 'admin_granted' ? '#1976d2' : '#475569',
+                                  fontWeight: p.name === 'admin_granted' ? 700 : 400,
+                                }}
+                              />
+                            ))}
+                            {hidden.length > 0 && (
+                              <Tooltip
+                                // enterTouchDelay 0: en el celular se abre al tocar, sin mantener apretado.
+                                enterTouchDelay={0}
+                                leaveTouchDelay={5000}
+                                title={<Box sx={{ maxWidth: 320 }}>{hidden.map(p => p.name).join(' · ')}</Box>}
+                              >
+                                <Chip
+                                  label={`+${hidden.length} más`}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.7rem', height: 22, color: '#1976d2', borderColor: 'rgba(25,118,210,0.4)', fontWeight: 600 }}
+                                />
+                              </Tooltip>
+                            )}
+                          </>
+                        );
+                      })()
                     )}
                   </Box>
                 </CardContent>
@@ -391,6 +456,13 @@ export default function RolesPage() {
                     </span>
                   </Tooltip>
                   <Box sx={{ flex: 1 }} />
+                  <Tooltip title={canDuplicate(role) ? 'Duplicar rol con sus permisos' : 'Para duplicar hace falta poder crear roles y editar permisos, y que el rol no sea de nivel superior al tuyo'}>
+                    <span>
+                      <IconButton size="small" onClick={() => handleOpenDuplicate(role)} disabled={!canDuplicate(role)} aria-label={`Duplicar el rol ${role.name}`}>
+                        <DuplicateIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
                   <Tooltip title={role.is_system ? 'Rol de sistema: no editable' : (!canUpdateRoles ? 'No tenés permiso para editar roles' : 'Editar rol')}>
                     <span>
                       <IconButton size="small" onClick={() => handleOpenEdit(role)} disabled={role.is_system || !canUpdateRoles}>
@@ -471,7 +543,7 @@ export default function RolesPage() {
       <AppDialog open={roleDialogOpen} onClose={() => setRoleDialogOpen(false)} maxWidth="xs" fullWidth
         PaperProps={{ sx: { borderRadius: '16px' } }}>
         <DialogTitle fontWeight={700}>
-          {editingRole ? 'Editar rol' : 'Nuevo rol'}
+          {editingRole ? 'Editar rol' : duplicatingRole ? 'Duplicar rol' : 'Nuevo rol'}
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -481,9 +553,15 @@ export default function RolesPage() {
             value={roleName}
             onChange={e => setRoleName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleSaveRole(); }}
-            sx={{ mt: 1, mb: 3 }}
+            sx={{ mt: 1, mb: duplicatingRole ? 1 : 3 }}
             inputProps={{ maxLength: 50 }}
           />
+          {duplicatingRole && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Se copian los {(duplicatingRole.permissions || []).length} permisos de <strong>{duplicatingRole.name}</strong>. Al guardar se abre la
+              lista de permisos del rol nuevo para que sumes o quites los que necesites. El rol original no cambia.
+            </Typography>
+          )}
           <FormControlLabel
             control={<Switch checked={roleHasDashboardAccess} onChange={e => setRoleHasDashboardAccess(e.target.checked)} color="primary" />}
             label={<Typography fontWeight={600}>Acceso al Dashboard</Typography>}
@@ -511,7 +589,7 @@ export default function RolesPage() {
             disabled={!roleName.trim() || savingRole || roleLevel < 1 || roleLevel > maxAssignableLevel}
             sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
           >
-            {savingRole ? <GearSpinner size={18} /> : 'Guardar'}
+            {savingRole ? <GearSpinner size={18} /> : duplicatingRole ? 'Duplicar' : 'Guardar'}
           </Button>
         </DialogActions>
       </AppDialog>

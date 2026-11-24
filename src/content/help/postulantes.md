@@ -66,9 +66,11 @@ y en el pie de página). Lleva a un formulario **público, sin usuario**, donde 
 - **Aceptar el tratamiento de sus datos personales**: sin eso no se puede enviar. Queda guardado cuándo aceptó, desde
   qué conexión y **qué versión del texto de privacidad leyó** (se ve en la ficha, en "Consentimiento de datos").
 
-Al enviar, la postulación queda en este módulo con origen **Web** y etapa **Nueva**, y se avisa a **todas las personas
-con acceso a Postulantes**: por la **campanita** (y el celular, si lo activaron) y con la tarjeta **"Postulaciones nuevas"**
-del inicio, que se mantiene mientras la postulación siga en etapa *Nueva*. Al tocar el aviso se abre la ficha.
+Al enviar, la postulación queda en este módulo con origen **Web** y etapa **Nueva**, y se avisa por la **campanita**
+(y el celular, si lo activaron) **solo a quienes tienen el permiso "Postulantes — recibir avisos"** (y además pueden ver
+Postulantes). Un administrador **no lo recibe automáticamente**: hay que dárselo como a cualquier otra persona. Al tocar el
+aviso se abre la ficha. Además, **todas las personas con acceso a Postulantes** ven la tarjeta **"Postulaciones nuevas"** del
+inicio, que se mantiene mientras la postulación siga en etapa *Nueva*.
 La persona ve siempre el mismo mensaje de agradecimiento, y no se le dice si ya estaba cargada.
 
 ### Cambiar el texto de privacidad
@@ -227,5 +229,10 @@ Documentación ni en los avisos de vencimientos.
 - **Postulantes — crear**: cargar postulantes, crear postulaciones, agregar archivos y agendar entrevistas.
 - **Postulantes — modificar**: editar datos, cambiar de etapa y reprogramar, cancelar o cargar el resultado de una entrevista. También hace falta, junto con el permiso de dar de alta empleados, para **dar de alta a un postulante como empleado**.
 - **Postulantes — eliminar**: borrar postulantes y archivos.
+- **Postulantes — recibir avisos** (`candidates_notify`): recibir en la campanita y en el celular el aviso de cada postulación
+  nueva que llega por la web. Se da desde **Roles** (a un rol) o como permiso particular de una persona. Es **independiente de
+  ver Postulantes**: sin este permiso se puede ver el módulo y la tarjeta del inicio, pero no llega el aviso. Hay que tener
+  también el permiso de ver Postulantes, porque el aviso abre la ficha. Quien lo recibe en el momento del envío es quien lo
+  tenía entonces: si se lo das después, no le aparecen los avisos anteriores.
 
 <!-- ref: conmomet-app/src/components/settings/PrivacyTextSettingsCard.tsx, api_conmomet/controllers/consentTextController.js, api_conmomet/models/consentText.js, api_conmomet/services/candidateConversion.js, conmomet-app/src/app/dashboard/employees/page.tsx, conmomet-app/src/components/candidates/CandidateInterviewsSection.tsx, conmomet-app/src/components/common/EntrevistasProximasAlert.tsx, api_conmomet/controllers/candidateInterviewController.js, api_conmomet/helpers/candidateInterviews.js, conmomet-app/src/app/trabaja-con-nosotros/page.tsx, conmomet-app/src/components/landing/LandingHeader.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, api_conmomet/controllers/publicJobApplicationController.js, conmomet-app/src/app/dashboard/candidates/page.tsx, conmomet-app/src/app/dashboard/candidates/[id]/page.tsx, conmomet-app/src/components/candidates/CandidateFormFields.tsx, conmomet-app/src/components/candidates/CandidateDuplicateAlerts.tsx, conmomet-app/src/components/candidates/CandidateFilePicker.tsx, conmomet-app/src/utils/candidates.ts, api_conmomet/controllers/candidateController.js, api_conmomet/helpers/candidateStages.js, api_conmomet/helpers/candidateMatching.js, api_conmomet/helpers/phone.js, api_conmomet/middlewares/candidateUpload.js, api_conmomet/models/candidate.js -->
