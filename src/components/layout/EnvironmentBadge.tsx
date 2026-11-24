@@ -89,3 +89,31 @@ export function EnvironmentStripe() {
     </Box>
   );
 }
+
+/**
+ * Leyenda para los documentos imprimibles (OCA, presupuesto, recibo de pago): a diferencia del chip y
+ * la franja, esta SÍ sale al imprimir, para que un PDF o papel generado en test no se confunda con
+ * uno real. Usa borde y texto negro (sin fondo de color): el navegador suele no imprimir fondos.
+ * No dibuja nada en producción (sin APP_ENV_LABEL).
+ */
+export function EnvironmentPrintNotice() {
+  const { label } = useAppEnvironment();
+  if (!label) return null;
+  return (
+    <Box
+      sx={{
+        border: '2px solid black',
+        color: 'black',
+        textAlign: 'center',
+        fontSize: '0.75rem',
+        fontWeight: 800,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        py: 0.25,
+        mb: 1,
+      }}
+    >
+      Ambiente {label} — documento de prueba
+    </Box>
+  );
+}

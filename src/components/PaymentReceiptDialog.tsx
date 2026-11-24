@@ -5,6 +5,7 @@ import { DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Div
 import AppDialog from '@/components/common/AppDialog';
 import StoredImage from '@/components/common/StoredImage';
 import { PrintOutlined as PrintIcon } from '@mui/icons-material';
+import { EnvironmentPrintNotice } from './layout/EnvironmentBadge';
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
   efectivo: 'Efectivo',
@@ -37,9 +38,10 @@ export default function PaymentReceiptDialog({
       <DialogTitle className="no-print">Recibo de Pago</DialogTitle>
       <DialogContent>
         <Box className="print-area" sx={{ p: 2 }}>
+          <EnvironmentPrintNotice />
           <Box display="flex" justifyContent="center" mb={2}>
             <Image
-              src="/img/logos/logo-conmomet-ROJO.png"
+              src="/brand/logo.png"
               alt="Conmomet"
               width={192}
               height={58}

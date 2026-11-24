@@ -18,6 +18,7 @@ export function middleware() {
 
 export const config = {
   runtime: 'nodejs',
-  // Excluye estáticos, imágenes optimizadas, el service worker, el manifest y los íconos.
-  matcher: ['/((?!_next/static|_next/image|sw\\.js|manifest\\.webmanifest|icons/|img/|favicon\\.ico).*)'],
+  // Excluye estáticos, imágenes optimizadas, el service worker, el manifest, los íconos y las
+  // imágenes de marca (/brand/*, FLOWS.md §81).
+  matcher: ['/((?!_next/static|_next/image|sw\\.js|manifest\\.webmanifest|icons/|img/|brand/|favicon\\.ico).*)'],
 };

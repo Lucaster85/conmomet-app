@@ -269,7 +269,7 @@ export default function ContactModal({ open, onClose }: ContactModalProps) {
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
               <Box
                 component="img"
-                src="/img/logos/conmomet-logo-blue.svg"
+                src="/brand/logo-landing.svg"
                 alt="Conmomet S.A."
                 sx={{ height: 44, width: 'auto', display: 'block' }}
               />

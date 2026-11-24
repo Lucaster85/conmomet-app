@@ -460,11 +460,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <Toolbar disableGutters={isCollapsed} sx={{ background: 'linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%)', borderBottom: '1px solid', borderColor: 'divider', minHeight: { xs: 56, sm: 64 }, justifyContent: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', py: 1 }}>
           {isCollapsed ? (
-            // El logo completo no entra en 72px: se muestra solo el engranaje (la franja izquierda
-            // del mismo PNG, recortada por background-position como hace GearSpinner, sin girar).
-            // En el PNG (834×284) el engranaje ocupa x 10–263 e y 16–265: a 36 px de alto queda en
-            // ~1–33 px de ancho, o sea que entra entero en un cuadrado de 36. flexShrink 0 evita que
-            // el flex lo achique y lo corte.
+            // El logo completo no entra en 72px: se muestra solo el isotipo de la marca
+            // (/brand/mark.png, el mismo que usa GearSpinner, sin girar), que es cuadrado y entra
+            // entero en 36 px. flexShrink 0 evita que el flex lo achique y lo corte.
             <Box
               component="span"
               role="img"
@@ -474,15 +472,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 flexShrink: 0,
                 width: 36,
                 height: 36,
-                backgroundImage: 'url(/img/logos/logo-conmomet-ROJO.png)',
+                backgroundImage: 'url(/brand/mark.png)',
                 backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'left center',
-                backgroundSize: 'auto 100%',
+                backgroundPosition: 'center',
+                backgroundSize: 'contain',
               }}
             />
           ) : (
             <Image
-              src="/img/logos/logo-conmomet-ROJO.png"
+              src="/brand/logo.png"
               alt="Conmomet S.A."
               width={192}
               height={58}

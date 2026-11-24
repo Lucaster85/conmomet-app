@@ -46,6 +46,7 @@ import { findPrice, materialCostStatus } from '../../../utils/materialPrices';
 import MaterialCostStatusLine from '../../../components/budgets/MaterialCostStatusLine';
 import { formatLaborQuantity, formatHours, hoursPerDayFor, laborLineHours, lineHoursPerDay } from '../../../utils/laborFormat';
 import { formatProjectCode } from '../../../utils/projectCode';
+import { EnvironmentPrintNotice } from '../../../components/layout/EnvironmentBadge';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'default' | 'info' | 'success' | 'error' }> = {
   draft: { label: 'Borrador', color: 'default' },
@@ -2242,10 +2243,11 @@ function BudgetsPageContent() {
         <DialogContent>
           {printBudget && (
             <Box className="print-area" sx={{ bgcolor: 'white', color: 'black', p: 2, fontFamily: 'sans-serif' }}>
+              <EnvironmentPrintNotice />
               <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={2}>
                 <Box>
                   {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
-                  <img src="/img/logos/logo-conmomet-ROJO.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
+                  <img src="/brand/logo.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
                   <Typography variant="caption" sx={{ color: 'black', display: 'block', mt: 0.5 }}>Servicios Metalúrgicos e Industriales</Typography>
                 </Box>
                 <Box textAlign="right">

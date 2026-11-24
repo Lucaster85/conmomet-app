@@ -91,6 +91,7 @@ import GearSpinner from '../../../components/GearSpinner';
 import CurrencyInput from '../../../components/CurrencyInput';
 import { useAuth } from '../../../utils/auth';
 import ClientContactSelect from '../../../components/clients/ClientContactSelect';
+import { EnvironmentPrintNotice } from '../../../components/layout/EnvironmentBadge';
 
 const STATUS_COLORS: Record<Oca['status'], 'warning' | 'info' | 'success' | 'error' | 'default'> = {
   pendiente: 'warning',
@@ -1301,10 +1302,11 @@ export default function OcasPage() {
                   /* Parte Diario (Horas Hombre) Printable Template */
                   <Box>
                     {/* Header */}
+                    <EnvironmentPrintNotice />
                     <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={2}>
                       <Box>
                         {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
-                        <img src="/img/logos/logo-conmomet-ROJO.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
+                        <img src="/brand/logo.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
                         <Typography variant="caption" sx={{ color: 'black', display: 'block', mt: 0.5 }}>Servicios Metalúrgicos e Industriales</Typography>
                       </Box>
                       <Box textAlign="right">
@@ -1444,10 +1446,11 @@ export default function OcasPage() {
                     return (
                       <Box>
                         {/* Header */}
+                        <EnvironmentPrintNotice />
                         <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={0.5} mb={1}>
                           <Box>
                             {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
-                            <img src="/img/logos/logo-conmomet-ROJO.png" alt="Conmomet" style={{ height: 38, objectFit: 'contain' }} />
+                            <img src="/brand/logo.png" alt="Conmomet" style={{ height: 38, objectFit: 'contain' }} />
                             <Typography variant="caption" sx={{ color: 'black', fontSize: '0.65rem', display: 'block', mt: 0.25 }}>Servicios Metalúrgicos e Industriales</Typography>
                           </Box>
                           <Box textAlign="right">
@@ -1571,10 +1574,11 @@ export default function OcasPage() {
               </DialogTitle>
               <DialogContent dividers>
                 <Box className="print-area" sx={{ bgcolor: 'white', color: 'black', p: { xs: 1, sm: 1.5 }, fontFamily: 'sans-serif' }}>
+                  <EnvironmentPrintNotice />
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={2}>
                     <Box>
                       {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
-                      <img src="/img/logos/logo-conmomet-ROJO.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
+                      <img src="/brand/logo.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
                       <Typography variant="caption" sx={{ color: 'black', display: 'block', mt: 0.5 }}>Servicios Metalúrgicos e Industriales</Typography>
                     </Box>
                     <Box textAlign="right">

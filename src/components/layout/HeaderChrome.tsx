@@ -16,7 +16,7 @@ export function HeaderLogo({ sx }: { sx?: object }) {
   return (
     <Box sx={{ height: HEADER_LOGO_HEIGHT, display: 'flex', alignItems: 'center', ...sx }}>
       <Image
-        src="/img/logos/logo-conmomet-ROJO.png"
+        src="/brand/logo.png"
         alt="Conmomet"
         width={192}
         height={58}

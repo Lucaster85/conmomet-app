@@ -30,7 +30,7 @@ export default function FooterSection() {
           }}>
             <Box
               component="img"
-              src="/img/logos/conmomet-logo-blue.svg"
+              src="/brand/logo-landing.svg"
               alt="Conmomet"
               sx={{ height: { xs: 80, md: 100 }, width: "auto", filter: "brightness(0) invert(1)", opacity: 0.85 }}
             />

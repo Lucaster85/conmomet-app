@@ -27,8 +27,8 @@ export function generateMetadata(): Metadata {
     title: label ? `[${label}] Conmomet App` : "Conmomet App",
     description: "Sistema de gestión Conmomet",
     icons: {
-      icon: "/img/logos/conmomet-logo-blue.svg",
-      apple: "/icons/apple-touch-icon.png",
+      icon: "/brand/favicon.svg",
+      apple: "/brand/apple-touch-icon.png",
     },
     manifest: "/manifest.webmanifest",
     // iOS exige esto para permitir Web Push: la app tiene que poder instalarse en la pantalla de
@@ -36,7 +36,7 @@ export function generateMetadata(): Metadata {
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
-      title: "Conmomet",
+      title: label ? `Conmomet ${label}` : "Conmomet",
     },
   };
 }

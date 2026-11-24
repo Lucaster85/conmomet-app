@@ -135,7 +135,7 @@ export default function LoginPage() {
           <Box textAlign="center" sx={{ mb: 4, mt: 2 }}>
             <Box display="flex" justifyContent="center" alignItems="center" flexWrap="wrap" gap={1.5} sx={{ mb: 1 }}>
               <Image
-                src="/img/logos/logo-conmomet-ROJO.png"
+                src="/brand/logo.png"
                 alt="Conmomet S.A."
                 width={192}
                 height={58}

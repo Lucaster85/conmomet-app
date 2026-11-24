@@ -78,7 +78,7 @@ export default function LandingHeader() {
           >
             <Box
               component="img"
-              src="/img/logos/conmomet-logo-blue.svg"
+              src="/brand/logo-landing.svg"
               alt="Conmomet"
               sx={{ height: { xs: 40, md: 60 }, width: 'auto' }}
             />

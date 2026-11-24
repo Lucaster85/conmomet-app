@@ -104,7 +104,7 @@ async function handlePush(event) {
       body: data.body,
       tag: data.tag,
       data: { url: data.url },
-      icon: '/icons/icon-192.png',
+      icon: '/brand/icon-192.png',
     });
   } catch {
     // última red de seguridad
