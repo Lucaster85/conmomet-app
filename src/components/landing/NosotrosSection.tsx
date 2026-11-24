@@ -1,14 +1,16 @@
 "use client";
 import React from "react";
 import { Box, Container, Typography } from "@mui/material";
+import { useAppEnvironment } from '../EnvironmentProvider';
 
 const paragraphs = [
-  "En CONMOOMET S.A. somos un equipo apasionado y experimentado en la construcción y montaje de estructuras metálicas. Con una sólida trayectoria en el sector, nos destacamos por nuestro compromiso con la calidad, la seguridad y la eficiencia.",
+  "En {{empresa}} somos un equipo apasionado y experimentado en la construcción y montaje de estructuras metálicas. Con una sólida trayectoria en el sector, nos destacamos por nuestro compromiso con la calidad, la seguridad y la eficiencia.",
   "Nuestros técnicos y operarios están altamente capacitados y cuentan con la experiencia necesaria para abordar proyectos complejos y personalizados. Contamos con una flota de maquinaria de última generación, incluyendo pantógrafo, guillotina, plegadora y grúas con capacidades de hasta 30 toneladas, lo que nos permite ofrecer soluciones integrales y flexibles a nuestros clientes.",
-  "Nuestra misión es brindar soluciones de alta calidad y valor agregado a nuestros clientes, trabajando de manera segura, eficiente y comprometida con la excelencia. En CONMOMET S.A. nos enfocamos en construir relaciones duraderas con nuestros clientes y en contribuir al éxito de sus proyectos con nuestra experiencia y dedicación.",
+  "Nuestra misión es brindar soluciones de alta calidad y valor agregado a nuestros clientes, trabajando de manera segura, eficiente y comprometida con la excelencia. En {{empresa}} nos enfocamos en construir relaciones duraderas con nuestros clientes y en contribuir al éxito de sus proyectos con nuestra experiencia y dedicación.",
 ];
 
 export default function NosotrosSection() {
+  const { legalName } = useAppEnvironment();
   return (
     <Box sx={{ bgcolor: "grey.50", py: { xs: 7, md: 11 } }}>
       <Container maxWidth="lg">
@@ -47,7 +49,7 @@ export default function NosotrosSection() {
             mb: { xs: 5, md: 7 },
           }}
         >
-          {paragraphs.map((text, i) => (
+          {paragraphs.map((raw, i) => (
             <Box
               key={i}
               sx={{
@@ -59,7 +61,7 @@ export default function NosotrosSection() {
               }}
             >
               <Typography color="text.secondary" sx={{ lineHeight: 1.85 }}>
-                {text}
+                {raw.replace(/{{empresa}}/g, legalName.toUpperCase())}
               </Typography>
             </Box>
           ))}

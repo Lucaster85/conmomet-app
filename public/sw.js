@@ -74,7 +74,7 @@ self.addEventListener('push', (event) => {
 });
 
 async function handlePush(event) {
-  let data = { title: 'Conmomet', body: 'Tenés una novedad', url: '/dashboard', tag: undefined };
+  let data = { title: 'Notificación', body: 'Tenés una novedad', url: '/dashboard', tag: undefined };
   try {
     if (event.data) {
       const parsed = event.data.json();
@@ -109,7 +109,7 @@ async function handlePush(event) {
   } catch {
     // última red de seguridad
     try {
-      await self.registration.showNotification('Conmomet', { body: 'Tenés una novedad' });
+      await self.registration.showNotification('Notificación', { body: 'Tenés una novedad' });
     } catch {
       // si ni esto funciona, no hay nada más que hacer acá
     }

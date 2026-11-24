@@ -17,8 +17,10 @@ import Image from 'next/image';
 import GearSpinner from '@/components/GearSpinner';
 import { EnvironmentChip } from '@/components/layout/EnvironmentBadge';
 import { useAuth, TokenManager } from '../../utils/auth';
+import { useAppEnvironment } from '@/components/EnvironmentProvider';
 
 export default function LoginPage() {
+  const { legalName } = useAppEnvironment();
   const router = useRouter();
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
@@ -136,7 +138,7 @@ export default function LoginPage() {
             <Box display="flex" justifyContent="center" alignItems="center" flexWrap="wrap" gap={1.5} sx={{ mb: 1 }}>
               <Image
                 src="/brand/logo.png"
-                alt="Conmomet S.A."
+                alt={legalName}
                 width={192}
                 height={58}
                 style={{ objectFit: 'contain', width: 'auto', maxHeight: 58 }}

@@ -47,6 +47,7 @@ import MaterialCostStatusLine from '../../../components/budgets/MaterialCostStat
 import { formatLaborQuantity, formatHours, hoursPerDayFor, laborLineHours, lineHoursPerDay } from '../../../utils/laborFormat';
 import { formatProjectCode } from '../../../utils/projectCode';
 import { EnvironmentPrintNotice } from '../../../components/layout/EnvironmentBadge';
+import { useAppEnvironment } from '../../../components/EnvironmentProvider';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'default' | 'info' | 'success' | 'error' }> = {
   draft: { label: 'Borrador', color: 'default' },
@@ -168,6 +169,7 @@ export default function BudgetsPage() {
 }
 
 function BudgetsPageContent() {
+  const { appName } = useAppEnvironment();
   const { fileLinkProps } = useFileViewer();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -2247,7 +2249,7 @@ function BudgetsPageContent() {
               <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={2}>
                 <Box>
                   {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
-                  <img src="/brand/logo.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
+                  <img src="/brand/logo.png" alt={appName} style={{ height: 50, objectFit: 'contain' }} />
                   <Typography variant="caption" sx={{ color: 'black', display: 'block', mt: 0.5 }}>Servicios Metalúrgicos e Industriales</Typography>
                 </Box>
                 <Box textAlign="right">

@@ -43,6 +43,7 @@ import {
   ExpenseSummaryAnnual,
 } from '../../../utils/api';
 import GearSpinner from '../../../components/GearSpinner';
+import { useAppEnvironment } from '@/components/EnvironmentProvider';
 
 const currentYear = new Date().getFullYear();
 const currentMonth = new Date().getMonth() + 1;
@@ -139,7 +140,7 @@ async function exportAnnualExcel(data: ExpenseSummaryAnnual) {
   XLSX.writeFile(wb, fileName);
 }
 
-async function exportMonthlyPdf(data: ExpenseSummaryMonthly) {
+async function exportMonthlyPdf(data: ExpenseSummaryMonthly, legalName: string) {
   const { default: jsPDF } = await import('jspdf');
   const autoTable = (await import('jspdf-autotable')).default;
 
@@ -206,12 +207,12 @@ async function exportMonthlyPdf(data: ExpenseSummaryMonthly) {
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(150);
-  doc.text(`Generado el ${new Date().toLocaleDateString('es-AR')} — CONMOMET S.A.`, 14, 285);
+  doc.text(`Generado el ${new Date().toLocaleDateString('es-AR')} — ${legalName.toUpperCase()}`, 14, 285);
 
   doc.save(`Costos_Laborales_${monthLabel}_${data.year}.pdf`);
 }
 
-async function exportAnnualPdf(data: ExpenseSummaryAnnual) {
+async function exportAnnualPdf(data: ExpenseSummaryAnnual, legalName: string) {
   const { default: jsPDF } = await import('jspdf');
   const autoTable = (await import('jspdf-autotable')).default;
 
@@ -264,7 +265,7 @@ async function exportAnnualPdf(data: ExpenseSummaryAnnual) {
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(150);
-  doc.text(`Generado el ${new Date().toLocaleDateString('es-AR')} — CONMOMET S.A.`, 14, 285);
+  doc.text(`Generado el ${new Date().toLocaleDateString('es-AR')} — ${legalName.toUpperCase()}`, 14, 285);
 
   doc.save(`Costos_Laborales_Anual_${data.year}.pdf`);
 }
@@ -272,6 +273,7 @@ async function exportAnnualPdf(data: ExpenseSummaryAnnual) {
 // ============== COMPONENT ==============
 
 export default function ExpenseSummaryPage() {
+  const { legalName } = useAppEnvironment();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -319,10 +321,10 @@ export default function ExpenseSummaryPage() {
     try {
       if (tabValue === 0 && monthlyData) {
         if (format === 'excel') await exportMonthlyExcel(monthlyData);
-        else await exportMonthlyPdf(monthlyData);
+        else await exportMonthlyPdf(monthlyData, legalName);
       } else if (tabValue === 1 && annualData) {
         if (format === 'excel') await exportAnnualExcel(annualData);
-        else await exportAnnualPdf(annualData);
+        else await exportAnnualPdf(annualData, legalName);
       }
     } catch (err) {
       console.error('Error al exportar:', err);

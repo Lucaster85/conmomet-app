@@ -92,6 +92,7 @@ import CurrencyInput from '../../../components/CurrencyInput';
 import { useAuth } from '../../../utils/auth';
 import ClientContactSelect from '../../../components/clients/ClientContactSelect';
 import { EnvironmentPrintNotice } from '../../../components/layout/EnvironmentBadge';
+import { useAppEnvironment } from '../../../components/EnvironmentProvider';
 
 const STATUS_COLORS: Record<Oca['status'], 'warning' | 'info' | 'success' | 'error' | 'default'> = {
   pendiente: 'warning',
@@ -110,6 +111,7 @@ const STATUS_LABELS: Record<Oca['status'], string> = {
 };
 
 export default function OcasPage() {
+  const { appName, legalName } = useAppEnvironment();
   const { openFile } = useFileViewer();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -834,7 +836,7 @@ export default function OcasPage() {
     const simplesSum = regularSum - overtime50Sum - overtime100Sum;
 
     const rows: (string | number)[][] = [
-      ['CONMOMET S.A.'],
+      [legalName.toUpperCase()],
       ['Servicios Metalúrgicos e Industriales'],
       [title],
       [`OCA Nº: ${oca.number}`],
@@ -1036,7 +1038,7 @@ export default function OcasPage() {
     const isManHours = oca.type === 'man_hours';
 
     const excelRows: (string | number)[][] = [
-      ['CONMOMET S.A.'],
+      [legalName.toUpperCase()],
       ['Servicios Metalúrgicos e Industriales'],
       [isManHours ? 'PRESUPUESTO DE MANO DE OBRA' : 'PRESUPUESTO DE SERVICIO DE GRÚA'],
       [`OCA Nº: ${oca.number}`],
@@ -1306,7 +1308,7 @@ export default function OcasPage() {
                     <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={2}>
                       <Box>
                         {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
-                        <img src="/brand/logo.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
+                        <img src="/brand/logo.png" alt={appName} style={{ height: 50, objectFit: 'contain' }} />
                         <Typography variant="caption" sx={{ color: 'black', display: 'block', mt: 0.5 }}>Servicios Metalúrgicos e Industriales</Typography>
                       </Box>
                       <Box textAlign="right">
@@ -1354,7 +1356,7 @@ export default function OcasPage() {
                                 whiteSpace: 'nowrap',
                               }}
                             >
-                              CONMOMET S.A. &nbsp;·&nbsp; OCA Nº: {printOca.number} &nbsp;·&nbsp; Cliente: {printOca.client?.razonSocial} &nbsp;·&nbsp; Planta: {printOca.project?.plant?.name || '—'} &nbsp;·&nbsp; Supervisor: {printOca.supervisor?.lastname}, {printOca.supervisor?.name} &nbsp;·&nbsp; Fecha: {new Date(printOca.date).toLocaleDateString('es-AR')}
+                              {legalName.toUpperCase()} &nbsp;·&nbsp; OCA Nº: {printOca.number} &nbsp;·&nbsp; Cliente: {printOca.client?.razonSocial} &nbsp;·&nbsp; Planta: {printOca.project?.plant?.name || '—'} &nbsp;·&nbsp; Supervisor: {printOca.supervisor?.lastname}, {printOca.supervisor?.name} &nbsp;·&nbsp; Fecha: {new Date(printOca.date).toLocaleDateString('es-AR')}
                             </TableCell>
                           </TableRow>
                           <TableRow sx={{ borderBottom: '2px solid black' }}>
@@ -1450,7 +1452,7 @@ export default function OcasPage() {
                         <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={0.5} mb={1}>
                           <Box>
                             {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
-                            <img src="/brand/logo.png" alt="Conmomet" style={{ height: 38, objectFit: 'contain' }} />
+                            <img src="/brand/logo.png" alt={appName} style={{ height: 38, objectFit: 'contain' }} />
                             <Typography variant="caption" sx={{ color: 'black', fontSize: '0.65rem', display: 'block', mt: 0.25 }}>Servicios Metalúrgicos e Industriales</Typography>
                           </Box>
                           <Box textAlign="right">
@@ -1578,7 +1580,7 @@ export default function OcasPage() {
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={2}>
                     <Box>
                       {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
-                      <img src="/brand/logo.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
+                      <img src="/brand/logo.png" alt={appName} style={{ height: 50, objectFit: 'contain' }} />
                       <Typography variant="caption" sx={{ color: 'black', display: 'block', mt: 0.5 }}>Servicios Metalúrgicos e Industriales</Typography>
                     </Box>
                     <Box textAlign="right">

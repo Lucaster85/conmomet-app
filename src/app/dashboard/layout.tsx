@@ -91,6 +91,7 @@ import PushNotificationsDialog from '../../components/common/PushNotificationsDi
 import { reconcilePushSubscriptionOnLoad, unsubscribeFromPush, unsubscribeFromPushLocalOnly } from '../../utils/push';
 import { onSessionExpired } from '../../utils/sessionExpiry';
 import SessionExpiredDialog from '../../components/SessionExpiredDialog';
+import { useAppEnvironment } from '../../components/EnvironmentProvider';
 
 const drawerWidth = 280;
 // Menú lateral colapsado (solo desktop): deja solo la columna de íconos para darle más ancho al
@@ -272,6 +273,7 @@ function CollapsedMenuButton({ label, icon, onClick }: { label: string; icon: Re
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const { legalName } = useAppEnvironment();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
@@ -466,7 +468,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <Box
               component="span"
               role="img"
-              aria-label="Conmomet S.A."
+              aria-label={legalName}
               sx={{
                 display: 'inline-block',
                 flexShrink: 0,
@@ -481,7 +483,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           ) : (
             <Image
               src="/brand/logo.png"
-              alt="Conmomet S.A."
+              alt={legalName}
               width={192}
               height={58}
               style={{ objectFit: 'contain', width: 'auto', maxHeight: 58 }}

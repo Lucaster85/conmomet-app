@@ -6,6 +6,7 @@ import AppDialog from '@/components/common/AppDialog';
 import StoredImage from '@/components/common/StoredImage';
 import { PrintOutlined as PrintIcon } from '@mui/icons-material';
 import { EnvironmentPrintNotice } from './layout/EnvironmentBadge';
+import { useAppEnvironment } from './EnvironmentProvider';
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
   efectivo: 'Efectivo',
@@ -33,6 +34,7 @@ export default function PaymentReceiptDialog({
   open, onClose, concept, employeeName, amount, paidAt, paymentMethod, signatureUrl,
   numInstallments, monthlyInterestPercent, installmentFrequency,
 }: PaymentReceiptDialogProps) {
+  const { appName } = useAppEnvironment();
   return (
     <AppDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle className="no-print">Recibo de Pago</DialogTitle>
@@ -42,7 +44,7 @@ export default function PaymentReceiptDialog({
           <Box display="flex" justifyContent="center" mb={2}>
             <Image
               src="/brand/logo.png"
-              alt="Conmomet"
+              alt={appName}
               width={192}
               height={58}
               style={{ objectFit: 'contain', width: 'auto', maxHeight: 56 }}
@@ -93,7 +95,7 @@ export default function PaymentReceiptDialog({
           </Box>
           <Divider sx={{ my: 2 }} />
           <Typography variant="body2" textAlign="center" sx={{ mb: 1 }}>
-            Recibí de Conmomet la suma de <strong>{formatCurrency(amount)}</strong> en concepto de {concept.toLowerCase()}.
+            Recibí de {appName} la suma de <strong>{formatCurrency(amount)}</strong> en concepto de {concept.toLowerCase()}.
           </Typography>
           <Box display="flex" justifyContent="center" py={1}>
             <StoredImage src={signatureUrl} alt="Firma del empleado" style={{ maxHeight: 120, maxWidth: '100%' }} />

@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import ReactMarkdown, { Components } from 'react-markdown';
 import { Typography, List, ListItem, Box } from '@mui/material';
 import { highlightChildren } from './highlight';
+import { useAppEnvironment } from '../EnvironmentProvider';
 
 // `terms`: palabras buscadas (ya sin mayúsculas ni tildes) que se resaltan dentro del texto.
 const makeComponents = (terms: string[]): Components => {
@@ -85,5 +86,12 @@ const makeComponents = (terms: string[]): Components => {
 
 export default function HelpMarkdown({ content, highlightTerms = [] }: { content: string; highlightTerms?: string[] }) {
   const components = useMemo(() => makeComponents(highlightTerms), [highlightTerms]);
-  return <ReactMarkdown components={components}>{content}</ReactMarkdown>;
+  // Los .md escriben el nombre de la empresa como "Conmomet"; se cambia al mostrar por el de este ambiente
+  // (APP_NAME / APP_LEGAL_NAME, FLOWS.md §82). Con los valores por defecto el texto queda idéntico.
+  const { appName, legalName } = useAppEnvironment();
+  const text = useMemo(
+    () => content.replace(/Conmomet S\.A\./g, legalName).replace(/Conmomet/g, appName),
+    [content, appName, legalName]
+  );
+  return <ReactMarkdown components={components}>{text}</ReactMarkdown>;
 }

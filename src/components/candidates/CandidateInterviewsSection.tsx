@@ -16,6 +16,7 @@ import { buildWhatsAppLink } from '../../utils/whatsapp';
 import {
   INTERVIEW_MODALITY_LABELS, INTERVIEW_RECOMMENDATION_LABELS, INTERVIEW_STATUS_LABELS, formatInterviewWhen, fullName,
 } from '../../utils/candidates';
+import { useAppEnvironment } from '../EnvironmentProvider';
 
 interface Props {
   candidate: Candidate;
@@ -40,17 +41,18 @@ interface FormState {
 const emptyForm = (): FormState => ({ when: dayjs().add(1, 'day').hour(10).minute(0).second(0), duration: '60', modality: 'in_person', location: '', interviewers: [] });
 
 // El texto que se le manda al postulante por WhatsApp (lo envía quien aprieta "enviar", no el sistema).
-function whatsappText(candidate: Candidate, interview: CandidateInterview): string {
+function whatsappText(candidate: Candidate, interview: CandidateInterview, appName: string): string {
   const date = new Date(interview.scheduled_at);
   const day = date.toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', day: 'numeric', month: 'long' });
   const time = date.toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' });
   const where = interview.location ? (interview.modality === 'video' ? ` Link: ${interview.location}.` : ` Lugar: ${interview.location}.`) : '';
-  return `Hola ${candidate.name}, te esperamos en Conmomet para la entrevista el ${day} a las ${time} hs (${INTERVIEW_MODALITY_LABELS[interview.modality].toLowerCase()}).${where} Avisanos si no podés asistir.`;
+  return `Hola ${candidate.name}, te esperamos en ${appName} para la entrevista el ${day} a las ${time} hs (${INTERVIEW_MODALITY_LABELS[interview.modality].toLowerCase()}).${where} Avisanos si no podés asistir.`;
 }
 
 // Entrevistas del postulante (ver FLOWS.md §61): agendar, reprogramar, cancelar, cargar el resultado y avisar
 // al postulante por WhatsApp.
 export default function CandidateInterviewsSection({ candidate, canWrite, canUpdate, hasOpenApplication, onChanged, onError }: Props) {
+  const { appName } = useAppEnvironment();
   const interviews = candidate.interviews || [];
   const [processing, setProcessing] = useState(false);
   const [interviewers, setInterviewers] = useState<Interviewer[]>([]);
@@ -189,7 +191,7 @@ export default function CandidateInterviewsSection({ candidate, canWrite, canUpd
                 <Box display="flex" gap={1} mt={2} flexWrap="wrap">
                   {interview.status === 'scheduled' && candidate.phone && (
                     <Button size="small" color="success" startIcon={<WhatsAppIcon />} component="a" target="_blank" rel="noopener noreferrer"
-                      href={buildWhatsAppLink(candidate.phone, whatsappText(candidate, interview))}>
+                      href={buildWhatsAppLink(candidate.phone, whatsappText(candidate, interview, appName))}>
                       Avisar por WhatsApp
                     </Button>
                   )}

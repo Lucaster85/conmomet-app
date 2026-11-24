@@ -18,6 +18,7 @@ import Image from 'next/image';
 import { EnvironmentChip } from '../../../components/layout/EnvironmentBadge';
 import { TokenManager, buildCleanUser } from '../../../utils/auth';
 import { PublicInvitationService } from '../../../utils/api';
+import { useAppEnvironment } from '../../../components/EnvironmentProvider';
 
 type Stage = 'validating' | 'invalid' | 'form' | 'submitting' | 'success';
 
@@ -27,6 +28,7 @@ function isIOS(): boolean {
 }
 
 export default function InviteAcceptPage() {
+  const { legalName } = useAppEnvironment();
   const params = useParams();
   const router = useRouter();
   const token = String(params.token);
@@ -98,7 +100,7 @@ export default function InviteAcceptPage() {
             <Box display="flex" justifyContent="center" alignItems="center" flexWrap="wrap" gap={1.5} sx={{ mb: 1 }}>
               <Image
                 src="/brand/logo.png"
-                alt="Conmomet S.A."
+                alt={legalName}
                 width={192}
                 height={58}
                 style={{ objectFit: 'contain', width: 'auto', maxHeight: 58 }}

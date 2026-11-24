@@ -10,12 +10,12 @@ import { getEnvironmentConfig } from '../config/environment';
 export const dynamic = 'force-dynamic';
 
 export default function manifest(): MetadataRoute.Manifest {
-  const { label, color } = getEnvironmentConfig();
-  const name = label ? `Conmomet ${label}` : 'Conmomet';
+  const { label, color, appName } = getEnvironmentConfig();
+  const name = label ? `${appName} ${label}` : appName;
   return {
     name,
     short_name: name,
-    description: 'Sistema de gestión Conmomet',
+    description: `Sistema de gestión ${appName}`,
     lang: 'es-AR',
     start_url: '/dashboard',
     scope: '/',

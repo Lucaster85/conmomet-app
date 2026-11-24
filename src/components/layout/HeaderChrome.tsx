@@ -2,6 +2,7 @@
 import React from 'react';
 import { Box, IconButton, IconButtonProps, Avatar } from '@mui/material';
 import Image from 'next/image';
+import { useAppEnvironment } from '../EnvironmentProvider';
 
 // Medidas compartidas entre el header del dashboard y el del portal — antes cada layout traía
 // sus propios números (72/64 de alto, 46/38 vs 34 de avatar, 32 vs default de ícono) y se
@@ -13,11 +14,12 @@ export const HEADER_LOGO_HEIGHT = { xs: 42, sm: 44 };
 export const HEADER_AVATAR_SIZE = { xs: 46, sm: 38 };
 
 export function HeaderLogo({ sx }: { sx?: object }) {
+  const { appName } = useAppEnvironment();
   return (
     <Box sx={{ height: HEADER_LOGO_HEIGHT, display: 'flex', alignItems: 'center', ...sx }}>
       <Image
         src="/brand/logo.png"
-        alt="Conmomet"
+        alt={appName}
         width={192}
         height={58}
         style={{ objectFit: 'contain', width: 'auto', height: '100%' }}

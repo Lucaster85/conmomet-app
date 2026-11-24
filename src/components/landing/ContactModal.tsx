@@ -17,6 +17,7 @@ import AppDialog from '@/components/common/AppDialog';
 import { CloseOutlined as CloseIcon, SendOutlined as SendIcon } from '@mui/icons-material';
 import GearSpinner from '../GearSpinner';
 import { CONTACT_REASON_OPTIONS } from '../../utils/contactInquiries';
+import { useAppEnvironment } from '../EnvironmentProvider';
 
 const API_BASE_URL =
   (typeof window !== 'undefined' && (window as { __ENV__?: { API_BASE_URL?: string } }).__ENV__?.API_BASE_URL) ||
@@ -67,6 +68,7 @@ function validate(form: FormData): Partial<Record<keyof FormData | 'contacto', s
 }
 
 export default function ContactModal({ open, onClose }: ContactModalProps) {
+  const { legalName } = useAppEnvironment();
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [form, setForm] = useState<FormData>(initialForm);
@@ -270,7 +272,7 @@ export default function ContactModal({ open, onClose }: ContactModalProps) {
               <Box
                 component="img"
                 src="/brand/logo-landing.svg"
-                alt="Conmomet S.A."
+                alt={legalName}
                 sx={{ height: 44, width: 'auto', display: 'block' }}
               />
               <Button

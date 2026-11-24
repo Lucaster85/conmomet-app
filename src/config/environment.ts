@@ -8,6 +8,10 @@
 // quedan como siempre.
 
 export interface EnvironmentConfig {
+  /** Nombre corto de la empresa para textos y mensajes (ej. "Conmomet"). */
+  appName: string;
+  /** Nombre con forma legal para documentos y encabezados (ej. "Conmomet S.A."). */
+  legalName: string;
   /** Texto del distintivo (ej. "TEST"). Vacío = ambiente sin marca (producción). */
   label: string;
   /** Color de fondo del distintivo, hex de 6 dígitos. */
@@ -17,6 +21,11 @@ export interface EnvironmentConfig {
 }
 
 export const DEFAULT_ENV_COLOR = '#F9A825';
+
+// Nombre de la empresa en los textos de la app (FLOWS.md §82). Sin APP_NAME queda exactamente lo de
+// siempre, así que producción no configura nada.
+export const DEFAULT_APP_NAME = 'Conmomet';
+export const DEFAULT_LEGAL_NAME = 'Conmomet S.A.';
 const MAX_LABEL_LENGTH = 12;
 
 // Nombres de color aceptados en APP_ENV_COLOR, en español e inglés. Son tonos de la paleta de Material
@@ -59,8 +68,18 @@ function pickTextColor(hex: string): string {
   return luminance > 0.4 ? '#1A1A1A' : '#FFFFFF';
 }
 
+// APP_NAME cambia el nombre en todos los textos. APP_LEGAL_NAME es la variante con forma legal
+// ("Conmomet S.A."); si solo se define APP_NAME (ej. un demo con "Tu empresa"), el nombre legal es el
+// mismo, sin heredar el "S.A." de Conmomet.
+function resolveNames(): { appName: string; legalName: string } {
+  const appName = (process.env.APP_NAME ?? '').trim();
+  const legalName = (process.env.APP_LEGAL_NAME ?? '').trim();
+  if (!appName && !legalName) return { appName: DEFAULT_APP_NAME, legalName: DEFAULT_LEGAL_NAME };
+  return { appName: appName || legalName, legalName: legalName || appName };
+}
+
 export function getEnvironmentConfig(): EnvironmentConfig {
   const label = (process.env.APP_ENV_LABEL ?? '').trim().slice(0, MAX_LABEL_LENGTH);
   const color = normalizeHex(process.env.APP_ENV_COLOR) ?? DEFAULT_ENV_COLOR;
-  return { label, color, textColor: pickTextColor(color) };
+  return { ...resolveNames(), label, color, textColor: pickTextColor(color) };
 }

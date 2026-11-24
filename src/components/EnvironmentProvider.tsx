@@ -1,12 +1,18 @@
 'use client';
 import React, { createContext, useContext } from 'react';
-import type { EnvironmentConfig } from '../config/environment';
+import { DEFAULT_APP_NAME, DEFAULT_LEGAL_NAME, type EnvironmentConfig } from '../config/environment';
 
 // Por qué un contexto y no window.__ENV__: el distintivo se dibuja en componentes que también se
 // renderizan en el servidor. Si el cliente lo leyera de window.__ENV__, el HTML del servidor (sin
 // distintivo) y el de la hidratación (con distintivo) no coincidirían. Con el contexto, las dos
 // pasadas reciben el mismo valor, que viene del layout raíz.
-const EMPTY_ENVIRONMENT: EnvironmentConfig = { label: '', color: '', textColor: '' };
+const EMPTY_ENVIRONMENT: EnvironmentConfig = {
+  appName: DEFAULT_APP_NAME,
+  legalName: DEFAULT_LEGAL_NAME,
+  label: '',
+  color: '',
+  textColor: '',
+};
 
 const EnvironmentContext = createContext<EnvironmentConfig>(EMPTY_ENVIRONMENT);
 

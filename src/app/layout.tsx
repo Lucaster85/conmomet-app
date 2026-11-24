@@ -22,10 +22,10 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 // generateMetadata y no un `metadata` fijo: el título lleva el prefijo del ambiente ("[TEST] Conmomet
 // App") para distinguir pestañas, y se lee de la env var en cada request (FLOWS.md §80).
 export function generateMetadata(): Metadata {
-  const { label } = getEnvironmentConfig();
+  const { label, appName } = getEnvironmentConfig();
   return {
-    title: label ? `[${label}] Conmomet App` : "Conmomet App",
-    description: "Sistema de gestión Conmomet",
+    title: label ? `[${label}] ${appName} App` : `${appName} App`,
+    description: `Sistema de gestión ${appName}`,
     icons: {
       icon: "/brand/favicon.svg",
       apple: "/brand/apple-touch-icon.png",
@@ -36,7 +36,7 @@ export function generateMetadata(): Metadata {
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
-      title: label ? `Conmomet ${label}` : "Conmomet",
+      title: label ? `${appName} ${label}` : appName,
     },
   };
 }
