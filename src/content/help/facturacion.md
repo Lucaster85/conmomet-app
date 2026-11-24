@@ -50,8 +50,10 @@ La lista viene ordenada para que lo más urgente quede arriba:
 Se puede filtrar por **cliente**, por **estado de facturación**, por **"con facturas pendientes de
 cobro"**, y buscar por presupuesto, **N° de presupuesto del cliente**, pedido, proyecto, cliente o CUIT.
 
-Cada fila muestra el **N° Pres. Cliente** (el número con el que el cliente identifica ese presupuesto, el
-que cita en sus OC) debajo de nuestro número, si el presupuesto lo tiene cargado. Se carga al enviar el
+Cada fila destaca el **N° de presupuesto del cliente** (el número con el que el cliente identifica ese
+presupuesto, el que cita en sus OC), y nuestro número queda debajo, más chico y en gris; lo mismo en el
+encabezado del detalle de cada presupuesto. Si el presupuesto todavía no lo tiene cargado, en su lugar
+aparece «Sin N° de pres. cliente» en gris. Se carga al enviar el
 presupuesto, o después con el botón **«+»** del listado de **Presupuestos**.
 
 ## Emitir una factura por ARCA
@@ -365,7 +367,7 @@ La factura libre también se **emite por ARCA**, con el mismo circuito de siempr
 ## El registro de facturas
 
 La pestaña **Facturas** lista todos los comprobantes cargados, con tipo y número, fecha, cliente,
-presupuesto o proyecto, neto, IVA, total, estado y PDF. Se puede filtrar por cliente, estado, tipo y
+**N° de presupuesto del cliente** (el que cita su OC; si el presupuesto no lo tiene cargado dice «Sin N° de pres. cliente», y una factura de varios presupuestos los lista todos), neto, IVA, total, estado y PDF. Se puede filtrar por cliente, estado, tipo y
 fechas, y desde ahí se pueden ver, corregir, marcar como cobradas o anular.
 
 La barra de **búsqueda** de arriba encuentra por **N° de factura** (completo, como `0003-00000123`, o solo

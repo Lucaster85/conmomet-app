@@ -21,7 +21,7 @@ import ProjectCodeLabel from '../../../../components/projects/ProjectCodeLabel';
 import { BudgetBillingDetail, BudgetCurrency, Invoice, InvoiceService } from '../../../../utils/api';
 import { userHasPermission, useAuth } from '../../../../utils/auth';
 import {
-  BILLING_STATUS_LABELS, CONCEPT_LABELS, formatDate, formatHours, formatMoney, formatPercent, ivaOf,
+  BILLING_STATUS_LABELS, CONCEPT_LABELS, formatDate, formatHours, formatMoney, formatPercent, ivaOf, NO_CLIENT_BUDGET_NUMBER,
 } from '../../../../utils/billing';
 import { formatCuit, TAX_CONDITION_LABELS } from '../../../../utils/cuit';
 
@@ -241,16 +241,19 @@ export default function BillingDetailPage() {
       <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={2} mb={2}>
         <Box>
           <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-            <Typography variant="h5" fontWeight={700}>{budget.number}</Typography>
+            {/* Lo que se destaca es el N° del CLIENTE (el que cita su OC); el nuestro queda chico y gris debajo (FLOWS.md §79). */}
+            {budget.client_budget_number ? (
+              <Typography variant="h5" fontWeight={700}>{budget.client_budget_number}</Typography>
+            ) : (
+              <Typography variant="h5" color="text.secondary" sx={{ fontStyle: 'italic' }}>{NO_CLIENT_BUDGET_NUMBER}</Typography>
+            )}
             <Chip size="small" color={status.color} label={status.label} />
             {billing.has_pending_payment && (
               <Chip size="small" variant="outlined" color="warning" label={`${billing.pending_invoices_count} pendiente${billing.pending_invoices_count === 1 ? '' : 's'} de cobro`} />
             )}
           </Box>
+          <Typography variant="caption" color="text.secondary" display="block">{budget.number}</Typography>
           <Typography variant="body1">{budget.title}</Typography>
-          {budget.client_budget_number && (
-            <Typography variant="body2" color="text.secondary">N° Pres. Cliente: {budget.client_budget_number}</Typography>
-          )}
           <Typography variant="body2" color="text.secondary">
             {budget.client?.razonSocial}
             {budget.client?.cuit ? ` · CUIT ${formatCuit(budget.client.cuit)}` : ''}

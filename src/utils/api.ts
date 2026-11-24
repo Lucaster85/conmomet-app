@@ -5445,7 +5445,7 @@ export interface Invoice {
   manual_recipient?: ManualRecipient | null;
   budget_id: number | null;
   // Presupuestos que cobra la factura, sacados de sus líneas (`budget_id` de la cabecera solo está cuando es uno). FLOWS.md §70.
-  budgets?: { id: number; number?: string; title?: string }[];
+  budgets?: { id: number; number?: string; title?: string; client_budget_number?: string | null }[];
   // Solo en el detalle de un presupuesto: la parte de una factura compartida que le toca a ese presupuesto.
   budget_share?: { net_amount: number; total_amount: number };
   project_id: number | null;
