@@ -15,9 +15,12 @@ import { VisibilityOutlined as Visibility, VisibilityOffOutlined as VisibilityOf
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import GearSpinner from '@/components/GearSpinner';
+import { EnvironmentChip } from '@/components/layout/EnvironmentBadge';
 import { useAuth, TokenManager } from '../../utils/auth';
+import { useAppEnvironment } from '@/components/EnvironmentProvider';
 
 export default function LoginPage() {
+  const { legalName } = useAppEnvironment();
   const router = useRouter();
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
@@ -132,15 +135,17 @@ export default function LoginPage() {
 
           {/* Header */}
           <Box textAlign="center" sx={{ mb: 4, mt: 2 }}>
-            <Box display="flex" justifyContent="center" sx={{ mb: 1 }}>
+            <Box display="flex" justifyContent="center" alignItems="center" flexWrap="wrap" gap={1.5} sx={{ mb: 1 }}>
               <Image
-                src="/img/logos/logo-conmomet-ROJO.png"
-                alt="Conmomet S.A."
+                src="/brand/logo.png"
+                alt={legalName}
                 width={192}
                 height={58}
                 style={{ objectFit: 'contain', width: 'auto', maxHeight: 58 }}
                 priority
               />
+              {/* Marca de ambiente (FLOWS.md §80): no dibuja nada si APP_ENV_LABEL no está seteada. */}
+              <EnvironmentChip />
             </Box>
             <Typography variant="h6" color="text.secondary">
               Iniciar Sesión

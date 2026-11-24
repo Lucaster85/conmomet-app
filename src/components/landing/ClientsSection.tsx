@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Box, Container, IconButton, Typography } from '@mui/material';
 import { ArrowBackIosOutlined as ArrowBackIos, ArrowForwardIosOutlined as ArrowForwardIos } from '@mui/icons-material';
+import { useAppEnvironment } from '../EnvironmentProvider';
 
 interface Client {
   name: string;
@@ -16,6 +17,7 @@ const clients: Client[] = [
 const VISIBLE = 4;
 
 export default function ClientsSection() {
+  const { appName } = useAppEnvironment();
   const [index, setIndex] = useState(0);
 
   const maxIndex = clients.length - VISIBLE;
@@ -41,7 +43,7 @@ export default function ClientsSection() {
           color="text.secondary"
           sx={{ mb: 6, maxWidth: 560, mx: 'auto' }}
         >
-          Empresas líderes del sector confían en Conmomet para sus proyectos.
+          Empresas líderes del sector confían en {appName} para sus proyectos.
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

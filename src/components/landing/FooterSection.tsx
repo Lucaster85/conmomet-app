@@ -2,8 +2,10 @@
 import React from 'react';
 import { Box, Container, Paper, Stack, Typography } from '@mui/material';
 import { BadgeOutlined as Badge, CheckroomOutlined as Checkroom, EmailOutlined as Email, FacebookOutlined as Facebook, Instagram, LocationOnOutlined as LocationOn, PhoneOutlined as Phone, WhatsApp } from '@mui/icons-material';
+import { useAppEnvironment } from '../EnvironmentProvider';
 
 export default function FooterSection() {
+  const { appName, legalName } = useAppEnvironment();
   return (
     <Paper
       component="footer"
@@ -30,8 +32,8 @@ export default function FooterSection() {
           }}>
             <Box
               component="img"
-              src="/img/logos/conmomet-logo-blue.svg"
-              alt="Conmomet"
+              src="/brand/logo-landing.svg"
+              alt={appName}
               sx={{ height: { xs: 80, md: 100 }, width: "auto", filter: "brightness(0) invert(1)", opacity: 0.85 }}
             />
           </Box>
@@ -40,10 +42,10 @@ export default function FooterSection() {
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1 }}>
             <Box sx={{ flex: "1 1 250px" }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Conmomet S.A.
+                {legalName}
               </Typography>
               <Typography color="grey.400">
-                Conmomet S.A. es una empresa líder en soluciones industriales, ofreciendo servicios de montajes, tornería y plegados para clientes en toda la zona costera de la provincia de Buenos Aires.
+                {legalName} es una empresa líder en soluciones industriales, ofreciendo servicios de montajes, tornería y plegados para clientes en toda la zona costera de la provincia de Buenos Aires.
               </Typography>
             </Box>
 
@@ -197,7 +199,7 @@ export default function FooterSection() {
           }}
         >
           <Typography color="grey.400">
-            © 2025 Conmomet S.A. Todos los derechos reservados. Powered by Lucaster Web Studio.
+            © 2025 {legalName} Todos los derechos reservados. Powered by Lucaster Web Studio.
           </Typography>
         </Box>
       </Container>

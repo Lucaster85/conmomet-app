@@ -53,6 +53,10 @@ const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
   contact_inquiry_received: <InquiryIcon fontSize="small" color="info" />,
   job_application_received: <CandidateIcon fontSize="small" color="info" />,
   candidate_interview_assigned: <CandidateIcon fontSize="small" color="warning" />,
+  surety_bond_expiring: <DocumentIcon fontSize="small" color="warning" />,
+  surety_bond_expired: <ExpiredIcon fontSize="small" color="error" />,
+  fce_accepted: <ValidateIcon fontSize="small" color="success" />,
+  fce_rejected: <ExpiredIcon fontSize="small" color="error" />,
 };
 
 export default function NotificationBell() {

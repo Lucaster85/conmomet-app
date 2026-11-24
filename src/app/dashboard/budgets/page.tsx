@@ -27,7 +27,7 @@ import {
   CancelOutlined as RejectIcon, PrintOutlined as PrintIcon, DescriptionOutlined as DocumentIcon,
   AssignmentOutlined as ProjectIcon, DownloadOutlined as DownloadIcon, PercentOutlined as DiscountIcon,
   RequestQuoteOutlined as TitleIcon, AssignmentReturnOutlined as DeliverIcon, AttachFileOutlined as AttachIcon,
-  InfoOutlined as InfoIcon,
+  InfoOutlined as InfoIcon, RequestPageOutlined as QuoteRequestIcon,
 } from '@mui/icons-material';
 import {
   Budget, BudgetService, BudgetLaborLine, BudgetMaterialItem, CreateBudgetData,
@@ -46,6 +46,8 @@ import { findPrice, materialCostStatus } from '../../../utils/materialPrices';
 import MaterialCostStatusLine from '../../../components/budgets/MaterialCostStatusLine';
 import { formatLaborQuantity, formatHours, hoursPerDayFor, laborLineHours, lineHoursPerDay } from '../../../utils/laborFormat';
 import { formatProjectCode } from '../../../utils/projectCode';
+import { EnvironmentPrintNotice } from '../../../components/layout/EnvironmentBadge';
+import { useAppEnvironment } from '../../../components/EnvironmentProvider';
 
 const STATUS_LABELS: Record<string, { label: string; color: 'default' | 'info' | 'success' | 'error' }> = {
   draft: { label: 'Borrador', color: 'default' },
@@ -167,6 +169,7 @@ export default function BudgetsPage() {
 }
 
 function BudgetsPageContent() {
+  const { appName } = useAppEnvironment();
   const { fileLinkProps } = useFileViewer();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -179,6 +182,8 @@ function BudgetsPageContent() {
   // Los precios y el margen de los materiales los ve y carga cualquiera con acceso a Presupuestos.
   const hasPricesRead = permissions.includes('admin_granted') || permissions.includes('budget_prices_read');
   const hasAdditionalsRead = permissions.includes('admin_granted') || permissions.includes('additionals_read');
+  // Cargar el N° de presupuesto del cliente después de enviar: lo resuelve budgets_update en el servidor.
+  const hasUpdatePermission = permissions.includes('admin_granted') || permissions.includes('budgets_update');
   // Enviar al cliente es un permiso aparte de budgets_update: quien arma el presupuesto puede
   // editarlo pero no necesariamente ponerlo en manos del cliente (ver FLOWS.md flujo 27).
   // Además, quien no ve los valores de mano de obra (hasPricesRead) no puede enviar: lo que le
@@ -240,6 +245,12 @@ function BudgetsPageContent() {
   const [statusDialog, setStatusDialog] = useState<{ open: boolean; budget: Budget | null; target: string }>({ open: false, budget: null, target: '' });
   const [rejectionReason, setRejectionReason] = useState('');
   const [approvalFile, setApprovalFile] = useState<File | null>(null);
+  // N° con el que el cliente identifica este presupuesto — opcional al enviar (FLOWS.md §79).
+  const [clientBudgetNumber, setClientBudgetNumber] = useState('');
+  // Carga posterior desde el listado: solo si está vacío, una vez guardado no se edita.
+  const [clientNumberDialog, setClientNumberDialog] = useState<{ open: boolean; budget: Budget | null; value: string }>(
+    { open: false, budget: null, value: '' }
+  );
   const [approvedBySupervisorId, setApprovedBySupervisorId] = useState('');
   const [statusDialogSupervisors, setStatusDialogSupervisors] = useState<ClientSupervisor[]>([]);
   const [importing, setImporting] = useState(false);
@@ -1168,6 +1179,7 @@ function BudgetsPageContent() {
   const handleOpenStatusDialog = async (budget: Budget, target: string) => {
     setStatusDialog({ open: true, budget, target });
     setRejectionReason('');
+    setClientBudgetNumber('');
     setApprovalFile(null);
     setApprovedBySupervisorId(budget.approved_by_supervisor_id ? String(budget.approved_by_supervisor_id) : '');
     if (target === 'approved') {
@@ -1187,6 +1199,7 @@ function BudgetsPageContent() {
         rejection_reason: rejectionReason || undefined,
         file: approvalFile || undefined,
         approved_by_supervisor_id: approvedBySupervisorId ? Number(approvedBySupervisorId) : undefined,
+        client_budget_number: statusDialog.target === 'sent' ? clientBudgetNumber : undefined,
       });
       setStatusDialog({ open: false, budget: null, target: '' });
       setRejectionReason('');
@@ -1286,6 +1299,35 @@ function BudgetsPageContent() {
     }
   };
 
+  const handleSaveClientNumber = async () => {
+    if (!clientNumberDialog.budget || !clientNumberDialog.value.trim()) return;
+    try {
+      await BudgetService.setClientBudgetNumber(clientNumberDialog.budget.id, clientNumberDialog.value.trim());
+      setClientNumberDialog({ open: false, budget: null, value: '' });
+      setSuccess('N° de presupuesto del cliente cargado');
+      loadBudgets();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar el N° de presupuesto del cliente');
+    }
+  };
+
+  // Columna "N° Pres. Cliente": el valor si está cargado; si no, un "+" para cargarlo (los presupuestos
+  // anteriores a esta función y los enviados sin número no lo tienen, y editar el presupuesto no es una opción).
+  // En borrador no hay botón: el número se pide al enviar. Una vez cargado no se modifica.
+  const clientBudgetNumberCell = (b: Budget) => {
+    if (b.client_budget_number) return <Typography variant="body2" fontWeight="medium">{b.client_budget_number}</Typography>;
+    if (b.status !== 'draft' && hasUpdatePermission) {
+      return (
+        <Tooltip title="Cargar N° de presupuesto del cliente">
+          <IconButton size="small" color="primary" aria-label="Cargar N° de presupuesto del cliente" onClick={() => setClientNumberDialog({ open: true, budget: b, value: '' })}>
+            <AddIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      );
+    }
+    return <Typography variant="body2" color="text.secondary">—</Typography>;
+  };
+
   // Mismo patrón que OCAs/Liquidación: window.print() sobre un .print-area, sin librería de PDF.
   const handlePrint = () => {
     if (!printBudget) return;
@@ -1330,7 +1372,7 @@ function BudgetsPageContent() {
       <ListFilters
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Buscar por N° de presupuesto, título o N° de OT…"
+        searchPlaceholder="Buscar por N° de presupuesto, N° del cliente, título o N° de OT…"
         onClear={clearFilters}
         hasActiveFilters={hasActiveFilters}
       >
@@ -1372,6 +1414,10 @@ function BudgetsPageContent() {
                         {b.existingProject && <Typography variant="caption" color="text.secondary" display="block">Vinculado a {b.existingProject.code}</Typography>}
                         {b.work_order_number && <Typography variant="caption" color="text.secondary" display="block">OT: {b.work_order_number}</Typography>}
                         {b.quoteRequest?.client_quote_number && <Typography variant="caption" color="text.secondary" display="block">N° Cotización Cliente: {b.quoteRequest.client_quote_number}</Typography>}
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <Typography variant="caption" color="text.secondary">N° Pres. Cliente:</Typography>
+                          {clientBudgetNumberCell(b)}
+                        </Box>
                       </Box>
                     </Box>
                     <Typography variant="body2" color="text.secondary">{b.client?.razonSocial}</Typography>
@@ -1434,6 +1480,9 @@ function BudgetsPageContent() {
                     <Divider />
                     <Box display="flex" flexWrap="wrap" gap={0.5}>
                       <Tooltip title={hasPricesRead ? 'Ver / Imprimir' : 'Ver'}><IconButton size="small" color="secondary" onClick={() => setPrintBudget(b)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
+                      {b.quoteRequest && (
+                        <Tooltip title={`Ver pedido de cotización ${b.quoteRequest.number}`}><IconButton size="small" color="secondary" onClick={() => router.push(`/dashboard/quote-requests?view=${b.quoteRequest!.id}`)}><QuoteRequestIcon fontSize="small" /></IconButton></Tooltip>
+                      )}
                       {b.status === 'draft' && (
                         <>
                           <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(b)}><EditIcon fontSize="small" /></IconButton></Tooltip>
@@ -1478,6 +1527,7 @@ function BudgetsPageContent() {
                 <TableHead>
                   <TableRow sx={{ bgcolor: 'grey.50' }}>
                     <TableCell><strong>Número</strong></TableCell>
+                    <TableCell><strong>N° Pres. Cliente</strong></TableCell>
                     <TableCell><strong>Título</strong></TableCell>
                     <TableCell><strong>Cliente</strong></TableCell>
                     <TableCell><strong>Estado</strong></TableCell>
@@ -1490,6 +1540,7 @@ function BudgetsPageContent() {
                   {budgets.map((b) => (
                     <TableRow key={b.id} hover>
                       <TableCell><Typography variant="body2" fontWeight="medium">{b.number}</Typography></TableCell>
+                      <TableCell>{clientBudgetNumberCell(b)}</TableCell>
                       <TableCell>
                         <Typography fontWeight="medium">{b.title}</Typography>
                         {b.parentProject && <Typography variant="caption" color="text.secondary" display="block">Adicional de {b.parentProject.code}</Typography>}
@@ -1558,6 +1609,9 @@ function BudgetsPageContent() {
                       </TableCell>
                       <TableCell align="center">
                         <Tooltip title={hasPricesRead ? 'Ver / Imprimir' : 'Ver'}><IconButton size="small" color="secondary" onClick={() => setPrintBudget(b)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
+                        {b.quoteRequest && (
+                          <Tooltip title={`Ver pedido de cotización ${b.quoteRequest.number}`}><IconButton size="small" color="secondary" onClick={() => router.push(`/dashboard/quote-requests?view=${b.quoteRequest!.id}`)}><QuoteRequestIcon fontSize="small" /></IconButton></Tooltip>
+                        )}
                         {b.status === 'draft' && (
                           <>
                             <Tooltip title="Editar"><IconButton size="small" color="primary" onClick={() => handleOpenEdit(b)}><EditIcon fontSize="small" /></IconButton></Tooltip>
@@ -2039,6 +2093,13 @@ function BudgetsPageContent() {
         </DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>Presupuesto <strong>{statusDialog.budget?.number}</strong></Typography>
+          {statusDialog.target === 'sent' && (
+            <TextField
+              label="N° de presupuesto del cliente (opcional)" fullWidth value={clientBudgetNumber}
+              onChange={(e) => setClientBudgetNumber(e.target.value)} inputProps={{ maxLength: 100 }}
+              helperText="El número con el que el cliente identifica este presupuesto; lo van a usar sus OC. Si todavía no lo tenés, lo cargás después desde el listado."
+            />
+          )}
           {statusDialog.target === 'rejected' && (
             <TextField label="Motivo del rechazo *" fullWidth multiline rows={2} value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
           )}
@@ -2072,6 +2133,24 @@ function BudgetsPageContent() {
         <DialogActions>
           <Button onClick={() => { setStatusDialog({ open: false, budget: null, target: '' }); setApprovalFile(null); setRejectionReason(''); setApprovedBySupervisorId(''); }}>Cancelar</Button>
           <Button onClick={handleChangeStatus} variant="contained">Confirmar</Button>
+        </DialogActions>
+      </AppDialog>
+
+      {/* N° de presupuesto del cliente — carga posterior (presupuestos viejos o enviados sin número).
+          Solo si está vacío: el servidor rechaza pisar uno ya cargado (ver FLOWS.md §79). */}
+      <AppDialog open={clientNumberDialog.open} onClose={() => setClientNumberDialog({ open: false, budget: null, value: '' })} maxWidth="xs" fullWidth>
+        <DialogTitle>N° de presupuesto del cliente</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>Presupuesto <strong>{clientNumberDialog.budget?.number}</strong></Typography>
+          <TextField
+            label="N° de presupuesto del cliente *" fullWidth autoFocus value={clientNumberDialog.value}
+            onChange={(e) => setClientNumberDialog({ ...clientNumberDialog, value: e.target.value })} inputProps={{ maxLength: 100 }}
+            helperText="Es el número con el que el cliente identifica este presupuesto (el que cita en sus OC). Una vez guardado no se puede modificar."
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClientNumberDialog({ open: false, budget: null, value: '' })}>Cancelar</Button>
+          <Button onClick={handleSaveClientNumber} variant="contained" disabled={!clientNumberDialog.value.trim()}>Guardar</Button>
         </DialogActions>
       </AppDialog>
 
@@ -2166,10 +2245,11 @@ function BudgetsPageContent() {
         <DialogContent>
           {printBudget && (
             <Box className="print-area" sx={{ bgcolor: 'white', color: 'black', p: 2, fontFamily: 'sans-serif' }}>
+              <EnvironmentPrintNotice />
               <Box display="flex" justifyContent="space-between" alignItems="flex-start" borderBottom="2px solid black" pb={2} mb={2}>
                 <Box>
                   {/* eslint-disable-next-line @next/next/no-img-element -- documento imprimible, mismo criterio que el resto del print-area (evitar quirks de next/image al imprimir) */}
-                  <img src="/img/logos/logo-conmomet-ROJO.png" alt="Conmomet" style={{ height: 50, objectFit: 'contain' }} />
+                  <img src="/brand/logo.png" alt={appName} style={{ height: 50, objectFit: 'contain' }} />
                   <Typography variant="caption" sx={{ color: 'black', display: 'block', mt: 0.5 }}>Servicios Metalúrgicos e Industriales</Typography>
                 </Box>
                 <Box textAlign="right">
@@ -2189,6 +2269,7 @@ function BudgetsPageContent() {
                   {printBudget.work_order_number && <Typography variant="body2"><strong>N° OT:</strong> {printBudget.work_order_number}</Typography>}
                   {printBudget.quoteRequest && <Typography variant="body2"><strong>Pedido de Cotización:</strong> {printBudget.quoteRequest.number}</Typography>}
                   {printBudget.quoteRequest?.client_quote_number && <Typography variant="body2"><strong>N° Cotización Cliente:</strong> {printBudget.quoteRequest.client_quote_number}</Typography>}
+                  {printBudget.client_budget_number && <Typography variant="body2"><strong>N° Pres. Cliente:</strong> {printBudget.client_budget_number}</Typography>}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="body2"><strong>Fecha:</strong> {new Date(printBudget.createdAt).toLocaleDateString('es-AR')}</Typography>

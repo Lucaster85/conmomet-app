@@ -240,12 +240,18 @@ avisa: se corrige desactivando y volviendo a activar.
 
 ## Buscar y filtrar
 
-Arriba del listado hay una barra de búsqueda (por N° de pedido, título o N° del cliente) y
-cuatro filtros: **Cliente**, **Estado**, **Responsable** y **Vencimiento** (Vencidos / Vencen
+Arriba del listado hay una barra de búsqueda (por N° de pedido, título, N° de cotización del cliente
+o **N° de presupuesto del cliente** de alguno de sus presupuestos) y cuatro filtros: **Cliente**, **Estado**, **Responsable** y **Vencimiento** (Vencidos / Vencen
 esta semana). "Vencidos" solo considera pedidos en curso: un pedido ya cotizado no está
 vencido, está **enviado** (ver más arriba "Vencimiento de presentación"), así que combinarlo
 con Estado = Cotizado da un listado vacío a propósito. "Limpiar filtros" aparece una vez que
 hay algún filtro aplicado.
+
+Los presupuestos de cada pedido aparecen como chips en las acciones de la fila; si el presupuesto ya
+tiene **N° de presupuesto del cliente** (el número con el que el cliente identifica ese presupuesto,
+que se carga al enviarlo o después desde el listado de Presupuestos), el chip lo muestra junto al
+código, por ejemplo `PRES-2026-012 · Cli 4500-77`. **No es el N° de Cotización del Cliente** de arriba:
+ese identifica el pedido; el otro, cada presupuesto que sale de él.
 
 ## Quién puede hacer qué
 
@@ -257,4 +263,4 @@ hay algún filtro aplicado.
   **entrega a gerencia**. No puede editar el pedido (ni cambiarle el vencimiento ni
   reasignarlo), ni enviarle el presupuesto al cliente — su trabajo termina al entregarlo.
 
-<!-- ref: conmomet-app/src/app/dashboard/quote-requests/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, conmomet-app/src/components/common/QuoteRequestAlert.tsx, conmomet-app/src/components/common/DeliverToManagementDialog.tsx, conmomet-app/src/components/common/PushNotificationsDialog.tsx, conmomet-app/src/utils/push.ts, api_conmomet/helpers/pushService.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/controllers/budgetController.js, api_conmomet/services/quoteRequestLogService.js, api_conmomet/models/quoteRequestStatusLog.js, conmomet-app/src/utils/quoteRequestDue.ts, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx -->
+<!-- ref: FLOWS.md §79, conmomet-app/src/app/dashboard/quote-requests/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, conmomet-app/src/components/common/QuoteRequestAlert.tsx, conmomet-app/src/components/common/DeliverToManagementDialog.tsx, conmomet-app/src/components/common/PushNotificationsDialog.tsx, conmomet-app/src/utils/push.ts, api_conmomet/helpers/pushService.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/controllers/budgetController.js, api_conmomet/services/quoteRequestLogService.js, api_conmomet/models/quoteRequestStatusLog.js, conmomet-app/src/utils/quoteRequestDue.ts, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx -->

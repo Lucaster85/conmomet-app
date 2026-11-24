@@ -28,6 +28,7 @@ import {
   CANDIDATE_FILE_KIND_LABELS, CANDIDATE_REJECTION_LABELS, CANDIDATE_REJECTION_OPTIONS, CANDIDATE_SOURCE_LABELS,
   CANDIDATE_STAGE_LABELS, CANDIDATE_TRANSITIONS, fullName, isOpenStage,
 } from '../../../../utils/candidates';
+import { useAppEnvironment } from '@/components/EnvironmentProvider';
 
 const formatDate = (iso?: string | null) => {
   if (!iso) return '—';
@@ -92,6 +93,7 @@ function DataRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 export default function CandidateDetailPage() {
+  const { appName } = useAppEnvironment();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const theme = useTheme();
@@ -281,7 +283,7 @@ export default function CandidateDetailPage() {
   const files = candidate.files || [];
   const hasOpenApplication = applications.some((a) => isOpenStage(a.stage));
   const canStartNewApplication = canWrite && !hasOpenApplication && !candidate.employee_id;
-  const waLink = candidate.phone ? buildWhatsAppLink(candidate.phone, `Hola ${candidate.name}, te escribimos de Conmomet por tu postulación.`) : null;
+  const waLink = candidate.phone ? buildWhatsAppLink(candidate.phone, `Hola ${candidate.name}, te escribimos de ${appName} por tu postulación.`) : null;
 
   const stageDialogTitle = stageDialog
     ? stageDialog.target === 'screening' && !isOpenStage(stageDialog.application.stage)

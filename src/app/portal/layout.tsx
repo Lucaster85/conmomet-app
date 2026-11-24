@@ -34,6 +34,7 @@ import { reconcilePushSubscriptionOnLoad, unsubscribeFromPush, unsubscribeFromPu
 import { onSessionExpired } from '../../utils/sessionExpiry';
 import SessionExpiredDialog from '../../components/SessionExpiredDialog';
 import { HeaderLogo, HeaderAvatarButton, HEADER_MIN_HEIGHT, HEADER_TOGGLE_ICON_SIZE } from '../../components/layout/HeaderChrome';
+import { EnvironmentChip, EnvironmentStripe } from '../../components/layout/EnvironmentBadge';
 import NotificationBell from '../../components/common/NotificationBell';
 import { PORTAL_MENU_ITEMS } from '../../components/portal/portalMenuItems';
 
@@ -127,6 +128,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           }}
         >
+          {/* Marca de ambiente (FLOWS.md §80): no dibuja nada si APP_ENV_LABEL no está seteada. */}
+          <EnvironmentStripe />
           <Toolbar
             sx={{
               position: 'relative',
@@ -161,6 +164,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
               <Typography variant="subtitle1" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }} noWrap>
                 Portal del Empleado
               </Typography>
+              <EnvironmentChip sx={{ display: { xs: 'none', sm: 'inline-flex' } }} />
             </Box>
 
             {/* Empuja el avatar a la derecha en mobile, ya que el logo quedó posicionado absoluto */}

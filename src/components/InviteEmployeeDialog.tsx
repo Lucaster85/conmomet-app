@@ -4,9 +4,10 @@ import { DialogTitle, DialogContent, DialogActions, Button, TextField, Stack, Ty
 import AppDialog from '@/components/common/AppDialog';
 import { Employee, EmployeeInvitationService, InviteResult } from '../utils/api';
 import { buildWhatsAppLink, normalizeArgentinaMobile } from '../utils/whatsapp';
+import { useAppEnvironment } from './EnvironmentProvider';
 
-export const buildInviteMessage = (link: string, name: string) =>
-  `Hola ${name}, te invitamos a crear tu usuario del Portal Conmomet. Ingresá acá para crear tu contraseña: ${link}`;
+export const buildInviteMessage = (link: string, name: string, appName: string) =>
+  `Hola ${name}, te invitamos a crear tu usuario del Portal ${appName}. Ingresá acá para crear tu contraseña: ${link}`;
 
 interface InviteEmployeeDialogProps {
   employee: Employee | null;
@@ -21,6 +22,7 @@ interface InviteEmployeeDialogProps {
 // servicio de mail propio del cliente (el de prueba no está funcionando), así que por ahora
 // solo se ofrece WhatsApp.
 export default function InviteEmployeeDialog({ employee, open, onClose, onSent, onError }: InviteEmployeeDialogProps) {
+  const { appName } = useAppEnvironment();
   const [contact, setContact] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -33,7 +35,7 @@ export default function InviteEmployeeDialog({ employee, open, onClose, onSent, 
     setSending(true);
     try {
       const result = await EmployeeInvitationService.invite(employee.id, { channel: 'whatsapp', contact: contact.trim() });
-      window.open(buildWhatsAppLink(result.contact_used, buildInviteMessage(result.invite_link, employee.name)), '_blank');
+      window.open(buildWhatsAppLink(result.contact_used, buildInviteMessage(result.invite_link, employee.name, appName)), '_blank');
       onSent(result);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Error al invitar al empleado.');

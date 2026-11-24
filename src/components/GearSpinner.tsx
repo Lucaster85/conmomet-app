@@ -6,8 +6,8 @@ interface GearSpinnerProps {
   size?: number;
 }
 
-// Recorta el engranaje de la franja izquierda del logo (sin el texto "Conmomet")
-// vía background-position, y lo hace girar — usado como indicador de carga.
+// Gira el isotipo de la marca (/brand/mark.png: solo el engranaje, sin el texto "Conmomet") — usado
+// como indicador de carga. Cada marca/ambiente trae su propio mark.png (FLOWS.md §81).
 export default function GearSpinner({ size = 40 }: GearSpinnerProps) {
   return (
     <Box
@@ -18,10 +18,10 @@ export default function GearSpinner({ size = 40 }: GearSpinnerProps) {
         display: 'inline-block',
         width: size,
         height: size,
-        backgroundImage: 'url(/img/logos/logo-conmomet-ROJO.png)',
+        backgroundImage: 'url(/brand/mark.png)',
         backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'left center',
-        backgroundSize: 'auto 100%',
+        backgroundPosition: 'center',
+        backgroundSize: 'contain',
         animation: 'gear-spin 1.2s linear infinite',
         '@keyframes gear-spin': {
           from: { transform: 'rotate(0deg)' },

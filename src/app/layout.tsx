@@ -7,6 +7,8 @@ import theme from './theme';
 
 import MuiXProvider from "./MuiXProvider";
 import ClarityAnalytics from "../components/ClarityAnalytics";
+import { EnvironmentProvider } from "../components/EnvironmentProvider";
+import { getEnvironmentConfig } from "../config/environment";
 
 // Fuerza renderizado dinámico por request, para que process.env se lea en runtime
 export const dynamic = 'force-dynamic';
@@ -17,34 +19,42 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 
-export const metadata: Metadata = {
-  title: "Conmomet App",
-  description: "Sistema de gestión Conmomet",
-  icons: {
-    icon: "/img/logos/conmomet-logo-blue.svg",
-    apple: "/icons/apple-touch-icon.png",
-  },
-  manifest: "/manifest.webmanifest",
-  // iOS exige esto para permitir Web Push: la app tiene que poder instalarse en la pantalla de
-  // inicio y abrir en modo standalone, no alcanza con el manifest solo (ver FLOWS.md flujo 28).
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Conmomet",
-  },
-};
+// generateMetadata y no un `metadata` fijo: el título lleva el prefijo del ambiente ("[TEST] Conmomet
+// App") para distinguir pestañas, y se lee de la env var en cada request (FLOWS.md §80).
+export function generateMetadata(): Metadata {
+  const { label, appName } = getEnvironmentConfig();
+  return {
+    title: label ? `[${label}] ${appName} App` : `${appName} App`,
+    description: `Sistema de gestión ${appName}`,
+    icons: {
+      icon: "/brand/favicon.svg",
+      apple: "/brand/apple-touch-icon.png",
+    },
+    manifest: "/manifest.webmanifest",
+    // iOS exige esto para permitir Web Push: la app tiene que poder instalarse en la pantalla de
+    // inicio y abrir en modo standalone, no alcanza con el manifest solo (ver FLOWS.md flujo 28).
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: label ? `${appName} ${label}` : appName,
+    },
+  };
+}
 
 // themeColor vive acá y no en `metadata` — Next 15 lo movió a un export aparte; dejarlo en
-// metadata no tira error pero se ignora en silencio.
-export const viewport: Viewport = {
-  themeColor: "#F44336",
-};
+// metadata no tira error pero se ignora en silencio. En un ambiente con marca, la barra del
+// navegador en el celular toma el color del ambiente; sin marca, el rojo de siempre.
+export function generateViewport(): Viewport {
+  const { label, color } = getEnvironmentConfig();
+  return { themeColor: label ? color : "#F44336" };
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const environment = getEnvironmentConfig();
   const runtimeEnv = JSON.stringify({
     API_BASE_URL: process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || '',
     GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || '',
@@ -62,7 +72,9 @@ export default function RootLayout({
         <ThemeProvider theme={theme}>
           <CssBaseline />
           <MuiXProvider>
-            {children}
+            <EnvironmentProvider value={environment}>
+              {children}
+            </EnvironmentProvider>
           </MuiXProvider>
         </ThemeProvider>
       </body>

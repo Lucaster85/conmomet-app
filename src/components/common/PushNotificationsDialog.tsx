@@ -11,6 +11,7 @@ import {
   PushDiagnostics,
 } from '@/utils/push';
 import { PushSubscriptionService } from '@/utils/api';
+import { useAppEnvironment } from '../EnvironmentProvider';
 
 interface PushNotificationsDialogProps {
   open: boolean;
@@ -27,6 +28,7 @@ interface PushNotificationsDialogProps {
 // en el browser no alcanza: si el servidor no tiene la fila, no hay a dónde mandar el aviso. Esa
 // distinción es la que hacía que en staging se viera "activado" sin que llegara nada.
 export default function PushNotificationsDialog({ open, onClose }: PushNotificationsDialogProps) {
+  const { appName } = useAppEnvironment();
   const [diag, setDiag] = useState<PushDiagnostics | null>(null);
   const [state, setState] = useState<PushSupportState | 'checking'>('checking');
   const [processing, setProcessing] = useState(false);
@@ -91,8 +93,8 @@ export default function PushNotificationsDialog({ open, onClose }: PushNotificat
       const result = await PushSubscriptionService.sendTest();
       setInfo(
         result.devices > 1
-          ? `Enviada a ${result.sent} de ${result.devices} dispositivos registrados. Si no la ves, revisá que las notificaciones de Conmomet estén permitidas en los ajustes del sistema.`
-          : 'Notificación enviada. Si no la ves en unos segundos, revisá que las notificaciones de Conmomet estén permitidas en los ajustes del sistema.'
+          ? `Enviada a ${result.sent} de ${result.devices} dispositivos registrados. Si no la ves, revisá que las notificaciones de ${appName} estén permitidas en los ajustes del sistema.`
+          : `Notificación enviada. Si no la ves en unos segundos, revisá que las notificaciones de ${appName} estén permitidas en los ajustes del sistema.`
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo enviar la notificación de prueba.');
@@ -129,7 +131,7 @@ export default function PushNotificationsDialog({ open, onClose }: PushNotificat
             <Box component="ol" sx={{ pl: 2.5, m: 0 }}>
               <Typography component="li" variant="body2">Tocá el botón <strong>Compartir</strong> en Safari.</Typography>
               <Typography component="li" variant="body2">Elegí <strong>&quot;Agregar a pantalla de inicio&quot;</strong>.</Typography>
-              <Typography component="li" variant="body2">Abrí Conmomet desde el ícono nuevo y volvé a entrar acá.</Typography>
+              <Typography component="li" variant="body2">Abrí {appName} desde el ícono nuevo y volvé a entrar acá.</Typography>
             </Box>
           </Stack>
         );

@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { MenuOutlined as MenuIcon, AccountCircleOutlined as AccountCircleIcon } from '@mui/icons-material';
 import { usePathname, useRouter } from 'next/navigation';
+import { useAppEnvironment } from '../EnvironmentProvider';
 
 const navItems = [
   { label: 'Inicio', href: '#inicio' },
@@ -24,6 +25,7 @@ export const JOBS_PATH = '/trabaja-con-nosotros';
 // Los links de sección (#nosotros…) hacen scroll cuando se está en la landing, y llevan a `/#seccion`
 // cuando se está en otra página — sin eso, en /trabaja-con-nosotros apuntarían a ids que no existen.
 export default function LandingHeader() {
+  const { appName, legalName } = useAppEnvironment();
   const router = useRouter();
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -78,8 +80,8 @@ export default function LandingHeader() {
           >
             <Box
               component="img"
-              src="/img/logos/conmomet-logo-blue.svg"
-              alt="Conmomet"
+              src="/brand/logo-landing.svg"
+              alt={appName}
               sx={{ height: { xs: 40, md: 60 }, width: 'auto' }}
             />
             <Typography
@@ -87,7 +89,7 @@ export default function LandingHeader() {
               component="div"
               sx={{ color: 'primary.main', fontWeight: 'bold', fontSize: { xs: '1.25rem', md: '1.875rem' } }}
             >
-              Conmomet S.A.
+              {legalName}
             </Typography>
           </Box>
 

@@ -18,6 +18,7 @@ import DateField from '../../components/DateField';
 import { ConsentTextService, JobApplicationValues, PublicJobApplicationService } from '../../utils/api';
 import { validateDni, validateEmail, validatePhone } from '../../utils/validators';
 import { validateCandidateFile, CANDIDATE_ACCEPT } from '../../utils/candidates';
+import { useAppEnvironment } from '@/components/EnvironmentProvider';
 
 // "Trabajá con nosotros" (ver FLOWS.md §60): página pública, sin sesión. Lo que se envía queda como una
 // postulación en Personal → Postulantes y avisa al equipo.
@@ -49,6 +50,7 @@ function PrivacyText({ content }: { content: string }) {
 }
 
 export default function JobApplicationPage() {
+  const { legalName } = useAppEnvironment();
   const [values, setValues] = useState<JobApplicationValues>(initialValues);
   const [cv, setCv] = useState<File | null>(null);
   const [letterFile, setLetterFile] = useState<File | null>(null);
@@ -214,7 +216,7 @@ export default function JobApplicationPage() {
                 <Box>
                   <FormControlLabel
                     control={<Checkbox checked={consent} onChange={(e) => setConsent(e.target.checked)} />}
-                    label="Acepto que Conmomet S.A. trate mis datos personales para evaluar mi postulación."
+                    label={`Acepto que ${legalName} trate mis datos personales para evaluar mi postulación.`}
                     sx={{ alignItems: 'flex-start', '& .MuiCheckbox-root': { pt: 0.5 } }}
                   />
                   <FormHelperText error={show && formErrors.consent} sx={{ ml: 4 }}>

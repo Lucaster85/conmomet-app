@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import { BillableBudget, BudgetCurrency } from '../../utils/api';
 import {
-  BILLING_STATUS_LABELS, formatDate, formatHours, formatMoney, formatPercent, ivaOf, roundMoney,
+  BILLING_STATUS_LABELS, formatDate, formatHours, formatMoney, formatPercent, ivaOf, NO_CLIENT_BUDGET_NUMBER, roundMoney,
 } from '../../utils/billing';
 import { formatCuit } from '../../utils/cuit';
 import ProjectCodeLabel from '../projects/ProjectCodeLabel';
@@ -27,7 +27,13 @@ const currenciesOf = (row: BillableBudget): BudgetCurrency[] =>
 export default function BillablesList({ rows, ivaRate, onOpen }: BillablesListProps) {
   const identification = (row: BillableBudget) => (
     <Box>
-      <Typography variant="subtitle2" fontWeight={700}>{row.number}</Typography>
+      {/* El número que se destaca es el del CLIENTE (el que cita su OC); el nuestro queda chico y gris debajo (FLOWS.md §79). */}
+      {row.client_budget_number ? (
+        <Typography variant="subtitle2" fontWeight={700}>{row.client_budget_number}</Typography>
+      ) : (
+        <Typography variant="subtitle2" color="text.secondary" sx={{ fontStyle: 'italic' }}>{NO_CLIENT_BUDGET_NUMBER}</Typography>
+      )}
+      <Typography variant="caption" color="text.secondary" display="block">{row.number}</Typography>
       <Typography variant="body2" noWrap sx={{ maxWidth: 260 }}>{row.title}</Typography>
       {row.quoteRequest && (
         <Typography variant="caption" color="text.secondary" display="block">
@@ -116,6 +122,15 @@ export default function BillablesList({ rows, ivaRate, onOpen }: BillablesListPr
             size="small" variant="outlined" color="warning"
             label={`${row.billing.pending_invoices_count} pendiente${row.billing.pending_invoices_count === 1 ? '' : 's'} de cobro`}
           />
+        )}
+        {row.billing.overbilled_vs_real && (
+          <Chip size="small" color="warning" label="Facturado > avance real" sx={{ alignSelf: 'flex-start' }} />
+        )}
+        {row.purchase_order && row.purchase_order.active_count > 0 && (
+          <Chip size="small" variant="outlined" label={`OC ${row.purchase_order.numbers.join(', ')}`} sx={{ maxWidth: 220 }} />
+        )}
+        {row.purchase_order && row.purchase_order.active_count === 0 && !row.purchase_order.not_required && (
+          <Chip size="small" variant="outlined" color="warning" label="Sin OC" />
         )}
       </Stack>
     );

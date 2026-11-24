@@ -24,6 +24,7 @@ import { relativeTime } from '../../../utils/dates';
 import {
   CONTACT_REASON_LABELS, CONTACT_REASON_OPTIONS, CONTACT_STATUS_LABELS,
 } from '../../../utils/contactInquiries';
+import { useAppEnvironment } from '@/components/EnvironmentProvider';
 
 // Consultas que entran por el formulario de contacto de la web (ver FLOWS.md §58). Solo se pueden
 // leer, tomar, cerrar, anotar y borrar: lo que escribió el visitante no se edita, y no hay "Nueva
@@ -43,6 +44,7 @@ export default function ContactInquiriesPage() {
 }
 
 function ContactInquiriesPageContent() {
+  const { appName } = useAppEnvironment();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -344,7 +346,7 @@ function ContactInquiriesPageContent() {
                           component="a"
                           target="_blank"
                           rel="noopener noreferrer"
-                          href={buildWhatsAppLink(selected.phone, `Hola ${selected.name}, te escribimos de Conmomet por tu consulta enviada desde la web.`)}
+                          href={buildWhatsAppLink(selected.phone, `Hola ${selected.name}, te escribimos de ${appName} por tu consulta enviada desde la web.`)}
                         >
                           WhatsApp
                         </Button>

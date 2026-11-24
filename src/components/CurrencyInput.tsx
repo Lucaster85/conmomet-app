@@ -21,7 +21,10 @@ const NumericFormatCustom = forwardRef<HTMLInputElement, CustomProps & Omit<Nume
         allowNegative={allowNegative}
         fixedDecimalScale={fixedDecimalScale}
         getInputRef={ref}
-        onValueChange={(values) => {
+        onValueChange={(values, sourceInfo) => {
+          // Solo lo que la persona escribe. Cuando el padre cambia el valor por código (por ejemplo, un monto que sale de un porcentaje), el componente también avisa:
+          // ese eco hacía recalcular el otro campo con el monto redondeado y pisaba lo que se estaba tipeando.
+          if (sourceInfo.source === 'prop') return;
           onChange({
             target: {
               name: props.name,

@@ -45,6 +45,18 @@ entrevistador** (ver el tema **Postulantes**). A diferencia de las consultas y l
 Incluye las de hoy que ya pasaron y siguen sin resultado, marcadas como *Sin resultado*. Si se reprograma una, reaparece;
 desaparece sola al cargar el resultado, cancelarla o marcar que no vino.
 
+Dos avisos más son de **Facturación** (ver el tema **Órdenes de compra y cauciones**): **Presupuestos aprobados sin OC**, con los presupuestos aprobados que no
+tienen una OC del cliente vigente ni la marca "No lleva OC" (con botones **Cargar OC** y **No lleva OC**), y **Seguros de caución por vencer**, con las pólizas
+vencidas o dentro de su plazo de aviso. Los ve **quien tenga acceso a Facturación**. El primero desaparece solo al cargar la OC o marcar que no lleva; el segundo,
+al liberar la caución o renovar su vencimiento.
+
+Otros dos avisos de **Facturación** vienen del seguimiento de las FCE con ARCA (ver el tema **Facturación**, sección "Seguimiento de FCE"):
+
+- **FCE rechazadas por el cliente**: las Facturas de Crédito Electrónica que el cliente rechazó en ARCA y a las que **todavía no se les emitió la nota de crédito de anulación**. Cada item muestra el número, el cliente, el total y los motivos del rechazo, y te lleva a la pestaña **FCE**, donde está el botón para emitir la nota. Desaparece solo al emitirla.
+- **FCE para informar al ADC**: las FCE **aceptadas** con la opción **ADC** que todavía no se informaron al agente de depósito colectivo. Es un **recordatorio**: la app no hace ese trámite, se hace por fuera. Desaparece solo cuando la sincronización con ARCA ve la factura como informada (o cancelada totalmente).
+
+Los dos los ve **quien tenga acceso a Facturación** y se arman con lo que ARCA informó en la **última sincronización** (ver "Sincronización automática" en el tema Facturación). No hay aviso de "vence la aceptación": si el cliente no responde, ARCA la da por aceptada.
+
 Solo ves los contadores y los avisos de los temas a los que tenés acceso. Si tu rol no maneja
 documentación, por ejemplo, ese aviso no existe para vos.
 
@@ -119,6 +131,7 @@ La campanita registra:
 - que hay una **OCA aprobada esperando presupuesto** (solo al usuario configurado para eso);
 - que un **adicional se finalizó** y hay que cerrar su presupuesto (solo a quienes eligieron al notificarlo);
 - que un **documento** o un **EPP** está por vencer o ya venció;
+- que una **FCE fue aceptada o rechazada** por el cliente según ARCA (a quienes tienen acceso a Facturación; si fue rechazada, el aviso recuerda emitir la nota de crédito de anulación);
 - que una **nota tuya** venció o es para hoy (ver el tema **Notas rápidas**);
 - que **llegó una postulación por la web** ("Trabajá con nosotros"), o que alguien **volvió a enviar su CV** (a los que
   tienen acceso a Postulantes, con la misma salvedad de abajo);
@@ -162,4 +175,4 @@ Marcar un aviso del inicio como visto **no** marca leída ninguna notificación 
 revés. Son dos preguntas distintas, y está bien que una misma novedad aparezca en los dos lugares:
 en la campanita como "esto pasó el martes", en el inicio como "esto todavía te falta hacer".
 
-<!-- ref: conmomet-app/src/components/common/EntrevistasProximasAlert.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, conmomet-app/src/components/common/ContactInquiryAlert.tsx, conmomet-app/src/components/common/TerminationAgreementAlert.tsx, conmomet-app/src/components/common/AdditionalPendingBudgetAlert.tsx, conmomet-app/src/components/common/BudgetAwaitingResponseAlert.tsx, conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->
+<!-- ref: conmomet-app/src/components/common/FceAlerts.tsx, conmomet-app/src/components/common/PurchaseOrderMissingAlert.tsx, conmomet-app/src/components/common/SuretyBondAlert.tsx, conmomet-app/src/components/common/EntrevistasProximasAlert.tsx, conmomet-app/src/components/common/PostulacionesNuevasAlert.tsx, conmomet-app/src/components/common/ContactInquiryAlert.tsx, conmomet-app/src/components/common/TerminationAgreementAlert.tsx, conmomet-app/src/components/common/AdditionalPendingBudgetAlert.tsx, conmomet-app/src/components/common/BudgetAwaitingResponseAlert.tsx, conmomet-app/src/components/common/AlertViewsProvider.tsx, conmomet-app/src/components/common/DashboardAlertCard.tsx, conmomet-app/src/components/common/DashboardAlertSummaryBar.tsx, conmomet-app/src/app/dashboard/page.tsx, api_conmomet/controllers/userAlertViewController.js, api_conmomet/models/userAlertView.js -->

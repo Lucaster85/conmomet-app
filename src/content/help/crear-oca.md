@@ -162,3 +162,8 @@ notificaciones**.
 **Presentado**. Al anular, todas las horas que tenía cargadas quedan liberadas y vuelven a
 estar disponibles para incluirse en otra OCA. Un motivo de anulación es opcional pero
 recomendado.
+
+## Facturar una OCA
+
+Una OCA **aprobada** (con su presupuesto aprobado, si lo pidió, y el valor hora cargado) se factura desde **Facturación → Nueva factura**: el importe sale de sus horas y de su valor hora, y se cobra **entera** (ver el tema **Facturación**, "Facturar OCAs"). Una OCA ya facturada muestra el cartel **Facturada** con el número de la factura y **no se puede anular, rechazar ni modificar** (ni sus horas ni su valor hora) hasta que se anule esa factura en Facturación: así la OCA y la factura no quedan diciendo cosas distintas ni se factura dos veces lo mismo.
+

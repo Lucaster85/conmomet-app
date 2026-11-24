@@ -24,9 +24,26 @@ está graficado en el tema **Pedidos de Cotización**.
 
 ## Buscar y filtrar
 
-Arriba del listado hay una barra de búsqueda (por N° de presupuesto, título o N° de OT) y dos
-filtros: **Cliente** y **Estado**. "Limpiar filtros" aparece una vez que hay algún filtro
-aplicado.
+Arriba del listado hay una barra de búsqueda (por N° de presupuesto, **N° de presupuesto del
+cliente**, **N° de cotización del cliente**, título o N° de OT) y dos filtros: **Cliente** y
+**Estado**. "Limpiar filtros" aparece una vez que hay algún filtro aplicado.
+
+### N° de presupuesto del cliente
+
+Es el número con el que **el cliente identifica nuestro presupuesto** — el que cita en sus OC — y
+sirve para ubicar rápido a qué presupuesto corresponde una OC. Es **texto libre** (cada cliente usa su
+nomenclatura) y **no es lo mismo** que el N° de Cotización del Cliente, que identifica el *pedido* y se
+carga en el Pedido de Cotización: un mismo pedido puede tener varios presupuestos, cada uno con su número.
+
+- **Se carga al enviar.** El diálogo de **Enviar** tiene el campo "N° de presupuesto del cliente",
+  **opcional**: si todavía no lo tenés, enviás igual.
+- **Columna "N° Pres. Cliente"** en el listado. Si el presupuesto no lo tiene (los anteriores a esta
+  función y los enviados sin número), aparece un botón **"+"** para cargarlo sin tener que editar el
+  presupuesto. En **Borrador** no hay botón: el número se pide al enviar.
+- **Una vez cargado no se puede modificar** desde el sistema, así que conviene revisarlo antes de
+  guardarlo. Queda anotado en el **Historial** con quién lo cargó.
+- Se puede **buscar** por este número desde Presupuestos, Pedidos de Cotización y Facturación, y sale
+  en la copia impresa. **Duplicar** no lo copia: el duplicado es otro presupuesto.
 
 ## Crear un presupuesto
 
@@ -221,6 +238,10 @@ envío al cliente, sin tener que cerrar la vista y buscarlo en la tabla.
 El mismo botón **Enviar** está también en el propio formulario de edición del presupuesto (junto
 a Cancelar y Guardar), con la misma condición: Borrador y permiso de enviar.
 
+Si el presupuesto nació de un Pedido de Cotización, en las acciones de la fila hay un ícono de
+**"Ver pedido de cotización"** que abre ese pedido directamente (también se llega tocando el chip
+con el código del pedido, al lado del estado).
+
 ## Edición simultánea
 
 Un presupuesto en borrador solo lo puede editar una persona a la vez. Si alguien ya lo tiene
@@ -256,7 +277,8 @@ sí quede oculto.
 - **"Enviar"**: pasa de Borrador a Enviado. **Requiere un permiso aparte** del de editar
   presupuestos: quien arma el presupuesto puede cargarlo y modificarlo todo lo que necesite,
   pero no necesariamente ponerlo en manos del cliente. Si no tenés ese permiso, el botón no
-  aparece (ver el tema **Pedidos de Cotización**).
+  aparece (ver el tema **Pedidos de Cotización**). La confirmación pide, de forma **opcional**, el
+  **N° de presupuesto del cliente** (ver más arriba).
 - **"Aprobar"**: opcionalmente se completa quién lo aprobó (un contacto/Supervisor del
   cliente) y se puede subir el documento firmado (o subirlo más adelante). El contacto se
   elige de una lista con búsqueda; si no está cargado, se escribe su nombre y se elige
@@ -347,7 +369,8 @@ Si el original venía de un **Pedido de Cotización**, al duplicar se pregunta u
 el duplicado **sigue vinculado al mismo PC** (hereda su N° de cotización del cliente, y cliente
 y planta quedan bloqueados igual que en el original) o **nace libre, sin PC** (cliente y planta
 se pueden editar, y no tiene N° de cotización del cliente hasta que se lo vincule a una PC).
-Un presupuesto que no venía de un PC se duplica directo, sin preguntar nada.
+Un presupuesto que no venía de un PC se duplica directo, sin preguntar nada. El **N° de presupuesto
+del cliente** no se copia: el duplicado es otro presupuesto y el cliente le asignará su propio número.
 
 **Presupuesto de un adicional:** el duplicado queda **vinculado al mismo adicional** (no huérfano), con
 los materiales y la mano de obra como punto de partida; el diálogo lo aclara. Un adicional tiene **un
@@ -387,4 +410,4 @@ Alguien sin permiso de precios igual puede armar el presupuesto — crear y edit
 obra (rubro y cantidad) y los materiales con su margen, duplicarlo y generar el proyecto — pero no ve
 ni define los valores de mano de obra, ni envía ni imprime.
 
-<!-- ref: conmomet-app/src/components/common/BudgetAwaitingResponseAlert.tsx, conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts, api_conmomet/services/budgetMaterialService.js, api_conmomet/controllers/additionalController.js, conmomet-app/src/utils/apiErrors.ts, api_conmomet/services/auditLogService.js, api_conmomet/helpers/budgetAuditDiff.js, api_conmomet/helpers/budgetAuditDescribe.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/budgets/BudgetHistoryPanel.tsx, conmomet-app/src/components/budgets/MaterialCostStatusLine.tsx, conmomet-app/src/utils/materialPrices.ts, conmomet-app/src/utils/dates.ts, FLOWS.md §35, FLOWS.md §19c, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->
+<!-- ref: conmomet-app/src/utils/api.ts, FLOWS.md §79, conmomet-app/src/components/common/BudgetAwaitingResponseAlert.tsx, conmomet-app/src/app/dashboard/additionals/[id]/page.tsx, conmomet-app/src/app/dashboard/budgets/page.tsx, conmomet-app/src/components/common/ListFilters.tsx, conmomet-app/src/utils/materialsExcel.ts, conmomet-app/src/components/common/CreatableSelect.tsx, api_conmomet/controllers/budgetController.js, api_conmomet/services/projectFactory.js, api_conmomet/controllers/quoteRequestController.js, api_conmomet/services/quoteRequestLogService.js, conmomet-app/src/components/budgets/TotalWithTax.tsx, conmomet-app/src/components/clients/ClientContactSelect.tsx, conmomet-app/src/components/quote-requests/QuoteRequestDueChip.tsx, conmomet-app/src/utils/billing.ts, api_conmomet/services/budgetMaterialService.js, api_conmomet/controllers/additionalController.js, conmomet-app/src/utils/apiErrors.ts, api_conmomet/services/auditLogService.js, api_conmomet/helpers/budgetAuditDiff.js, api_conmomet/helpers/budgetAuditDescribe.js, api_conmomet/helpers/budgetTotals.js, conmomet-app/src/components/budgets/BudgetHistoryPanel.tsx, conmomet-app/src/components/budgets/MaterialCostStatusLine.tsx, conmomet-app/src/utils/materialPrices.ts, conmomet-app/src/utils/dates.ts, FLOWS.md §35, FLOWS.md §19c, conmomet-app/src/components/projects/ManualHoursPanel.tsx, api_conmomet/controllers/manualHoursController.js, api_conmomet/services/projectHoursService.js -->

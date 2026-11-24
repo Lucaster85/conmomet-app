@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { HeaderLogo, HeaderAvatarButton, HEADER_MIN_HEIGHT, HEADER_TOGGLE_ICON_SIZE } from '../../components/layout/HeaderChrome';
+import { EnvironmentChip, EnvironmentStripe } from '../../components/layout/EnvironmentBadge';
 import baseTheme from '../theme';
 import {
   Box,
@@ -90,6 +91,7 @@ import PushNotificationsDialog from '../../components/common/PushNotificationsDi
 import { reconcilePushSubscriptionOnLoad, unsubscribeFromPush, unsubscribeFromPushLocalOnly } from '../../utils/push';
 import { onSessionExpired } from '../../utils/sessionExpiry';
 import SessionExpiredDialog from '../../components/SessionExpiredDialog';
+import { useAppEnvironment } from '../../components/EnvironmentProvider';
 
 const drawerWidth = 280;
 // Menú lateral colapsado (solo desktop): deja solo la columna de íconos para darle más ancho al
@@ -206,6 +208,7 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Categorías de Documentos', icon: <FolderSpecialIcon />, path: '/dashboard/document-categories', requiredPermission: 'document_categories_read' },
       { text: 'Conceptos de Liquidación', icon: <CategoryIcon />, path: '/dashboard/payroll-concepts', requiredPermission: 'payroll_concepts_read' },
       { text: 'Feriados', icon: <CalendarIcon />, path: '/dashboard/holidays', requiredPermission: 'holidays_read' },
+      { text: 'Datos de mi empresa', icon: <Business />, path: '/dashboard/company-settings', requiredPermission: 'company_settings_update' },
       { text: 'Configuración General', icon: <SettingsIcon />, path: '/dashboard/system-settings', requiredPermission: 'system_settings_update' },
     ]
   },
@@ -270,6 +273,7 @@ function CollapsedMenuButton({ label, icon, onClick }: { label: string; icon: Re
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const { legalName } = useAppEnvironment();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
@@ -458,30 +462,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <Toolbar disableGutters={isCollapsed} sx={{ background: 'linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%)', borderBottom: '1px solid', borderColor: 'divider', minHeight: { xs: 56, sm: 64 }, justifyContent: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', py: 1 }}>
           {isCollapsed ? (
-            // El logo completo no entra en 72px: se muestra solo el engranaje (la franja izquierda
-            // del mismo PNG, recortada por background-position como hace GearSpinner, sin girar).
-            // En el PNG (834×284) el engranaje ocupa x 10–263 e y 16–265: a 36 px de alto queda en
-            // ~1–33 px de ancho, o sea que entra entero en un cuadrado de 36. flexShrink 0 evita que
-            // el flex lo achique y lo corte.
+            // El logo completo no entra en 72px: se muestra solo el isotipo de la marca
+            // (/brand/mark.png, el mismo que usa GearSpinner, sin girar), que es cuadrado y entra
+            // entero en 36 px. flexShrink 0 evita que el flex lo achique y lo corte.
             <Box
               component="span"
               role="img"
-              aria-label="Conmomet S.A."
+              aria-label={legalName}
               sx={{
                 display: 'inline-block',
                 flexShrink: 0,
                 width: 36,
                 height: 36,
-                backgroundImage: 'url(/img/logos/logo-conmomet-ROJO.png)',
+                backgroundImage: 'url(/brand/mark.png)',
                 backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'left center',
-                backgroundSize: 'auto 100%',
+                backgroundPosition: 'center',
+                backgroundSize: 'contain',
               }}
             />
           ) : (
             <Image
-              src="/img/logos/logo-conmomet-ROJO.png"
-              alt="Conmomet S.A."
+              src="/brand/logo.png"
+              alt={legalName}
               width={192}
               height={58}
               style={{ objectFit: 'contain', width: 'auto', maxHeight: 58 }}
@@ -644,6 +646,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           }}
         >
+          {/* Marca de ambiente (FLOWS.md §80): no dibuja nada si APP_ENV_LABEL no está seteada. */}
+          <EnvironmentStripe />
           <Toolbar sx={{ position: 'relative', minHeight: HEADER_MIN_HEIGHT, background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
             <IconButton
               color="inherit"
@@ -667,6 +671,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <HeaderLogo />
             </Box>
+
+            <EnvironmentChip sx={{ display: { xs: 'none', sm: 'inline-flex' } }} />
 
             <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
 

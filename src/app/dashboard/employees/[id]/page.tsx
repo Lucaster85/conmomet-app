@@ -66,6 +66,7 @@ import TerminationFormDialog from '@/components/employees/TerminationFormDialog'
 import { buildWhatsAppLink } from '@/utils/whatsapp';
 import { isFixedSalaryPayType, payTypeLabel } from '@/utils/payType';
 import { TokenManager, userHasPermission } from '@/utils/auth';
+import { useAppEnvironment } from '@/components/EnvironmentProvider';
 
 const STATUS_CONFIG = {
   permanent: { label: 'Permanente', color: 'default', icon: <CheckCircleIcon fontSize="small" /> },
@@ -84,6 +85,7 @@ export default function EmployeeDetailPage() {
 }
 
 function EmployeeDetailPageContent() {
+  const { appName } = useAppEnvironment();
   const { openFile } = useFileViewer();
   const params = useParams();
   const router = useRouter();
@@ -737,7 +739,7 @@ function EmployeeDetailPageContent() {
                                 size="small"
                                 startIcon={<WhatsAppIcon />}
                                 disabled={!inviteResult.whatsapp_contact}
-                                onClick={() => window.open(buildWhatsAppLink(inviteResult.whatsapp_contact!, buildInviteMessage(inviteResult.invite_link, employee.name)), '_blank')}
+                                onClick={() => window.open(buildWhatsAppLink(inviteResult.whatsapp_contact!, buildInviteMessage(inviteResult.invite_link, employee.name, appName)), '_blank')}
                               >
                                 Compartir por WhatsApp
                               </Button>

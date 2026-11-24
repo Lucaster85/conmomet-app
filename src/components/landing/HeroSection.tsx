@@ -2,12 +2,14 @@
 import React from 'react';
 import { Box, Button, Container, Typography } from '@mui/material';
 import { ArrowForwardOutlined as ArrowForward } from '@mui/icons-material';
+import { useAppEnvironment } from '../EnvironmentProvider';
 
 interface HeroSectionProps {
   onContactClick: () => void;
 }
 
 export default function HeroSection({ onContactClick }: HeroSectionProps) {
+  const { legalName } = useAppEnvironment();
   return (
     <Box
       sx={{
@@ -41,7 +43,7 @@ export default function HeroSection({ onContactClick }: HeroSectionProps) {
               textShadow: "0 2px 8px rgba(0,0,0,0.5)",
             }}
           >
-            Conmomet S.A.
+            {legalName}
           </Typography>
           <Typography
             variant="h5"
