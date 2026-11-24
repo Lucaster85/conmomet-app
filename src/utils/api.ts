@@ -5327,7 +5327,7 @@ export interface InvoiceLine {
   // Presupuesto de la línea y OC contra la que se factura (FLOWS.md §70). Una factura puede cobrar varios presupuestos.
   budget_id?: number | null;
   purchase_order_id?: number | null;
-  budget?: { id: number; number: string; title: string } | null;
+  budget?: { id: number; number: string; title: string; client_budget_number?: string | null } | null;
   // Línea que cobra una OCA entera (FLOWS.md §74).
   oca_id?: number | null;
   oca?: { id: number; number: string; type: 'man_hours' | 'crane_hours' } | null;
@@ -5525,7 +5525,7 @@ export interface Invoice {
   createdAt?: string;
   // Con cliente ocasional viene igual, con `id: null` y `manual: true`.
   client?: { id: number | null; razonSocial: string; cuit?: string | null; tax_condition?: TaxCondition | null; fce_transfer_option?: 'SCA' | 'ADC' | null; manual?: boolean };
-  budget?: { id: number; number: string; title: string; status: string } | null;
+  budget?: { id: number; number: string; title: string; status: string; client_budget_number?: string | null } | null;
   project?: { id: number; code: string; name: string; is_additional?: boolean } | null;
   createdBy?: { id: number; name: string; lastname: string };
   lines: InvoiceLine[];
@@ -5564,6 +5564,8 @@ export interface BudgetBillingSummary {
 export interface BillableBudget {
   id: number;
   number: string;
+  // N° con el que el cliente identifica este presupuesto (el de sus OC): nombra al presupuesto en el texto de las líneas. FLOWS.md §79.
+  client_budget_number?: string | null;
   title: string;
   status: string;
   currency: BudgetCurrency;
@@ -5730,6 +5732,8 @@ export interface BudgetBillingFile extends BillingStoredFile { budget_id: number
 export interface MissingPurchaseOrderBudget {
   id: number;
   number: string;
+  // El N° con el que el cliente identifica el presupuesto es el que cita su OC: acá sirve para reconocerla (FLOWS.md §79).
+  client_budget_number?: string | null;
   title: string;
   currency: BudgetCurrency;
   approved_at: string | null;
@@ -5853,6 +5857,8 @@ export interface InvoiceFilters {
   budget_id?: number;
   project_id?: number;
   include_closed?: boolean;
+  // Texto libre: comprobante, cliente, CUIT, referencia, remito y, por línea, presupuesto (el nuestro y el del cliente), OC u OCA.
+  q?: string;
 }
 
 export interface BillableFilters {

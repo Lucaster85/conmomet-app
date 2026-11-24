@@ -248,6 +248,9 @@ export default function BillingDetailPage() {
             )}
           </Box>
           <Typography variant="body1">{budget.title}</Typography>
+          {budget.client_budget_number && (
+            <Typography variant="body2" color="text.secondary">N° Pres. Cliente: {budget.client_budget_number}</Typography>
+          )}
           <Typography variant="body2" color="text.secondary">
             {budget.client?.razonSocial}
             {budget.client?.cuit ? ` · CUIT ${formatCuit(budget.client.cuit)}` : ''}

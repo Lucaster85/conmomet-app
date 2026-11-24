@@ -55,6 +55,9 @@ export default function PurchaseOrderMissingAlert() {
               <Typography variant="body2" fontWeight={600}>{b.number}</Typography>
               <Typography variant="body2">{b.title}</Typography>
             </Box>
+            {b.client_budget_number && (
+              <Typography variant="caption" color="text.secondary" display="block">N° Pres. Cliente: {b.client_budget_number}</Typography>
+            )}
             <Typography variant="caption" color="text.secondary" display="block">
               {b.client?.razonSocial}{b.approved_at ? ` · aprobado el ${formatDate(b.approved_at)}` : ''}
             </Typography>

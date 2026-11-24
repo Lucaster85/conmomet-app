@@ -28,6 +28,9 @@ export default function BillablesList({ rows, ivaRate, onOpen }: BillablesListPr
   const identification = (row: BillableBudget) => (
     <Box>
       <Typography variant="subtitle2" fontWeight={700}>{row.number}</Typography>
+      {row.client_budget_number && (
+        <Typography variant="caption" color="text.secondary" display="block">N° Pres. Cliente: {row.client_budget_number}</Typography>
+      )}
       <Typography variant="body2" noWrap sx={{ maxWidth: 260 }}>{row.title}</Typography>
       {row.quoteRequest && (
         <Typography variant="caption" color="text.secondary" display="block">

@@ -16,7 +16,7 @@ import {
 } from '../../utils/api';
 import {
   ARCA_CONCEPT_LABELS, CBTE_OPTIONS_BY_LETTER, CONCEPT_LABELS, DEFAULT_CBTE_BY_LETTER, FCE_CBTE_TIPO, FCE_TRANSFER_LABELS, formatHours, formatMoney, formatPercent,
-  ivaOf, roundMoney, roundPercent, todayISO, VOUCHER_TYPE_OPTIONS, rateToInput, sanitizeRateInput, roundRate} from '../../utils/billing';
+  ivaOf, roundMoney, roundPercent, todayISO, VOUCHER_TYPE_OPTIONS, rateToInput, sanitizeRateInput, roundRate, clientBudgetReference, NO_CLIENT_BUDGET_NUMBER} from '../../utils/billing';
 import { isValidCuit, maskCuit, TAX_CONDITION_LABELS, TaxCondition } from '../../utils/cuit';
 
 interface InvoiceDialogProps {
@@ -664,7 +664,8 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
     const head = pct > 0 ? `Se factura el ${formatPercent(pct)} de ${CONCEPT_LABELS[line.concept].toLowerCase()}` : `Se factura ${CONCEPT_LABELS[line.concept].toLowerCase()}`;
     const budget = detailOf(line.budgetId)?.budget;
     const order = ordersFor(line.budgetId, line.concept).find((o) => o.id === line.orderId);
-    const detailText = [order ? `OC ${order.number}` : '', budget ? [budget.number, budget.title].filter(Boolean).join(' ') : ''].filter(Boolean).join(' · ');
+    // El presupuesto se nombra por el N° del CLIENTE (el de sus OC); sin él, "Sin N° de pres. cliente" (mismo texto que el PDF — FLOWS.md §79).
+    const detailText = [order ? `OC ${order.number}` : '', budget ? [clientBudgetReference(budget), budget.title].filter(Boolean).join(' ') : ''].filter(Boolean).join(' · ');
     return detailText ? `${head} — ${detailText}` : head;
   };
 
@@ -1081,6 +1082,13 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
           {detail ? (
             <>
               {blocks.map(renderBudgetBlock)}
+              {/* Aviso, no bloqueo: el texto de las líneas nombra al presupuesto por el N° del cliente, y si falta sale "Sin N° de pres. cliente". El PDF se arma al emitir: cargándolo antes, sale bien. */}
+              {blocks.some((b) => !b.budget.client_budget_number?.trim()) && (
+                <Alert severity="info">
+                  {blocks.length > 1 ? 'Algún presupuesto no tiene' : 'Este presupuesto no tiene'} cargado el N° de presupuesto del cliente: el texto de las líneas dirá «{NO_CLIENT_BUDGET_NUMBER}».
+                  Podés cargarlo desde el listado de Presupuestos antes de emitir.
+                </Alert>
+              )}
               {lines.length === 0 && currencyOptions.length === 0 && (
                 <Alert severity="info">{isMulti ? 'Estos presupuestos ya no tienen' : 'Este presupuesto ya no tiene'} saldo para facturar.</Alert>
               )}
@@ -1088,7 +1096,7 @@ export default function InvoiceDialog({ open, onClose, onSaved, detail, extraDet
               <Autocomplete
                 key={blocks.length}
                 options={pickable.filter((row) => !blocks.some((b) => b.budget.id === row.id))}
-                getOptionLabel={(row) => `${row.number} · ${row.title}`}
+                getOptionLabel={(row) => `${row.number}${row.client_budget_number ? ` · Cli ${row.client_budget_number}` : ''} · ${row.title}`}
                 loading={loadingBlock} disabled={loadingBlock}
                 noOptionsText="El cliente no tiene otros presupuestos aprobados"
                 onChange={(_, row) => addBlock(row)}

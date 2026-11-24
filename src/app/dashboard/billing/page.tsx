@@ -7,7 +7,7 @@ import {
 import {
   AddOutlined as AddIcon, ReceiptOutlined as TitleIcon, RefreshOutlined as RefreshIcon, SearchOutlined as SearchIcon,
 } from '@mui/icons-material';
-import { FilterSwitch } from '@/components/common/ListFilters';
+import ListFilters, { FilterSelect, FilterSwitch } from '@/components/common/ListFilters';
 import FeedbackModal from '../../../components/FeedbackModal';
 import GearSpinner from '../../../components/GearSpinner';
 import DateField from '../../../components/DateField';
@@ -60,6 +60,9 @@ function BillingContent() {
   // --- Facturas (registro) ---
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
+  // Buscador del registro de facturas: comprobante, cliente, CUIT, presupuesto (nuestro y del cliente), OC… (FLOWS.md §79).
+  const [invSearch, setInvSearch] = useState('');
+  const [debouncedInvSearch, setDebouncedInvSearch] = useState('');
   const [invStatusFilter, setInvStatusFilter] = useState<InvoiceStatus | ''>('');
   const [invClientFilter, setInvClientFilter] = useState('');
   const [invTypeFilter, setInvTypeFilter] = useState<VoucherType | ''>('');
@@ -99,6 +102,11 @@ function BillingContent() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedInvSearch(invSearch), invSearch ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [invSearch]);
+
   // Las respuestas pueden volver desordenadas si se cambian los filtros rápido: solo vale la última.
   const rowsRequest = useRef(0);
   const loadRows = useCallback(async () => {
@@ -133,6 +141,7 @@ function BillingContent() {
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
         include_closed: invIncludeClosed,
+        q: debouncedInvSearch.trim() || undefined,
       });
       if (request === invoicesRequest.current) setInvoices(result);
     } catch (err) {
@@ -140,10 +149,15 @@ function BillingContent() {
     } finally {
       if (request === invoicesRequest.current) setLoadingInvoices(false);
     }
-  }, [invStatusFilter, invClientFilter, invTypeFilter, dateFrom, dateTo, invIncludeClosed]);
+  }, [invStatusFilter, invClientFilter, invTypeFilter, dateFrom, dateTo, invIncludeClosed, debouncedInvSearch]);
 
   useEffect(() => { loadRows(); }, [loadRows]);
   useEffect(() => { loadInvoices(); }, [loadInvoices]);
+
+  const hasInvoiceFilters = !!(invSearch || invClientFilter || invStatusFilter || invTypeFilter || dateFrom || dateTo || invIncludeClosed);
+  const clearInvoiceFilters = () => {
+    setInvSearch(''); setInvClientFilter(''); setInvStatusFilter(''); setInvTypeFilter(''); setDateFrom(''); setDateTo(''); setInvIncludeClosed(false);
+  };
 
   const refreshAll = () => { loadRows(); loadInvoices(); setFceRefresh((n) => n + 1); };
 
@@ -289,7 +303,7 @@ function BillingContent() {
           <Paper sx={{ p: 2, mb: 2 }}>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
               <TextField
-                size="small" fullWidth placeholder="Buscar por presupuesto, PC, proyecto, cliente o CUIT…"
+                size="small" fullWidth placeholder="Buscar por presupuesto, N° del cliente, PC, proyecto, cliente o CUIT…"
                 value={search} onChange={(e) => setSearch(e.target.value)}
                 InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
               />
@@ -319,29 +333,18 @@ function BillingContent() {
 
       {currentTab === 1 && (
         <>
-          <Paper sx={{ p: 2, mb: 2 }}>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField select size="small" label="Cliente" value={invClientFilter} onChange={(e) => setInvClientFilter(e.target.value)} sx={{ minWidth: 200 }}>
-                <MenuItem value="">Todos</MenuItem>
-                {clients.map((c) => <MenuItem key={c.id} value={String(c.id)}>{c.razonSocial}</MenuItem>)}
-              </TextField>
-              <TextField select size="small" label="Estado" value={invStatusFilter} onChange={(e) => setInvStatusFilter(e.target.value as InvoiceStatus | '')} sx={{ minWidth: 180 }}>
-                <MenuItem value="">Todos</MenuItem>
-                {(Object.keys(INVOICE_STATUS_LABELS) as InvoiceStatus[]).map((s) => (
-                  <MenuItem key={s} value={s}>{INVOICE_STATUS_LABELS[s].label}</MenuItem>
-                ))}
-              </TextField>
-              <TextField select size="small" label="Tipo" value={invTypeFilter} onChange={(e) => setInvTypeFilter(e.target.value as VoucherType | '')} sx={{ minWidth: 180 }}>
-                <MenuItem value="">Todos</MenuItem>
-                {VOUCHER_TYPE_OPTIONS.filter((o) => o.value !== 'sin_factura' || canUnofficial).map((o) => (
-                  <MenuItem key={o.value} value={o.value}>{o.value === 'sin_factura' ? 'Sin factura' : o.label}</MenuItem>
-                ))}
-              </TextField>
-              <DateField label="Emitida desde" size="small" value={dateFrom} onChange={setDateFrom} />
-              <DateField label="Emitida hasta" size="small" value={dateTo} onChange={setDateTo} />
-              <FilterSwitch label="Ver terminados" checked={invIncludeClosed} onChange={setInvIncludeClosed} />
-            </Stack>
-          </Paper>
+          <ListFilters
+            search={invSearch} onSearchChange={setInvSearch}
+            searchPlaceholder="Buscar por N° de factura, cliente, CUIT, presupuesto, N° del cliente u OC…"
+            onClear={clearInvoiceFilters} hasActiveFilters={hasInvoiceFilters}
+          >
+            <FilterSelect label="Cliente" value={invClientFilter} onChange={setInvClientFilter} emptyLabel="Todos los clientes" options={clients.map((c) => ({ value: String(c.id), label: c.razonSocial }))} />
+            <FilterSelect label="Estado" value={invStatusFilter} onChange={(v) => setInvStatusFilter(v as InvoiceStatus | '')} emptyLabel="Todos los estados" options={(Object.keys(INVOICE_STATUS_LABELS) as InvoiceStatus[]).map((st) => ({ value: st, label: INVOICE_STATUS_LABELS[st].label }))} />
+            <FilterSelect label="Tipo" value={invTypeFilter} onChange={(v) => setInvTypeFilter(v as VoucherType | '')} emptyLabel="Todos los tipos" options={VOUCHER_TYPE_OPTIONS.filter((o) => o.value !== 'sin_factura' || canUnofficial).map((o) => ({ value: o.value, label: o.value === 'sin_factura' ? 'Sin factura' : o.label }))} />
+            <DateField label="Emitida desde" size="small" fullWidth value={dateFrom} onChange={setDateFrom} />
+            <DateField label="Emitida hasta" size="small" fullWidth value={dateTo} onChange={setDateTo} />
+            <FilterSwitch label="Ver terminados" checked={invIncludeClosed} onChange={setInvIncludeClosed} />
+          </ListFilters>
           {loadingInvoices ? (
             <Box display="flex" justifyContent="center" py={6}><GearSpinner /></Box>
           ) : (

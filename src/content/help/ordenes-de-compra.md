@@ -79,6 +79,8 @@ En **Documentos para facturar** guardás cualquier archivo que el cliente pida a
 En el **inicio** aparece la tarjeta **Presupuestos aprobados sin OC**, con la lista de presupuestos aprobados que no tienen una OC vigente y no están marcados como "No lleva OC". Cada uno tiene dos botones:
 
 - **Cargar OC:** te lleva al detalle de facturación del presupuesto.
+
+Cada presupuesto del aviso muestra su **N° Pres. Cliente** (si lo tiene cargado): es el número que el cliente cita en su OC, así que sirve para reconocer a qué presupuesto corresponde la que te llegó. En **Facturación** también se puede **buscar por ese número** para llegar al presupuesto, y el detalle lo muestra en el encabezado.
 - **No lleva OC:** lo marca directamente desde el inicio.
 
 El aviso desaparece solo cuando se carga una OC vigente o se marca que no lleva. Podés marcarlo como visto como cualquier otro aviso (ver **Avisos del inicio y campanita**).
@@ -92,4 +94,4 @@ Todo esto cuelga de los permisos de **Facturación**, no hay permisos aparte:
 - **Modificar facturas:** editar o rechazar una OC, editar y liberar cauciones, marcar "No lleva OC".
 - **Eliminar:** eliminar OC, cauciones, archivos y documentos.
 
-<!-- ref: conmomet-app/src/components/billing/BillingDocsSection.tsx, conmomet-app/src/components/billing/PurchaseOrderDialog.tsx, conmomet-app/src/components/billing/SuretyBondDialog.tsx, conmomet-app/src/components/common/PurchaseOrderMissingAlert.tsx, conmomet-app/src/components/common/SuretyBondAlert.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, api_conmomet/controllers/purchaseOrderController.js, api_conmomet/controllers/suretyBondController.js, api_conmomet/controllers/billingFileController.js, api_conmomet/services/billingDocsService.js, api_conmomet/services/suretyBondService.js, api_conmomet/services/expirationNotifier.js, api_conmomet/middlewares/billingUpload.js -->
+<!-- ref: FLOWS.md §79, conmomet-app/src/components/common/PurchaseOrderMissingAlert.tsx, conmomet-app/src/components/billing/BillingDocsSection.tsx, conmomet-app/src/components/billing/PurchaseOrderDialog.tsx, conmomet-app/src/components/billing/SuretyBondDialog.tsx, conmomet-app/src/components/common/PurchaseOrderMissingAlert.tsx, conmomet-app/src/components/common/SuretyBondAlert.tsx, conmomet-app/src/app/dashboard/billing/[budgetId]/page.tsx, api_conmomet/controllers/purchaseOrderController.js, api_conmomet/controllers/suretyBondController.js, api_conmomet/controllers/billingFileController.js, api_conmomet/services/billingDocsService.js, api_conmomet/services/suretyBondService.js, api_conmomet/services/expirationNotifier.js, api_conmomet/middlewares/billingUpload.js -->
