@@ -401,11 +401,11 @@ function QuoteRequestsPageContent() {
         </Tooltip>
       )}
       {(qr.budgets || []).map((b) => (
-        <Tooltip key={b.id} title={`Ver presupuesto ${b.number} (${BUDGET_STATUS_LABELS[b.status] || b.status})`}>
+        <Tooltip key={b.id} title={`Ver presupuesto ${b.number} (${BUDGET_STATUS_LABELS[b.status] || b.status})${b.client_budget_number ? ` · N° Pres. Cliente: ${b.client_budget_number}` : ''}`}>
           <Chip
             size="small"
             icon={<BudgetIcon />}
-            label={b.number}
+            label={b.client_budget_number ? `${b.number} · Cli ${b.client_budget_number}` : b.number}
             color={b.status === 'rejected' ? 'error' : 'default'}
             variant={b.status === 'rejected' ? 'outlined' : 'filled'}
             clickable
@@ -476,7 +476,7 @@ function QuoteRequestsPageContent() {
       <ListFilters
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Buscar por N° de pedido, título o N° del cliente…"
+        searchPlaceholder="Buscar por N° de pedido, título, N° de cotización o de presupuesto del cliente…"
         onClear={clearFilters}
         hasActiveFilters={hasActiveFilters}
       >

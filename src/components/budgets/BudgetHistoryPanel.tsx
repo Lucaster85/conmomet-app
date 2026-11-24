@@ -18,6 +18,7 @@ const FIELD_LABELS: Record<string, string> = {
   status: 'Estado',
   totals_by_currency: 'Totales',
   discount_percent: 'Bonificación',
+  client_budget_number: 'N° de presupuesto del cliente',
 };
 
 const STATUS_VALUE_LABELS: Record<string, string> = {
@@ -82,6 +83,9 @@ function headline(entry: BudgetHistoryEntry): string {
     const from = entry.previous_value ? STATUS_VALUE_LABELS[entry.previous_value] || entry.previous_value : null;
     const to = STATUS_VALUE_LABELS[entry.new_value || ''] || entry.new_value;
     return from ? `${from} → ${to}` : `${to}`;
+  }
+  if (entry.field_changed === 'client_budget_number') {
+    return `${FIELD_LABELS.client_budget_number}: ${entry.new_value}`;
   }
   return FIELD_LABELS[entry.field_changed || ''] || entry.field_changed || entry.action;
 }

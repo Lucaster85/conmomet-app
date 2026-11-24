@@ -1896,6 +1896,9 @@ export interface Budget {
   notes?: string;
   // N° de OT libre que asigna el cliente — solo para rastreo, sin gating de permisos.
   work_order_number?: string | null;
+  // N° con el que el CLIENTE identifica este presupuesto (el que referencian sus OC) — texto libre.
+  // Distinto de quoteRequest.client_quote_number, que identifica el pedido. FLOWS.md §79.
+  client_budget_number?: string | null;
   // Bonificación % post-presentación, discriminada mano de obra / material — presentes solo
   // si el usuario tiene budget_prices_read (ver FLOWS.md).
   labor_discount_percent?: number;
@@ -2130,12 +2133,13 @@ export class BudgetService {
     }
   }
 
-  static async changeStatus(id: number, status: string, options?: { rejection_reason?: string; file?: File; approved_by_supervisor_id?: number }): Promise<Budget> {
+  static async changeStatus(id: number, status: string, options?: { rejection_reason?: string; file?: File; approved_by_supervisor_id?: number; client_budget_number?: string }): Promise<Budget> {
     const formData = new FormData();
     formData.append('status', status);
     if (options?.rejection_reason) formData.append('rejection_reason', options.rejection_reason);
     if (options?.file) formData.append('file', options.file);
     if (options?.approved_by_supervisor_id) formData.append('approved_by_supervisor_id', String(options.approved_by_supervisor_id));
+    if (options?.client_budget_number?.trim()) formData.append('client_budget_number', options.client_budget_number.trim());
 
     const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}/status`, {
       method: 'PUT',
@@ -2176,6 +2180,21 @@ export class BudgetService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Error al duplicar el presupuesto');
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  // N° de presupuesto del cliente cargado después de enviar (los anteriores y los enviados sin número).
+  // Solo se carga si está vacío; en borrador se pide al enviar — ver FLOWS.md §79.
+  static async setClientBudgetNumber(id: number, client_budget_number: string): Promise<Budget> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/budgets/${id}/client-budget-number`, {
+      method: 'PUT',
+      body: JSON.stringify({ client_budget_number }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Error al cargar el N° de presupuesto del cliente');
     }
     const data = await response.json();
     return data.data;
@@ -2261,7 +2280,7 @@ export interface QuoteRequest {
   createdBy?: { id: number; name: string; lastname: string };
   assignees?: { id: number; name: string; lastname: string }[];
   files?: QuoteRequestFile[];
-  budgets?: { id: number; number: string; status: string; title: string; created_by?: number; sent_at?: string | null }[];
+  budgets?: { id: number; number: string; status: string; title: string; created_by?: number; sent_at?: string | null; client_budget_number?: string | null }[];
   createdAt: string;
   // Cuándo salió la cotización al cliente (último presupuesto enviado y no rechazado) — reemplaza
   // al vencimiento en el chip una vez que el PC está cotizado.
