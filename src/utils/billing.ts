@@ -8,6 +8,14 @@ export const formatMoney = (value: number | string | null | undefined, currency:
   return `${symbol}${(Number(value) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
+// Cómo se nombra un presupuesto en el texto de una factura (FLOWS.md §79): por el N° con el que lo identifica el CLIENTE (el que citan
+// sus OC), no por el nuestro. Es el mismo texto que arma el servidor (api_conmomet/helpers/budgetClientReference.js): si cambia uno, cambia el otro.
+export const NO_CLIENT_BUDGET_NUMBER = 'Sin N° de pres. cliente';
+export const clientBudgetReference = (budget: { client_budget_number?: string | null } | null | undefined): string => {
+  const number = budget?.client_budget_number?.trim();
+  return number ? `Pres. cliente ${number}` : NO_CLIENT_BUDGET_NUMBER;
+};
+
 export const formatPercent = (value: number | null | undefined): string =>
   `${(Number(value) || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })}%`;
 

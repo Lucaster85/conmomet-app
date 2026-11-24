@@ -11,7 +11,7 @@ import CurrencyInput from '../CurrencyInput';
 import DateField from '../DateField';
 import { AdjustmentType, Invoice, InvoiceArcaOptions, InvoiceInput, InvoiceLineInput, InvoiceService } from '../../utils/api';
 import {
-  ADJUSTMENT_TYPE_LABELS, CONCEPT_LABELS, formatDate, formatMoney, formatPercent, formatVoucher, ivaOf, roundMoney, roundPercent, todayISO,
+  ADJUSTMENT_TYPE_LABELS, clientBudgetReference, CONCEPT_LABELS, formatDate, formatMoney, formatPercent, formatVoucher, ivaOf, roundMoney, roundPercent, todayISO,
 } from '../../utils/billing';
 
 interface Props {
@@ -39,15 +39,15 @@ interface AdjustLine {
   description: string;
   // true si la persona escribió la descripción; si no, es el texto estándar y se actualiza sola al cambiar el índice o el período.
   descriptionTouched: boolean;
-  // Para armar el texto estándar: la OC y el presupuesto de la línea.
+  // Para armar el texto estándar: la OC y el presupuesto de la línea (nombrado por el N° del cliente, FLOWS.md §79).
   orderNumber: string | null;
-  budgetNumber: string | null;
+  budgetReference: string | null;
 }
 
-// Mismo criterio que el servidor (services/adjustmentService.js): "Ajuste IPC INDEC (período) s/ Factura A 0003-00000001 – OC N – PRES-…".
+// Mismo criterio que el servidor (services/adjustmentService.js): "Ajuste IPC INDEC (período) s/ Factura A 0003-00000001 – OC N – Pres. cliente X".
 const TYPE_TEXT: Record<AdjustmentType, string> = { ipc_indec: 'IPC INDEC', uocra: 'UOCRA', other: 'índice' };
-const standardDescription = (line: Pick<AdjustLine, 'type' | 'orderNumber' | 'budgetNumber'>, period: string, originalLabel: string) =>
-  [`Ajuste ${TYPE_TEXT[line.type]}${period.trim() ? ` (${period.trim()})` : ''} s/ ${originalLabel}`, line.orderNumber ? `OC ${line.orderNumber}` : null, line.budgetNumber].filter(Boolean).join(' – ');
+const standardDescription = (line: Pick<AdjustLine, 'type' | 'orderNumber' | 'budgetReference'>, period: string, originalLabel: string) =>
+  [`Ajuste ${TYPE_TEXT[line.type]}${period.trim() ? ` (${period.trim()})` : ''} s/ ${originalLabel}`, line.orderNumber ? `OC ${line.orderNumber}` : null, line.budgetReference].filter(Boolean).join(' – ');
 
 const parsePercent = (text: string): number => {
   const n = Number(text.replace(',', '.'));
@@ -114,7 +114,7 @@ export default function InvoiceAdjustmentDialog({ open, onClose, onSaved, origin
         // Lo guardado cuenta como escrito a mano salvo que coincida con el texto estándar (se verifica abajo).
         descriptionTouched: !!own?.description,
         orderNumber: line.purchaseOrder?.number || null,
-        budgetNumber: line.budget?.number || null,
+        budgetReference: line.budget ? clientBudgetReference(line.budget) : null,
       };
     }));
     // Solo al abrir: no pisar lo que la persona esté escribiendo.

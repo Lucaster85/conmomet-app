@@ -21,7 +21,7 @@ import {
 } from '@mui/icons-material';
 import { Invoice } from '../../utils/api';
 import {
-  ARCA_STATUS_LABELS, fceStateChip, FCE_CBTE_TIPO, formatAssociated, formatDate, formatMoney, formatVoucher, INVOICE_STATUS_LABELS, isNote,
+  ARCA_STATUS_LABELS, fceStateChip, FCE_CBTE_TIPO, formatAssociated, formatDate, formatMoney, formatVoucher, INVOICE_STATUS_LABELS, isNote, NO_CLIENT_BUDGET_NUMBER,
 } from '../../utils/billing';
 
 interface InvoiceListProps {
@@ -205,9 +205,21 @@ export default function InvoiceList({
   ) : '—');
 
   // Una factura de varios presupuestos los lista a todos (la cabecera no tiene uno solo). FLOWS.md §70.
-  const budgetNumbers = (invoice: Invoice) =>
-    (invoice.budgets && invoice.budgets.length > 0 ? invoice.budgets.map((b) => b.number).filter(Boolean) : [invoice.budget?.number].filter(Boolean)).join(', ');
-  const reference = (invoice: Invoice) => [budgetNumbers(invoice), invoice.project?.code].filter(Boolean).join(' · ') || 'Factura libre';
+  // La columna muestra el N° con el que el CLIENTE identifica cada presupuesto (el que cita su OC), no el nuestro: es lo que busca el buscador
+  // (FLOWS.md §79). Un presupuesto sin número lo dice en gris; una factura sin presupuesto es una factura libre.
+  const clientBudgetRefs = (invoice: Invoice) => {
+    const budgets = invoice.budgets && invoice.budgets.length > 0 ? invoice.budgets : invoice.budget ? [invoice.budget] : [];
+    if (budgets.length === 0) return <>Factura libre</>;
+    return (
+      <>
+        {budgets.map((b) => (
+          b.client_budget_number
+            ? <Typography key={b.id} variant="inherit" component="div" fontWeight={600}>{b.client_budget_number}</Typography>
+            : <Typography key={b.id} variant="inherit" component="div" color="text.secondary" sx={{ fontStyle: 'italic' }}>{NO_CLIENT_BUDGET_NUMBER}</Typography>
+        ))}
+      </>
+    );
+  };
 
   return (
     <>
@@ -232,7 +244,7 @@ export default function InvoiceList({
                 {!hideBudgetColumns && (
                   <>
                     <Typography variant="body2">{invoice.client?.razonSocial}</Typography>
-                    <Typography variant="caption" color="text.secondary" display="block">{reference(invoice)}</Typography>
+                    <Typography variant="caption" color="text.secondary" component="div">{clientBudgetRefs(invoice)}</Typography>
                   </>
                 )}
                 <Typography variant="body2" sx={{ mt: 1 }}>
@@ -261,7 +273,7 @@ export default function InvoiceList({
                 <TableCell>Comprobante</TableCell>
                 <TableCell>Fecha</TableCell>
                 {!hideBudgetColumns && <TableCell>Cliente</TableCell>}
-                {!hideBudgetColumns && <TableCell>Presupuesto / Proyecto</TableCell>}
+                {!hideBudgetColumns && <TableCell>N° Pres. Cliente</TableCell>}
                 <TableCell align="right">Neto</TableCell>
                 <TableCell align="right">IVA</TableCell>
                 <TableCell align="right">Total</TableCell>
@@ -284,7 +296,7 @@ export default function InvoiceList({
                     {invoice.due_date && <Typography variant="caption" color="text.secondary" display="block">Vence {formatDate(invoice.due_date)}</Typography>}
                   </TableCell>
                   {!hideBudgetColumns && <TableCell>{invoice.client?.razonSocial}</TableCell>}
-                  {!hideBudgetColumns && <TableCell>{reference(invoice)}</TableCell>}
+                  {!hideBudgetColumns && <TableCell>{clientBudgetRefs(invoice)}</TableCell>}
                   <TableCell align="right">{money(invoice, invoice.net_amount)}</TableCell>
                   <TableCell align="right">{money(invoice, invoice.iva_amount)}</TableCell>
                   <TableCell align="right"><strong>{money(invoice, invoice.total_amount)}</strong></TableCell>

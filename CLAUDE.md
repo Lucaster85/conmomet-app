@@ -162,10 +162,10 @@ Criterio server-side vs. client-side (no es libre, es por tipo de listado):
   `additionals/page.tsx`: `setTimeout(load, search ? 300 : 0)`.
 
 Migrados a este estándar: Proyectos, Pedidos de Cotización, Presupuestos, Préstamos, Adicionales,
-Herramientas, Vehículos y Empleados. Adelantos, Licencias, Facturación (tab Facturas), OCAs y
-Carga de Horas usan `FilterSwitch` pero **no** migraron el contenedor a `ListFilters` — no tienen
-campo de búsqueda y agregar uno habría sido una funcionalidad nueva, no la unificación pedida (ver
-`FLOWS.md` flujo 52, Etapa 3). El resto de los listados sin tocar queda pendiente — ver `FLOWS.md`
+Herramientas, Vehículos, Empleados y Facturación (tab Facturas, que ganó su buscador en `FLOWS.md`
+§79). Adelantos, Licencias, OCAs y Carga de Horas usan `FilterSwitch` pero **no** migraron el
+contenedor a `ListFilters` — no tienen campo de búsqueda y agregar uno habría sido una
+funcionalidad nueva, no la unificación pedida (ver `FLOWS.md` flujo 52, Etapa 3). El resto de los listados sin tocar queda pendiente — ver `FLOWS.md`
 flujo 39 para la lista completa.
 
 ## Regla obligatoria: los diálogos usan `AppDialog`, no el `Dialog` de MUI
