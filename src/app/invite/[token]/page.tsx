@@ -15,6 +15,7 @@ import GearSpinner from '@/components/GearSpinner';
 import { VisibilityOutlined as Visibility, VisibilityOffOutlined as VisibilityOff } from '@mui/icons-material';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { EnvironmentChip } from '../../../components/layout/EnvironmentBadge';
 import { TokenManager, buildCleanUser } from '../../../utils/auth';
 import { PublicInvitationService } from '../../../utils/api';
 
@@ -94,7 +95,7 @@ export default function InviteAcceptPage() {
       <Container maxWidth="sm">
         <Paper elevation={24} sx={{ p: 4, borderRadius: 3 }}>
           <Box textAlign="center" sx={{ mb: 4, mt: 1 }}>
-            <Box display="flex" justifyContent="center" sx={{ mb: 1 }}>
+            <Box display="flex" justifyContent="center" alignItems="center" flexWrap="wrap" gap={1.5} sx={{ mb: 1 }}>
               <Image
                 src="/img/logos/logo-conmomet-ROJO.png"
                 alt="Conmomet S.A."
@@ -103,6 +104,8 @@ export default function InviteAcceptPage() {
                 style={{ objectFit: 'contain', width: 'auto', maxHeight: 58 }}
                 priority
               />
+              {/* Marca de ambiente (FLOWS.md §80): no dibuja nada si APP_ENV_LABEL no está seteada. */}
+              <EnvironmentChip />
             </Box>
             <Typography variant="h6" color="text.secondary">
               Portal del Empleado

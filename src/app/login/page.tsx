@@ -15,6 +15,7 @@ import { VisibilityOutlined as Visibility, VisibilityOffOutlined as VisibilityOf
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import GearSpinner from '@/components/GearSpinner';
+import { EnvironmentChip } from '@/components/layout/EnvironmentBadge';
 import { useAuth, TokenManager } from '../../utils/auth';
 
 export default function LoginPage() {
@@ -132,7 +133,7 @@ export default function LoginPage() {
 
           {/* Header */}
           <Box textAlign="center" sx={{ mb: 4, mt: 2 }}>
-            <Box display="flex" justifyContent="center" sx={{ mb: 1 }}>
+            <Box display="flex" justifyContent="center" alignItems="center" flexWrap="wrap" gap={1.5} sx={{ mb: 1 }}>
               <Image
                 src="/img/logos/logo-conmomet-ROJO.png"
                 alt="Conmomet S.A."
@@ -141,6 +142,8 @@ export default function LoginPage() {
                 style={{ objectFit: 'contain', width: 'auto', maxHeight: 58 }}
                 priority
               />
+              {/* Marca de ambiente (FLOWS.md §80): no dibuja nada si APP_ENV_LABEL no está seteada. */}
+              <EnvironmentChip />
             </Box>
             <Typography variant="h6" color="text.secondary">
               Iniciar Sesión

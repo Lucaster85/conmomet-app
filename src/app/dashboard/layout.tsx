@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { HeaderLogo, HeaderAvatarButton, HEADER_MIN_HEIGHT, HEADER_TOGGLE_ICON_SIZE } from '../../components/layout/HeaderChrome';
+import { EnvironmentChip, EnvironmentStripe } from '../../components/layout/EnvironmentBadge';
 import baseTheme from '../theme';
 import {
   Box,
@@ -645,6 +646,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           }}
         >
+          {/* Marca de ambiente (FLOWS.md §80): no dibuja nada si APP_ENV_LABEL no está seteada. */}
+          <EnvironmentStripe />
           <Toolbar sx={{ position: 'relative', minHeight: HEADER_MIN_HEIGHT, background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
             <IconButton
               color="inherit"
@@ -668,6 +671,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <HeaderLogo />
             </Box>
+
+            <EnvironmentChip sx={{ display: { xs: 'none', sm: 'inline-flex' } }} />
 
             <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
 
