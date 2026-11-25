@@ -35,6 +35,13 @@ html {
   scroll-padding-top: 4.5rem;
 }
 
+/* Scroll suave por anchor solo en la web pública (el wrapper de (public)/layout), no en el dashboard */
+@media (prefers-reduced-motion: no-preference) {
+  html:has([data-public-site]) {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Plano del silo: cada trazo se autodibuja (pathLength={1} en el SVG) */
 @keyframes draw {
   from {
