@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans, Montserrat } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -17,6 +17,13 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+// Tipografía display de la web pública (titulares); el cuerpo usa Plus Jakarta Sans.
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
 });
 
 // generateMetadata y no un `metadata` fijo: el título lleva el prefijo del ambiente ("[TEST] Conmomet
@@ -64,7 +71,7 @@ export default function RootLayout({
   return (
     <html lang="es-AR">
       <body
-        className={`${plusJakartaSans.variable} antialiased`}
+        className={`${plusJakartaSans.variable} ${montserrat.variable} antialiased`}
       >
         {/* Runtime env vars — leídas en el servidor, disponibles en el cliente */}
         <script dangerouslySetInnerHTML={{ __html: `window.__ENV__ = ${runtimeEnv};` }} />
