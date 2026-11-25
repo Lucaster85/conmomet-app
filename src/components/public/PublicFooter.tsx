@@ -40,7 +40,7 @@ export default function PublicFooter() {
   const { appName, legalName } = getEnvironmentConfig();
 
   return (
-    <footer id="contacto" className="bg-pub-navy px-5 pt-16 pb-24 text-white md:px-8 md:pb-10">
+    <footer className="border-t border-white/10 bg-pub-navy px-5 pt-16 pb-24 text-white md:px-8 md:pb-10">
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-12 md:grid-cols-[auto_1fr] md:gap-16">
           {/* El logo va sobre una pastilla clara: así no hace falta invertirlo con filter */}

@@ -1,14 +1,15 @@
 import type { Metadata } from 'next';
 import { getEnvironmentConfig } from '../../config/environment';
 import Clientes from '../../components/public/Clientes';
+import Contacto from '../../components/public/Contacto';
 import FloatingCta from '../../components/public/FloatingCta';
 import Hero from '../../components/public/Hero';
 import Nosotros from '../../components/public/Nosotros';
 import NuestroTrabajo from '../../components/public/NuestroTrabajo';
 import Servicios from '../../components/public/Servicios';
 
-// Server component: la landing ya no necesita estado (el modal de contacto se reemplaza por una
-// sección en la etapa 4), así que puede exportar metadata real, con el prefijo del ambiente.
+// Server component: la landing ya no necesita estado (el modal de contacto se reemplazó por la
+// sección #contacto), así que puede exportar metadata real, con el prefijo del ambiente.
 export function generateMetadata(): Metadata {
   const { label, legalName } = getEnvironmentConfig();
   const title = `${label ? `[${label}] ` : ''}${legalName} | Soluciones integrales en montajes metalúrgicos`;
@@ -20,7 +21,6 @@ export function generateMetadata(): Metadata {
   };
 }
 
-// `#contacto` apunta provisoriamente al pie hasta que llegue la sección de contacto (etapa 4).
 export default function LandingPage() {
   return (
     <>
@@ -29,6 +29,7 @@ export default function LandingPage() {
       <Servicios />
       <NuestroTrabajo />
       <Clientes />
+      <Contacto />
       <FloatingCta />
     </>
   );
