@@ -1,10 +1,119 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+/* Tailwind v4 se usa SOLO en lo público (landing y /trabaja-con-nosotros). El dashboard sigue
+   100% en MUI/emotion. Los tokens públicos llevan prefijo --pub- para no colisionar con las
+   variables --background/--foreground del dashboard. */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --pub-bg: #f6f8fb; /* fondo de página */
+  --pub-navy: #0b2545; /* titulares y sección de cierre */
+  --pub-navy-2: #123a66; /* hover del botón oscuro */
+  --pub-brand: #2b6cb0; /* azul del logo: bordes, eyebrows, numeración */
+  --pub-brand-deep: #1d4e80;
+  --pub-action: #f59e0b; /* ámbar: SOLO botones de acción */
+  --pub-line: #ccd7e4; /* bordes y trazos del plano */
+  --pub-muted: #53647c; /* texto de párrafo */
+}
+
+@theme inline {
+  --color-pub-bg: var(--pub-bg);
+  --color-pub-navy: var(--pub-navy);
+  --color-pub-navy-2: var(--pub-navy-2);
+  --color-pub-brand: var(--pub-brand);
+  --color-pub-brand-deep: var(--pub-brand-deep);
+  --color-pub-action: var(--pub-action);
+  --color-pub-line: var(--pub-line);
+  --color-pub-muted: var(--pub-muted);
+  --font-display: var(--font-montserrat), system-ui, sans-serif;
+  --font-body: var(--font-plus-jakarta), system-ui, sans-serif;
+}
+
+html {
+  /* El header público es sticky: sin esto tapa los títulos al navegar por anchor */
+  scroll-padding-top: 4.5rem;
+}
+
+/* Scroll suave por anchor solo en la web pública (el wrapper de (public)/layout), no en el dashboard */
+@media (prefers-reduced-motion: no-preference) {
+  html:has([data-public-site]) {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Plano del silo: cada trazo se autodibuja (pathLength={1} en el SVG) */
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes pulse-node {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.draw-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 1.6s ease-out forwards;
+}
+.pulse-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse-node 3.2s ease-in-out infinite;
+}
+.float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+/* Reveal al scrollear (componente Reveal): estado inicial y final, la transición es CSS */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0s);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .draw-line {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .pulse-node,
+  .float-slow {
+    animation: none;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 
 @media (prefers-color-scheme: dark) {

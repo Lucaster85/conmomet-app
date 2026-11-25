@@ -1,106 +1,69 @@
 # Conmomet App - Frontend
 
 ## 📋 Descripción
-Sistema de gestión empresarial desarrollado con Next.js, TypeScript y Material-UI.
+Sistema de gestión empresarial (dashboard privado + portal del empleado) y web institucional pública, desarrollado con Next.js, TypeScript y Material-UI.
 
 ## 🚀 Tecnologías
-- **Frontend**: Next.js 15.1.0 + TypeScript
-- **UI Library**: Material-UI (@mui/material)
-- **Estilos**: Material-UI + TailwindCSS
-- **Autenticación**: JWT + localStorage
-- **Backend**: Node.js (puerto 4000)
+- **Framework**: Next.js 15 (App Router) + React 19 + TypeScript
+- **Dashboard y portal**: Material-UI (`@mui/material`, `@mui/x-date-pickers`) con emotion (`sx`)
+- **Web pública** (landing y `/trabaja-con-nosotros`): Tailwind CSS v4, **solo ahí**. El dashboard no usa clases de Tailwind
+- **Animación**: sin librerías; `IntersectionObserver` + CSS (`@keyframes` en `globals.css`)
+- **Tipografías**: Plus Jakarta Sans (cuerpo) y Montserrat (titulares de la web pública), vía `next/font/google`
+- **Autenticación**: JWT
+- **Backend**: `api_conmomet` (Node.js, puerto 4000 en local)
 
 ## 📁 Estructura del Proyecto
 ```
 src/
 ├── app/
-│   ├── page.tsx              # Landing page con sliders
-│   ├── login/page.tsx        # Formulario de login
-│   ├── dashboard/            # Sistema privado
-│   │   ├── layout.tsx        # Layout con menú lateral
-│   │   └── page.tsx          # Dashboard principal
-│   ├── layout.tsx            # Layout principal con Material-UI
-│   └── theme.ts              # Configuración del tema
+│   ├── layout.tsx                 # Layout raíz: MUI, fuentes, EnvironmentProvider
+│   ├── globals.css                # Tailwind v4, tokens --pub-*, keyframes y CSS de impresión
+│   ├── (public)/                  # Route group de la web pública (no cambia las URLs)
+│   │   ├── layout.tsx             # Wrapper + PublicHeader + PublicFooter
+│   │   ├── page.tsx               # Landing (/)
+│   │   └── trabaja-con-nosotros/  # Formulario público de postulaciones
+│   ├── login/ · invite/ · portal/ · dashboard/   # MUI, sin Tailwind
+│   └── brand/[file]/              # Logos e identidad por marca
 ├── components/
-│   ├── ImageSlider.tsx       # Slider de imágenes para hero
-│   ├── CardSlider.tsx        # Slider de tarjetas de noticias
-│   └── ProtectedRoute.tsx    # Componente para rutas privadas
-└── utils/
-    └── auth.ts               # Sistema de autenticación JWT
+│   ├── public/                    # Web pública (ver abajo)
+│   └── …                          # Resto: MUI, para el dashboard y el portal
+└── utils/                         # api.ts, auth.ts, validators.ts, candidates.ts, etc.
 ```
 
-## 🔐 Sistema de Autenticación
+## 🌐 Web pública (`src/components/public/`)
 
-### Configuración
-- **Backend URL**: `http://localhost:4000`
-- **Endpoint Login**: `/auth/login`
-- **Método**: POST con `{ email, password }`
+Lenguaje visual: fondo claro, titulares en `font-display` con `tracking-tight`, secciones con *eyebrow* + guioncito, cards que levitan al hover y aparición escalonada al scrollear. Azul de marca + ámbar solo como color de acción. Tokens en `globals.css` (`--pub-*`, mapeados a `pub-*` en `@theme inline`).
 
-### Credenciales de Prueba
-- **Email**: `admin@mail.com`
-- **Password**: `123456`
-
-### Funcionalidades
-- ✅ Login con JWT
-- ✅ Verificación de tokens
-- ✅ Protección de rutas privadas
-- ✅ Logout automático en expiración
-- ✅ Manejo de errores del backend
-
-## 🎨 Componentes Implementados
-
-### Landing Page
-- ✅ Navigation bar fija
-- ✅ Hero section con slider de imágenes
-- ✅ Sección de características (3 cards)
-- ✅ Slider de noticias/artículos
-- ✅ Footer completo
-
-### Dashboard
-- ✅ Menú lateral responsive
-- ✅ Header con información del usuario
-- ✅ Protección por autenticación
-- ✅ Cards de estadísticas
-- ✅ Actividad reciente
-- ✅ Estado del sistema
+- **Primitivos**: `Section` (wrapper canónico), `Reveal` (aparición al scrollear, prop `delay`/`as`), `Button` (`buttonClasses(variant)`: `action` / `ghost` / `dark`), `Field` (`Field`, `TextAreaField`, `SelectField`), `icons` (SVG inline).
+- **Esqueleto**: `PublicHeader`, `PublicFooter`, `FloatingCta` (mobile), `Hero` con `SiloBlueprint` (plano de silo que se autodibuja).
+- **Secciones de la landing**: `Nosotros`, `Servicios`, `NuestroTrabajo`, `Clientes`, `Contacto` (con `ContactForm`).
+- **Postulaciones**: `JobApplicationForm`.
+- Los textos de contacto y redes del pie están fijos en `PublicFooter` y `Contacto`.
+- `prefers-reduced-motion` apaga todas las animaciones y deja el plano ya dibujado.
 
 ## 🔧 Scripts Disponibles
 ```bash
 npm run dev     # Servidor de desarrollo
-npm run build   # Build de producción
+npm run build   # Build de producción (no correrlo con el dev server levantado: pisa .next)
 npm run start   # Servidor de producción
 npm run lint    # Linter
+npx tsc --noEmit  # Chequeo de tipos
 ```
 
 ## 🌐 Variables de Entorno
+Se leen en runtime desde el servidor (layout raíz → `window.__ENV__`), sin rebuild:
 ```bash
-# .env.local
-NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+API_BASE_URL=http://localhost:4000
+GOOGLE_PLACES_API_KEY=
+CLARITY_PROJECT_ID=
+APP_NAME= / APP_LEGAL_NAME= / APP_ENV_LABEL= / APP_ENV_COLOR= / APP_BRAND=
 ```
+(Las variantes `NEXT_PUBLIC_*` de las tres primeras quedan como fallback.)
 
-## 📝 Próximos Pasos Sugeridos
-1. [ ] Agregar más páginas al dashboard (usuarios, productos, etc.)
-2. [ ] Implementar CRUD operations con el backend
-3. [ ] Agregar sistema de refresh tokens
-4. [ ] Implementar notificaciones
-5. [ ] Agregar tests unitarios
-6. [ ] Optimizar imágenes y performance
-
-## 🐛 Resolución de Problemas
-
-### Error de CORS
-Si hay problemas de CORS, verificar configuración en el backend.
-
-### Token Expirado
-El sistema maneja automáticamente la expiración y redirige al login.
-
-### Variables de Entorno
-Asegúrate de que las variables empiecen con `NEXT_PUBLIC_` para uso en frontend.
-
-## 📞 Contacto del Proyecto
-- **Desarrollador**: Lucas Castro
-- **Repositorio**: conmomet-app
-- **Rama**: main
+## 📚 Documentación relacionada
+- `../FLOWS.md`: flujos funcionales y decisiones (rediseño de la landing: §85).
+- `CLAUDE.md`: reglas obligatorias de desarrollo (mobile-first, `AppDialog`, `ListFilters`, Ayuda).
+- `src/content/help/`: Centro de Ayuda del usuario final.
 
 ---
-*Documentación actualizada: 22 de Octubre, 2025*
+*Documentación actualizada: 25 de Noviembre, 2026*
