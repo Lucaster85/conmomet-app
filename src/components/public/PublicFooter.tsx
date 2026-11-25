@@ -113,8 +113,16 @@ export default function PublicFooter() {
         </div>
 
         <p className="mt-12 border-t border-white/15 pt-6 text-center text-sm text-white/65">
-          © {new Date().getFullYear()} {legalName} Todos los derechos reservados. Powered by Lucaster Web
-          Studio.
+          © {new Date().getFullYear()} {legalName} Todos los derechos reservados. Powered by{' '}
+          <a
+            href="https://lucasterwebstudio.com/es"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-white/85 underline-offset-4 transition-colors hover:text-pub-action hover:underline"
+          >
+            Lucaster Web Studio
+          </a>
+          .
         </p>
       </div>
     </footer>
