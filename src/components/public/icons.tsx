@@ -91,3 +91,68 @@ export const ShirtIcon = (p: IconProps) => (
     <path d="m8 4-5 3 2 4 3-1v10h8V10l3 1 2-4-5-3a4 4 0 0 1-8 0Z" />
   </Icon>
 );
+
+// Íconos de servicios (cada uno reemplaza a uno genérico de @mui/icons-material).
+export const CraneIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 21V8l-3 4M6 8h15M6 8l4-4M17 8v6M15 14h4v3h-4zM6 21h5" />
+  </Icon>
+);
+
+export const LatheIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="9" cy="12" r="6" />
+    <circle cx="9" cy="12" r="2" />
+    <path d="M15 12h6M18 9v6" />
+  </Icon>
+);
+
+export const SheetBendIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3 18h7l4-8h7M10 18l4 3M14 10l-4-3" />
+  </Icon>
+);
+
+export const WrenchIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M14.5 6.5a4 4 0 0 0 5 5L21 13l-3 3-1.5-1.5-9 7-3-3 7-9L9 9.5l3-3 2.5 0Z" />
+  </Icon>
+);
+
+export const RoofIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m3 12 9-8 9 8M5 10.5V20h14v-9.5M9 20v-5h6v5" />
+  </Icon>
+);
+
+export const WeldIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M13 3 6 13h5l-1 8 8-11h-5l1-7Z" />
+  </Icon>
+);
+
+export const PaintRollerIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="4" y="3" width="14" height="6" rx="1.5" />
+    <path d="M18 6h2v5h-8v3M11 14h2v7h-2z" />
+  </Icon>
+);
+
+export const ContainerIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3" y="6" width="18" height="12" rx="1" />
+    <path d="M7 6v12M11 6v12M15 6v12M19 6v12" />
+  </Icon>
+);
+
+export const BlueprintIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 20 18 6l2 2L6 22l-3 .5.5-3ZM14 10l2 2M3 8V3h5M16 21h5v-5" />
+  </Icon>
+);
+
+export const CheckIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m5 12.5 4.5 4.5L19 7.5" />
+  </Icon>
+);
