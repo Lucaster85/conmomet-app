@@ -57,7 +57,7 @@ trata aparte.
 ## Postulaciones que llegan por la web
 
 En la página web de la empresa hay un botón **"Trabajá con nosotros"** (en el menú de arriba, en el menú del celular
-y en el pie de página). Lleva a un formulario **público, sin usuario**, donde la persona completa:
+y en el pie de página). El enlace del pie de página se administra desde *Configuración General → Sitio web público*. Lleva a un formulario **público, sin usuario**, donde la persona completa:
 
 - **Nombre, apellido y DNI** (obligatorios), fecha de nacimiento y localidad.
 - **Teléfono o email**: al menos uno, para poder comunicarse con ella.
