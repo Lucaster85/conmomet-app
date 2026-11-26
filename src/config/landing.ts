@@ -160,6 +160,12 @@ function interpolate(value: unknown, legalName: string, appName: string): unknow
   return value;
 }
 
+/** Aplica los marcadores `{{empresa}}`, `{{EMPRESA}}` y `{{app}}` a cualquier valor con los nombres de la marca. */
+export function interpolateNames<T>(value: T): T {
+  const { legalName, appName } = getEnvironmentConfig();
+  return interpolate(value, legalName, appName) as T;
+}
+
 function imageFile(v: unknown, where: string): string | null {
   const file = text(v);
   if (!file) return null;
@@ -182,7 +188,7 @@ function parseTheme(raw: unknown): Record<string, string> {
   return vars;
 }
 
-function parseLinks(raw: unknown, where: string): LandingLink[] {
+export function parseLinks(raw: unknown, where: string): LandingLink[] {
   if (!Array.isArray(raw)) return [];
   const links: LandingLink[] = [];
   raw.forEach((item, i) => {
@@ -201,7 +207,7 @@ function parseLinks(raw: unknown, where: string): LandingLink[] {
   return links;
 }
 
-function parseServices(raw: unknown): ServiceItem[] {
+export function parseServices(raw: unknown): ServiceItem[] {
   if (!Array.isArray(raw)) return [];
   const items: ServiceItem[] = [];
   raw.forEach((item, i) => {
@@ -216,7 +222,7 @@ function parseServices(raw: unknown): ServiceItem[] {
   return items;
 }
 
-function parseClients(raw: unknown): ClientItem[] {
+export function parseClients(raw: unknown): ClientItem[] {
   if (!Array.isArray(raw)) return [];
   const items: ClientItem[] = [];
   raw.forEach((item, i) => {
@@ -333,11 +339,12 @@ function parseManifest(raw: unknown): LandingManifest | null {
 }
 
 /**
- * Lee y valida el manifiesto de la marca activa. `null` = la marca no tiene sitio público.
- * `cache` de React: layout, página y metadata comparten una sola lectura por request. APP_BRAND se
- * respeta en cada request porque el layout raíz es `force-dynamic`.
+ * Lee y valida SOLO el archivo de la marca activa, sin el contenido editado en la base. `null` = la marca
+ * no tiene sitio público. Para renderizar el sitio usar `readLandingManifest` de src/utils/siteContent.ts, que
+ * además mezcla lo que el cliente editó. `cache` de React: una sola lectura por request. APP_BRAND se respeta
+ * en cada request porque el layout raíz es `force-dynamic`.
  */
-export const readLandingManifest = cache(async (): Promise<LandingManifest | null> => {
+export const readManifestFile = cache(async (): Promise<LandingManifest | null> => {
   const file = path.join(process.cwd(), 'public', 'brands', getBrandName(), 'landing.json');
   let source: string;
   try {

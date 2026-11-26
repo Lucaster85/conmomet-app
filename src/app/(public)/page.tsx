@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { renderBlock } from '../../components/public/blocks/registry';
 import FloatingCta from '../../components/public/FloatingCta';
 import { getEnvironmentConfig } from '../../config/environment';
-import { readLandingManifest } from '../../config/landing';
+import { readLandingManifest } from '../../utils/siteContent';
 
 // Server component: la landing no necesita estado, así que puede exportar metadata real, con el
 // prefijo del ambiente. El claim y la descripción salen del manifiesto de la marca.

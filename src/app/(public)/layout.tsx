@@ -2,7 +2,8 @@ import type { CSSProperties } from 'react';
 import { redirect } from 'next/navigation';
 import PublicFooter from '../../components/public/PublicFooter';
 import PublicHeader, { type NavItem } from '../../components/public/PublicHeader';
-import { BLOCK_ANCHORS, readLandingManifest } from '../../config/landing';
+import { BLOCK_ANCHORS } from '../../config/landing';
+import { readLandingManifest } from '../../utils/siteContent';
 
 // Route group de la web pública (landing y /trabaja-con-nosotros): no cambia ninguna URL.
 // Todo sale del manifiesto de la marca (public/brands/<APP_BRAND>/landing.json, FLOWS.md §86). Sin
