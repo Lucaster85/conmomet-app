@@ -24,7 +24,7 @@ texto chico de arriba, el título, el subtítulo, los botones, los párrafos de 
 - **Si borrás un campo y guardás, vuelve al texto original.** No hay forma de dejar un campo en blanco.
 - **«Volver a los textos originales»** deja todos los campos como estaban; después hay que **Guardar**.
 - **«Mostrar esta sección en el sitio»**: si lo apagás, la sección desaparece de la página y también del menú de arriba.
-- En el subtítulo de Inicio, lo que escribas entre dos asteriscos sale en **negrita** (`**así**`).
+- En el subtítulo de Inicio, lo que escribas entre dos asteriscos sale en **negrita** (`**así**`). En la **frase destacada** de «Nosotros» se resalta además en el color de la marca.
 
 ### Servicios y Clientes
 

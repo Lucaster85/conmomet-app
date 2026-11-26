@@ -27,11 +27,11 @@ const BLOCK_FIELDS: Record<string, string[]> = {
 const FIELD_LABELS: Record<string, { label: string; helper?: string; multiline?: boolean }> = {
   eyebrow: { label: 'Texto chico sobre el título', helper: 'Se muestra en mayúsculas, arriba del título.' },
   title: { label: 'Título' },
-  subtitle: { label: 'Subtítulo / bajada', multiline: true },
+  subtitle: { label: 'Subtítulo / bajada', multiline: true, helper: 'Lo que escribas entre dos asteriscos (**así**) sale en negrita.' },
   primaryCta: { label: 'Botón principal' },
   secondaryCta: { label: 'Botón secundario' },
   imageAlt: { label: 'Descripción de la foto', helper: 'La lee el lector de pantalla; no se ve en la web.' },
-  banner: { label: 'Frase destacada', multiline: true },
+  banner: { label: 'Frase destacada', multiline: true, helper: 'Lo que escribas entre dos asteriscos (**así**) se resalta en el color de la marca.' },
   empty: { label: 'Mensaje cuando no hay obras cargadas', multiline: true },
 };
 const MAX_PARAGRAPHS = 6;
