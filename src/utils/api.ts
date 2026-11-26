@@ -8125,3 +8125,105 @@ export class ConsentTextService {
     return (await response.json()).data;
   }
 }
+
+// Sitio web público (FLOWS.md §86): contenido editable de la landing. La estructura (bloques, orden, paleta) vive
+// en el landing.json de la marca; esto es lo que el cliente pisa desde Configuración General.
+export type SiteLinkKind = 'whatsapp' | 'phone' | 'email' | 'address' | 'url' | 'internal';
+export type SiteLinkGroup = 'contact' | 'quick';
+export type SiteResource = 'services' | 'clients' | 'links';
+
+export interface SiteBlockRow {
+  block_type: string;
+  content: Record<string, unknown>;
+  is_visible: boolean;
+}
+export interface SiteServiceRow {
+  id: number;
+  title: string;
+  text: string;
+  bullets: string[];
+  icon: string;
+  display_order: number;
+  is_active: boolean;
+}
+export interface SiteClientRow {
+  id: number;
+  name: string;
+  short_name: string;
+  logo_file: string | null;
+  display_order: number;
+  is_active: boolean;
+}
+export interface SiteLinkRow {
+  id: number;
+  group: SiteLinkGroup;
+  kind: SiteLinkKind;
+  label: string;
+  value: string;
+  icon: string;
+  display_order: number;
+  is_active: boolean;
+}
+export interface SiteAdminData {
+  blocks: SiteBlockRow[];
+  services: SiteServiceRow[];
+  clients: SiteClientRow[];
+  links: SiteLinkRow[];
+  touched: { services: boolean; clients: boolean; contact_links: boolean; quick_links: boolean };
+}
+
+export type CreateSiteServiceData = Pick<SiteServiceRow, 'title' | 'icon'> & Partial<Pick<SiteServiceRow, 'text' | 'bullets' | 'is_active'>>;
+export type CreateSiteClientData = Pick<SiteClientRow, 'name'> & Partial<Pick<SiteClientRow, 'short_name' | 'logo_file' | 'is_active'>>;
+export type CreateSiteLinkData = Pick<SiteLinkRow, 'group' | 'kind' | 'label' | 'value' | 'icon'> & Partial<Pick<SiteLinkRow, 'is_active'>>;
+
+// Lo que dice el manifiesto de la marca hoy (GET /site-defaults del propio frontend), para poder cargarlo en la
+// base y editarlo en vez de tipearlo de cero.
+export interface SiteDefaults {
+  blocks: { type: string; navLabel: string | null; content: Record<string, unknown> }[];
+  footer: { contact: Omit<SiteLinkRow, 'id' | 'group' | 'display_order' | 'is_active'>[]; links: Omit<SiteLinkRow, 'id' | 'group' | 'display_order' | 'is_active'>[] };
+}
+
+export class SiteContentService {
+  private static async request<T>(path: string, method: string, body: unknown, fallbackError: string): Promise<T> {
+    const response = await TokenManager.authenticatedFetch(`${API_BASE_URL}/system-settings/site${path}`, {
+      method,
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || fallbackError);
+    }
+    return (await response.json()).data as T;
+  }
+
+  static getAll(): Promise<SiteAdminData> {
+    return this.request('', 'GET', undefined, 'Error al obtener el contenido del sitio web');
+  }
+
+  // `content` reemplaza al anterior entero; los campos que no se manden vuelven al texto original del manifiesto.
+  static updateBlock(type: string, body: { content?: Record<string, unknown>; is_visible?: boolean }): Promise<SiteBlockRow> {
+    return this.request(`/blocks/${type}`, 'PUT', body, 'Error al guardar la sección');
+  }
+
+  static create<T>(resource: SiteResource, body: unknown): Promise<T> {
+    return this.request(`/${resource}`, 'POST', body, 'Error al guardar');
+  }
+
+  static update<T>(resource: SiteResource, id: number, body: unknown): Promise<T> {
+    return this.request(`/${resource}/${id}`, 'PUT', body, 'Error al guardar');
+  }
+
+  static async remove(resource: SiteResource, id: number): Promise<void> {
+    await this.request(`/${resource}/${id}`, 'DELETE', undefined, 'Error al eliminar');
+  }
+
+  static async reorder(resource: SiteResource, orderedIds: number[]): Promise<void> {
+    await this.request(`/${resource}/reorder`, 'PUT', { orderedIds }, 'Error al guardar el orden');
+  }
+
+  static async getDefaults(): Promise<SiteDefaults> {
+    const response = await fetch('/site-defaults', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Este ambiente no tiene sitio web público configurado.');
+    return (await response.json()).data;
+  }
+}

@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Box, Typography, Card, CardContent, Stack, Button, InputAdornment, Autocomplete, TextField, Chip, MenuItem } from '@mui/material';
 import GearSpinner from '@/components/GearSpinner';
 import { SettingsOutlined as TitleIcon } from '@mui/icons-material';
@@ -290,6 +291,16 @@ export default function SystemSettingsPage() {
               {savingIva ? 'Guardando…' : 'Guardar'}
             </Button>
           </Stack>
+        </CardContent>
+      </Card>
+
+      <Card sx={{ maxWidth: 480, borderRadius: 3, mt: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="h6" fontWeight={600} mb={0.5}>Sitio web público</Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Textos de las secciones, servicios, clientes, datos de contacto y enlaces del pie de la web pública.
+          </Typography>
+          <Button component={Link} href="/dashboard/system-settings/site" variant="contained">Editar el sitio web</Button>
         </CardContent>
       </Card>
 
