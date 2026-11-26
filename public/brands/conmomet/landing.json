@@ -1,0 +1,155 @@
+{
+  "theme": {
+    "bg": "#f6f8fb",
+    "navy": "#0b2545",
+    "navy2": "#123a66",
+    "brand": "#2b6cb0",
+    "brandDeep": "#1d4e80",
+    "action": "#f59e0b",
+    "line": "#ccd7e4",
+    "muted": "#53647c"
+  },
+  "seo": {
+    "claim": "Soluciones integrales en montajes metalúrgicos",
+    "description": "{{empresa}}: montajes metalúrgicos, tornería y plegados para la industria, en toda la zona costera de la provincia de Buenos Aires."
+  },
+  "blocks": [
+    {
+      "type": "hero",
+      "variant": "blueprint-silo",
+      "navLabel": "Inicio",
+      "content": {
+        "eyebrow": "Quequén · Buenos Aires",
+        "subtitle": "Soluciones integrales en montajes **metalúrgicos**.",
+        "primaryCta": "Contactanos",
+        "secondaryCta": "Ver obras",
+        "image": "hero.jpg",
+        "imageAlt": "Silo metálico de acero montado por {{app}}"
+      }
+    },
+    {
+      "type": "about",
+      "navLabel": "Nosotros",
+      "content": {
+        "eyebrow": "Quiénes somos",
+        "title": "Nosotros",
+        "paragraphs": [
+          "En {{EMPRESA}} somos un equipo apasionado y experimentado en la construcción y montaje de estructuras metálicas. Con una sólida trayectoria en el sector, nos destacamos por nuestro compromiso con la calidad, la seguridad y la eficiencia.",
+          "Nuestros técnicos y operarios están altamente capacitados y cuentan con la experiencia necesaria para abordar proyectos complejos y personalizados. Contamos con una flota de maquinaria de última generación, incluyendo pantógrafo, guillotina, plegadora y grúas con capacidades de hasta 30 toneladas, lo que nos permite ofrecer soluciones integrales y flexibles a nuestros clientes.",
+          "Nuestra misión es brindar soluciones de alta calidad y valor agregado a nuestros clientes, trabajando de manera segura, eficiente y comprometida con la excelencia. En {{EMPRESA}} nos enfocamos en construir relaciones duraderas con nuestros clientes y en contribuir al éxito de sus proyectos con nuestra experiencia y dedicación."
+        ],
+        "banner": "¡Confía en nosotros para llevar tus proyectos al éxito!"
+      }
+    },
+    {
+      "type": "services",
+      "navLabel": "Servicios",
+      "content": {
+        "eyebrow": "Qué hacemos",
+        "title": "Nuestros Servicios",
+        "items": [
+          {
+            "icon": "crane",
+            "title": "Alquiler de Grúas",
+            "bullets": [
+              "Plataforma unipersonal hasta 10 m de altura.",
+              "Grúas de 8 tn, 20 tn y 30 tn hasta 42 m de altura."
+            ]
+          },
+          {
+            "icon": "lathe",
+            "title": "Tornería Industrial",
+            "text": "Tornería de precisión para piezas y componentes personalizados."
+          },
+          {
+            "icon": "sheet-bend",
+            "title": "Corte y plegado de chapas de alta precisión",
+            "bullets": [
+              "Corte con guillotina hasta 8 mm por 3200 mm.",
+              "Plegadora 125 tn por 3200 mm."
+            ]
+          },
+          {
+            "icon": "wrench",
+            "title": "Mantenimiento de maquinarias industriales y reparación de equipos",
+            "text": "Mano de obra calificada para trabajos mecánicos."
+          },
+          {
+            "icon": "roof",
+            "title": "Instalación y reparación de techos y cubiertas",
+            "text": "Mano de obra calificada para trabajos de instalación y reparación de techos y cubiertas."
+          },
+          {
+            "icon": "weld",
+            "title": "Soldadura",
+            "text": "Soldadura de precisión, piezas únicas y series cortas para la industria."
+          },
+          {
+            "icon": "paint-roller",
+            "title": "Pintura y revestimiento de paredes y estructuras",
+            "text": "Pintura y revestimiento de paredes y estructuras para la industria."
+          },
+          {
+            "icon": "container",
+            "title": "Traslado y posicionamiento de containers y cargas pesadas",
+            "text": "Traslado y posicionamiento de containers y cargas pesadas para la industria."
+          },
+          {
+            "icon": "blueprint",
+            "title": "Proyecto y dirección de obra, cálculos estructurales.",
+            "text": "Proyectos y trabajos civiles y steel frame. Construcción de todo tipo de estructuras metálicas, galvanizadas en caliente y soldaduras de alta presión."
+          }
+        ]
+      }
+    },
+    {
+      "type": "works",
+      "navLabel": "Nuestro trabajo",
+      "content": {
+        "eyebrow": "Obras",
+        "title": "Nuestro Trabajo",
+        "empty": "Pronto vamos a compartir acá algunos de nuestros trabajos."
+      }
+    },
+    {
+      "type": "clients",
+      "navLabel": "Clientes",
+      "content": {
+        "eyebrow": "Clientes",
+        "title": "Confían en nosotros",
+        "subtitle": "Empresas líderes del sector confían en {{app}} para sus proyectos.",
+        "items": [
+          { "name": "Bunge", "shortName": "BUN", "logo": null },
+          { "name": "Renova", "shortName": "RNV", "logo": null }
+        ]
+      }
+    },
+    {
+      "type": "contact",
+      "navLabel": "Contacto",
+      "content": {
+        "eyebrow": "Hablemos",
+        "title": "Contactanos",
+        "subtitle": "Completá el formulario y te respondemos a la brevedad. También podés escribirle a {{empresa}} directamente:"
+      }
+    }
+  ],
+  "footer": {
+    "description": "{{empresa}} es una empresa líder en soluciones industriales, ofreciendo servicios de montajes, tornería y plegados para clientes en toda la zona costera de la provincia de Buenos Aires.",
+    "attribution": true,
+    "contact": [
+      { "icon": "whatsapp", "kind": "whatsapp", "value": "5492262679570", "label": "WhatsApp +54 9 2262 679570" },
+      { "icon": "phone", "kind": "phone", "value": "+542262679570", "label": "Cotizaciones (2262) 679570" },
+      { "icon": "phone", "kind": "phone", "value": "+542262610787", "label": "Administración (2262) 610787" },
+      { "icon": "mail", "kind": "email", "value": "montajes@conmomet.com.ar", "label": "montajes@conmomet.com.ar" },
+      { "icon": "pin", "kind": "address", "value": "578 N°1682, Quequén, Buenos Aires, Argentina 7631", "label": "578 N°1682, Quequén, Buenos Aires, Argentina" }
+    ],
+    "links": [
+      { "icon": "briefcase", "kind": "internal", "value": "/trabaja-con-nosotros", "label": "Trabajá con nosotros" },
+      { "icon": "instagram", "kind": "url", "value": "https://www.instagram.com/conmomet_s.a", "label": "@conmomet_s.a" },
+      { "icon": "facebook", "kind": "url", "value": "https://www.facebook.com/p/conmomet_sa-100083225145876/", "label": "conmomet_s.a" },
+      { "icon": "pin", "kind": "address", "value": "578 N°1682, Quequén, Buenos Aires, Argentina 7631", "label": "Vení a conocernos" },
+      { "icon": "shirt", "kind": "url", "value": "https://www.instagram.com/indumet_", "label": "Indumet" }
+    ]
+  }
+}
