@@ -9,19 +9,23 @@ import { UserCircleIcon } from './icons';
 
 export const JOBS_PATH = '/trabaja-con-nosotros';
 
-const NAV_ITEMS = [
-  { label: 'Inicio', href: '#inicio' },
-  { label: 'Nosotros', href: '#nosotros' },
-  { label: 'Servicios', href: '#servicios' },
-  { label: 'Nuestro trabajo', href: '#nuestro-trabajo' },
-  { label: 'Clientes', href: '#clientes' },
-  { label: 'Contacto', href: '#contacto' },
-];
+export interface NavItem {
+  label: string;
+  /** Ancla (`#servicios`). */
+  href: string;
+}
+
+interface PublicHeaderProps {
+  /** Ítems del menú, derivados de los bloques del manifiesto (ver el layout). */
+  navItems: NavItem[];
+  /** Ancla del botón "Contactanos"; null si la marca no tiene bloque de contacto. */
+  contactHref: string | null;
+}
 
 // Header de la web pública, compartido por la landing y "Trabajá con nosotros" (FLOWS.md §60).
 // Los links de sección son anchors nativos: en la landing hacen scroll (suave, por CSS), y desde
 // otra página llevan a `/#seccion`, porque ahí esos ids no existen.
-export default function PublicHeader() {
+export default function PublicHeader({ navItems, contactHref }: PublicHeaderProps) {
   const { appName, legalName } = useAppEnvironment();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -59,7 +63,7 @@ export default function PublicHeader() {
         </Link>
 
         <nav aria-label="Principal" className="hidden items-center gap-1 lg:flex">
-          {NAV_ITEMS.filter((item) => item.href !== '#contacto').map((item) => (
+          {navItems.filter((item) => item.href !== contactHref).map((item) => (
             <Link
               key={item.href}
               href={hrefFor(item.href)}
@@ -74,9 +78,11 @@ export default function PublicHeader() {
           >
             Trabajá con nosotros
           </Link>
-          <Link href={hrefFor('#contacto')} className={buttonClasses('action', 'ml-2 !min-h-10')}>
-            Contactanos
-          </Link>
+          {contactHref && (
+            <Link href={hrefFor(contactHref)} className={buttonClasses('action', 'ml-2 !min-h-10')}>
+              Contactanos
+            </Link>
+          )}
           <Link
             href="/login"
             aria-label="Iniciar sesión"
@@ -119,7 +125,7 @@ export default function PublicHeader() {
         className="fixed inset-x-0 top-14 bottom-0 overflow-y-auto bg-pub-bg px-5 py-8 lg:hidden"
       >
         <nav aria-label="Menú móvil" className="flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <Link
               key={item.href}
               href={hrefFor(item.href)}

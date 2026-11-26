@@ -21,6 +21,20 @@ export const BRAND_FILES: Record<string, string> = {
   'apple-touch-icon.png': 'image/png',
 };
 
+// Imágenes de la landing (FLOWS.md §86): viven en public/brands/<marca>/landing/ y se sirven por
+// /brand/landing/<archivo>. A diferencia de BRAND_FILES, los nombres los pone cada marca, así que
+// se valida con un patrón en vez de una lista blanca: sin `/` ni `.` suelto no hay path traversal.
+// Tampoco hay fallback a la marca por defecto: un cliente sin foto no debe mostrar la de otro.
+export const LANDING_IMAGE_RE = /^[a-z0-9-]+\.(jpg|jpeg|png|svg|webp)$/;
+
+export const LANDING_IMAGE_TYPES: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  svg: 'image/svg+xml',
+  webp: 'image/webp',
+};
+
 // Nombre de carpeta válido: minúsculas, números y guiones. Cualquier otra cosa (mayúsculas, barras,
 // puntos) cae a la marca por defecto en vez de armar una ruta con un valor de entorno arbitrario.
 export function getBrandName(): string {

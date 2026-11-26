@@ -76,4 +76,4 @@ son la única vía.
 
 No hay permiso para "crear": las consultas solo se crean desde la página web.
 
-<!-- ref: conmomet-app/src/app/dashboard/contact-inquiries/page.tsx, conmomet-app/src/components/public/ContactForm.tsx, conmomet-app/src/components/public/Contacto.tsx, conmomet-app/src/components/common/ContactInquiryAlert.tsx, conmomet-app/src/utils/contactInquiries.ts, api_conmomet/controllers/contactController.js, api_conmomet/controllers/contactInquiryController.js, api_conmomet/middlewares/publicForm.js, api_conmomet/models/contactInquiry.js -->
+<!-- ref: conmomet-app/src/app/dashboard/contact-inquiries/page.tsx, conmomet-app/src/components/public/ContactForm.tsx, conmomet-app/src/components/public/blocks/ContactBlock.tsx, conmomet-app/src/components/common/ContactInquiryAlert.tsx, conmomet-app/src/utils/contactInquiries.ts, api_conmomet/controllers/contactController.js, api_conmomet/controllers/contactInquiryController.js, api_conmomet/middlewares/publicForm.js, api_conmomet/models/contactInquiry.js -->

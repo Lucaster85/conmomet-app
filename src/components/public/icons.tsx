@@ -1,4 +1,4 @@
-import type { SVGProps } from 'react';
+import type { ComponentType, SVGProps } from 'react';
 
 // Íconos inline (estilo trazo, 24×24) de la web pública. Se dibujan a mano en vez de traer
 // @mui/icons-material a una página Tailwind solo por unos pocos íconos.
@@ -156,3 +156,28 @@ export const CheckIcon = (p: IconProps) => (
     <path d="m5 12.5 4.5 4.5L19 7.5" />
   </Icon>
 );
+
+// Íconos que un manifiesto de marca puede pedir por clave (FLOWS.md §86). Se guarda la clave, nunca
+// un archivo. ArrowRight y UserCircle quedan afuera: son cromo de la interfaz, no contenido.
+export const PUBLIC_ICONS = {
+  phone: PhoneIcon,
+  mail: MailIcon,
+  pin: PinIcon,
+  whatsapp: WhatsAppIcon,
+  instagram: InstagramIcon,
+  facebook: FacebookIcon,
+  briefcase: BriefcaseIcon,
+  shirt: ShirtIcon,
+  crane: CraneIcon,
+  lathe: LatheIcon,
+  'sheet-bend': SheetBendIcon,
+  wrench: WrenchIcon,
+  roof: RoofIcon,
+  weld: WeldIcon,
+  'paint-roller': PaintRollerIcon,
+  container: ContainerIcon,
+  blueprint: BlueprintIcon,
+  check: CheckIcon,
+} satisfies Record<string, ComponentType<IconProps>>;
+
+export type PublicIconKey = keyof typeof PUBLIC_ICONS;

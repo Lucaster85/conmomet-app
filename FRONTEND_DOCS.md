@@ -35,10 +35,11 @@ src/
 Lenguaje visual: fondo claro, titulares en `font-display` con `tracking-tight`, secciones con *eyebrow* + guioncito, cards que levitan al hover y aparición escalonada al scrollear. Azul de marca + ámbar solo como color de acción. Tokens en `globals.css` (`--pub-*`, mapeados a `pub-*` en `@theme inline`).
 
 - **Primitivos**: `Section` (wrapper canónico), `Reveal` (aparición al scrollear, prop `delay`/`as`), `Button` (`buttonClasses(variant)`: `action` / `ghost` / `dark`), `Field` (`Field`, `TextAreaField`, `SelectField`), `icons` (SVG inline).
-- **Esqueleto**: `PublicHeader`, `PublicFooter`, `FloatingCta` (mobile), `Hero` con `SiloBlueprint` (plano de silo que se autodibuja).
-- **Secciones de la landing**: `Nosotros`, `Servicios`, `NuestroTrabajo`, `Clientes`, `Contacto` (con `ContactForm`).
+- **Esqueleto**: `PublicHeader` (menú por props), `PublicFooter` (datos por props), `FloatingCta` (mobile), `PublicLink` (enlace de contacto/pie armado desde `kind` + `value`).
+- **Motor de bloques** (`blocks/`, FLOWS §86): la landing no es una composición fija sino lo que declara `public/brands/<marca>/landing.json`. `registry.tsx` mapea tipo → componente (`HeroBlock`, `AboutBlock`, `ServicesBlock`, `WorksBlock`/`WorksGallery`, `ClientsBlock`, `ContactBlock`); `resolve.ts` mezcla el manifiesto con lo editado en la base. El hero tiene dos fondos: `SiloBlueprint` (`blueprint-silo`) y `GridBlueprint` (`blueprint-grid`). Para un tipo de bloque nuevo ver el comentario de `registry.tsx`.
+- **Manifiesto y contenido**: `src/config/landing.ts` (lectura y validación del archivo), `src/utils/siteContent.ts` (trae `/public/site` y mezcla; es lo que usan el layout y la página). Sin `landing.json` en la carpeta de marca no hay sitio público: `/` va al login.
 - **Postulaciones**: `JobApplicationForm`.
-- Los textos de contacto y redes del pie están fijos en `PublicFooter` y `Contacto`.
+- Teléfonos, redes, servicios y clientes ya no están en el código: salen del manifiesto y se editan en Configuración General → Sitio web público.
 - `prefers-reduced-motion` apaga todas las animaciones y deja el plano ya dibujado.
 
 ## 🔧 Scripts Disponibles

@@ -1,42 +1,30 @@
-import Link from 'next/link';
-import type { ReactNode } from 'react';
 import { getEnvironmentConfig } from '../../config/environment';
-import {
-  BriefcaseIcon,
-  FacebookIcon,
-  InstagramIcon,
-  MailIcon,
-  PhoneIcon,
-  PinIcon,
-  ShirtIcon,
-  WhatsAppIcon,
-} from './icons';
-
-const MAPS_URL =
-  'https://www.google.com/maps/search/?api=1&query=578+N%C2%B01682%2C+Quequén%2C+Buenos+Aires%2C+Argentina+7631';
+import type { LandingFooter, LandingLink } from '../../config/landing';
+import PublicLink from './PublicLink';
 
 const LINK_CLASS = 'flex items-center gap-2.5 text-white/65 transition-colors hover:text-white';
+const ICON_CLASS = 'shrink-0 text-pub-action';
 
-function ExternalLink({ href, icon, children }: { href: string; icon: ReactNode; children: ReactNode }) {
-  const external = href.startsWith('http');
+function LinkColumn({ title, links }: { title: string; links: LandingLink[] }) {
+  if (links.length === 0) return null;
   return (
-    <li>
-      <a
-        href={href}
-        className={LINK_CLASS}
-        {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      >
-        <span className="shrink-0 text-pub-action">{icon}</span>
-        {children}
-      </a>
-    </li>
+    <div>
+      <h3 className="font-display text-lg font-bold tracking-tight">{title}</h3>
+      <ul className="mt-4 space-y-3">
+        {links.map((link) => (
+          <li key={`${link.kind}-${link.value}-${link.label}`}>
+            <PublicLink link={link} className={LINK_CLASS} iconClassName={ICON_CLASS} />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
-// Pie de la web pública. Mismos 3 bloques y mismos datos de contacto que el de antes. El link a
-// "Trabajá con nosotros" se mantiene acá porque la Ayuda (postulantes.md) dice que está en el menú
-// de arriba, en el del celular y en el pie.
-export default function PublicFooter() {
+// Pie de la web pública. Todo lo que dice (descripción, contacto, enlaces) viene del manifiesto de la
+// marca (FLOWS.md §86). El enlace a "Trabajá con nosotros" es un enlace más del manifiesto: la Ayuda
+// (postulantes.md) dice que está en el menú de arriba, en el del celular y en el pie.
+export default function PublicFooter({ footer }: { footer: LandingFooter }) {
   const { appName, legalName } = getEnvironmentConfig();
 
   return (
@@ -54,75 +42,30 @@ export default function PublicFooter() {
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <h3 className="font-display text-lg font-bold tracking-tight">{legalName}</h3>
-              <p className="mt-4 leading-relaxed text-white/65">
-                {legalName} es una empresa líder en soluciones industriales, ofreciendo servicios de montajes,
-                tornería y plegados para clientes en toda la zona costera de la provincia de Buenos Aires.
-              </p>
+              {footer.description && <p className="mt-4 leading-relaxed text-white/65">{footer.description}</p>}
             </div>
-
-            <div>
-              <h3 className="font-display text-lg font-bold tracking-tight">Contacto</h3>
-              <ul className="mt-4 space-y-3">
-                <ExternalLink href="https://wa.me/5492262679570" icon={<WhatsAppIcon />}>
-                  WhatsApp +54 9 2262 679570
-                </ExternalLink>
-                <ExternalLink href="tel:+542262679570" icon={<PhoneIcon />}>
-                  Cotizaciones (2262) 679570
-                </ExternalLink>
-                <ExternalLink href="tel:+542262610787" icon={<PhoneIcon />}>
-                  Administración (2262) 610787
-                </ExternalLink>
-                <ExternalLink href="mailto:montajes@conmomet.com.ar" icon={<MailIcon />}>
-                  montajes@conmomet.com.ar
-                </ExternalLink>
-                <ExternalLink href={MAPS_URL} icon={<PinIcon />}>
-                  578 N°1682, Quequén, Buenos Aires, Argentina
-                </ExternalLink>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-display text-lg font-bold tracking-tight">Enlaces rápidos</h3>
-              <ul className="mt-4 space-y-3">
-                <li>
-                  <Link href="/trabaja-con-nosotros" className={LINK_CLASS}>
-                    <span className="shrink-0 text-pub-action">
-                      <BriefcaseIcon />
-                    </span>
-                    Trabajá con nosotros
-                  </Link>
-                </li>
-                <ExternalLink href="https://www.instagram.com/conmomet_s.a" icon={<InstagramIcon />}>
-                  @conmomet_s.a
-                </ExternalLink>
-                <ExternalLink
-                  href="https://www.facebook.com/p/conmomet_sa-100083225145876/"
-                  icon={<FacebookIcon />}
-                >
-                  conmomet_s.a
-                </ExternalLink>
-                <ExternalLink href={MAPS_URL} icon={<PinIcon />}>
-                  Veni a conocernos
-                </ExternalLink>
-                <ExternalLink href="https://www.instagram.com/indumet_" icon={<ShirtIcon />}>
-                  Indumet
-                </ExternalLink>
-              </ul>
-            </div>
+            <LinkColumn title="Contacto" links={footer.contact} />
+            <LinkColumn title="Enlaces rápidos" links={footer.links} />
           </div>
         </div>
 
         <p className="mt-12 border-t border-white/15 pt-6 text-center text-sm text-white/65">
-          © {new Date().getFullYear()} {legalName} Todos los derechos reservados. Powered by{' '}
-          <a
-            href="https://lucasterwebstudio.com/es"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-white/85 underline-offset-4 transition-colors hover:text-pub-action hover:underline"
-          >
-            Lucaster Web Studio
-          </a>
-          .
+          © {new Date().getFullYear()} {legalName} Todos los derechos reservados.
+          {footer.attribution && (
+            <>
+              {' '}
+              Powered by{' '}
+              <a
+                href="https://lucasterwebstudio.com/es"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-white/85 underline-offset-4 transition-colors hover:text-pub-action hover:underline"
+              >
+                Lucaster Web Studio
+              </a>
+              .
+            </>
+          )}
         </p>
       </div>
     </footer>

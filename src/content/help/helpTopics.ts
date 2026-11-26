@@ -272,6 +272,23 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'consultas-web.md',
   },
   {
+    // Categoría "Web": el grupo del menú donde vive esta pantalla (incluye la pestaña Artículos).
+    id: 'sitio-web',
+    category: 'Web',
+    title: 'Sitio web público',
+    keywords: [
+      'sitio', 'sitio web', 'web', 'pagina web', 'página web', 'landing', 'pie', 'pie de pagina',
+      'pie de página', 'footer', 'contacto', 'telefono', 'teléfono', 'telefonos', 'teléfonos', 'whatsapp',
+      'instagram', 'facebook', 'redes', 'redes sociales', 'email', 'mail', 'direccion', 'dirección',
+      'enlace', 'enlaces', 'link', 'links', 'servicios', 'clientes', 'logo', 'icono', 'ícono', 'iconos',
+      'íconos', 'orden', 'ordenar', 'arrastrar', 'ocultar', 'activar', 'desactivar', 'textos', 'seccion',
+      'sección', 'secciones', 'configuracion general', 'configuración general', 'cambiar telefono',
+      'cambiar teléfono', 'datos de mi empresa', 'cargar para editar', 'valores originales',
+      'articulo', 'artículo', 'articulos', 'artículos', 'obra', 'obras', 'nuestro trabajo', 'imagen', 'imagenes', 'imágenes', 'foto', 'fotos',
+    ],
+    file: 'sitio-web.md',
+  },
+  {
     id: 'pedidos-cotizacion',
     category: 'Gestión de Clientes',
     title: 'Pedidos de Cotización',

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import GearSpinner from '../GearSpinner';
-import Reveal from './Reveal';
-import Section from './Section';
+import type { WorksContent } from '../../../config/landing';
+import GearSpinner from '../../GearSpinner';
+import Reveal from '../Reveal';
+import Section from '../Section';
 
 const API_BASE_URL =
   (typeof window !== 'undefined' && (window as { __ENV__?: { API_BASE_URL?: string } }).__ENV__?.API_BASE_URL) ||
@@ -29,7 +30,9 @@ interface Work {
 
 // Mismo origen de datos que antes (`/public/media/type/slider`, ordenado por `order`), pero en vez
 // de un slider con JS: grilla en desktop y carril con scroll-snap en mobile (CSS puro).
-export default function NuestroTrabajo() {
+// Es el único bloque cliente: los textos y el ancla le llegan por props desde WorksBlock (server).
+// No importa BLOCK_ANCHORS de config/landing porque ese módulo usa `fs` y no puede ir al bundle cliente.
+export default function WorksGallery({ id, eyebrow, title, empty }: WorksContent & { id: string }) {
   const [works, setWorks] = useState<Work[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,14 +56,14 @@ export default function NuestroTrabajo() {
   }, []);
 
   return (
-    <Section id="nuestro-trabajo" eyebrow="Obras" title="Nuestro Trabajo" className="bg-white/50">
+    <Section id={id} eyebrow={eyebrow} title={title} className="bg-white/50">
       {loading ? (
         <div className="flex justify-center py-10">
           <GearSpinner />
         </div>
       ) : works.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-pub-line bg-white/60 px-6 py-12 text-center text-pub-muted">
-          Pronto vamos a compartir acá algunos de nuestros trabajos.
+          {empty}
         </p>
       ) : (
         <ul className="-mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 md:mx-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:px-0 md:pb-0">

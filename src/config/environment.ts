@@ -47,7 +47,7 @@ const COLOR_NAMES: Record<string, string> = {
 
 // Acepta un nombre de COLOR_NAMES, #RGB o #RRGGBB y devuelve siempre #RRGGBB en mayúsculas, o null
 // si no es ninguno. Se valida porque el valor termina en estilos inline y en el <meta theme-color>.
-function normalizeHex(value: string | undefined): string | null {
+export function normalizeHex(value: string | undefined): string | null {
   const raw = (value ?? '').trim();
   const key = raw.toLowerCase();
   if (Object.prototype.hasOwnProperty.call(COLOR_NAMES, key)) return COLOR_NAMES[key];
