@@ -272,7 +272,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     file: 'consultas-web.md',
   },
   {
-    // Categoría "Web": el mismo grupo del menú que ya tiene Artículos (las obras que se ven en la página).
+    // Categoría "Web": el grupo del menú donde vive esta pantalla (incluye la pestaña Artículos).
     id: 'sitio-web',
     category: 'Web',
     title: 'Sitio web público',
@@ -284,6 +284,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'íconos', 'orden', 'ordenar', 'arrastrar', 'ocultar', 'activar', 'desactivar', 'textos', 'seccion',
       'sección', 'secciones', 'configuracion general', 'configuración general', 'cambiar telefono',
       'cambiar teléfono', 'datos de mi empresa', 'cargar para editar', 'valores originales',
+      'articulo', 'artículo', 'articulos', 'artículos', 'obra', 'obras', 'nuestro trabajo', 'imagen', 'imagenes', 'imágenes', 'foto', 'fotos',
     ],
     file: 'sitio-web.md',
   },

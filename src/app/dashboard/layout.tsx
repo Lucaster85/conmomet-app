@@ -105,7 +105,8 @@ interface MenuItemDef {
   text: string;
   icon: React.ReactNode;
   path: string;
-  requiredPermission: string | null;
+  // null = siempre visible; un arreglo = alcanza con tener cualquiera de esos permisos.
+  requiredPermission: string | string[] | null;
 }
 
 interface MenuGroupDef {
@@ -196,7 +197,9 @@ const menuGroups: MenuGroupDef[] = [
       { text: 'Roles y Permisos', icon: <RolesIcon />, path: '/dashboard/roles', requiredPermission: 'roles_read' },
     ]
   },
-  { title: 'Web', icon: <WebGroupIcon />, items: [{ text: 'Artículos', icon: <ArticleIcon />, path: '/dashboard/articles', requiredPermission: 'media_read' }] },
+  // «Sitio web público» junta el contenido editable de la web (system_settings_update) y los Artículos (media_read):
+  // se ofrece a quien tenga cualquiera de los dos y cada pestaña se filtra por su permiso (FLOWS.md §86).
+  { title: 'Web', icon: <WebGroupIcon />, items: [{ text: 'Sitio web público', icon: <ArticleIcon />, path: '/dashboard/public-site', requiredPermission: ['system_settings_update', 'media_read'] }] },
   {
     title: 'Configuración',
     icon: <SettingsIcon />,
@@ -439,10 +442,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     ? ((user as Record<string, unknown>).permissions as string[])
     : [];
 
-  const hasPermission = (permission: string | null): boolean => {
+  const hasPermission = (permission: string | string[] | null): boolean => {
     if (!permission) return true; // null = siempre visible
     if (userPermissions.includes('admin_granted')) return true; // admin ve todo
-    return userPermissions.includes(permission);
+    return (Array.isArray(permission) ? permission : [permission]).some((p) => userPermissions.includes(p));
   };
 
   // Filtrar grupos del menú según permisos del usuario
